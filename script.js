@@ -645,11 +645,77 @@ function setupFieldErrorClearing(form) {
     }
 }
 
+// Скрыть иконку домика на страницах комнат
+function hideOrderIndicatorOnRoomPages() {
+  // Проверяем, находимся ли мы на странице комнаты
+  const isRoomPage = document.querySelector('form.booking-form[data-room]') !== null ||
+                     window.location.pathname.includes('room-') ||
+                     window.location.pathname.includes('room_') ||
+                     document.querySelector('.room-hero') !== null;
+  
+  if (isRoomPage) {
+    // Скрываем иконку домика, если она существует (проверяем несколько раз для надежности)
+    const hideIndicator = () => {
+      const orderIndicator = document.querySelector('.order-indicator');
+      if (orderIndicator) {
+        orderIndicator.style.display = 'none';
+        orderIndicator.style.visibility = 'hidden';
+        orderIndicator.style.opacity = '0';
+        orderIndicator.remove(); // Удаляем элемент полностью
+      }
+    };
+    
+    // Скрываем сразу
+    hideIndicator();
+    
+    // Скрываем после небольшой задержки (на случай, если иконка создается асинхронно)
+    setTimeout(hideIndicator, 100);
+    setTimeout(hideIndicator, 500);
+    setTimeout(hideIndicator, 1000);
+    
+    // Отключаем обработчик событий btb:order:record для страниц комнат
+    // чтобы иконка не появлялась при бронировании
+    document.addEventListener('btb:order:record', (e) => {
+      e.stopImmediatePropagation();
+      hideIndicator();
+    }, true); // Используем capture phase для раннего перехвата
+    
+    // Также перехватываем события после загрузки DOM
+    document.addEventListener('DOMContentLoaded', hideIndicator);
+    
+    // Наблюдаем за изменениями DOM и скрываем иконку, если она появляется
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) { // Element node
+            if (node.classList && node.classList.contains('order-indicator')) {
+              hideIndicator();
+            }
+            // Также проверяем дочерние элементы
+            const indicator = node.querySelector && node.querySelector('.order-indicator');
+            if (indicator) {
+              hideIndicator();
+            }
+          }
+        });
+      });
+    });
+    
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true
+    });
+  }
+}
+
 // Room booking form validation for Basement — Queen bed and other rooms
 // Единая функция для инициализации формы бронирования
 // Используется для всех страниц комнат
 function initBookingForm(form, roomName) {
   if (!form || !roomName) return;
+  
+  // Скрываем иконку домика на страницах комнат
+  hideOrderIndicatorOnRoomPages();
   
   const flash = (el) => flashDateField(el);
   
@@ -672,10 +738,13 @@ function initBookingForm(form, roomName) {
   };
   
   // Проверяем, должна ли wellness section быть показана на основе localStorage
+  // По умолчанию показываем секцию, если она не была скрыта пользователем
   if (wellnessSection) {
-    const wellnessShown = localStorage.getItem('btb_wellness_shown');
-    if (wellnessShown === '1') {
+    const wellnessHidden = localStorage.getItem('btb_wellness_hidden');
+    if (wellnessHidden !== '1') {
       wellnessSection.style.display = 'block';
+    } else {
+      wellnessSection.style.display = 'none';
     }
   }
   
@@ -943,7 +1012,8 @@ function initBookingForm(form, roomName) {
       // Show wellness section automatically after successful booking (только для Basement)
       if (roomName === 'Basement — Queen') {
         showWellnessReminder();
-        localStorage.setItem('btb_wellness_shown', '1');
+        // Удаляем флаг скрытия, чтобы секция показывалась после бронирования
+        localStorage.removeItem('btb_wellness_hidden');
       }
     }
   });
@@ -1247,20 +1317,36 @@ async function initBlockedDatesForRoom(form, roomName) {
               }
             },
             onReady: function(selectedDates, dateStr, instance) {
+              // Убеждаемся, что родительский контейнер имеет position: relative
+              const parent = instance.input.parentElement;
+              if (parent && window.getComputedStyle(parent).position === 'static') {
+                parent.style.position = 'relative';
+              }
+              
               // Скрываем оригинальный input, так как используем altInput для отображения
+              // Убираем его далеко в сторону, чтобы он не перехватывал клики
               if (instance.input) {
                 instance.input.style.position = 'absolute';
                 instance.input.style.opacity = '0';
-                instance.input.style.width = '1px';
-                instance.input.style.height = '1px';
+                instance.input.style.width = '0';
+                instance.input.style.height = '0';
                 instance.input.style.padding = '0';
                 instance.input.style.margin = '0';
                 instance.input.style.border = 'none';
+                instance.input.style.pointerEvents = 'none';
+                instance.input.style.left = '-9999px';
+                instance.input.style.top = '-9999px';
                 instance.input.style.visibility = 'visible'; // Видим для браузера, но невидим для пользователя
               }
-              // Устанавливаем placeholder после полной инициализации
-              if (instance.altInput && !instance.altInput.value) {
-                instance.altInput.placeholder = 'dd.mm.yyyy';
+              
+              // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+              if (instance.altInput) {
+                instance.altInput.style.width = '100%';
+                instance.altInput.style.cursor = 'pointer';
+                // Устанавливаем placeholder после полной инициализации
+                if (!instance.altInput.value) {
+                  instance.altInput.placeholder = 'dd.mm.yyyy';
+                }
               }
             },
             onChange: function(selectedDates, dateStr, instance) {
@@ -1362,18 +1448,33 @@ async function initBlockedDatesForRoom(form, roomName) {
           // Скрываем оригинальный input сразу после инициализации
           setTimeout(() => {
             if (fpCheckin.input && fpCheckin.altInput) {
+              // Убеждаемся, что родительский контейнер имеет position: relative
+              const parent = fpCheckin.input.parentElement;
+              if (parent && window.getComputedStyle(parent).position === 'static') {
+                parent.style.position = 'relative';
+              }
+              
+              // Убираем скрытый input далеко в сторону, чтобы он не перехватывал клики
               fpCheckin.input.style.position = 'absolute';
               fpCheckin.input.style.opacity = '0';
-              fpCheckin.input.style.width = '1px';
-              fpCheckin.input.style.height = '1px';
+              fpCheckin.input.style.width = '0';
+              fpCheckin.input.style.height = '0';
               fpCheckin.input.style.padding = '0';
               fpCheckin.input.style.margin = '0';
               fpCheckin.input.style.border = 'none';
+              fpCheckin.input.style.pointerEvents = 'none';
+              fpCheckin.input.style.left = '-9999px';
+              fpCheckin.input.style.top = '-9999px';
               fpCheckin.input.style.visibility = 'visible';
-            }
-            // Убеждаемся, что placeholder установлен в altInput после инициализации
-            if (fpCheckin.altInput && !fpCheckin.altInput.value) {
-              fpCheckin.altInput.placeholder = 'dd.mm.yyyy';
+              
+              // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+              fpCheckin.altInput.style.width = '100%';
+              fpCheckin.altInput.style.cursor = 'pointer';
+              
+              // Убеждаемся, что placeholder установлен в altInput после инициализации
+              if (!fpCheckin.altInput.value) {
+                fpCheckin.altInput.placeholder = 'dd.mm.yyyy';
+              }
             }
           }, 50);
         }
@@ -1404,20 +1505,36 @@ async function initBlockedDatesForRoom(form, roomName) {
               }
             },
             onReady: function(selectedDates, dateStr, instance) {
+              // Убеждаемся, что родительский контейнер имеет position: relative
+              const parent = instance.input.parentElement;
+              if (parent && window.getComputedStyle(parent).position === 'static') {
+                parent.style.position = 'relative';
+              }
+              
               // Скрываем оригинальный input, так как используем altInput для отображения
+              // Убираем его далеко в сторону, чтобы он не перехватывал клики
               if (instance.input) {
                 instance.input.style.position = 'absolute';
                 instance.input.style.opacity = '0';
-                instance.input.style.width = '1px';
-                instance.input.style.height = '1px';
+                instance.input.style.width = '0';
+                instance.input.style.height = '0';
                 instance.input.style.padding = '0';
                 instance.input.style.margin = '0';
                 instance.input.style.border = 'none';
+                instance.input.style.pointerEvents = 'none';
+                instance.input.style.left = '-9999px';
+                instance.input.style.top = '-9999px';
                 instance.input.style.visibility = 'visible'; // Видим для браузера, но невидим для пользователя
               }
-              // Устанавливаем placeholder после полной инициализации
-              if (instance.altInput && !instance.altInput.value) {
-                instance.altInput.placeholder = 'dd.mm.yyyy';
+              
+              // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+              if (instance.altInput) {
+                instance.altInput.style.width = '100%';
+                instance.altInput.style.cursor = 'pointer';
+                // Устанавливаем placeholder после полной инициализации
+                if (!instance.altInput.value) {
+                  instance.altInput.placeholder = 'dd.mm.yyyy';
+                }
               }
             },
             onOpen: function(selectedDates, dateStr, instance) {
@@ -1489,14 +1606,28 @@ async function initBlockedDatesForRoom(form, roomName) {
           // Скрываем оригинальный input сразу после инициализации
           setTimeout(() => {
             if (fpCheckout.input && fpCheckout.altInput) {
+              // Убеждаемся, что родительский контейнер имеет position: relative
+              const parent = fpCheckout.input.parentElement;
+              if (parent && window.getComputedStyle(parent).position === 'static') {
+                parent.style.position = 'relative';
+              }
+              
+              // Убираем скрытый input далеко в сторону, чтобы он не перехватывал клики
               fpCheckout.input.style.position = 'absolute';
               fpCheckout.input.style.opacity = '0';
-              fpCheckout.input.style.width = '1px';
-              fpCheckout.input.style.height = '1px';
+              fpCheckout.input.style.width = '0';
+              fpCheckout.input.style.height = '0';
               fpCheckout.input.style.padding = '0';
               fpCheckout.input.style.margin = '0';
               fpCheckout.input.style.border = 'none';
+              fpCheckout.input.style.pointerEvents = 'none';
+              fpCheckout.input.style.left = '-9999px';
+              fpCheckout.input.style.top = '-9999px';
               fpCheckout.input.style.visibility = 'visible';
+              
+              // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+              fpCheckout.altInput.style.width = '100%';
+              fpCheckout.altInput.style.cursor = 'pointer';
             }
           }, 50);
         }
@@ -1671,14 +1802,31 @@ function enhanceDateInputs(root) {
     display.value = formatIso(real.value);
     display.placeholder = 'dd.mm.yyyy';
     display.readOnly = true;
+    
+    // Убеждаемся, что родительский контейнер имеет position: relative для правильного позиционирования
+    const parent = real.parentElement;
+    if (parent && window.getComputedStyle(parent).position === 'static') {
+      parent.style.position = 'relative';
+    }
+    
     // Insert display before real; keep real hidden but present for JS/submit
+    // Скрываем реальный input полностью, чтобы он не перехватывал клики
     real.style.position = 'absolute';
     real.style.opacity = '0';
     real.style.pointerEvents = 'none';
     real.style.width = '0';
     real.style.height = '0';
     real.style.margin = '0';
-    real.parentElement.insertBefore(display, real);
+    real.style.padding = '0';
+    real.style.border = 'none';
+    real.style.left = '-9999px'; // Убираем далеко в сторону, чтобы не мешал
+    real.style.top = '-9999px';
+    
+    // Убеждаемся, что визуальный display input имеет правильный размер и кликабельную область
+    display.style.width = '100%';
+    display.style.cursor = 'pointer';
+    
+    parent.insertBefore(display, real);
     const openPicker = () => {
       try { if (typeof real.showPicker === 'function') real.showPicker(); else real.click(); } catch (_) { real.focus(); real.click(); }
     };
@@ -2029,6 +2177,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initBasementBooking();
   initOtherRoomWellness();
   // initOrderIndicator(); // Отключено - иконка домика больше не показывается
+  
+  // Скрываем иконку домика на страницах комнат, если она была создана
+  hideOrderIndicatorOnRoomPages();
+  
   initDateTimeUX();
   initMassageTimeRestrictions();
   initClickableMassageOptions();
@@ -2147,13 +2299,20 @@ function migrateSingleOrderToArray() {
 }
 
 // Check if wellness section should be shown based on localStorage
+// По умолчанию секция показывается на всех страницах комнат
+// Скрывается только если пользователь явно её закрыл
 function checkAndShowWellnessSection() {
   try {
-    const wellnessShown = localStorage.getItem('btb_wellness_shown');
-    if (wellnessShown === '1') {
-      const section = document.getElementById('wellness-section');
-      if (section) {
+    const section = document.getElementById('wellness-section');
+    if (section) {
+      // Проверяем, была ли секция скрыта пользователем
+      const wellnessHidden = localStorage.getItem('btb_wellness_hidden');
+      if (wellnessHidden !== '1') {
+        // Показываем секцию по умолчанию, если она не была скрыта
         section.style.display = 'block';
+      } else {
+        // Скрываем секцию, если пользователь её закрыл
+        section.style.display = 'none';
       }
     }
   } catch (_) {}
@@ -2165,8 +2324,8 @@ function hideWellnessSection() {
     const section = document.getElementById('wellness-section');
     if (section) {
       section.style.display = 'none';
-      // Remove the flag so section won't show automatically on future visits
-      localStorage.removeItem('btb_wellness_shown');
+      // Устанавливаем флаг, что секция была скрыта пользователем
+      localStorage.setItem('btb_wellness_hidden', '1');
     }
   } catch (_) {}
 }

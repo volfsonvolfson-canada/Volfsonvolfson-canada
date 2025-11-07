@@ -314,6 +314,16 @@ html { scroll-behavior: smooth; }
 .order-indicator:hover { filter: brightness(1.05); transform: translateY(-1px); }
 .order-indicator svg { width: 22px; height: 22px; display: block; }
 
+/* Скрываем иконку домика на страницах комнат */
+form.booking-form[data-room] ~ .order-indicator,
+.room-hero ~ .order-indicator,
+body:has(form.booking-form[data-room]) .order-indicator,
+body:has(.room-hero) .order-indicator {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
+
 /* Muted labels in order summary */
 .label-muted { color: var(--muted); }
 
