@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Back to Base — Boutique Retreat in British Columbia</title>
+  <meta name="description" content="Back to Base — boutique forest retreat in British Columbia, Canada. Rooms for rent, massage services, yoga, and nature immersion.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="styles.css">
+  <script>
+    // UNIVERSAL THEME INITIALIZATION - Works on ALL pages
+    // This script runs synchronously in <head> before page render
+    // User can land on ANY page first time - theme defaults to 'dark'
+    (function() {
+      'use strict';
+      try {
+        // Get saved theme and user preference flag
+        const savedTheme = localStorage.getItem('btb_theme');
+        const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+        
+        // Determine initial theme:
+        // - If user explicitly set theme (userSetTheme=true) AND savedTheme is valid, use savedTheme
+        // - Otherwise default to 'dark' (first-time visitor on any page)
+        let initialTheme = 'dark';
+        
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+          initialTheme = savedTheme; // User has chosen theme - use it
+        }
+        // Else: first-time visitor or invalid theme - use default 'dark'
+        
+        // Set theme immediately before page renders
+        document.documentElement.setAttribute('data-theme', initialTheme);
+      } catch (error) {
+        // If localStorage fails, default to dark
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <script>
+    // CRITICAL: Update image paths IMMEDIATELY when DOM loads
+    // This must run synchronously to prevent browser from loading old images
+    // NOTE: All images are JPG/PNG/GIF files - SVG <image> elements are just HTML structure
+    (function() {
+      function updateImagePaths() {
+        try {
+          const storedData = localStorage.getItem('btb_floorplan_settings');
+          if (storedData) {
+            const data = JSON.parse(storedData);
+            
+            // Universal function for inline script - same as in script.js
+            // All images are HTML <img> elements (display JPG/PNG/GIF files)
+            function updateImageElementInline(selector, imageUrl) {
+              const element = typeof selector === 'string' ? document.querySelector(selector) : selector;
+              if (!element) return false;
+              
+              // All images are HTML <img> elements - displays JPG/PNG/GIF files directly
+              if (element.tagName === 'IMG') {
+                element.src = imageUrl;
+                element.srcset = imageUrl;
+                return true;
+              }
+              
+              return false;
+            }
+            
+            // Update all floor images - use same approach for all three sections
+            // All sections use HTML <img> elements with class .floor-photo
+            const floorCards = document.querySelectorAll('.floor-card');
+            
+            // Update basement (first card)
+            if (floorCards.length >= 1 && data.basement_image_url) {
+              const imageUrl = data.basement_image_url + '?v=' + Date.now();
+              const basementImg = floorCards[0].querySelector('.floor-photo');
+              if (updateImageElementInline(basementImg, imageUrl)) {
+                console.log('Basement image updated to:', imageUrl);
+                // Update sources
+                const sources = floorCards[0].querySelectorAll('source');
+                sources.forEach(source => source.srcset = imageUrl);
+              }
+            }
+            
+            // Update ground floor (second card) - same approach as basement
+            if (floorCards.length >= 2) {
+              const groundImage = data.ground_image_url || data.ground_queen_image || '';
+              if (groundImage) {
+                const imageUrl = groundImage + '?v=' + Date.now();
+                const groundImg = floorCards[1].querySelector('.floor-photo');
+                if (updateImageElementInline(groundImg, imageUrl)) {
+                  console.log('Ground floor image updated to:', imageUrl);
+                  // Update sources
+                  const sources = floorCards[1].querySelectorAll('source');
+                  sources.forEach(source => source.srcset = imageUrl);
+                }
+              }
+            }
+            
+            // Update loft (third card) - same approach as basement
+            if (floorCards.length >= 3 && data.loft_image_url) {
+              const imageUrl = data.loft_image_url + '?v=' + Date.now();
+              const loftImg = floorCards[2].querySelector('.floor-photo');
+              if (updateImageElementInline(loftImg, imageUrl)) {
+                console.log('Loft image updated to:', imageUrl);
+                // Update sources
+                const sources = floorCards[2].querySelectorAll('source');
+                sources.forEach(source => source.srcset = imageUrl);
+              }
+            }
+          }
+        } catch(e) {
+          console.error('Image update error:', e);
+        }
+      }
+      
+      // Call immediately if DOM is ready, otherwise wait
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateImagePaths);
+      } else {
+        // DOM already loaded, call immediately
+        updateImagePaths();
+      }
+      
+      // Also try after a short delay to catch elements if they load later
+      setTimeout(updateImagePaths, 100);
+    })();
+  </script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img alt="Back to Base" class="logo-img" />
+        <span class="logo-text">Back to Base</span>
+      </a>
+      <nav class="nav">
+        <a href="#rooms">Rooms</a>
+        <a href="massage.html">Massage</a>
+        <a href="yoga.html">Yoga</a>
+        <a href="special.html">Special</a>
+        <a href="about.html">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="theme-text">Light</span>
+        </button>
+        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <section class="hero hero-full" aria-label="Back to Base hero photo">
+    <img class="hero-full-img" src="assets/hero.jpg" alt="Blue two‑storey house in the forest with mountains and a lake nearby" />
+  </section>
+
+  <main>
+    <section class="section-tight">
+      <div class="container">
+        <p>Back to Base is a countryside guesthouse in Nelson, British Columbia, where you can rent a room or book the entire house for a vacation, retreat, or wellness getaway. Guests can restore their energy with a relaxing massage and enjoy comfortable accommodation surrounded by mountains and forest.</p>
+        <p>Our cozy rooms and inspiring atmosphere make this the perfect place for solitude, meditation, yoga retreats, or simply a peaceful holiday in nature.</p>
+      </div>
+    </section>
+
+    <section class="hero-contained" aria-label="Aerial view between manifesto and plan">
+      <div class="container">
+        <img class="hero-contained-img hero2-cropped" src="assets/hero2.jpg" alt="Aerial view of Back to Base area with lake and mountains" />
+      </div>
+    </section>
+
+    <section id="plan" class="section">
+      <div class="container">
+        <h2>Floor plan</h2>
+        <p class="section-lead">Three levels of comfort: basement, ground floor and a cozy loft under the roof.</p>
+        <div class="plan-grid reveal">
+          <article class="plan-card floor-card">
+            <h3>Basement</h3>
+            <p class="floor-sub">Private floor with a separate entrance.</p>
+            <p class="floor-desc">A spacious bedroom with a king-size bed and a small study, a home theater with a fireplace, and a private bathroom featuring a shower and a sauna room.</p>
+            <picture class="floor-photo-wrap">
+              <source srcset="assets/plan.jpg" type="image/jpeg" />
+              <source srcset="assets/plan.jpeg" type="image/jpeg" />
+              <source srcset="assets/plan.JPG" type="image/jpeg" />
+              <source srcset="assets/plan.JPEG" type="image/jpeg" />
+              <img class="floor-photo" src="assets/plan.jpg" alt="Basement floor plan" loading="lazy" />
+            </picture>
+          </article>
+          <article class="plan-card floor-card">
+            <h3>Ground floor</h3>
+            <p class="floor-sub">Open space with a separate entrance.</p>
+            <p class="floor-desc">A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.</p>
+            <picture class="floor-photo-wrap">
+              <source srcset="assets/plan.jpg" type="image/jpeg" />
+              <source srcset="assets/plan.jpeg" type="image/jpeg" />
+              <source srcset="assets/plan.JPG" type="image/jpeg" />
+              <source srcset="assets/plan.JPEG" type="image/jpeg" />
+              <img class="floor-photo" src="assets/plan.jpg" alt="Ground floor plan" loading="lazy" />
+            </picture>
+          </article>
+          <article class="plan-card floor-card">
+            <h3>Second floor (loft)</h3>
+            <p class="floor-sub">Private top-floor space under the roof.</p>
+            <p class="floor-desc">A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.</p>
+            <picture class="floor-photo-wrap">
+              <source srcset="assets/plan.jpg" type="image/jpeg" />
+              <source srcset="assets/plan.jpeg" type="image/jpeg" />
+              <source srcset="assets/plan.JPG" type="image/jpeg" />
+              <source srcset="assets/plan.JPEG" type="image/jpeg" />
+              <img class="floor-photo" src="assets/plan.jpg" alt="Second floor plan" loading="lazy" />
+            </picture>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="rooms" class="section alt">
+      <div class="container">
+        <h2>Choose your room</h2>
+        <div class="rooms-grid">
+          <article class="room-card reveal">
+            <div class="room-media" style="background-image:url('assets/basement1.jpeg?v=1'), url('assets/basement1.jpg?v=1'), url('assets/basement1.JPG?v=1'), url('assets/basement1.JPEG?v=1');"></div>
+            <div class="room-body">
+              <h3>Basement<br/>Queen bed</h3>
+              <p>Cozy room next to the home cinema and sauna. Perfect for two.</p>
+              <p class="notice">From 140 CAD/night</p>
+              <a class="btn primary" href="room-basement.html">Details & booking</a>
+            </div>
+          </article>
+
+          <article class="room-card reveal">
+            <div class="room-media" style="background-image:url('assets/Ground floor — Queen bed1.jpg?v=1'), url('assets/Ground floor — Queen bed1.jpeg?v=1'), url('assets/Ground floor — Queen bed1.JPG?v=1'), url('assets/Ground floor — Queen bed1.JPEG?v=1');"></div>
+            <div class="room-body">
+              <h3>Ground floor<br/>Queen bed</h3>
+              <p>Compact, bright room with access to the fireplace lounge.</p>
+              <p class="notice">From 130 CAD/night</p>
+              <a class="btn primary" href="room-first-double.html">Details & booking</a>
+            </div>
+          </article>
+
+          <article class="room-card reveal">
+            <div class="room-media" style="background-image:url('assets/2bad2.jpg?v=1'), url('assets/2bad2.jpeg?v=1'), url('assets/2bad2.JPG?v=1'), url('assets/2bad2.JPEG?v=1');"></div>
+            <div class="room-body">
+              <h3>Ground floor<br/>Twin beds</h3>
+              <p>Great for friends or colleagues. Close to the kitchen and massage hall.</p>
+              <p class="notice">From 125 CAD/night</p>
+              <a class="btn primary" href="room-first-twin.html">Details & booking</a>
+            </div>
+          </article>
+
+          <article class="room-card reveal">
+            <div class="room-media" style="background-image:url('assets/loft5.jpg?v=1'), url('assets/loft5.jpeg?v=1'), url('assets/loft5.JPG?v=1'), url('assets/loft5.JPEG?v=1');"></div>
+            <div class="room-body">
+              <h3>Second floor (entire)<br/>Queen bed</h3>
+              <p>Separate kitchen and shower, study, and a balcony with lake view.</p>
+              <p class="notice">From 210 CAD/night (entire floor)</p>
+              <a class="btn primary" href="room-second-suite.html">Details & booking</a>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container grid-2">
+        <div>
+          <h2>Massage services</h2>
+          <p class="margin-bottom-large" style="margin-bottom: 40px;">Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.</p>
+          <a class="btn primary" href="massage.html">Choose a massage</a>
+        </div>
+        <div>
+          <img class="floor-photo" src="assets/massage.jpg" alt="Relaxing massage" />
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container grid-2">
+        <div>
+          <img class="floor-photo media-43" src="assets/yoga.jpg" alt="Girl meditating on a wooden platform in a Canadian conifer forest clearing" />
+        </div>
+        <div>
+          <h2>Yoga</h2>
+          <p class="margin-bottom-small">Try an incredible forest meditation experience by the stream, guided by an experienced instructor. We offer a secluded and peaceful spot in the shade of the trees, away from city noise yet close to the house, where you can warm up and enjoy a cup of tea.</p>
+          <p class="margin-bottom-large" style="margin-bottom: 40px;">Both individual and group sessions are available, either as an add-on to your room booking or as a stand-alone option.</p>
+          <a class="btn primary" href="yoga.html">Learn more</a>
+        </div>
+      </div>
+    </section
+  </main>
+
+  <footer id="contacts" class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>British Columbia, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <script src="utils.js?v=26"></script>
+  <script src="script.js?v=26"></script>
+  <script src="auth.js?v=26"></script>
+</body>
+</html>

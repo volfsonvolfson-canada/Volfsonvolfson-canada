@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Uploaded Images</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .image-check { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        img { max-width: 200px; max-height: 150px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Check Uploaded Images</h1>
+    <p>This page checks if images uploaded through admin are accessible.</p>
+    
+    <div id="results"></div>
+
+    <script>
+        // Check current floor plan data
+        async function checkFloorplanImages() {
+            try {
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=get_floorplan'
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    if (result.success && result.data) {
+                        displayImages(result.data);
+                    } else {
+                        document.getElementById('results').innerHTML = '<p>No floor plan data found</p>';
+                    }
+                } else {
+                    document.getElementById('results').innerHTML = '<p>Failed to fetch floor plan data</p>';
+                }
+            } catch (error) {
+                document.getElementById('results').innerHTML = '<p>Error: ' + error.message + '</p>';
+            }
+        }
+        
+        function displayImages(data) {
+            const resultsDiv = document.getElementById('results');
+            const images = [
+                { name: 'Basement', path: data.basement_image_url },
+                { name: 'Ground Floor', path: data.ground_queen_image },
+                { name: 'Loft', path: data.loft_image_url }
+            ];
+            
+            images.forEach(image => {
+                const imageDiv = document.createElement('div');
+                imageDiv.className = 'image-check';
+                imageDiv.innerHTML = `<h3>${image.name}</h3><p>Path: ${image.path || 'Not set'}</p>`;
+                
+                if (image.path) {
+                    const img = document.createElement('img');
+                    img.src = image.path + '?v=' + Date.now();
+                    
+                    img.onload = function() {
+                        imageDiv.className += ' success';
+                        imageDiv.innerHTML += '<p style="color: green;">✅ Image loaded successfully</p>';
+                        imageDiv.appendChild(img);
+                    };
+                    
+                    img.onerror = function() {
+                        imageDiv.className += ' error';
+                        imageDiv.innerHTML += '<p style="color: red;">❌ Image failed to load</p>';
+                    };
+                } else {
+                    imageDiv.className += ' error';
+                    imageDiv.innerHTML += '<p style="color: red;">❌ No image path set</p>';
+                }
+                
+                resultsDiv.appendChild(imageDiv);
+            });
+        }
+        
+        // Run check when page loads
+        checkFloorplanImages();
+    </script>
+</body>
+</html>

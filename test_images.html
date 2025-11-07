@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Images</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-image { margin: 10px 0; padding: 10px; border: 1px solid #ccc; }
+        .success { background-color: #d4edda; }
+        .error { background-color: #f8d7da; }
+        img { max-width: 200px; max-height: 150px; margin: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Test Images Availability</h1>
+    <div id="results"></div>
+
+    <script>
+        const testImages = [
+            'assets/plan.jpg',
+            'assets/plan.png',
+            'assets/Ground floor - Queen bed1.jpg',
+            'assets/Ground floor - Queen bed2.jpg',
+            'assets/plan-loft.jpg',
+            'assets/loft5.jpg',
+            'assets/basement1.jpeg',
+            'assets/basement2.jpeg',
+            'assets/basement3.jpeg',
+            'assets/basement4.jpeg',
+            'assets/basement5.jpeg',
+            'assets/basement6.jpeg'
+        ];
+
+        const resultsDiv = document.getElementById('results');
+
+        testImages.forEach(imagePath => {
+            const testDiv = document.createElement('div');
+            testDiv.className = 'test-image';
+            testDiv.innerHTML = `<strong>Testing:</strong> ${imagePath}<br>`;
+            
+            const img = document.createElement('img');
+            img.src = imagePath;
+            
+            img.onload = function() {
+                testDiv.className += ' success';
+                testDiv.innerHTML += `<span style="color: green;">✅ SUCCESS</span><br>`;
+                testDiv.appendChild(img);
+            };
+            
+            img.onerror = function() {
+                testDiv.className += ' error';
+                testDiv.innerHTML += `<span style="color: red;">❌ ERROR - File not found</span><br>`;
+            };
+            
+            resultsDiv.appendChild(testDiv);
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,149 @@
+===========================================
+СПИСОК ФАЙЛОВ ДЛЯ ЗАГРУЗКИ НА ХОСТИНГ
+===========================================
+
+ОСНОВНЫЕ HTML ФАЙЛЫ (публичные страницы):
+==========================================
+index.html
+about.html
+login.html
+massage.html
+yoga.html
+special.html
+order.html
+booking-confirmation.html
+room-basement.html
+room-first-double.html
+room-first-twin.html
+room-second-suite.html
+
+АДМИН-ПАНЕЛЬ HTML:
+==================
+admin.html
+admin-login.html
+admin-bookings.html
+admin-content.html
+
+CSS ФАЙЛЫ:
+==========
+styles.css
+common.css
+admin.css
+dashboard.css
+
+JAVASCRIPT ФАЙЛЫ:
+=================
+script.js
+booking.js
+payment.js
+utils.js
+auth.js
+availability-calendar.js
+theme-init.js
+messages.js
+dashboard.js
+
+АДМИН JAVASCRIPT:
+=================
+admin.js
+admin-bookings.js
+admin-content.js
+
+PHP ФАЙЛЫ (ОСНОВНЫЕ):
+=====================
+api.php
+common.php
+config.php
+booking_api.php
+floorplan_api.php
+payment_service.php
+email_service.php
+airbnb_sync.php
+ical_parser.php
+upload_image.php
+stripe_webhook.php
+cron_sync_airbnb.php
+
+PHP ФАЙЛЫ (УТИЛИТЫ И ИНИЦИАЛИЗАЦИЯ):
+=====================================
+init_database.php
+create_table.php
+add_floorplan_table.php
+add_hero_fields.php
+
+ПАПКИ:
+======
+templates/
+  ├── email_booking_cancelled.html
+  ├── email_booking_confirmation.html
+  ├── email_booking_confirmed.html
+  └── email_booking_request.html
+
+===========================================
+НЕ НУЖНО ЗАГРУЗИТЬ (остаются только локально):
+===========================================
+- Все .md файлы (документация)
+- Все .sql файлы (схемы БД - для справки)
+- Все test-*.html, test-*.php (тестовые файлы)
+- check-*.html, check-*.php (утилиты проверки)
+- debug-*.php (отладочные файлы)
+- force_update.html
+- argv.json, ide_state.json (IDE файлы)
+- theme_manager.txt
+- Все папки: extensions, forest-blue-lodge (если не нужны)
+
+===========================================
+СТРУКТУРА НА ХОСТИНГЕ:
+===========================================
+public_html/
+├── index.html
+├── about.html
+├── login.html
+├── massage.html
+├── yoga.html
+├── special.html
+├── order.html
+├── booking-confirmation.html
+├── room-basement.html
+├── room-first-double.html
+├── room-first-twin.html
+├── room-second-suite.html
+├── admin.html
+├── admin-login.html
+├── admin-bookings.html
+├── admin-content.html
+├── styles.css
+├── common.css
+├── admin.css
+├── dashboard.css
+├── script.js
+├── booking.js
+├── payment.js
+├── utils.js
+├── auth.js
+├── availability-calendar.js
+├── theme-init.js
+├── messages.js
+├── dashboard.js
+├── admin.js
+├── admin-bookings.js
+├── admin-content.js
+├── api.php
+├── common.php
+├── config.php
+├── booking_api.php
+├── floorplan_api.php
+├── payment_service.php
+├── email_service.php
+├── airbnb_sync.php
+├── ical_parser.php
+├── upload_image.php
+├── stripe_webhook.php
+├── cron_sync_airbnb.php
+├── init_database.php
+├── create_table.php
+├── add_floorplan_table.php
+├── add_hero_fields.php
+├── assets/ (уже существует)
+└── templates/ (если используется)
+

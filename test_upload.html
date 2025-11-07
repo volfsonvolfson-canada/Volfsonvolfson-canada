@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Image Upload</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .upload-form { margin: 20px 0; padding: 20px; border: 1px solid #ccc; }
+        .result { margin: 20px 0; padding: 20px; background-color: #f0f0f0; }
+    </style>
+</head>
+<body>
+    <h1>Test Image Upload</h1>
+    
+    <div class="upload-form">
+        <h3>Upload Test</h3>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" id="imageFile" accept="image/*" required>
+            <br><br>
+            <select id="imageType" required>
+                <option value="basement">Basement</option>
+                <option value="ground">Ground Floor</option>
+                <option value="loft">Loft</option>
+            </select>
+            <br><br>
+            <button type="submit">Upload Image</button>
+        </form>
+    </div>
+    
+    <div id="result" class="result" style="display: none;"></div>
+
+    <script>
+        document.getElementById('uploadForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            const file = document.getElementById('imageFile').files[0];
+            const imageType = document.getElementById('imageType').value;
+            
+            if (!file) {
+                alert('Please select a file');
+                return;
+            }
+            
+            formData.append('image', file);
+            formData.append('image_type', imageType);
+            
+            const resultDiv = document.getElementById('result');
+            resultDiv.style.display = 'block';
+            resultDiv.innerHTML = 'Uploading...';
+            
+            try {
+                const response = await fetch('upload_image.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const text = await response.text();
+                console.log('Raw response:', text);
+                
+                try {
+                    const result = JSON.parse(text);
+                    resultDiv.innerHTML = `
+                        <h4>Upload Result:</h4>
+                        <pre>${JSON.stringify(result, null, 2)}</pre>
+                    `;
+                } catch (parseError) {
+                    resultDiv.innerHTML = `
+                        <h4>Parse Error:</h4>
+                        <p>Could not parse JSON response</p>
+                        <h5>Raw Response:</h5>
+                        <pre>${text}</pre>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <h4>Error:</h4>
+                    <p>${error.message}</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ground floor — Twin beds | Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    // UNIVERSAL THEME INITIALIZATION - Works on ALL pages
+    // This script runs synchronously in <head> before page render
+    // User can land on ANY page first time - theme defaults to 'dark'
+    (function() {
+      'use strict';
+      try {
+        // Get saved theme and user preference flag
+        const savedTheme = localStorage.getItem('btb_theme');
+        const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+        
+        // Determine initial theme:
+        // - If user explicitly set theme (userSetTheme=true) AND savedTheme is valid, use savedTheme
+        // - Otherwise default to 'dark' (first-time visitor on any page)
+        let initialTheme = 'dark';
+        
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+          initialTheme = savedTheme; // User has chosen theme - use it
+        }
+        // Else: first-time visitor or invalid theme - use default 'dark'
+        
+        // Set theme immediately before page renders
+        document.documentElement.setAttribute('data-theme', initialTheme);
+      } catch (error) {
+        // If localStorage fails, default to dark
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img alt="Back to Base" class="logo-img" />
+        <span class="logo-text">Back to Base</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#rooms">Rooms</a>
+        <a href="massage.html">Massage</a>
+        <a href="yoga.html">Yoga</a>
+        <a href="special.html">Special</a>
+        <a href="about.html">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="theme-text">Light</span>
+        </button>
+        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="breadcrumbs"><a href="index.html">Home</a> / Rooms / Ground floor — Twin beds</div>
+      <h1>Ground floor — Twin beds</h1>
+      <p class="section-lead">Perfect for friends or colleagues. Near the kitchen and massage hall.</p>
+    </div>
+  </div>
+
+  <section class="hero-contained" aria-label="Room banner">
+    <div class="container">
+      <img class="hero-contained-img basement-banner-cropped" data-src-base="assets/forest-deer" alt="Deer in forest" />
+    </div>
+  </section>
+
+  <main class="section">
+    <div class="container room-hero">
+      <section>
+        <div class="gallery">
+          <img data-src-base="assets/Ground floor — Twin beds1" alt="Ground floor Twin beds 1">
+          <img data-src-base="assets/Ground floor — Bathroom" alt="Ground floor Bathroom">
+        </div>
+      </section>
+      <aside class="card">
+        <h2>Book this room</h2>
+        <p><strong>Price:</strong> 125 CAD / night</p>
+        <p><strong>Capacity:</strong> up to 2 guests</p>
+        <ul class="massage-list">
+          <li>Two separate beds</li>
+          <li>Near the kitchen and massage hall</li>
+        </ul>
+        <form class="booking-form" data-room="Ground floor — Twin beds" data-custom-handler>
+          <div class="form-row">
+            <div>
+              <label for="checkin">Check‑in</label>
+              <input id="checkin" name="checkin" type="date" required />
+            </div>
+            <div>
+              <label for="checkout">Check‑out</label>
+              <input id="checkout" name="checkout" type="date" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label for="name">Name</label>
+              <input id="name" name="name" type="text" placeholder="Full name" required />
+            </div>
+            <div>
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel" placeholder="+1 555 123‑4567" required />
+            </div>
+            <div>
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" placeholder="you@example.com" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label for="guests">Guests</label>
+              <select id="guests" name="guests" required>
+                <option value="" disabled selected hidden>—</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+              </select>
+            </div>
+            <div>
+              <label for="pets">Pets</label>
+              <select id="pets" name="pets" required>
+                <option value="" disabled selected hidden>—</option>
+                <option value="add">Add pets</option>
+                <option value="no">No pets</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn primary" type="submit">Book now</button>
+          <p class="notice">Prices are approximate. Confirmation will be sent by email.</p>
+        </form>
+      </aside>
+    </div>
+  </main>
+
+  <section id="wellness-section" class="section alt" style="display:none;">
+    <div class="container">
+      <h2>Wellness Experiences</h2>
+      <p class="section-lead">Enhance your stay with our additional wellness services.<br>Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.</p>
+
+      <section class="card card-massage">
+        <div class="card-img">
+          <img class="floor-photo media-43" src="assets/massage.jpg" alt="Massage at Back to Base" />
+        </div>
+        <div class="card-body">
+          <h2>Massage</h2>
+          <p>Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a class="btn primary" href="massage.html">Book massage</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-massage card-massage--alt">
+        <div class="card-img">
+          <img class="floor-photo media-43" src="assets/yoga.jpg" alt="Yoga at Back to Base" />
+        </div>
+        <div class="card-body">
+          <h2>Yoga</h2>
+          <p>On the property, surrounded by a cozy forest, you’ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a class="btn primary" href="yoga.html">Book yoga</a>
+          </div>
+        </div>
+      </section>
+
+      <section class="card card-massage">
+        <div class="card-img">
+          <img class="floor-photo media-43" src="assets/plan-basement-bedroom.jpg" alt="Sauna at Back to Base" />
+        </div>
+        <div class="card-body">
+          <h2>Sauna</h2>
+          <p>After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.</p>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <a class="btn primary" href="massage.html">Book sauna session</a>
+          </div>
+        </div>
+      </section>
+    </div>
+  </section>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>British Columbia, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="index.html#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <!-- Gallery Modal -->
+  <div id="gallery-modal" class="gallery-modal">
+    <div class="gallery-modal-content">
+      <button class="gallery-modal-close" id="gallery-close">&times;</button>
+      <img id="gallery-modal-image" class="gallery-modal-image" src="" alt="">
+      <button class="gallery-modal-nav gallery-modal-prev" id="gallery-prev">‹</button>
+      <button class="gallery-modal-nav gallery-modal-next" id="gallery-next">›</button>
+      <div class="gallery-modal-counter" id="gallery-counter"></div>
+    </div>
+  </div>
+
+  <script src="script.js?v=26"></script>
+  <script src="auth.js?v=26"></script>
+  <script>
+    // Gallery functionality for Ground floor — Twin beds
+    const galleryImages = [
+      'assets/Ground floor — Twin beds1',
+      'assets/Ground floor — Bathroom'
+    ];
+    
+    let currentImageIndex = 0;
+    
+    // Функция для получения правильного пути к изображению
+    function getImagePath(baseName) {
+      const extensions = ['.jpg', '.jpeg', '.png'];
+      for (let ext of extensions) {
+        try {
+          // Проверяем, существует ли файл
+          const testImg = new Image();
+          testImg.src = baseName + ext;
+          if (testImg.complete) {
+            return baseName + ext;
+          }
+        } catch (e) {
+          continue;
+        }
+      }
+      return baseName + '.jpg'; // fallback
+    }
+    
+    // Предзагрузка изображений для плавной работы галереи
+    galleryImages.forEach(src => {
+      const img = new Image();
+      img.src = getImagePath(src);
+    });
+    
+    // Open modal when clicking on gallery images
+    document.querySelectorAll('.gallery img').forEach((img, index) => {
+      img.addEventListener('click', () => {
+        openGalleryModal(index);
+      });
+    });
+    
+    // Close modal
+    document.getElementById('gallery-close').addEventListener('click', closeGalleryModal);
+    
+    // Close modal when clicking outside the gallery content
+    document.getElementById('gallery-modal').addEventListener('click', (e) => {
+      if (e.target.id === 'gallery-modal') {
+        closeGalleryModal();
+      }
+    });
+    
+    // Navigation
+    document.getElementById('gallery-prev').addEventListener('click', showPreviousImage);
+    document.getElementById('gallery-next').addEventListener('click', showNextImage);
+    
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+      if (document.getElementById('gallery-modal').classList.contains('active')) {
+        if (e.key === 'Escape') closeGalleryModal();
+        if (e.key === 'ArrowLeft') showPreviousImage();
+        if (e.key === 'ArrowRight') showNextImage();
+      }
+    });
+    
+    function openGalleryModal(index) {
+      currentImageIndex = index;
+      updateGalleryModal();
+      document.getElementById('gallery-modal').classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    function closeGalleryModal() {
+      document.getElementById('gallery-modal').classList.remove('active');
+      document.body.style.overflow = '';
+    }
+    
+    function showPreviousImage() {
+      currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length;
+      updateGalleryModal();
+    }
+    
+    function showNextImage() {
+      currentImageIndex = (currentImageIndex + 1) % galleryImages.length;
+      updateGalleryModal();
+    }
+    
+    function updateGalleryModal() {
+      const modalImage = document.getElementById('gallery-modal-image');
+      const counter = document.getElementById('gallery-counter');
+      
+      // Добавляем плавный переход
+      modalImage.style.opacity = '0';
+      
+      setTimeout(() => {
+        modalImage.src = getImagePath(galleryImages[currentImageIndex]);
+        modalImage.alt = `Image ${currentImageIndex + 1} of ${galleryImages.length}`;
+        counter.textContent = `${currentImageIndex + 1} / ${galleryImages.length}`;
+        
+        // Показываем изображение с плавным появлением
+        modalImage.style.opacity = '1';
+      }, 150);
+    }
+  </script>
+  <!-- Flatpickr для визуальной блокировки занятых дат в календаре -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
+  <script src="auth.js"></script>
+  <script src="auth-menu.js"></script>
+  <script src="booking.js"></script>
+</body>
+</html>

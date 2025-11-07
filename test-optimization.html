@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Optimization Test — Back to Base</title>
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Optimization Test</h1>
+    
+    <!-- Test common CSS classes -->
+    <div class="card">
+      <h2 class="card-title">Common CSS Classes Test</h2>
+      <p class="common-text">This text uses common-text class</p>
+      <p class="common-muted">This text uses common-muted class</p>
+      
+      <div class="flex-center margin-top-medium">
+        <button class="btn-base btn-primary">Primary Button</button>
+        <button class="btn-base btn-secondary">Secondary Button</button>
+      </div>
+      
+      <form class="margin-top-large">
+        <div class="form-group">
+          <label class="form-label">Test Input</label>
+          <input type="text" class="form-input" placeholder="Test input">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Test Textarea</label>
+          <textarea class="form-textarea" placeholder="Test textarea"></textarea>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Test reveal animation -->
+    <div class="card reveal">
+      <h2 class="card-title">Reveal Animation Test</h2>
+      <p>This card should animate when scrolled into view.</p>
+    </div>
+    
+    <!-- Test theme toggle -->
+    <div class="card">
+      <h2 class="card-title">Theme Toggle Test</h2>
+      <button id="theme-toggle" class="btn-base btn-primary">
+        <span id="theme-text">Light</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="utils.js"></script>
+  <script src="script.js"></script>
+  
+  <script>
+    // Test JavaScript utilities
+    console.log('Testing utilities...');
+    
+    // Test DOMUtils
+    const testElement = DOMUtils.getElement('.container');
+    console.log('DOMUtils.getElement test:', testElement ? 'PASS' : 'FAIL');
+    
+    // Test FormUtils
+    const testForm = document.querySelector('form');
+    const isValid = FormUtils.validateForm(testForm);
+    console.log('FormUtils.validateForm test:', isValid ? 'PASS' : 'FAIL');
+    
+    // Test StorageUtils
+    const testStorage = StorageUtils.setItem('test', 'value');
+    console.log('StorageUtils.setItem test:', testStorage ? 'PASS' : 'FAIL');
+    
+    // Test ThemeUtils
+    const currentTheme = ThemeUtils.getCurrentTheme();
+    console.log('ThemeUtils.getCurrentTheme test:', currentTheme ? 'PASS' : 'FAIL');
+    
+    console.log('All utility tests completed!');
+  </script>
+</body>
+</html>

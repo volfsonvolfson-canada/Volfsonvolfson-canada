@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Database</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 20px 0; padding: 20px; background-color: #f8f9fa; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Check Database Status</h1>
+    <div id="result"></div>
+
+    <script>
+        async function checkDatabase() {
+            try {
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=get_floorplan'
+                });
+                
+                if (response.ok) {
+                    const text = await response.text();
+                    document.getElementById('result').innerHTML = `
+                        <h3>API Response:</h3>
+                        <pre>${text}</pre>
+                    `;
+                } else {
+                    document.getElementById('result').innerHTML = `<p>Error: ${response.status}</p>`;
+                }
+            } catch (error) {
+                document.getElementById('result').innerHTML = `<p>Error: ${error.message}</p>`;
+            }
+        }
+        
+        checkDatabase();
+    </script>
+</body>
+</html>

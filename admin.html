@@ -1,0 +1,745 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel — Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="common.css">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+    <style>
+      /* Image upload styles */
+      .image-upload-container {
+        border: 2px dashed #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        text-align: center;
+        background-color: #f7fafc;
+        transition: border-color 0.3s ease;
+      }
+      
+      .image-upload-container:hover {
+        border-color: #4299e1;
+        background-color: #ebf8ff;
+      }
+      
+      .image-preview {
+        margin-top: 15px;
+        display: none;
+      }
+      
+      .image-preview img {
+        max-width: 200px;
+        max-height: 150px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      
+      .image-path-display {
+        margin-top: 10px;
+        padding: 8px 12px;
+        background-color: #edf2f7;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.875rem;
+        color: #4a5568;
+        word-break: break-all;
+        display: none;
+      }
+      
+      .upload-progress {
+        margin-top: 10px;
+        width: 100%;
+        height: 4px;
+        background-color: #e2e8f0;
+        border-radius: 2px;
+        overflow: hidden;
+        display: none;
+      }
+      
+      .upload-progress-bar {
+        height: 100%;
+        background-color: #4299e1;
+        width: 0%;
+        transition: width 0.3s ease;
+      }
+      
+      /* Bookings styles */
+      .booking-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: box-shadow 0.2s;
+      }
+      
+      .booking-card:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      
+      .booking-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+      }
+      
+      .booking-status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      
+      .booking-status-badge.pending {
+        background-color: #fed7d7;
+        color: #e53e3e;
+      }
+      
+      .booking-status-badge.confirmed {
+        background-color: #c6f6d5;
+        color: #2f855a;
+      }
+      
+      .booking-status-badge.cancelled {
+        background-color: #cbd5e0;
+        color: #718096;
+      }
+      
+      .payment-status-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+        text-transform: uppercase;
+        margin-left: 8px;
+      }
+      
+      .payment-status-badge.paid {
+        background-color: #bee3f8;
+        color: #2c5282;
+      }
+      
+      .payment-status-badge.pending {
+        background-color: #feebc8;
+        color: #c05621;
+      }
+      
+      .payment-status-badge.refunded {
+        background-color: #e9d8fd;
+        color: #553c9a;
+      }
+      
+      .booking-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      
+      .booking-detail-item {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .booking-detail-label {
+        font-size: 12px;
+        color: #718096;
+        margin-bottom: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      
+      .booking-detail-value {
+        font-size: 14px;
+        color: #2d3748;
+      }
+      
+      .booking-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+      }
+      
+      /* Calendar styles */
+      .admin-calendar-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 4px;
+        margin: 20px 0;
+      }
+      
+      .admin-calendar-month {
+        grid-column: 1 / -1;
+        font-weight: 600;
+        font-size: 18px;
+        padding: 10px;
+        text-align: center;
+        background: var(--bg-secondary, #f7fafc);
+        border-radius: 4px;
+        margin-bottom: 10px;
+      }
+      
+      .admin-calendar-day-header {
+        font-weight: 600;
+        font-size: 12px;
+        text-align: center;
+        padding: 8px 4px;
+        color: var(--text-secondary, #666);
+        text-transform: uppercase;
+      }
+      
+      .admin-calendar-day {
+        aspect-ratio: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        border-radius: 4px;
+        font-size: 12px;
+        padding: 4px;
+        border: 1px solid #e2e8f0;
+        background: white;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .admin-calendar-day:hover {
+        background: #f7fafc;
+      }
+      
+      .admin-calendar-day.past {
+        background: #e2e8f0;
+        color: #999;
+        cursor: not-allowed;
+      }
+      
+      .admin-calendar-day.available {
+        background: #c6f6d5;
+        color: #2f855a;
+      }
+      
+      .admin-calendar-day.booked {
+        background: #fed7d7;
+        color: #e53e3e;
+      }
+      
+      .admin-calendar-day.blocked {
+        background: #cbd5e0;
+        color: #718096;
+      }
+      
+      .admin-calendar-day.has-booking {
+        font-weight: 600;
+        border: 2px solid #4299e1;
+      }
+      
+      .blocked-date-item {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+    </style>
+  </head>
+<body class="admin-body">
+  <div class="admin-container">
+    <header class="admin-header">
+      <h1>Back to Base Admin Panel</h1>
+      <p>Manage your website content, prices, and images</p>
+      <div style="display: flex; gap: 12px; margin-top: 16px;">
+        <a href="index.html" class="admin-btn admin-btn-secondary">View Website</a>
+        <button id="admin-logout" class="admin-btn admin-btn-danger">Logout</button>
+      </div>
+    </header>
+
+    <nav class="admin-nav">
+      <button class="admin-nav-btn active" data-section="dashboard">Dashboard</button>
+      <button class="admin-nav-btn" data-section="bookings">Bookings</button>
+      <button class="admin-nav-btn" data-section="calendar">Calendar</button>
+      <button class="admin-nav-btn" data-section="homepage">Home Page</button>
+      <button class="admin-nav-btn" data-section="floorplan">Floor Plan</button>
+      <button class="admin-nav-btn" data-section="rooms">Rooms</button>
+      <button class="admin-nav-btn" data-section="massage">Massage</button>
+      <button class="admin-nav-btn" data-section="yoga">Yoga</button>
+      <button class="admin-nav-btn" data-section="content">Content</button>
+      <button class="admin-nav-btn" data-section="images">Images</button>
+    </nav>
+
+    <!-- Dashboard Section -->
+    <section id="dashboard-section" class="admin-section">
+      <h2>Dashboard</h2>
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <h3>Total Rooms</h3>
+          <p id="total-rooms">4</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Massage Services</h3>
+          <p id="total-massage">3</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Yoga Services</h3>
+          <p id="total-yoga">3</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Last Updated</h3>
+          <p id="last-updated">Just now</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Pending Bookings</h3>
+          <p id="pending-bookings">0</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Total Bookings</h3>
+          <p id="total-bookings">0</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bookings Section -->
+    <section id="bookings-section" class="admin-section" style="display: none;">
+      <h2>Bookings Management</h2>
+      
+      <!-- Filters -->
+      <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label for="bookings-filter-status">Status</label>
+            <select id="bookings-filter-status">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="confirmed">Confirmed</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="bookings-filter-room">Room</label>
+            <select id="bookings-filter-room">
+              <option value="">All Rooms</option>
+              <option value="Basement — Queen">Basement — Queen</option>
+              <option value="Ground floor — Queen bed">Ground floor — Queen bed</option>
+              <option value="Ground floor — Twin beds">Ground floor — Twin beds</option>
+              <option value="Second floor (entire) — Queen bed">Second floor (entire) — Queen bed</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="bookings-filter-date-from">Date From</label>
+            <input type="date" id="bookings-filter-date-from">
+          </div>
+          <div class="admin-form-group">
+            <label for="bookings-filter-date-to">Date To</label>
+            <input type="date" id="bookings-filter-date-to">
+          </div>
+        </div>
+        <div class="admin-form-actions" style="margin-top: 16px;">
+          <button id="bookings-filter-apply" class="admin-btn admin-btn-primary">Apply Filters</button>
+          <button id="bookings-filter-reset" class="admin-btn admin-btn-secondary">Reset</button>
+          <button id="bookings-refresh" class="admin-btn admin-btn-secondary">Refresh</button>
+        </div>
+      </div>
+
+      <!-- Bookings List -->
+      <div id="bookings-list-container">
+        <div id="bookings-loading" style="text-align: center; padding: 40px;">
+          Loading bookings...
+        </div>
+        <div id="bookings-list" style="display: none;"></div>
+        <div id="bookings-empty" style="display: none; text-align: center; padding: 40px; color: #718096;">
+          No bookings found.
+        </div>
+      </div>
+    </section>
+
+    <!-- Calendar Management Section -->
+    <section id="calendar-section" class="admin-section" style="display: none;">
+      <h2>Calendar Management</h2>
+      
+      <!-- Room Selection for Calendar -->
+      <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <div class="admin-form-group">
+          <label for="calendar-room-select">Select Room</label>
+          <select id="calendar-room-select">
+            <option value="">All Rooms</option>
+            <option value="Basement — Queen">Basement — Queen</option>
+            <option value="Ground floor — Queen bed">Ground floor — Queen bed</option>
+            <option value="Ground floor — Twin beds">Ground floor — Twin beds</option>
+            <option value="Second floor (entire) — Queen bed">Second floor (entire) — Queen bed</option>
+          </select>
+        </div>
+        <div class="admin-form-actions" style="margin-top: 16px;">
+          <button id="calendar-refresh" class="admin-btn admin-btn-primary">Refresh Calendar</button>
+          <button id="airbnb-sync-btn" class="admin-btn admin-btn-secondary">Sync with Airbnb</button>
+        </div>
+        <div id="airbnb-sync-status" style="margin-top: 16px; padding: 12px; background: var(--bg-secondary, #f7fafc); border-radius: 8px; display: none;">
+          <div id="airbnb-sync-status-text"></div>
+        </div>
+      </div>
+
+      <!-- Calendar View -->
+      <div id="admin-calendar-container">
+        <div id="admin-calendar-loading" style="text-align: center; padding: 40px;">
+          Loading calendar...
+        </div>
+        <div id="admin-calendar-grid" style="display: none;"></div>
+      </div>
+
+      <!-- Manual Date Blocking -->
+      <div class="admin-form" style="margin-top: 32px; background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px;">
+        <h3>Block Date Manually</h3>
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label for="block-room-select">Room</label>
+            <select id="block-room-select" required>
+              <option value="">Select Room</option>
+              <option value="Basement — Queen">Basement — Queen</option>
+              <option value="Ground floor — Queen bed">Ground floor — Queen bed</option>
+              <option value="Ground floor — Twin beds">Ground floor — Twin beds</option>
+              <option value="Second floor (entire) — Queen bed">Second floor (entire) — Queen bed</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="block-date">Date</label>
+            <input type="date" id="block-date" required>
+          </div>
+          <div class="admin-form-group">
+            <label for="block-reason">Reason (Optional)</label>
+            <input type="text" id="block-reason" placeholder="e.g., Maintenance">
+          </div>
+        </div>
+        <div class="admin-form-actions">
+          <button id="block-date-btn" class="admin-btn admin-btn-primary">Block Date</button>
+        </div>
+      </div>
+
+      <!-- Blocked Dates List -->
+      <div style="margin-top: 32px;">
+        <h3>Blocked Dates</h3>
+        <div id="blocked-dates-list" style="margin-top: 16px;"></div>
+      </div>
+    </section>
+
+    <!-- Home Page Section -->
+    <section id="homepage-section" class="admin-section" style="display: none;">
+      <h2>Home Page Management</h2>
+      
+      <div class="admin-form">
+        <div class="admin-form-group full-width">
+          <label for="hero-image-url">Hero Image (Top Image)</label>
+          <input type="text" id="hero-image-url" placeholder="assets/hero.jpg">
+          <small style="color: #718096; font-size: 0.875rem;">Path to the main hero image file</small>
+        </div>
+        
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label for="homepage-main-description">Main Description</label>
+          <textarea id="homepage-main-description" class="admin-content-editor" rows="4"></textarea>
+        </div>
+        
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label for="homepage-main-subtitle">Subtitle</label>
+          <textarea id="homepage-main-subtitle" class="admin-content-editor" rows="3"></textarea>
+        </div>
+        
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label for="hero2-image-url">Hero 2 Image (Aerial View)</label>
+          <input type="text" id="hero2-image-url" placeholder="assets/hero2.jpg">
+          <small style="color: #718096; font-size: 0.875rem;">Path to the second hero image file</small>
+        </div>
+      </div>
+      
+      <div class="admin-form-actions" style="margin-top: 24px;">
+        <button id="save-homepage" class="admin-btn admin-btn-primary">Save Home Page Content</button>
+      </div>
+    </section>
+
+    <!-- Floor Plan Section -->
+    <section id="floorplan-section" class="admin-section" style="display: none;">
+      <h2>Floor Plan Management</h2>
+      
+      <div class="admin-form">
+        <h3 style="margin-top: 0; color: #4a5568;">Basement</h3>
+        <div class="admin-form-group full-width">
+          <label for="basement-subtitle">Subtitle</label>
+          <input type="text" id="basement-subtitle" placeholder="Private floor with a separate entrance.">
+        </div>
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label for="basement-description">Description</label>
+          <textarea id="basement-description" class="admin-content-editor" rows="3"></textarea>
+        </div>
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label>Basement Image</label>
+          <div class="image-upload-container">
+            <input type="file" id="basement-image-upload" accept="image/*" style="display: none;">
+            <button type="button" id="basement-upload-btn" class="admin-btn admin-btn-secondary">Upload Basement Image</button>
+            <div id="basement-image-preview" class="image-preview"></div>
+            <div id="basement-image-path" class="image-path-display"></div>
+          </div>
+          <small style="color: #718096; font-size: 0.875rem;">Upload basement floor plan image</small>
+        </div>
+      </div>
+      
+      <div class="admin-form" style="margin-top: 32px;">
+        <h3 style="color: #4a5568;">Ground Floor</h3>
+        <div class="admin-form-group full-width">
+          <label for="ground-subtitle">Subtitle</label>
+          <input type="text" id="ground-subtitle" placeholder="Open space with a separate entrance.">
+        </div>
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label for="ground-description">Description</label>
+          <textarea id="ground-description" class="admin-content-editor" rows="3"></textarea>
+        </div>
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label>Ground Floor Image</label>
+          <div class="image-upload-container">
+            <input type="file" id="ground-image-upload" accept="image/*" style="display: none;">
+            <button type="button" id="ground-upload-btn" class="admin-btn admin-btn-secondary">Upload Ground Floor Image</button>
+            <div id="ground-image-preview" class="image-preview"></div>
+            <div id="ground-image-path" class="image-path-display"></div>
+          </div>
+          <small style="color: #718096; font-size: 0.875rem;">Upload ground floor plan image</small>
+        </div>
+      </div>
+      
+      <div class="admin-form" style="margin-top: 32px;">
+        <h3 style="color: #4a5568;">Second Floor (Loft)</h3>
+        <div class="admin-form-group full-width">
+          <label for="loft-subtitle">Subtitle</label>
+          <input type="text" id="loft-subtitle" placeholder="Private top-floor space under the roof.">
+        </div>
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label for="loft-description">Description</label>
+          <textarea id="loft-description" class="admin-content-editor" rows="3"></textarea>
+        </div>
+        <div class="admin-form-group full-width" style="margin-top: 16px;">
+          <label>Loft Image</label>
+          <div class="image-upload-container">
+            <input type="file" id="loft-image-upload" accept="image/*" style="display: none;">
+            <button type="button" id="loft-upload-btn" class="admin-btn admin-btn-secondary">Upload Loft Image</button>
+            <div id="loft-image-preview" class="image-preview"></div>
+            <div id="loft-image-path" class="image-path-display"></div>
+          </div>
+          <small style="color: #718096; font-size: 0.875rem;">Upload loft floor plan image</small>
+        </div>
+      </div>
+      
+      <div class="admin-form-actions" style="margin-top: 24px;">
+        <button id="save-floorplan" class="admin-btn admin-btn-primary">Save Floor Plan Content</button>
+      </div>
+    </section>
+
+    <!-- Rooms Section -->
+    <section id="rooms-section" class="admin-section" style="display: none;">
+      <h2>Room Management</h2>
+      <div id="rooms-list"></div>
+      
+      <div style="margin-top: 24px;">
+        <h3>Add New Room</h3>
+        <form id="add-room-form" class="admin-form">
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="room-name">Room Name</label>
+              <input type="text" id="room-name" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="room-price">Price (CAD/night)</label>
+              <input type="number" id="room-price" required>
+            </div>
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="room-capacity">Capacity</label>
+              <input type="number" id="room-capacity" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="room-type">Room Type</label>
+              <select id="room-type" required>
+                <option value="queen">Queen Bed</option>
+                <option value="twin">Twin Beds</option>
+                <option value="suite">Suite</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-form-group full-width">
+            <label for="room-description">Description</label>
+            <textarea id="room-description" required></textarea>
+          </div>
+          <div class="admin-form-actions">
+            <button type="submit" class="admin-btn admin-btn-primary">Add Room</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Massage Section -->
+    <section id="massage-section" class="admin-section" style="display: none;">
+      <h2>Massage Services Management</h2>
+      <div id="massage-list"></div>
+      
+      <div style="margin-top: 24px;">
+        <h3>Add New Massage Service</h3>
+        <form id="add-massage-form" class="admin-form">
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="massage-name">Service Name</label>
+              <input type="text" id="massage-name" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="massage-duration">Duration (minutes)</label>
+              <input type="number" id="massage-duration" required>
+            </div>
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="massage-price">Price (CAD)</label>
+              <input type="number" id="massage-price" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="massage-type">Service Type</label>
+              <select id="massage-type" required>
+                <option value="relaxing">Relaxing Massage</option>
+                <option value="deep-tissue">Deep Tissue Massage</option>
+                <option value="reiki">Reiki Energy Healing</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-form-group full-width">
+            <label for="massage-description">Description</label>
+            <textarea id="massage-description" required></textarea>
+          </div>
+          <div class="admin-form-actions">
+            <button type="submit" class="admin-btn admin-btn-primary">Add Service</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Yoga Section -->
+    <section id="yoga-section" class="admin-section" style="display: none;">
+      <h2>Yoga Services Management</h2>
+      <div id="yoga-list"></div>
+      
+      <div style="margin-top: 24px;">
+        <h3>Add New Yoga Service</h3>
+        <form id="add-yoga-form" class="admin-form">
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="yoga-name">Service Name</label>
+              <input type="text" id="yoga-name" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="yoga-duration">Duration (minutes)</label>
+              <input type="number" id="yoga-duration" required>
+            </div>
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="yoga-price">Price (CAD)</label>
+              <input type="number" id="yoga-price" required>
+            </div>
+            <div class="admin-form-group">
+              <label for="yoga-type">Service Type</label>
+              <select id="yoga-type" required>
+                <option value="individual">Individual Session</option>
+                <option value="couple">Couple Session</option>
+                <option value="group">Group Training</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-form-group full-width">
+            <label for="yoga-description">Description</label>
+            <textarea id="yoga-description" required></textarea>
+          </div>
+          <div class="admin-form-actions">
+            <button type="submit" class="admin-btn admin-btn-primary">Add Service</button>
+          </div>
+        </form>
+      </div>
+    </section>
+
+    <!-- Content Section -->
+    <section id="content-section" class="admin-section" style="display: none;">
+      <h2>Content Management</h2>
+      
+      <div class="admin-form">
+        <h3>Homepage Content</h3>
+        <div class="admin-form-group full-width">
+          <label for="homepage-description">Main Description</label>
+          <textarea id="homepage-description" class="admin-content-editor"></textarea>
+        </div>
+        
+        <div class="admin-form-group full-width">
+          <label for="homepage-subtitle">Subtitle</label>
+          <textarea id="homepage-subtitle" class="admin-content-editor"></textarea>
+        </div>
+        
+        <div class="admin-form-actions">
+          <button id="save-content" class="admin-btn admin-btn-primary">Save Content</button>
+        </div>
+      </div>
+      
+      <div class="admin-form" style="margin-top: 32px;">
+        <h3>Contact Information</h3>
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label for="contact-phone">Phone</label>
+            <input type="text" id="contact-phone">
+          </div>
+          <div class="admin-form-group">
+            <label for="contact-email">Email</label>
+            <input type="email" id="contact-email">
+          </div>
+        </div>
+        
+        <div class="admin-form-group full-width">
+          <label for="contact-address">Address</label>
+          <input type="text" id="contact-address">
+        </div>
+        
+        <div class="admin-form-actions">
+          <button id="save-contact" class="admin-btn admin-btn-primary">Save Contact Info</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Images Section -->
+    <section id="images-section" class="admin-section" style="display: none;">
+      <h2>Image Management</h2>
+      
+      <div class="admin-form">
+        <h3>Upload New Images</h3>
+        <div class="admin-image-upload" id="image-upload-area">
+          <p>Drag and drop images here or click to select</p>
+          <input type="file" id="image-upload" multiple accept="image/*" style="display: none;">
+        </div>
+        <div id="image-preview-container"></div>
+        
+        <div class="admin-form-actions">
+          <button id="upload-images" class="admin-btn admin-btn-primary">Upload Images</button>
+        </div>
+      </div>
+      
+      <div style="margin-top: 32px;">
+        <h3>Current Images</h3>
+        <div id="current-images" class="admin-images-grid"></div>
+      </div>
+    </section>
+  </div>
+
+  <script src="utils.js?v=13"></script>
+  <script src="script.js?v=13"></script>
+  <script src="admin.js?v=13"></script>
+</body>
+</html>
+

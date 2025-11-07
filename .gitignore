@@ -1,0 +1,51 @@
+# Upload directory
+UPLOAD_TO_HOSTING/
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+npm-debug.log*
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+
+# Environment files
+.env
+.env.local
+
+# Node modules (if any)
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Configuration files with sensitive data
+config.php
+
+# IDE state files
+ide_state.json
+argv.json
+
+# Extensions directory (VS Code extensions)
+extensions/
+
+# Forest blue lodge directory (if it's a separate project)
+forest-blue-lodge/
+

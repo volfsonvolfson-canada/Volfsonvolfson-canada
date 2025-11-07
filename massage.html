@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Massage — Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    // UNIVERSAL THEME INITIALIZATION - Works on ALL pages
+    // This script runs synchronously in <head> before page render
+    // User can land on ANY page first time - theme defaults to 'dark'
+    (function() {
+      'use strict';
+      try {
+        // Get saved theme and user preference flag
+        const savedTheme = localStorage.getItem('btb_theme');
+        const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+        
+        // Determine initial theme:
+        // - If user explicitly set theme (userSetTheme=true) AND savedTheme is valid, use savedTheme
+        // - Otherwise default to 'dark' (first-time visitor on any page)
+        let initialTheme = 'dark';
+        
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+          initialTheme = savedTheme; // User has chosen theme - use it
+        }
+        // Else: first-time visitor or invalid theme - use default 'dark'
+        
+        // Set theme immediately before page renders
+        document.documentElement.setAttribute('data-theme', initialTheme);
+      } catch (error) {
+        // If localStorage fails, default to dark
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img alt="Back to Base" class="logo-img" />
+        <span class="logo-text">Back to Base</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#rooms">Rooms</a>
+        <a href="massage.html">Massage</a>
+        <a href="yoga.html">Yoga</a>
+        <a href="special.html">Special</a>
+        <a href="about.html">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="theme-text">Light</span>
+        </button>
+        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="breadcrumbs"><a href="index.html">Home</a> / Massage</div>
+      <h1>Massage services</h1>
+      <p class="section-lead">Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.</p>
+    </div>
+  </div>
+
+  <main class="section">
+    <div class="container">
+      <section class="card card-massage">
+        <div class="card-img">
+          <img class="floor-photo media-43" data-src-base="assets/Relaxation Massage|assets/relaxation|assets/relaxation-massage|assets/Relaxation_Massage|assets/Relaxing Massage|assets/Relaxing_Massage|assets/RelaxationMassage|assets/RelaxingMassage|assets/relax" alt="Relaxation massage" />
+        </div>
+        <div class="card-body">
+          <h2>Relaxing Massage</h2>
+          <p>This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.</p>
+          <ul class="massage-list">
+            <li>60 minutes — 110 CAD</li>
+            <li>90 minutes — 160 CAD</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card card-massage card-massage--alt">
+        <div class="card-img">
+          <img class="floor-photo media-43" data-src-base="assets/Deep Tissue Massage|assets/deep|assets/deep-tissue-massage|assets/Deep_Tissue_Massage" alt="Deep tissue massage" />
+        </div>
+        <div class="card-body">
+          <h2>Deep Tissue Massage</h2>
+          <p>For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.</p>
+          <ul class="massage-list">
+            <li>60 minutes — 120 CAD</li>
+            <li>90 minutes — 170 CAD</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card card-massage">
+        <div class="card-img">
+          <img class="floor-photo media-43" data-src-base="assets/Reiki Energy Healing|assets/reiki|assets/reiki-energy-healing|assets/Reiki_Energy_Healing" alt="Reiki energy healing" />
+        </div>
+        <div class="card-body">
+          <h2>Reiki Energy Healing</h2>
+          <p>Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body’s energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.</p>
+          <ul class="massage-list">
+            <li>15 minutes on the go — 25 CAD</li>
+            <li>30 minutes as an add-on — 50 CAD</li>
+          </ul>
+        </div>
+      </section>
+
+      <section class="card" id="book">
+        <h2>Book a massage</h2>
+        <form id="massage-form" novalidate>
+          <div class="form-row">
+            <div>
+              <label for="type">Massage type</label>
+              <select id="type" name="type" required>
+                <option>Relaxing Massage</option>
+                <option>Deep Tissue Massage</option>
+                <option>Reiki Energy Healing</option>
+              </select>
+            </div>
+            <div>
+              <label for="duration">Duration</label>
+              <select id="duration" name="duration" required>
+                <option value="60">60 minutes</option>
+                <option value="90">90 minutes</option>
+              </select>
+            </div>
+            <div>
+              <label for="date">Date</label>
+              <input id="date" name="date" type="date" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label for="time">Time</label>
+              <input id="time" name="time" type="time" min="09:00" max="21:00" required />
+              <small style="color: var(--muted); font-size: 0.875rem; margin-top: 4px; display: block;">Available: 9:00 AM - 9:00 PM (30-minute intervals)</small>
+            </div>
+            <div>
+              <label for="name">Your name</label>
+              <input id="name" name="name" type="text" placeholder="Full name" required />
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label for="email">Email</label>
+              <input id="email" name="email" type="email" placeholder="you@example.com" required />
+            </div>
+            <div>
+              <label for="phone">Phone</label>
+              <input id="phone" name="phone" type="tel" placeholder="+1 555 123‑4567" required />
+            </div>
+            <div>
+              <label for="with-room">Staying with us</label>
+              <select id="with-room" name="withRoom" required>
+                <option value="" disabled selected hidden>—</option>
+                <option value="yes">yes</option>
+                <option value="no">no</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn primary" type="submit">Book massage</button>
+        </form>
+      </section>
+
+      <section id="room-reminder" class="card card-massage" style="display:none;">
+        <div class="card-img">
+          <img class="floor-photo media-43" src="assets/hero.jpg" alt="Back to Base house near Kootenay Lake" />
+        </div>
+        <div class="card-body">
+          <h2>Remember to book your room</h2>
+          <p>If you haven’t booked your stay in our mini-hotel yet, now is the best time.</p>
+          <p>Just 35 km from Nelson, BC, our guesthouse offers cozy rooms and apartments for rent, surrounded by forest near Kootenay Lake with views of Mount Loki. Easy booking online — enjoy a peaceful vacation and retreat in nature.</p>
+          <a class="btn primary" href="index.html#rooms">View rooms</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>British Columbia, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="index.html#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <script src="script.js?v=26"></script>
+  <script src="booking.js"></script>
+  <script src="auth.js?v=26"></script>
+</body>
+</html>

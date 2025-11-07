@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Theme Debug Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      max-width: 800px;
+      margin: 0 auto;
+    }
+    .section {
+      background: #f5f5f5;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 5px;
+    }
+    .section h2 {
+      margin-top: 0;
+    }
+    .value {
+      background: white;
+      padding: 8px;
+      margin: 5px 0;
+      border-left: 3px solid #007bff;
+      font-family: monospace;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      margin: 5px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .clear-btn {
+      background: #dc3545;
+    }
+    .clear-btn:hover {
+      background: #c82333;
+    }
+    .log {
+      background: #000;
+      color: #0f0;
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 5px;
+      font-family: monospace;
+      font-size: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <h1>Theme Debug Test Page</h1>
+  
+  <div class="section">
+    <h2>1. Current localStorage Values</h2>
+    <div class="value" id="btb_theme_value">btb_theme: <span id="btb_theme">-</span></div>
+    <div class="value" id="btb_theme_user_value">btb_theme_user: <span id="btb_theme_user">-</span></div>
+  </div>
+  
+  <div class="section">
+    <h2>2. Inline Script Check (Same as in index.html)</h2>
+    <div class="value">savedTheme from localStorage: <span id="savedTheme">-</span></div>
+    <div class="value">userSetTheme from localStorage: <span id="userSetTheme">-</span></div>
+    <div class="value">initialTheme calculated: <span id="initialTheme">-</span></div>
+    <div class="value">data-theme attribute: <span id="dataTheme">-</span></div>
+  </div>
+  
+  <div class="section">
+    <h2>3. ThemeManager State</h2>
+    <div class="value">ThemeManager.currentTheme: <span id="managerTheme">-</span></div>
+    <div class="value">Theme button text: <span id="buttonText">-</span></div>
+  </div>
+  
+  <div class="section">
+    <h2>4. Actions</h2>
+    <button onclick="updateValues()">Refresh Values</button>
+    <button onclick="clearStorage()">Clear localStorage</button>
+    <button onclick="setTheme('dark')">Set Theme to Dark</button>
+    <button onclick="setTheme('light')">Set Theme to Light</button>
+    <button onclick="simulateToggle()">Simulate Theme Toggle</button>
+  </div>
+  
+  <div class="section">
+    <h2>5. Console Log</h2>
+    <div class="log" id="log"></div>
+    <button onclick="clearLog()">Clear Log</button>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    const log = [];
+    
+    function addLog(message) {
+      const timestamp = new Date().toLocaleTimeString();
+      log.push(`[${timestamp}] ${message}`);
+      const logDiv = document.getElementById('log');
+      logDiv.textContent = log.join('\n');
+      logDiv.scrollTop = logDiv.scrollHeight;
+      console.log(message);
+    }
+    
+    function clearLog() {
+      log.length = 0;
+      document.getElementById('log').textContent = '';
+    }
+    
+    function updateValues() {
+      // Get values from localStorage
+      const btbTheme = localStorage.getItem('btb_theme');
+      const btbThemeUser = localStorage.getItem('btb_theme_user');
+      
+      // Display localStorage values
+      document.getElementById('btb_theme').textContent = btbTheme || 'null/undefined';
+      document.getElementById('btb_theme_user').textContent = btbThemeUser || 'null/undefined';
+      
+      // Simulate inline script logic
+      const savedTheme = localStorage.getItem('btb_theme');
+      const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+      const initialTheme = userSetTheme && savedTheme ? savedTheme : 'dark';
+      const dataTheme = document.documentElement.getAttribute('data-theme');
+      
+      document.getElementById('savedTheme').textContent = savedTheme || 'null/undefined';
+      document.getElementById('userSetTheme').textContent = userSetTheme ? 'true' : 'false';
+      document.getElementById('initialTheme').textContent = initialTheme;
+      document.getElementById('dataTheme').textContent = dataTheme || 'not set';
+      
+      // Check ThemeManager if it exists
+      if (typeof themeManager !== 'undefined' && themeManager) {
+        document.getElementById('managerTheme').textContent = themeManager.currentTheme || 'not available';
+      } else {
+        document.getElementById('managerTheme').textContent = 'ThemeManager not initialized';
+      }
+      
+      // Check button text
+      const themeText = document.getElementById('theme-text');
+      if (themeText) {
+        document.getElementById('buttonText').textContent = themeText.textContent || 'not found';
+      } else {
+        document.getElementById('buttonText').textContent = 'theme-text element not found';
+      }
+      
+      addLog(`Updated values: btb_theme=${btbTheme}, btb_theme_user=${btbThemeUser}, initialTheme=${initialTheme}, data-theme=${dataTheme}`);
+    }
+    
+    function clearStorage() {
+      localStorage.removeItem('btb_theme');
+      localStorage.removeItem('btb_theme_user');
+      addLog('localStorage cleared');
+      updateValues();
+    }
+    
+    function setTheme(theme) {
+      localStorage.setItem('btb_theme', theme);
+      localStorage.setItem('btb_theme_user', '1');
+      document.documentElement.setAttribute('data-theme', theme);
+      addLog(`Set theme to: ${theme}`);
+      updateValues();
+      addLog(`Values updated. Click "Refresh Values" or reload page manually to test inline script.`);
+    }
+    
+    function simulateToggle() {
+      if (typeof themeManager !== 'undefined' && themeManager) {
+        const oldTheme = themeManager.currentTheme;
+        themeManager.toggleTheme();
+        addLog(`Toggle: ${oldTheme} -> ${themeManager.currentTheme}`);
+        updateValues();
+      } else {
+        addLog('ThemeManager not available - cannot toggle');
+      }
+    }
+    
+    // Watch for localStorage changes
+    window.addEventListener('storage', function(e) {
+      addLog(`localStorage changed: ${e.key} = ${e.newValue} (old: ${e.oldValue})`);
+      updateValues();
+    });
+    
+    // Initial update
+    addLog('Page loaded - checking initial state');
+    updateValues();
+    
+    // Auto-update disabled - use "Refresh Values" button manually
+    // Uncomment line below to enable auto-update every 2 seconds
+    // setInterval(updateValues, 2000);
+  </script>
+</body>
+</html>

@@ -1,0 +1,170 @@
+<?php
+// Image upload handler for admin panel
+require_once 'common.php';
+
+// Simple authentication check - you can enhance this
+function isAdminAuthenticated() {
+    // For now, just return true - you can add proper authentication later
+    return true;
+}
+
+// Check if user is authenticated
+if (!isAdminAuthenticated()) {
+    sendError('Unauthorized access');
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
+    error_log('Upload request received');
+    error_log('Files: ' . print_r($_FILES, true));
+    error_log('POST data: ' . print_r($_POST, true));
+    
+    $uploadDir = 'assets/';
+    $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
+    $maxFileSize = 5 * 1024 * 1024; // 5MB
+    
+    $file = $_FILES['image'];
+    $imageType = $_POST['image_type'] ?? ''; // basement, ground, loft
+    
+    error_log('File info: ' . print_r($file, true));
+    error_log('Image type: ' . $imageType);
+    
+    // Validate file
+    if ($file['error'] !== UPLOAD_ERR_OK) {
+        sendError('Upload error: ' . $file['error']);
+        exit;
+    }
+    
+    if (!in_array($file['type'], $allowedTypes)) {
+        sendError('Invalid file type. Only JPEG, PNG, and GIF are allowed.');
+        exit;
+    }
+    
+    if ($file['size'] > $maxFileSize) {
+        sendError('File too large. Maximum size is 5MB.');
+        exit;
+    }
+    
+    // Generate unique filename - normalize extension to lowercase .jpg
+    $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    // Normalize JPEG extensions to jpg (jpeg -> jpg)
+    if ($extension === 'jpeg') {
+        $extension = 'jpg';
+    }
+    // Accept only jpg, png, gif formats
+    if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif'])) {
+        sendError('Invalid file extension. Only JPG, PNG, and GIF are allowed.');
+        exit;
+    }
+    $filename = $imageType . '_' . time() . '.' . $extension;
+    $filepath = $uploadDir . $filename;
+    
+    // Move uploaded file
+    if (move_uploaded_file($file['tmp_name'], $filepath)) {
+        error_log('File uploaded successfully to: ' . $filepath);
+        
+        // Verify file exists and is readable
+        if (!file_exists($filepath) || !is_readable($filepath)) {
+            sendError('File uploaded but not accessible');
+            exit;
+        }
+        
+        error_log('File verified: exists and readable');
+        
+        // Update database with new image path
+        try {
+            error_log('Connecting to database...');
+            
+            // Check if database connection exists
+            if (!isset($conn) || !$conn) {
+                error_log('Database connection not available');
+                sendError('Database connection not available');
+                exit;
+            }
+            
+            error_log('Database connection OK');
+            
+            // Universal field name mapping - all use {section}_image_url format
+            $fieldName = '';
+            if (in_array($imageType, ['basement', 'ground', 'loft'])) {
+                $fieldName = $imageType . '_image_url';
+            } else {
+                sendError('Invalid image type');
+                exit;
+            }
+            
+            error_log("Field name determined: $fieldName");
+            
+            // Check if table exists
+            $tableCheck = $conn->query("SHOW TABLES LIKE 'floorplan_settings'");
+            if ($tableCheck->num_rows === 0) {
+                error_log('Table floorplan_settings does not exist');
+                sendError('Database table does not exist');
+                exit;
+            }
+            
+            error_log('Table floorplan_settings exists');
+            
+            // Check if record exists
+            $recordCheck = $conn->query("SELECT id FROM floorplan_settings WHERE id = 1");
+            if ($recordCheck->num_rows === 0) {
+                error_log('No record with id=1, creating one');
+                $insertStmt = $conn->prepare("INSERT INTO floorplan_settings (id) VALUES (1)");
+                if (!$insertStmt->execute()) {
+                    error_log('Failed to create record: ' . $conn->error);
+                    sendError('Failed to create database record');
+                    exit;
+                }
+                $insertStmt->close();
+            }
+            
+            error_log('Record with id=1 exists');
+            
+            // Update database
+            // Universal: for ground, also update ground_queen_image for compatibility
+            if ($imageType === 'ground') {
+                $stmt = $conn->prepare("UPDATE floorplan_settings SET ground_image_url = ?, ground_queen_image = ? WHERE id = 1");
+                $stmt->bind_param("ss", $filepath, $filepath);
+            } else {
+                $stmt = $conn->prepare("UPDATE floorplan_settings SET $fieldName = ? WHERE id = 1");
+                $stmt->bind_param("s", $filepath);
+            }
+            
+            error_log("Updating database: field=$fieldName, path=$filepath");
+            
+            if ($stmt->execute()) {
+                error_log('Database updated successfully');
+                
+                // Verify the update
+                $verifyStmt = $conn->prepare("SELECT $fieldName FROM floorplan_settings WHERE id = 1");
+                $verifyStmt->execute();
+                $result = $verifyStmt->get_result();
+                $row = $result->fetch_assoc();
+                error_log("Verification: field value = " . ($row[$fieldName] ?? 'NULL'));
+                
+                sendSuccess([
+                    'message' => 'Image uploaded successfully',
+                    'filepath' => $filepath,
+                    'image_type' => $imageType,
+                    'field_updated' => $fieldName,
+                    'verified_value' => $row[$fieldName] ?? 'NULL'
+                ]);
+            } else {
+                error_log('Database update failed: ' . $conn->error);
+                sendError('Database update failed: ' . $conn->error);
+            }
+            
+            $stmt->close();
+            
+        } catch (Exception $e) {
+            sendError('Database error: ' . $e->getMessage());
+        }
+    } else {
+        sendError('Failed to move uploaded file');
+    }
+} else {
+    sendError('Invalid request');
+}
+
+$conn->close();
+?>

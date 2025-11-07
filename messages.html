@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Messages — Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img alt="Back to Base" class="logo-img" />
+        <span class="logo-text">Back to Base</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#rooms">Rooms</a>
+        <a href="massage.html">Massage</a>
+        <a href="yoga.html">Yoga</a>
+        <a href="special.html">Special</a>
+        <a href="about.html">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="theme-text">Light</span>
+        </button>
+        <a href="dashboard.html" class="btn-signin" id="header-signin">My Account</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="breadcrumbs"><a href="index.html">Home</a> / <a href="dashboard.html">My Account</a> / Messages</div>
+      <h1>Messages with the host</h1>
+      <p class="section-lead">Communicate directly with your host for any questions or special requests.</p>
+    </div>
+  </div>
+
+  <main class="section">
+    <div class="container">
+      <section class="card">
+        <h2>Send a message</h2>
+        <form id="message-form">
+          <div class="form-row">
+            <div>
+              <label for="message-subject">Subject</label>
+              <input id="message-subject" name="subject" type="text" required 
+                     placeholder="What is your message about?" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <label for="message-text">Message</label>
+              <textarea id="message-text" name="message" rows="6" required 
+                        placeholder="Type your message here..."></textarea>
+            </div>
+          </div>
+          <div class="form-row">
+            <div>
+              <button type="submit" class="btn primary">Send Message</button>
+            </div>
+          </div>
+        </form>
+      </section>
+
+      <section class="card" style="margin-top: 24px;">
+        <h2>Message History</h2>
+        <div id="messages-list">
+          <p class="notice">No messages yet. Start a conversation with your host!</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>British Columbia, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="index.html#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script src="auth.js"></script>
+  <script src="messages.js"></script>
+</body>
+</html>

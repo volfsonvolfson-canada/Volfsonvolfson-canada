@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign In — Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="common.css">
+  <script>
+    // UNIVERSAL THEME INITIALIZATION - Works on ALL pages
+    // This script runs synchronously in <head> before page render
+    // User can land on ANY page first time - theme defaults to 'dark'
+    (function() {
+      'use strict';
+      try {
+        // Get saved theme and user preference flag
+        const savedTheme = localStorage.getItem('btb_theme');
+        const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+        
+        // Determine initial theme:
+        // - If user explicitly set theme (userSetTheme=true) AND savedTheme is valid, use savedTheme
+        // - Otherwise default to 'dark' (first-time visitor on any page)
+        let initialTheme = 'dark';
+        
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+          initialTheme = savedTheme; // User has chosen theme - use it
+        }
+        // Else: first-time visitor or invalid theme - use default 'dark'
+        
+        // Set theme immediately before page renders
+        document.documentElement.setAttribute('data-theme', initialTheme);
+      } catch (error) {
+        // If localStorage fails, default to dark
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img alt="Back to Base" class="logo-img" />
+        <span class="logo-text">Back to Base</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#rooms">Rooms</a>
+        <a href="massage.html">Massage</a>
+        <a href="yoga.html">Yoga</a>
+        <a href="special.html">Special</a>
+        <a href="about.html">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="theme-text">Light</span>
+        </button>
+        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="breadcrumbs"><a href="index.html">Home</a> / Sign In</div>
+      <h1>Welcome back</h1>
+      <p class="section-lead">Sign in to your account to view your bookings and manage your profile.</p>
+    </div>
+  </div>
+
+  <main class="section">
+    <div class="container">
+      <div class="auth-container">
+        <div class="auth-tabs">
+          <button class="tab-btn active" data-tab="signin">Sign In</button>
+          <button class="tab-btn" data-tab="register">Create Account</button>
+        </div>
+        
+        <!-- Форма входа -->
+        <div id="signin-form" class="auth-form active">
+          <form id="login-form">
+            <div class="form-row">
+              <div>
+                <label for="login-email">Email address</label>
+                <input id="login-email" name="email" type="email" required 
+                       placeholder="Enter your email" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="login-password">Password</label>
+                <input id="login-password" name="password" type="password" required 
+                       placeholder="Enter your password" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <button type="submit" class="btn primary">Sign In</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <a href="#" class="forgot-password" id="forgot-password-link">Forgot password?</a>
+              </div>
+            </div>
+          </form>
+          
+          <!-- Форма восстановления пароля -->
+          <form id="forgot-password-form" style="display: none;">
+            <div class="form-row">
+              <div>
+                <label for="reset-email">Email address</label>
+                <input id="reset-email" name="email" type="email" required 
+                       placeholder="Enter your email" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <button type="submit" class="btn primary">Send Reset Link</button>
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <a href="#" class="back-to-login" id="back-to-login-link">← Back to Sign In</a>
+              </div>
+            </div>
+          </form>
+        </div>
+        
+        <!-- Форма регистрации -->
+        <div id="register-form" class="auth-form">
+          <form id="registration-form">
+            <div class="form-row">
+              <div>
+                <label for="reg-name">Full name</label>
+                <input id="reg-name" name="name" type="text" required 
+                       placeholder="Enter your full name" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="reg-email">Email address</label>
+                <input id="reg-email" name="email" type="email" required 
+                       placeholder="Enter your email" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="reg-phone">Phone number</label>
+                <input id="reg-phone" name="phone" type="tel" required 
+                       placeholder="+1 555 123-4567" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="reg-password">Password</label>
+                <input id="reg-password" name="password" type="password" required 
+                       placeholder="Create a password" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <label for="reg-confirm-password">Confirm password</label>
+                <input id="reg-confirm-password" name="confirmPassword" type="password" required 
+                       placeholder="Confirm your password" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div>
+                <button type="submit" class="btn primary">Create Account</button>
+              </div>
+            </div>
+          </form>
+        </div>
+        
+        <!-- Сообщения об ошибках и успехе -->
+        <div id="auth-messages"></div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>British Columbia, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="index.html#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+          <li style="margin-top: 1rem;"><a href="admin-login.html" style="color: #4a5568; font-size: 0.875rem;">Admin</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <script src="utils.js?v=26"></script>
+  <script src="script.js?v=26"></script>
+  <script src="auth.js?v=26"></script>
+</body>
+</html>
