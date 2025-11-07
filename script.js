@@ -207,26 +207,25 @@ const initBookingForms = () => {
     // Настраиваем очистку ошибок для всех форм
     setupFieldErrorClearing(form);
     prefillContact(form);
+    // Отмечаем, что форма имеет обработчик submit
+    form.dataset.hasSubmitHandler = 'true';
     form.addEventListener('submit', (e) => {
       e.preventDefault();
+      e.stopImmediatePropagation();
       const checkinEl = form.querySelector('input[name="checkin"]');
       const checkoutEl = form.querySelector('input[name="checkout"]');
       const checkin = checkinEl ? checkinEl.value : '';
       const checkout = checkoutEl ? checkoutEl.value : '';
       if (!checkin || !checkout) {
-        // Для полей дат используем кастомные подсказки, так как reportValidity() привязан к скрытому input
-        // и показывает сообщение не рядом с видимым altInput
+        // Для полей дат используем кастомные подсказки (.field-error)
+        // Не используем reportValidity(), так как он показывает HTML5 валидацию браузера
         if (!checkin && checkinEl) {
           if (window.showDateFieldError) {
             window.showDateFieldError(checkinEl, 'Please select a check-in date.');
-          } else if (checkinEl.reportValidity) {
-            checkinEl.reportValidity();
           }
         } else if (!checkout && checkoutEl) {
           if (window.showDateFieldError) {
             window.showDateFieldError(checkoutEl, 'Please select a check-out date.');
-          } else if (checkoutEl.reportValidity) {
-            checkoutEl.reportValidity();
           }
         }
         return;
@@ -235,13 +234,11 @@ const initBookingForms = () => {
       const outDate = parseLocalDate(checkout);
       if (outDate <= inDate) {
         if (checkoutEl) {
-          checkoutEl.setCustomValidity(DATE_RANGE_MSG);
-          // Для полей дат используем кастомные подсказки вместо reportValidity()
-          // Для полей дат используем .field-error элементы (как для обычных полей)
+          // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+          checkoutEl.setCustomValidity('');
+          // Для полей дат используем .field-error элементы (унифицированная система)
           if (window.showDateFieldError) {
             window.showDateFieldError(checkoutEl, DATE_RANGE_MSG);
-          } else if (checkoutEl.reportValidity) {
-            checkoutEl.reportValidity();
           }
         }
         return;
@@ -295,8 +292,12 @@ const initMassageForm = () => {
   // Настраиваем очистку ошибок
   setupMassageFieldErrorClearing(form);
   
+  // Отмечаем, что форма имеет обработчик submit
+  form.dataset.hasSubmitHandler = 'true';
+  
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    e.stopImmediatePropagation();
     
     // Используем новую функцию обработки формы массажа
     if (window.BookingAPI && window.BookingAPI.handleMassageForm) {
@@ -678,9 +679,13 @@ function initBookingForm(form, roomName) {
     }
   }
   
+  // Отмечаем, что форма имеет обработчик submit
+  form.dataset.hasSubmitHandler = 'true';
+  
   // Обработчик submit формы
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    e.stopImmediatePropagation();
     
     // Получаем элементы формы
     const checkin = form.querySelector('#checkin');
@@ -862,8 +867,9 @@ function initBookingForm(form, roomName) {
     if (inDate && outDate) {
       // Проверка 1: дата выезда должна быть позже даты заезда
       if (outDate <= inDate) {
-        checkout.setCustomValidity(DATE_RANGE_MSG);
-        // Показываем ошибку в стиле .field-error (как для обычных полей)
+        // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+        checkout.setCustomValidity('');
+        // Показываем ошибку в стиле .field-error (унифицированная система)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkin, DATE_RANGE_MSG);
         }
@@ -882,8 +888,9 @@ function initBookingForm(form, roomName) {
       const checkinPlusOne = new Date(inDate);
       checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
       if (outDate <= checkinPlusOne) {
-        checkout.setCustomValidity('Дата выезда должна быть минимум на 2 дня позже даты заезда.');
-        // Показываем ошибку в стиле .field-error (как для обычных полей)
+        // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+        checkout.setCustomValidity('');
+        // Показываем ошибку в стиле .field-error (унифицированная система)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkout, 'Дата выезда должна быть минимум на 2 дня позже даты заезда.');
         }
@@ -951,8 +958,20 @@ const initBasementBooking = () => {
 };
 
 // Показ кастомного уведомления с более долгим временем показа
-// Использует тот же стиль, что и стандартные подсказки браузера (.btb-bubble)
+// Унифицированная функция для показа ошибок дат (использует .field-error систему)
+// Оставлена для обратной совместимости, но теперь использует showFieldError внутри
 function showDateErrorNotification(input, message, isFirstMessage = false) {
+  // Используем унифицированную систему .field-error для всех полей
+  // Это обеспечивает единообразное отображение ошибок для всех типов полей
+  if (window.showFieldError) {
+    window.showFieldError(input, message);
+    return;
+  }
+  
+  // Fallback: если showFieldError недоступна, используем старую систему
+  // (для обратной совместимости, но это не должно происходить в нормальных условиях)
+  console.warn('showFieldError not available, using fallback');
+  
   // КРИТИЧНО: Для полей дат используется Flatpickr с altInput
   // Оригинальный input скрыт (1px x 1px), поэтому нужно использовать видимый altInput для позиционирования
   let targetInput = input;
@@ -1487,7 +1506,8 @@ async function initBlockedDatesForRoom(form, roomName) {
           if (!dateValue) return true;
           const dateStr = dateValue;
           if (blockedDates.includes(dateStr)) {
-            input.setCustomValidity('This date is not available. Please select another date.');
+            // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+            input.setCustomValidity('');
             input.value = '';
             return false;
           }
@@ -1819,13 +1839,11 @@ function attachCheckinCheckoutConstraint(container, checkinSelector, checkoutSel
       if (checkout.value) {
         const out = parseLocalDate(checkout.value);
         if (out <= d) {
-          checkout.setCustomValidity(DATE_RANGE_MSG);
-          // Для полей дат используем кастомные подсказки вместо reportValidity()
-          // Для полей дат используем .field-error элементы (как для обычных полей)
+          // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+          checkout.setCustomValidity('');
+          // Для полей дат используем .field-error элементы (унифицированная система)
           if (window.showDateFieldError) {
             window.showDateFieldError(checkout, DATE_RANGE_MSG);
-          } else if (checkout.reportValidity) {
-            checkout.reportValidity();
           }
           flashDateField(checkout);
           checkout.focus();
@@ -1837,12 +1855,11 @@ function attachCheckinCheckoutConstraint(container, checkinSelector, checkoutSel
       const dIn = parseLocalDate(checkin.value);
       const dOut = parseLocalDate(checkout.value);
       if (dOut <= dIn) {
-        checkout.setCustomValidity(DATE_RANGE_MSG);
-        // Для полей дат используем .field-error элементы (как для обычных полей)
+        // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+        checkout.setCustomValidity('');
+        // Для полей дат используем .field-error элементы (унифицированная система)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkout, DATE_RANGE_MSG);
-        } else if (checkout.reportValidity) {
-          checkout.reportValidity();
         }
         flashDateField(checkout);
         checkout.focus();
@@ -1859,12 +1876,11 @@ function attachCheckinCheckoutConstraint(container, checkinSelector, checkoutSel
       const dIn = parseLocalDate(checkin.value);
       const dOut = parseLocalDate(checkout.value);
       if (dIn && dOut && dOut <= dIn) {
-        checkout.setCustomValidity(DATE_RANGE_MSG);
-        // Для полей дат используем .field-error элементы (как для обычных полей)
+        // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+        checkout.setCustomValidity('');
+        // Для полей дат используем .field-error элементы (унифицированная система)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkout, DATE_RANGE_MSG);
-        } else if (checkout.reportValidity) {
-          checkout.reportValidity();
         }
         flashDateField(checkout);
       } else {
@@ -1906,12 +1922,16 @@ window.applyCheckinCheckoutConstraint = function(root) {
   };
 
   const showBubble = () => {
-    const proxy = checkout.previousElementSibling;
-    if (window.showValidationBubble && proxy) {
-      window.showValidationBubble(proxy, DATE_RANGE_MSG);
+    // Используем унифицированную систему .field-error вместо .btb-bubble
+    if (window.showDateFieldError) {
+      window.showDateFieldError(checkout, DATE_RANGE_MSG);
     }
   };
-  const hideBubble = () => { if (window.hideValidationBubble) window.hideValidationBubble(); };
+  const hideBubble = () => { 
+    if (window.clearDateFieldError) {
+      window.clearDateFieldError(checkout);
+    }
+  };
 
   const validate = () => {
     if (!checkin.value || !checkout.value) return;
@@ -1975,6 +1995,30 @@ const resolveImages = () => {
 const resolveGalleryImages = resolveImages;
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Глобально отключаем HTML5 валидацию для всех форм на сайте
+  // Это предотвращает появление серых подсказок браузера
+  document.querySelectorAll('form').forEach(form => {
+    form.setAttribute('novalidate', 'novalidate');
+    // Дополнительно: перехватываем submit на раннем этапе, чтобы предотвратить HTML5 валидацию
+    form.addEventListener('submit', (e) => {
+      // Если форма еще не имеет обработчика submit, предотвращаем стандартное поведение
+      if (!form.dataset.hasSubmitHandler) {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+      }
+    }, true); // Используем capture phase для раннего перехвата
+  });
+  
+  // Дополнительно: отключаем HTML5 валидацию для всех input с атрибутом required
+  // Это предотвращает появление серых подсказок при попытке submit
+  document.querySelectorAll('input[required], select[required], textarea[required]').forEach(input => {
+    // Удаляем атрибут required, но сохраняем его в data-required для нашей валидации
+    if (!input.dataset.required) {
+      input.dataset.required = 'true';
+      input.removeAttribute('required');
+    }
+  });
+  
   revealElements();
   setYear();
   initBookingForms();
