@@ -13,16 +13,33 @@ class AuthSystem {
   }
 
   // Проверка статуса аутентификации
-  checkAuthStatus() {
+  async checkAuthStatus() {
     const token = localStorage.getItem('btb_auth_token');
-    const userData = localStorage.getItem('btb_user_data');
     
-    if (token && userData) {
+    if (token) {
       try {
-        this.currentUser = JSON.parse(userData);
-        this.isAuthenticated = true;
-        this.validateToken();
+        // Проверяем токен на сервере
+        const response = await fetch('api.php?action=verify', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const result = await response.json();
+        
+        if (result.success && result.data && result.data.user) {
+          this.currentUser = result.data.user;
+          this.isAuthenticated = true;
+          // Сохраняем токен и данные пользователя в localStorage для быстрого доступа
+          localStorage.setItem('btb_auth_token', token);
+          localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
+        } else {
+          this.logout();
+        }
       } catch (error) {
+        console.error('Auth check error:', error);
         this.logout();
       }
     }
@@ -109,31 +126,8 @@ class AuthSystem {
     }
 
     try {
-      // Проверяем, есть ли пользователь в базе
-      const user = await this.findUserByEmail(email);
-      
-      if (!user) {
-        // Пользователя нет - предлагаем зарегистрироваться
-        this.showMessage('No account found with this email. Please create an account.', 'info');
-        this.switchTab('register');
-        // Заполняем email в форме регистрации
-        document.getElementById('reg-email').value = email;
-        return;
-      }
-
-      // Проверяем пароль
-      if (user.password !== password) {
-        // Пароль не подходит
-        this.showMessage('Incorrect password. Please try again.', 'error');
-        // Очищаем только поле пароля, email оставляем
-        document.getElementById('login-password').value = '';
-        // Показываем кнопку восстановления пароля
-        this.showForgotPasswordForm();
-        return;
-      }
-
-      // Успешный вход
-      await this.loginUser(user);
+      // Вход через API
+      await this.loginUser({ email, password });
       this.showMessage('Successfully signed in!', 'success');
       
       // Перенаправляем на главную страницу личного кабинета
@@ -181,13 +175,13 @@ class AuthSystem {
         return;
       }
 
-      // Создаем нового пользователя
+      // Создаем нового пользователя через API
       const newUser = await this.createUser({ name, email, phone, password });
       
-      // Отправляем подтверждающее письмо
-      await this.sendConfirmationEmail(email, name);
+      // Автоматически логиним пользователя после регистрации
+      await this.loginUser({ email, password });
       
-      this.showMessage('Account created successfully! Please check your email for confirmation.', 'success');
+      this.showMessage('Account created successfully!', 'success');
       
       // Переключаемся на форму входа
       setTimeout(() => {
@@ -236,52 +230,88 @@ class AuthSystem {
 
   // Поиск пользователя по email
   async findUserByEmail(email) {
-    // В реальном приложении здесь был бы API запрос
-    // Сейчас используем localStorage для демонстрации
-    const users = JSON.parse(localStorage.getItem('btb_users') || '[]');
-    return users.find(user => user.email === email);
+    try {
+      const response = await fetch(`api.php?action=find_by_email&email=${encodeURIComponent(email)}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.exists) {
+        return { email: result.data.email };
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Find user error:', error);
+      return null;
+    }
   }
 
   // Создание нового пользователя
   async createUser(userData) {
-    // В реальном приложении здесь был бы API запрос
-    const users = JSON.parse(localStorage.getItem('btb_users') || '[]');
-    
-    const newUser = {
-      id: `user_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
-      ...userData,
-      phone2: '', // Дополнительный телефон по умолчанию пустой
-      lastSession: new Date().toISOString(),
-      createdAt: new Date().toISOString(),
-      isVerified: false
-    };
-    
-    users.push(newUser);
-    localStorage.setItem('btb_users', JSON.stringify(users));
-    
-    return newUser;
+    try {
+      const formData = new FormData();
+      formData.append('action', 'register');
+      formData.append('name', userData.name);
+      formData.append('email', userData.email);
+      formData.append('phone', userData.phone || '');
+      formData.append('password', userData.password);
+      
+      const response = await fetch('api.php', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.user) {
+        return result.data.user;
+      } else {
+        throw new Error(result.error || 'Failed to create user');
+      }
+    } catch (error) {
+      console.error('Create user error:', error);
+      throw error;
+    }
   }
 
   // Вход пользователя
   async loginUser(user) {
-    this.currentUser = user;
-    this.isAuthenticated = true;
-    
-    // Обновляем время последнего сеанса
-    this.currentUser.lastSession = new Date().toISOString();
-    
-    // Создаем токен аутентификации
-    const token = `token_${Date.now()}_${Math.random().toString(36).slice(2,8)}`;
-    
-    // Сохраняем в localStorage
-    localStorage.setItem('btb_auth_token', token);
-    localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
-    
-    // Обновляем пользователя в базе
-    this.updateUserInDatabase();
-    
-    // Обновляем заголовок
-    this.updateHeaderButtons();
+    try {
+      const formData = new FormData();
+      formData.append('action', 'login');
+      formData.append('email', user.email);
+      formData.append('password', user.password);
+      
+      const response = await fetch('api.php', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.user) {
+        this.currentUser = result.data.user;
+        this.isAuthenticated = true;
+        
+        // Сохраняем токен и данные пользователя
+        const token = result.data.token;
+        localStorage.setItem('btb_auth_token', token);
+        localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
+        
+        // Обновляем заголовок
+        this.updateHeaderButtons();
+      } else {
+        throw new Error(result.error || 'Login failed');
+      }
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   }
 
   // Выход пользователя
@@ -304,14 +334,37 @@ class AuthSystem {
 
   // Валидация токена
   async validateToken() {
-    // В реальном приложении здесь была бы проверка токена на сервере
-    // Сейчас просто проверяем наличие токена
     const token = localStorage.getItem('btb_auth_token');
     if (!token) {
       this.logout();
       return false;
     }
-    return true;
+    
+    try {
+      const response = await fetch('api.php?action=verify', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.user) {
+        this.currentUser = result.data.user;
+        this.isAuthenticated = true;
+        localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
+        return true;
+      } else {
+        this.logout();
+        return false;
+      }
+    } catch (error) {
+      console.error('Token validation error:', error);
+      this.logout();
+      return false;
+    }
   }
 
   // Отправка подтверждающего письма
@@ -401,14 +454,36 @@ class AuthSystem {
   }
 
   // Обновление пользователя в базе
-  updateUserInDatabase() {
+  async updateUserInDatabase() {
+    if (!this.currentUser) {
+      return;
+    }
+    
     try {
-      const users = JSON.parse(localStorage.getItem('btb_users') || '[]');
-      const userIndex = users.findIndex(u => u.email === this.currentUser.email);
+      const token = localStorage.getItem('btb_auth_token');
+      if (!token) {
+        return;
+      }
       
-      if (userIndex >= 0) {
-        users[userIndex] = { ...users[userIndex], ...this.currentUser };
-        localStorage.setItem('btb_users', JSON.stringify(users));
+      const formData = new FormData();
+      formData.append('action', 'update_profile');
+      formData.append('name', this.currentUser.name || '');
+      formData.append('phone', this.currentUser.phone || '');
+      formData.append('phone2', this.currentUser.phone2 || '');
+      
+      const response = await fetch('api.php', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        },
+        body: formData
+      });
+      
+      const result = await response.json();
+      
+      if (result.success && result.data && result.data.user) {
+        this.currentUser = result.data.user;
+        localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
       }
     } catch (error) {
       console.error('Error updating user in database:', error);

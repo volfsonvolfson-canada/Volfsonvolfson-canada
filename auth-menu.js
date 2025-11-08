@@ -192,7 +192,46 @@ function createAuthMenu(container, options = {}) {
     
     // Используем глобальную функцию showFieldError, если доступна
     if (window.showFieldError) {
-      window.showFieldError(input, message);
+      // Заменяем \n на <br> для отображения в две строки
+      const messageWithBreaks = message.replace(/\n/g, '<br>');
+      
+      // Создаем временный элемент для получения текста с HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = messageWithBreaks;
+      
+      // Получаем видимое поле
+      let visibleField = input;
+      if (typeof flatpickr !== 'undefined' && input._flatpickr) {
+        const fpInstance = input._flatpickr;
+        if (fpInstance.altInput) {
+          visibleField = fpInstance.altInput;
+        }
+      }
+      
+      // Удаляем предыдущую ошибку, если есть
+      const errorId = `error-${input.id || input.name || 'field'}`;
+      const existingError = visibleField.parentNode?.querySelector(`#${errorId}`);
+      if (existingError) {
+        existingError.remove();
+      }
+      
+      // Добавляем класс invalid-field
+      visibleField.classList.add('invalid-field');
+      if (input !== visibleField) {
+        input.classList.add('invalid-field');
+      }
+      
+      // Создаем элемент ошибки с HTML для поддержки переносов строк
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'field-error';
+      errorMsg.innerHTML = messageWithBreaks;
+      errorMsg.id = errorId;
+      
+      // Вставляем ошибку после видимого поля
+      if (visibleField.parentNode) {
+        visibleField.parentNode.insertBefore(errorMsg, visibleField.nextSibling);
+      }
+      
       if (window.flashDateField) {
         window.flashDateField(input);
       }
@@ -208,7 +247,8 @@ function createAuthMenu(container, options = {}) {
       
       const errorMsg = document.createElement('div');
       errorMsg.className = 'field-error';
-      errorMsg.textContent = message;
+      // Заменяем \n на <br> для отображения в две строки
+      errorMsg.innerHTML = message.replace(/\n/g, '<br>');
       errorMsg.id = errorId;
       input.parentNode?.insertBefore(errorMsg, input.nextSibling);
     }
@@ -425,23 +465,11 @@ function createAuthMenu(container, options = {}) {
       try {
         // Используем AuthSystem, если доступен
         if (window.authSystem) {
-          const user = await window.authSystem.findUserByEmail(email);
+          // Вход через API (проверка пароля происходит на сервере)
+          await window.authSystem.loginUser({ email, password });
           
-          if (!user) {
-            authMenu.showMessage('No account found with this email. Please create an account.', 'info');
-            authMenu.switchTab('register');
-            containerEl.querySelector('#reg-email').value = email;
-            return;
-          }
-
-          if (user.password !== password) {
-            // Показываем ошибку под полем пароля
-            showAuthFieldError(passwordInput, 'Incorrect password. Please try again.');
-            passwordInput.value = '';
-            return;
-          }
-
-          await window.authSystem.loginUser(user);
+          // Получаем текущего пользователя из AuthSystem
+          const user = window.authSystem.currentUser;
           
           if (onLogin) {
             onLogin(user);
@@ -542,22 +570,47 @@ function createAuthMenu(container, options = {}) {
           const existingUser = await window.authSystem.findUserByEmail(email);
           
           if (existingUser) {
-            authMenu.showMessage('An account with this email already exists. Please sign in.', 'error');
-            authMenu.switchTab('signin');
-            containerEl.querySelector('#login-email').value = email;
+            // Показываем ошибку под полем email (в две строки)
+            showAuthFieldError(emailInput, 'An account with this email already exists.\nPlease sign in.');
+            
+            // Мигаем вкладкой Sign In красным несколько раз
+            const signInTab = containerEl.querySelector('.tab-btn[data-tab="signin"]');
+            if (signInTab) {
+              // Функция для мигания вкладки
+              const flashTab = () => {
+                signInTab.style.transition = 'background-color 0.3s ease, color 0.3s ease';
+                signInTab.style.backgroundColor = 'rgba(255, 77, 77, 0.2)';
+                signInTab.style.color = '#ff4d4d';
+                
+                setTimeout(() => {
+                  signInTab.style.backgroundColor = '';
+                  signInTab.style.color = '';
+                }, 300);
+              };
+              
+              // Мигаем 3 раза с интервалом
+              flashTab();
+              setTimeout(() => flashTab(), 600);
+              setTimeout(() => flashTab(), 1200);
+            }
+            
+            // НЕ переключаем вкладку и НЕ перекидываем пользователя
             return;
           }
 
           const newUser = await window.authSystem.createUser({ name, email, phone, password });
-          await window.authSystem.sendConfirmationEmail(email, name);
+          
+          // Автоматически логиним пользователя после регистрации
+          await window.authSystem.loginUser({ email, password });
+          
+          // Получаем текущего пользователя из AuthSystem
+          const loggedInUser = window.authSystem.currentUser;
           
           if (onRegister) {
-            // Автоматически логиним пользователя после регистрации
-            await window.authSystem.loginUser(newUser);
-            onRegister(newUser);
+            onRegister(loggedInUser);
           } else {
             // Если колбэк не предоставлен, показываем сообщение и переключаемся на форму входа
-            authMenu.showMessage('Account created successfully! Please check your email for confirmation.', 'success');
+            authMenu.showMessage('Account created successfully!', 'success');
             setTimeout(() => {
               authMenu.switchTab('signin');
               containerEl.querySelector('#login-email').value = email;

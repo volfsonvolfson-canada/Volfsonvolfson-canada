@@ -12,6 +12,7 @@ $action = getApiAction();
 // Include API handlers after action is defined
 require_once 'floorplan_api.php';
 require_once 'booking_api.php';
+require_once 'auth_api.php';
 
 if ($action === 'get_content') {
     try {
