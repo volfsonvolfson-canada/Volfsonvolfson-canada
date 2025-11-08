@@ -271,14 +271,12 @@ function createAuthMenu(container, options = {}) {
           }
 
           await window.authSystem.loginUser(user);
-          authMenu.showMessage('Successfully signed in!', 'success');
           
           if (onLogin) {
             onLogin(user);
           } else {
-            setTimeout(() => {
-              window.location.href = 'dashboard.html';
-            }, 1000);
+            // Если колбэк не предоставлен, показываем сообщение
+            authMenu.showMessage('Successfully signed in!', 'success');
           }
         } else {
           // Fallback: если AuthSystem недоступен, вызываем callback
@@ -336,11 +334,13 @@ function createAuthMenu(container, options = {}) {
           const newUser = await window.authSystem.createUser({ name, email, phone, password });
           await window.authSystem.sendConfirmationEmail(email, name);
           
-          authMenu.showMessage('Account created successfully! Please check your email for confirmation.', 'success');
-          
           if (onRegister) {
+            // Автоматически логиним пользователя после регистрации
+            await window.authSystem.loginUser(newUser);
             onRegister(newUser);
           } else {
+            // Если колбэк не предоставлен, показываем сообщение и переключаемся на форму входа
+            authMenu.showMessage('Account created successfully! Please check your email for confirmation.', 'success');
             setTimeout(() => {
               authMenu.switchTab('signin');
               containerEl.querySelector('#login-email').value = email;

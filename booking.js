@@ -768,6 +768,45 @@ function hideLoadingState() {
 }
 
 /**
+ * Показать сообщение об успешной авторизации/регистрации
+ * @param {string} message - Текст сообщения
+ */
+function showAuthSuccessMessage(message) {
+  // Находим контейнер сообщения о бронировании
+  const messageContainer = document.querySelector('.booking-success-message');
+  if (!messageContainer) return;
+  
+  // Находим или создаем контейнер для сообщения об авторизации
+  let authMessageContainer = messageContainer.querySelector('.auth-success-message');
+  if (!authMessageContainer) {
+    authMessageContainer = document.createElement('div');
+    authMessageContainer.className = 'auth-success-message';
+    authMessageContainer.style.cssText = `
+      margin-top: 24px;
+      padding: 20px;
+      background: rgba(61, 220, 151, 0.1);
+      border: 1px solid rgba(61, 220, 151, 0.3);
+      border-radius: 12px;
+      text-align: left;
+    `;
+    messageContainer.appendChild(authMessageContainer);
+  }
+  
+  // Форматируем сообщение с переносами строк
+  const formattedMessage = message.split('\n').map(line => {
+    if (line.trim() === '') {
+      return '<br>';
+    }
+    return `<p style="margin: 0 0 8px; color: var(--text); font-size: 16px; line-height: 1.6;">${line}</p>`;
+  }).join('');
+  
+  authMessageContainer.innerHTML = formattedMessage;
+  
+  // Прокручиваем к сообщению
+  authMessageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+/**
  * Показать сообщение об успешном бронировании
  * @param {HTMLFormElement} form - Форма бронирования
  * @param {Object} options - Опции
@@ -818,21 +857,59 @@ function showBookingSuccessMessage(form, options = {}) {
     
     // Инициализируем меню авторизации с предзаполненными данными
     if (window.createAuthMenu) {
-      setTimeout(() => {
+      setTimeout(async () => {
+        // Проверяем, существует ли пользователь с таким email
+        let defaultTab = 'register';
+        if (window.authSystem && bookingData.email) {
+          try {
+            const existingUser = await window.authSystem.findUserByEmail(bookingData.email);
+            if (existingUser) {
+              defaultTab = 'signin';
+            }
+          } catch (error) {
+            console.error('Error checking existing user:', error);
+          }
+        }
+        
         window.createAuthMenu('#booking-success-auth-menu', {
-          defaultTab: 'register',
+          defaultTab: defaultTab,
           prefillData: {
             name: bookingData.name || '',
             email: bookingData.email || '',
             phone: bookingData.phone || ''
           },
           onLogin: (user) => {
-            // После входа перенаправляем на dashboard
-            window.location.href = 'dashboard.html';
+            // После входа показываем сообщение и обновляем интерфейс
+            showAuthSuccessMessage('С возвращением! \n\nВсе ваши бронирования доступны в вашем личном кабинете. \n\nВы можете его найти в меню в правом верхнем углу сайта');
+            
+            // Обновляем кнопки в заголовке
+            if (window.authSystem) {
+              window.authSystem.updateHeaderButtons();
+            }
+            
+            // Скрываем форму авторизации и показываем сообщение
+            const authMenuContainer = document.getElementById('booking-success-auth-menu');
+            if (authMenuContainer) {
+              authMenuContainer.style.display = 'none';
+            }
           },
-          onRegister: (user) => {
-            // После регистрации перенаправляем на dashboard
-            window.location.href = 'dashboard.html';
+          onRegister: async (user) => {
+            // После регистрации автоматически логиним пользователя
+            if (window.authSystem && user) {
+              await window.authSystem.loginUser(user);
+              
+              // Показываем сообщение
+              showAuthSuccessMessage('Поздравляем вы создали аккаунт на нашем сайте. \n\nТеперь все ваши бронирования доступны в вашем личном кабинете. \n\nВы можете его найти в меню в правом верхнем углу сайта');
+              
+              // Обновляем кнопки в заголовке
+              window.authSystem.updateHeaderButtons();
+              
+              // Скрываем форму авторизации и показываем сообщение
+              const authMenuContainer = document.getElementById('booking-success-auth-menu');
+              if (authMenuContainer) {
+                authMenuContainer.style.display = 'none';
+              }
+            }
           }
         });
       }, 100);
@@ -1113,6 +1190,10 @@ window.BookingAPI = {
   handleMassageForm,
   showFormErrors,
   showFormError,
-  clearFormErrors
+  clearFormErrors,
+  showAuthSuccessMessage
 };
+
+// Экспорт функции для использования в других модулях
+window.showAuthSuccessMessage = showAuthSuccessMessage;
 
