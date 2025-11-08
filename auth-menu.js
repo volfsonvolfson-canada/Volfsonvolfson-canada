@@ -16,7 +16,8 @@ function createAuthMenu(container, options = {}) {
     onLogin = null,
     onRegister = null,
     onPasswordReset = null,
-    prefillData = null
+    prefillData = null,
+    onReady = null
   } = options;
 
   // Получаем контейнер
@@ -39,19 +40,31 @@ function createAuthMenu(container, options = {}) {
       
       <!-- Форма входа -->
       <div id="signin-form" class="auth-form ${defaultTab === 'signin' ? 'active' : ''}">
-        <form id="login-form">
+        <form id="login-form" novalidate>
           <div class="form-row">
             <div>
               <label for="login-email">Email address</label>
-              <input id="login-email" name="email" type="email" required 
+              <input id="login-email" name="email" type="email" data-required="true"
                      placeholder="Enter your email" />
             </div>
           </div>
           <div class="form-row">
             <div>
               <label for="login-password">Password</label>
-              <input id="login-password" name="password" type="password" required 
-                     placeholder="Enter your password" />
+              <div class="password-input-wrapper">
+                <input id="login-password" name="password" type="password" data-required="true"
+                       placeholder="Enter your password" />
+                <button type="button" class="password-toggle" aria-label="Show password">
+                  <svg class="eye-icon eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <svg class="eye-icon eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           <div class="form-row">
@@ -67,11 +80,11 @@ function createAuthMenu(container, options = {}) {
         </form>
         
         <!-- Форма восстановления пароля -->
-        <form id="forgot-password-form" style="display: none;">
+        <form id="forgot-password-form" style="display: none;" novalidate>
           <div class="form-row">
             <div>
               <label for="reset-email">Email address</label>
-              <input id="reset-email" name="email" type="email" required 
+              <input id="reset-email" name="email" type="email" data-required="true"
                      placeholder="Enter your email" />
             </div>
           </div>
@@ -90,40 +103,64 @@ function createAuthMenu(container, options = {}) {
       
       <!-- Форма регистрации -->
       <div id="register-form" class="auth-form ${defaultTab === 'register' ? 'active' : ''}">
-        <form id="registration-form">
+        <form id="registration-form" novalidate>
           <div class="form-row">
             <div>
               <label for="reg-name">Full name</label>
-              <input id="reg-name" name="name" type="text" required 
+              <input id="reg-name" name="name" type="text" data-required="true"
                      placeholder="Enter your full name" />
             </div>
           </div>
           <div class="form-row">
             <div>
               <label for="reg-email">Email address</label>
-              <input id="reg-email" name="email" type="email" required 
+              <input id="reg-email" name="email" type="email" data-required="true"
                      placeholder="Enter your email" />
             </div>
           </div>
           <div class="form-row">
             <div>
               <label for="reg-phone">Phone number</label>
-              <input id="reg-phone" name="phone" type="tel" required 
+              <input id="reg-phone" name="phone" type="tel" data-required="true"
                      placeholder="+1 555 123-4567" />
             </div>
           </div>
           <div class="form-row">
             <div>
               <label for="reg-password">Password</label>
-              <input id="reg-password" name="password" type="password" required 
-                     placeholder="Create a password" />
+              <div class="password-input-wrapper">
+                <input id="reg-password" name="password" type="password" data-required="true"
+                       placeholder="Create a password" />
+                <button type="button" class="password-toggle" aria-label="Show password">
+                  <svg class="eye-icon eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <svg class="eye-icon eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           <div class="form-row">
             <div>
               <label for="reg-confirm-password">Confirm password</label>
-              <input id="reg-confirm-password" name="confirmPassword" type="password" required 
-                     placeholder="Confirm your password" />
+              <div class="password-input-wrapper">
+                <input id="reg-confirm-password" name="confirmPassword" type="password" data-required="true"
+                       placeholder="Confirm your password" />
+                <button type="button" class="password-toggle" aria-label="Show password">
+                  <svg class="eye-icon eye-open" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                  </svg>
+                  <svg class="eye-icon eye-closed" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: none;">
+                    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"></path>
+                    <line x1="1" y1="1" x2="23" y2="23"></line>
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
           <div class="form-row">
@@ -141,6 +178,119 @@ function createAuthMenu(container, options = {}) {
 
   // Вставляем HTML в контейнер
   containerEl.innerHTML = authHTML;
+
+  // Функция для очистки ошибок полей в формах авторизации
+  const clearAuthFormErrors = (form) => {
+    if (!form) return;
+    form.querySelectorAll('.field-error').forEach(error => error.remove());
+    form.querySelectorAll('.invalid-field').forEach(field => field.classList.remove('invalid-field'));
+  };
+
+  // Функция для показа ошибки поля в формах авторизации
+  const showAuthFieldError = (input, message) => {
+    if (!input || !message) return;
+    
+    // Используем глобальную функцию showFieldError, если доступна
+    if (window.showFieldError) {
+      window.showFieldError(input, message);
+      if (window.flashDateField) {
+        window.flashDateField(input);
+      }
+    } else {
+      // Fallback: создаем элемент ошибки вручную
+      const errorId = `error-${input.id || input.name || 'field'}`;
+      const existingError = input.parentNode?.querySelector(`#${errorId}`);
+      if (existingError) {
+        existingError.remove();
+      }
+      
+      input.classList.add('invalid-field');
+      
+      const errorMsg = document.createElement('div');
+      errorMsg.className = 'field-error';
+      errorMsg.textContent = message;
+      errorMsg.id = errorId;
+      input.parentNode?.insertBefore(errorMsg, input.nextSibling);
+    }
+  };
+
+  // Функция для показа/скрытия пароля
+  const initPasswordToggles = () => {
+    containerEl.querySelectorAll('.password-toggle').forEach(toggleBtn => {
+      toggleBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation(); // Предотвращаем всплытие события
+        const wrapper = toggleBtn.closest('.password-input-wrapper');
+        const input = wrapper?.querySelector('input[type="password"], input[type="text"]');
+        const eyeOpen = toggleBtn.querySelector('.eye-open');
+        const eyeClosed = toggleBtn.querySelector('.eye-closed');
+        
+        if (input && eyeOpen && eyeClosed) {
+          if (input.type === 'password') {
+            input.type = 'text';
+            eyeOpen.style.display = 'none';
+            eyeClosed.style.display = 'block';
+            toggleBtn.setAttribute('aria-label', 'Hide password');
+          } else {
+            input.type = 'password';
+            eyeOpen.style.display = 'block';
+            eyeClosed.style.display = 'none';
+            toggleBtn.setAttribute('aria-label', 'Show password');
+          }
+        }
+      });
+      
+      // Предотвращаем фокус на input при клике на кнопку
+      toggleBtn.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+      });
+    });
+  };
+
+  // Инициализируем переключатели пароля
+  initPasswordToggles();
+
+  // Проверка совпадения паролей в реальном времени для формы Create Account
+  const initPasswordMatchCheck = () => {
+    const passwordInput = containerEl.querySelector('#reg-password');
+    const confirmPasswordInput = containerEl.querySelector('#reg-confirm-password');
+    
+    if (passwordInput && confirmPasswordInput) {
+      const checkPasswordMatch = () => {
+        const password = passwordInput.value;
+        const confirmPassword = confirmPasswordInput.value;
+        
+        // Очищаем предыдущую ошибку совпадения, если она была
+        const existingError = confirmPasswordInput.parentNode?.querySelector('#error-reg-confirm-password');
+        if (existingError && existingError.textContent === 'Passwords do not match') {
+          existingError.remove();
+          confirmPasswordInput.classList.remove('invalid-field');
+        }
+        
+        // Проверяем совпадение только если оба поля заполнены
+        if (password && confirmPassword && password !== confirmPassword) {
+          showAuthFieldError(confirmPasswordInput, 'Passwords do not match');
+        }
+      };
+      
+      // Проверяем при вводе в поле подтверждения пароля
+      confirmPasswordInput.addEventListener('input', checkPasswordMatch);
+      
+      // Также проверяем при изменении основного пароля
+      passwordInput.addEventListener('input', checkPasswordMatch);
+    }
+  };
+
+  // Инициализируем проверку совпадения паролей
+  initPasswordMatchCheck();
+
+  // Вызываем onReady колбэк после создания формы, если он предоставлен
+  if (onReady && typeof onReady === 'function') {
+    // Используем setTimeout для гарантии, что DOM обновлен
+    setTimeout(() => {
+      onReady();
+    }, 0);
+  }
 
   // Предзаполняем данные, если они предоставлены
   if (prefillData) {
@@ -243,11 +393,32 @@ function createAuthMenu(container, options = {}) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const email = containerEl.querySelector('#login-email').value;
-      const password = containerEl.querySelector('#login-password').value;
+      // Очищаем предыдущие ошибки
+      clearAuthFormErrors(loginForm);
+      
+      const emailInput = containerEl.querySelector('#login-email');
+      const passwordInput = containerEl.querySelector('#login-password');
+      const email = emailInput?.value.trim();
+      const password = passwordInput?.value;
 
-      if (!email || !password) {
-        authMenu.showMessage('Please fill in all fields', 'error');
+      let hasErrors = false;
+
+      // Валидация email
+      if (!email) {
+        showAuthFieldError(emailInput, 'Email address is required');
+        hasErrors = true;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showAuthFieldError(emailInput, 'Invalid email address');
+        hasErrors = true;
+      }
+
+      // Валидация password
+      if (!password) {
+        showAuthFieldError(passwordInput, 'Password is required');
+        hasErrors = true;
+      }
+
+      if (hasErrors) {
         return;
       }
 
@@ -264,9 +435,9 @@ function createAuthMenu(container, options = {}) {
           }
 
           if (user.password !== password) {
-            authMenu.showMessage('Incorrect password. Please try again.', 'error');
-            containerEl.querySelector('#login-password').value = '';
-            authMenu.showForgotPasswordForm();
+            // Показываем ошибку под полем пароля
+            showAuthFieldError(passwordInput, 'Incorrect password. Please try again.');
+            passwordInput.value = '';
             return;
           }
 
@@ -298,24 +469,70 @@ function createAuthMenu(container, options = {}) {
     regForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const name = containerEl.querySelector('#reg-name').value;
-      const email = containerEl.querySelector('#reg-email').value;
-      const phone = containerEl.querySelector('#reg-phone').value;
-      const password = containerEl.querySelector('#reg-password').value;
-      const confirmPassword = containerEl.querySelector('#reg-confirm-password').value;
+      // Очищаем предыдущие ошибки
+      clearAuthFormErrors(regForm);
+      
+      const nameInput = containerEl.querySelector('#reg-name');
+      const emailInput = containerEl.querySelector('#reg-email');
+      const phoneInput = containerEl.querySelector('#reg-phone');
+      const passwordInput = containerEl.querySelector('#reg-password');
+      const confirmPasswordInput = containerEl.querySelector('#reg-confirm-password');
+      
+      const name = nameInput?.value.trim();
+      const email = emailInput?.value.trim();
+      const phone = phoneInput?.value.trim();
+      const password = passwordInput?.value;
+      const confirmPassword = confirmPasswordInput?.value;
 
-      if (!name || !email || !phone || !password || !confirmPassword) {
-        authMenu.showMessage('Please fill in all fields', 'error');
-        return;
+      let hasErrors = false;
+
+      // Валидация name
+      if (!name) {
+        showAuthFieldError(nameInput, 'Full name is required');
+        hasErrors = true;
       }
 
-      if (password !== confirmPassword) {
-        authMenu.showMessage('Passwords do not match', 'error');
-        return;
+      // Валидация email
+      if (!email) {
+        showAuthFieldError(emailInput, 'Email address is required');
+        hasErrors = true;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showAuthFieldError(emailInput, 'Invalid email address');
+        hasErrors = true;
       }
 
-      if (password.length < 6) {
-        authMenu.showMessage('Password must be at least 6 characters long', 'error');
+      // Валидация phone
+      if (!phone) {
+        showAuthFieldError(phoneInput, 'Phone number is required');
+        hasErrors = true;
+      } else {
+        // Проверяем формат телефона (минимум 10 цифр)
+        const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
+        if (!phoneRegex.test(phone)) {
+          showAuthFieldError(phoneInput, 'Invalid phone number');
+          hasErrors = true;
+        }
+      }
+
+      // Валидация password
+      if (!password) {
+        showAuthFieldError(passwordInput, 'Password is required');
+        hasErrors = true;
+      } else if (password.length < 6) {
+        showAuthFieldError(passwordInput, 'Password must be at least 6 characters long');
+        hasErrors = true;
+      }
+
+      // Валидация confirmPassword
+      if (!confirmPassword) {
+        showAuthFieldError(confirmPasswordInput, 'Please confirm your password');
+        hasErrors = true;
+      } else if (password !== confirmPassword) {
+        showAuthFieldError(confirmPasswordInput, 'Passwords do not match');
+        hasErrors = true;
+      }
+
+      if (hasErrors) {
         return;
       }
 
@@ -367,10 +584,24 @@ function createAuthMenu(container, options = {}) {
     forgotForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      const email = containerEl.querySelector('#reset-email').value;
+      // Очищаем предыдущие ошибки
+      clearAuthFormErrors(forgotForm);
+      
+      const emailInput = containerEl.querySelector('#reset-email');
+      const email = emailInput?.value.trim();
 
+      let hasErrors = false;
+
+      // Валидация email
       if (!email) {
-        authMenu.showMessage('Please enter your email address', 'error');
+        showAuthFieldError(emailInput, 'Email address is required');
+        hasErrors = true;
+      } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        showAuthFieldError(emailInput, 'Invalid email address');
+        hasErrors = true;
+      }
+
+      if (hasErrors) {
         return;
       }
 

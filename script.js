@@ -842,7 +842,7 @@ function initBookingForm(form, roomName) {
       if (window.showDateFieldError) {
         window.showDateFieldError(checkin, 'Please select a check-in date.');
       }
-      checkin.focus();
+      // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
       return;
     }
     // 2. Потом check-out (выезд)
@@ -856,7 +856,7 @@ function initBookingForm(form, roomName) {
       if (window.showDateFieldError) {
         window.showDateFieldError(checkout, 'Please select a check-out date.');
       }
-      checkout.focus();
+      // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
       return;
     }
     // 3. Потом name (имя)
@@ -950,7 +950,7 @@ function initBookingForm(form, roomName) {
           flash(checkin);
           flash(checkout);
         }
-        checkin.focus();
+        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
         return;
       }
       // Проверка 2: дата выезда должна быть минимум на 2 дня позже даты заезда
@@ -961,7 +961,7 @@ function initBookingForm(form, roomName) {
         checkout.setCustomValidity('');
         // Показываем ошибку в стиле .field-error (унифицированная система)
         if (window.showDateFieldError) {
-          window.showDateFieldError(checkout, 'Дата выезда должна быть минимум на 2 дня позже даты заезда.');
+          window.showDateFieldError(checkout, 'Check-out date must be at least 2 days after check-in date.');
         }
         // Мигаем оба поля красным
         if (window.flashDateField) {
@@ -971,7 +971,7 @@ function initBookingForm(form, roomName) {
           flash(checkin);
           flash(checkout);
         }
-        checkout.focus();
+        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
         return;
       }
       // Если все проверки пройдены, очищаем ошибки
@@ -1362,7 +1362,7 @@ async function initBlockedDatesForRoom(form, roomName) {
                 checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
                 // Показываем ошибку в стиле .field-error (как для обычных полей)
                 if (window.showDateFieldError) {
-                  window.showDateFieldError(checkinInput, 'Эта дата занята. Пожалуйста, выберите другую дату.');
+                  window.showDateFieldError(checkinInput, 'This date is unavailable. Please select another date.');
                 }
                 flashDateField(checkinInput);
                 return;
@@ -1413,7 +1413,7 @@ async function initBlockedDatesForRoom(form, roomName) {
                           // Не очищаем checkout - пусть пользователь сам исправляет
                           // Показываем ошибку в стиле .field-error (как для обычных полей)
                           if (window.showDateFieldError) {
-                            window.showDateFieldError(checkoutInput, 'Дата выезда должна быть минимум на 2 дня позже даты заезда.');
+                            window.showDateFieldError(checkoutInput, 'Check-out date must be at least 2 days after check-in date.');
                           }
                           // Мигаем оба поля красным
                           if (window.flashDateField) {
@@ -1558,7 +1558,7 @@ async function initBlockedDatesForRoom(form, roomName) {
                 checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
                 
                 // Определяем причину блокировки и показываем соответствующее уведомление
-                let errorMessage = 'Эта дата занята. Пожалуйста, выберите другую дату.';
+                let errorMessage = 'This date is unavailable. Please select another date.';
                 if (checkinInput.value) {
                   const checkinDate = parseLocalDate(checkinInput.value);
                   const selectedDate = parseLocalDate(dateStr);
@@ -1566,7 +1566,7 @@ async function initBlockedDatesForRoom(form, roomName) {
                     const checkinPlusOne = new Date(checkinDate);
                     checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
                     if (selectedDate <= checkinPlusOne) {
-                      errorMessage = 'Дата выезда должна быть минимум на 2 дня позже даты заезда.';
+                      errorMessage = 'Check-out date must be at least 2 days after check-in date.';
                     }
                   }
                 }
@@ -1994,7 +1994,7 @@ function attachCheckinCheckoutConstraint(container, checkinSelector, checkoutSel
             window.showDateFieldError(checkout, DATE_RANGE_MSG);
           }
           flashDateField(checkout);
-          checkout.focus();
+          // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
         }
       }
     };
@@ -2010,7 +2010,7 @@ function attachCheckinCheckoutConstraint(container, checkinSelector, checkoutSel
           window.showDateFieldError(checkout, DATE_RANGE_MSG);
         }
         flashDateField(checkout);
-        checkout.focus();
+        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
       } else {
         checkout.setCustomValidity('');
         clearDateFieldFlash(checkout);
@@ -2089,7 +2089,7 @@ window.applyCheckinCheckoutConstraint = function(root) {
       hideBubble();
       showBubble();
       flash(checkout);
-      checkout.focus();
+      // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
     } else {
       hideBubble();
       clearDateFieldFlash(checkout);

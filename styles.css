@@ -1400,3 +1400,128 @@ body:has(#book) .massage-list {
   flex-direction: column;
   gap: 8px;
 }
+
+/* Устанавливаем ширину формы Sign In / Create Account равной ширине сообщения */
+/* Форма должна соответствовать размерам рамки сообщения "Your booking has been submitted!" */
+#booking-success-auth-menu .auth-container {
+  max-width: 100% !important;
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+/* Увеличиваем ширину всех input полей для обеих форм (Sign In и Create Account) */
+#booking-success-auth-menu .auth-container #login-form input[type="text"],
+#booking-success-auth-menu .auth-container #login-form input[type="email"],
+#booking-success-auth-menu .auth-container #login-form input[type="password"],
+#booking-success-auth-menu .auth-container #registration-form input[type="text"],
+#booking-success-auth-menu .auth-container #registration-form input[type="email"],
+#booking-success-auth-menu .auth-container #registration-form input[type="tel"],
+#booking-success-auth-menu .auth-container #registration-form input[type="password"],
+#booking-success-auth-menu .auth-container #forgot-password-form input[type="email"] {
+  min-width: 0 !important;
+  width: 100% !important;
+  max-width: none !important;
+  box-sizing: border-box !important;
+}
+
+/* Увеличиваем ширину всех контейнеров полей в формах */
+#booking-success-auth-menu .auth-container .form-row {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 12px !important;
+}
+
+#booking-success-auth-menu .auth-container .form-row > div {
+  width: 100% !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  grid-column: 1 !important;
+}
+
+/* Стили для полей пароля с иконкой глаза */
+.password-input-wrapper {
+  position: relative;
+  width: 100%;
+  display: block;
+  /* Убеждаемся, что wrapper занимает всю ширину родителя */
+  box-sizing: border-box;
+}
+
+.password-input-wrapper input {
+  width: 100% !important;
+  /* Увеличиваем padding-right, чтобы текст не перекрывался с иконкой (20px иконка + 12px отступ справа + 8px запас = 40px) */
+  padding-right: 40px !important;
+  box-sizing: border-box !important;
+  /* Убираем outline по умолчанию, используем box-shadow для фокуса */
+  outline: none !important;
+}
+
+.password-input-wrapper input:focus {
+  /* Используем box-shadow вместо outline для точного соответствия размерам видимого инпута */
+  box-shadow: 0 0 0 2px var(--brand) !important;
+  outline: none !important;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
+  z-index: 10;
+  /* Размер кнопки точно по размеру иконки (20x20px) */
+  width: 20px;
+  height: 20px;
+  min-width: 20px;
+  min-height: 20px;
+  max-width: 20px;
+  max-height: 20px;
+  flex-shrink: 0;
+  /* Кнопка должна быть кликабельной */
+  pointer-events: auto;
+  /* Убираем все отступы и границы */
+  outline: none;
+  /* Убеждаемся, что кнопка не перехватывает клики на input */
+  user-select: none;
+  -webkit-user-select: none;
+  /* Убеждаемся, что кнопка не растягивается */
+  box-sizing: border-box;
+}
+
+.password-toggle:focus {
+  outline: 2px solid var(--brand);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.password-toggle:active {
+  opacity: 1;
+}
+
+.password-toggle:hover {
+  opacity: 1;
+}
+
+.password-toggle .eye-icon {
+  width: 20px;
+  height: 20px;
+  stroke: currentColor;
+}
+
+.password-toggle .eye-icon.eye-open {
+  display: block;
+}
+
+.password-toggle .eye-icon.eye-closed {
+  display: none;
+}

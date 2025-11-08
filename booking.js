@@ -400,7 +400,7 @@ async function handleBookingForm(form) {
         if (window.flashDateField) {
           window.flashDateField(checkinEl);
         }
-        checkinEl.focus();
+        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
         return false;
       }
       
@@ -414,7 +414,7 @@ async function handleBookingForm(form) {
           if (checkinEl) window.flashDateField(checkinEl);
           window.flashDateField(checkoutEl);
         }
-        checkoutEl.focus();
+        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
         return false;
       }
       
@@ -878,9 +878,35 @@ function showBookingSuccessMessage(form, options = {}) {
             email: bookingData.email || '',
             phone: bookingData.phone || ''
           },
+          onReady: () => {
+            // Применяем стили для установки ширины формы равной ширине сообщения
+            const authContainer = document.querySelector('#booking-success-auth-menu .auth-container');
+            if (authContainer) {
+              // Форма должна соответствовать ширине сообщения выше
+              authContainer.style.maxWidth = '100%';
+              authContainer.style.width = '100%';
+              authContainer.style.minWidth = '0';
+              
+              // Инпуты остаются идеального размера (используют всю доступную ширину контейнера)
+              const inputs = authContainer.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="password"]');
+              inputs.forEach(input => {
+                input.style.width = '100%';
+                input.style.maxWidth = 'none';
+                input.style.minWidth = '0';
+              });
+              
+              // Контейнеры полей используют всю доступную ширину
+              const formRows = authContainer.querySelectorAll('.form-row > div');
+              formRows.forEach(div => {
+                div.style.width = '100%';
+                div.style.maxWidth = 'none';
+                div.style.minWidth = '0';
+              });
+            }
+          },
           onLogin: (user) => {
             // После входа показываем сообщение и обновляем интерфейс
-            showAuthSuccessMessage('С возвращением! \n\nВсе ваши бронирования доступны в вашем личном кабинете. \n\nВы можете его найти в меню в правом верхнем углу сайта');
+            showAuthSuccessMessage('Welcome back! \n\nAll your bookings are available in your personal account. \n\nYou can find it in the menu in the top right corner of the site');
             
             // Обновляем кнопки в заголовке
             if (window.authSystem) {
@@ -899,7 +925,7 @@ function showBookingSuccessMessage(form, options = {}) {
               await window.authSystem.loginUser(user);
               
               // Показываем сообщение
-              showAuthSuccessMessage('Поздравляем вы создали аккаунт на нашем сайте. \n\nТеперь все ваши бронирования доступны в вашем личном кабинете. \n\nВы можете его найти в меню в правом верхнем углу сайта');
+              showAuthSuccessMessage('Congratulations! You have created an account on our website. \n\nNow all your bookings are available in your personal account. \n\nYou can find it in the menu in the top right corner of the site');
               
               // Обновляем кнопки в заголовке
               window.authSystem.updateHeaderButtons();
