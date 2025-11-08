@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="common.css">
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="admin.css">
+  <!-- Flatpickr for date filters -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
       /* Image upload styles */
       .image-upload-container {
@@ -112,6 +114,88 @@
         color: #718096;
       }
       
+      .booking-status-badge.checked_in {
+        background-color: #bee3f8;
+        color: #2c5282;
+      }
+      
+      .booking-status-badge.completed {
+        background-color: #c6f6d5;
+        color: #2f855a;
+      }
+      
+      /* Delete confirmation modal */
+      .delete-confirm-modal {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+      }
+      
+      .delete-confirm-modal.active {
+        display: flex;
+      }
+      
+      .delete-confirm-content {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        max-width: 500px;
+        width: 90%;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+      }
+      
+      .delete-confirm-content h3 {
+        margin: 0 0 16px 0;
+        color: #e53e3e;
+        font-size: 20px;
+      }
+      
+      .delete-confirm-content p {
+        margin: 0 0 24px 0;
+        color: #2d3748;
+        line-height: 1.6;
+      }
+      
+      .delete-confirm-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: flex-end;
+      }
+      
+      .delete-confirm-btn {
+        padding: 10px 20px;
+        border: none;
+        border-radius: 6px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      
+      .delete-confirm-btn-cancel {
+        background: #e2e8f0;
+        color: #2d3748;
+      }
+      
+      .delete-confirm-btn-cancel:hover {
+        background: #cbd5e0;
+      }
+      
+      .delete-confirm-btn-delete {
+        background: #e53e3e;
+        color: white;
+      }
+      
+      .delete-confirm-btn-delete:hover {
+        background: #c53030;
+      }
+      
       .payment-status-badge {
         display: inline-block;
         padding: 4px 12px;
@@ -172,28 +256,61 @@
       .admin-calendar-grid {
         display: grid;
         grid-template-columns: repeat(7, 1fr);
-        gap: 4px;
-        margin: 20px 0;
+        gap: 3px;
+        row-gap: 3px;
+        column-gap: 3px;
+        margin: 12px 0;
+        max-width: 100%;
       }
       
-      .admin-calendar-month {
+      #admin-calendar-container {
+        max-width: 400px;
+        margin: 0 auto;
+      }
+      
+      .calendar-navigation {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        margin-top: 16px;
+        align-items: center;
+        flex-wrap: nowrap;
+        max-width: 100%;
+        width: 100%;
+        padding: 0 20px;
+      }
+      
+      .calendar-navigation button {
+        white-space: nowrap;
+      }
+      
+      .admin-calendar-month-header {
         grid-column: 1 / -1;
         font-weight: 600;
-        font-size: 18px;
-        padding: 10px;
-        text-align: center;
+        font-size: 14px;
+        padding: 6px 8px;
+        text-align: left;
         background: var(--bg-secondary, #f7fafc);
+        color: var(--text-primary, #2d3748);
         border-radius: 4px;
-        margin-bottom: 10px;
+        margin: 0;
+        border-bottom: 2px solid #e2e8f0;
+      }
+      
+      .admin-calendar-spacer {
+        grid-column: 1 / -1;
+        height: 6px;
+        visibility: hidden;
       }
       
       .admin-calendar-day-header {
         font-weight: 600;
-        font-size: 12px;
+        font-size: 11px;
         text-align: center;
-        padding: 8px 4px;
+        padding: 6px 2px;
         color: var(--text-secondary, #666);
         text-transform: uppercase;
+        background: var(--bg-secondary, #f7fafc);
       }
       
       .admin-calendar-day {
@@ -203,12 +320,16 @@
         align-items: center;
         justify-content: center;
         border-radius: 4px;
-        font-size: 12px;
-        padding: 4px;
+        font-size: 13px;
+        font-weight: 500;
+        padding: 6px;
         border: 1px solid #e2e8f0;
         background: white;
         cursor: pointer;
         transition: all 0.2s;
+        min-height: 40px;
+        max-height: 48px;
+        margin: 0;
       }
       
       .admin-calendar-day:hover {
@@ -217,13 +338,13 @@
       
       .admin-calendar-day.past {
         background: #e2e8f0;
-        color: #999;
+        color: #718096;
         cursor: not-allowed;
       }
       
       .admin-calendar-day.available {
-        background: #c6f6d5;
-        color: #2f855a;
+        background: white;
+        color: #2d3748;
       }
       
       .admin-calendar-day.booked {
@@ -231,9 +352,67 @@
         color: #e53e3e;
       }
       
-      .admin-calendar-day.blocked {
-        background: #cbd5e0;
+      .admin-calendar-day.confirmed {
+        background: #fef3c7;
+        color: #92400e;
+      }
+      
+      .admin-calendar-day.confirmed.past {
+        background: #fef3c7;
+        color: #92400e;
+        opacity: 0.6;
+      }
+      
+      .admin-calendar-day.paid {
+        background: #86efac;
+        color: #166534;
+      }
+      
+      .admin-calendar-day.paid.past {
+        background: #bbf7d0;
+        color: #15803d;
+        opacity: 0.6;
+      }
+      
+      .admin-calendar-day.available.past {
+        background: #e2e8f0;
         color: #718096;
+      }
+      
+      .admin-calendar-day.blocked {
+        background: #4a5568;
+        color: #ffffff;
+      }
+      
+      .calendar-room-tabs {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 2px solid #e2e8f0;
+        flex-wrap: wrap;
+      }
+      
+      .calendar-room-tab {
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        color: #718096;
+        transition: all 0.2s;
+      }
+      
+      .calendar-room-tab:hover {
+        color: #4a5568;
+        background: #edf2f7;
+      }
+      
+      .calendar-room-tab.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        background: #f7fafc;
       }
       
       .admin-calendar-day.has-booking {
@@ -251,6 +430,130 @@
         justify-content: space-between;
         align-items: center;
       }
+      
+      /* Admin tabs styles - Two-level navigation */
+      .admin-nav-container {
+        margin-bottom: 24px;
+      }
+      
+      .admin-nav-tabs-primary {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 3px solid #e2e8f0;
+        flex-wrap: wrap;
+      }
+      
+      .admin-nav-tab-primary {
+        padding: 14px 28px;
+        background: none;
+        border: none;
+        border-bottom: 4px solid transparent;
+        cursor: pointer;
+        font-weight: 700;
+        font-size: 16px;
+        color: #4a5568;
+        transition: all 0.2s;
+        position: relative;
+      }
+      
+      .admin-nav-tab-primary:hover {
+        color: #2d3748;
+        background: #f7fafc;
+      }
+      
+      .admin-nav-tab-primary.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        background: #f7fafc;
+      }
+      
+      .admin-nav-tabs-secondary {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 16px;
+        border-bottom: 2px solid #e2e8f0;
+        flex-wrap: wrap;
+      }
+      
+      .admin-nav-tab-secondary {
+        padding: 10px 20px;
+        background: none;
+        border: none;
+        border-bottom: 3px solid transparent;
+        cursor: pointer;
+        font-weight: 600;
+        font-size: 14px;
+        color: #718096;
+        transition: all 0.2s;
+      }
+      
+      .admin-nav-tab-secondary:hover {
+        color: #4a5568;
+        background: #edf2f7;
+      }
+      
+      .admin-nav-tab-secondary.active {
+        color: #667eea;
+        border-bottom-color: #667eea;
+        background: #f7fafc;
+      }
+      
+      .admin-nav-tabs-secondary.hidden {
+        display: none;
+      }
+      
+      /* Account Management styles */
+      .user-card {
+        background: white;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 16px;
+        transition: box-shadow 0.2s;
+      }
+      
+      .user-card:hover {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      
+      .user-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 16px;
+      }
+      
+      .user-details-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 16px;
+      }
+      
+      .user-detail-item {
+        display: flex;
+        flex-direction: column;
+      }
+      
+      .user-detail-label {
+        font-size: 12px;
+        color: #718096;
+        margin-bottom: 4px;
+        font-weight: 600;
+        text-transform: uppercase;
+      }
+      
+      .user-detail-value {
+        font-size: 14px;
+        color: #2d3748;
+      }
+      
+      .user-actions {
+        display: flex;
+        gap: 10px;
+        margin-top: 16px;
+      }
     </style>
   </head>
 <body class="admin-body">
@@ -264,22 +567,67 @@
       </div>
     </header>
 
-    <nav class="admin-nav">
-      <button class="admin-nav-btn active" data-section="dashboard">Dashboard</button>
-      <button class="admin-nav-btn" data-section="bookings">Bookings</button>
-      <button class="admin-nav-btn" data-section="calendar">Calendar</button>
-      <button class="admin-nav-btn" data-section="homepage">Home Page</button>
-      <button class="admin-nav-btn" data-section="floorplan">Floor Plan</button>
-      <button class="admin-nav-btn" data-section="rooms">Rooms</button>
-      <button class="admin-nav-btn" data-section="massage">Massage</button>
-      <button class="admin-nav-btn" data-section="yoga">Yoga</button>
-      <button class="admin-nav-btn" data-section="content">Content</button>
-      <button class="admin-nav-btn" data-section="images">Images</button>
+    <!-- Two-level navigation -->
+    <nav class="admin-nav-container">
+      <!-- Primary level tabs (main sections) -->
+      <div class="admin-nav-tabs-primary">
+        <button class="admin-nav-tab-primary active" data-primary="bookings">Bookings Management</button>
+        <button class="admin-nav-tab-primary" data-primary="content">Content Management</button>
+        <button class="admin-nav-tab-primary" data-primary="accounts">Account Management</button>
+      </div>
+      
+      <!-- Secondary level tabs (subsections) - Bookings Management -->
+      <div class="admin-nav-tabs-secondary" data-primary="bookings">
+        <button class="admin-nav-tab-secondary active" data-section="bookings-dashboard">Dashboard</button>
+        <button class="admin-nav-tab-secondary" data-section="bookings">Bookings</button>
+        <button class="admin-nav-tab-secondary" data-section="calendar">Calendar</button>
+      </div>
+      
+      <!-- Secondary level tabs (subsections) - Content Management -->
+      <div class="admin-nav-tabs-secondary hidden" data-primary="content">
+        <button class="admin-nav-tab-secondary active" data-section="content-dashboard">Dashboard</button>
+        <button class="admin-nav-tab-secondary" data-section="homepage">Home Page</button>
+        <button class="admin-nav-tab-secondary" data-section="floorplan">Floor Plan</button>
+        <button class="admin-nav-tab-secondary" data-section="rooms">Rooms</button>
+        <button class="admin-nav-tab-secondary" data-section="massage">Massage</button>
+        <button class="admin-nav-tab-secondary" data-section="yoga">Yoga</button>
+        <button class="admin-nav-tab-secondary" data-section="content">Content</button>
+        <button class="admin-nav-tab-secondary" data-section="images">Images</button>
+      </div>
+      
+      <!-- Secondary level tabs (subsections) - Account Management -->
+      <div class="admin-nav-tabs-secondary hidden" data-primary="accounts">
+        <button class="admin-nav-tab-secondary active" data-section="accounts-dashboard">Dashboard</button>
+        <button class="admin-nav-tab-secondary" data-section="accounts">Accounts</button>
+      </div>
     </nav>
 
-    <!-- Dashboard Section -->
-    <section id="dashboard-section" class="admin-section">
-      <h2>Dashboard</h2>
+    <!-- Bookings Management - Dashboard Section -->
+    <section id="bookings-dashboard-section" class="admin-section">
+      <h2>Bookings Management - Dashboard</h2>
+      <div class="admin-stats">
+        <div class="admin-stat-card">
+          <h3>Pending Bookings</h3>
+          <p id="pending-bookings">0</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Total Bookings</h3>
+          <p id="total-bookings">0</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Confirmed Bookings</h3>
+          <p id="confirmed-bookings">0</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Cancelled Bookings</h3>
+          <p id="cancelled-bookings">0</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Content Management - Dashboard Section -->
+    <section id="content-dashboard-section" class="admin-section" style="display: none;">
+      <h2>Content Management - Dashboard</h2>
       <div class="admin-stats">
         <div class="admin-stat-card">
           <h3>Total Rooms</h3>
@@ -297,13 +645,28 @@
           <h3>Last Updated</h3>
           <p id="last-updated">Just now</p>
         </div>
+      </div>
+    </section>
+
+    <!-- Account Management - Dashboard Section -->
+    <section id="accounts-dashboard-section" class="admin-section" style="display: none;">
+      <h2>Account Management - Dashboard</h2>
+      <div class="admin-stats">
         <div class="admin-stat-card">
-          <h3>Pending Bookings</h3>
-          <p id="pending-bookings">0</p>
+          <h3>Total Accounts</h3>
+          <p id="total-accounts">0</p>
         </div>
         <div class="admin-stat-card">
-          <h3>Total Bookings</h3>
-          <p id="total-bookings">0</p>
+          <h3>Verified Accounts</h3>
+          <p id="verified-accounts">0</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>New This Month</h3>
+          <p id="new-accounts-month">0</p>
+        </div>
+        <div class="admin-stat-card">
+          <h3>Active This Week</h3>
+          <p id="active-accounts-week">0</p>
         </div>
       </div>
     </section>
@@ -319,9 +682,12 @@
             <label for="bookings-filter-status">Status</label>
             <select id="bookings-filter-status">
               <option value="">All Statuses</option>
-              <option value="pending">Pending</option>
-              <option value="confirmed">Confirmed</option>
-              <option value="cancelled">Cancelled</option>
+              <option value="pending">Awaiting Confirmation</option>
+              <option value="confirmed">Awaiting Payment</option>
+              <option value="paid">Paid</option>
+              <option value="checked_in">Awaiting Check-in</option>
+              <option value="completed">Completed</option>
+              <option value="cancelled">Rejected</option>
             </select>
           </div>
           <div class="admin-form-group">
@@ -366,17 +732,14 @@
     <section id="calendar-section" class="admin-section" style="display: none;">
       <h2>Calendar Management</h2>
       
-      <!-- Room Selection for Calendar -->
+      <!-- Room Tabs for Calendar -->
       <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <div class="admin-form-group">
-          <label for="calendar-room-select">Select Room</label>
-          <select id="calendar-room-select">
-            <option value="">All Rooms</option>
-            <option value="Basement — Queen">Basement — Queen</option>
-            <option value="Ground floor — Queen bed">Ground floor — Queen bed</option>
-            <option value="Ground floor — Twin beds">Ground floor — Twin beds</option>
-            <option value="Second floor (entire) — Queen bed">Second floor (entire) — Queen bed</option>
-          </select>
+        <div class="calendar-room-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; flex-wrap: wrap;">
+          <button class="calendar-room-tab active" data-room="">All Rooms</button>
+          <button class="calendar-room-tab" data-room="Basement — Queen">Basement — Queen</button>
+          <button class="calendar-room-tab" data-room="Ground floor — Queen bed">Ground floor — Queen bed</button>
+          <button class="calendar-room-tab" data-room="Ground floor — Twin beds">Ground floor — Twin beds</button>
+          <button class="calendar-room-tab" data-room="Second floor (entire) — Queen bed">Second floor (entire) — Queen bed</button>
         </div>
         <div class="admin-form-actions" style="margin-top: 16px;">
           <button id="calendar-refresh" class="admin-btn admin-btn-primary">Refresh Calendar</button>
@@ -385,6 +748,7 @@
         <div id="airbnb-sync-status" style="margin-top: 16px; padding: 12px; background: var(--bg-secondary, #f7fafc); border-radius: 8px; display: none;">
           <div id="airbnb-sync-status-text"></div>
         </div>
+        <!-- Last Sync Status removed per user request -->
       </div>
 
       <!-- Calendar View -->
@@ -393,11 +757,17 @@
           Loading calendar...
         </div>
         <div id="admin-calendar-grid" style="display: none;"></div>
+        <!-- Calendar Navigation -->
+        <div class="calendar-navigation" style="display: flex; justify-content: center; gap: 12px; margin-top: 16px; align-items: center; flex-wrap: nowrap; max-width: 100%; width: 100%; padding: 0 20px;">
+          <button id="calendar-prev" class="admin-btn admin-btn-secondary" style="min-width: 100px; white-space: nowrap;">← Previous 3 Months</button>
+          <button id="calendar-reset" class="admin-btn admin-btn-secondary" style="min-width: 100px; white-space: nowrap;">Reset to Current</button>
+          <button id="calendar-next" class="admin-btn admin-btn-secondary" style="min-width: 100px; white-space: nowrap;">Next 3 Months →</button>
+        </div>
       </div>
 
       <!-- Manual Date Blocking -->
       <div class="admin-form" style="margin-top: 32px; background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px;">
-        <h3>Block Date Manually</h3>
+        <h3 style="color: #000;">Block Date Manually</h3>
         <div class="admin-form-row">
           <div class="admin-form-group">
             <label for="block-room-select">Room</label>
@@ -410,12 +780,18 @@
             </select>
           </div>
           <div class="admin-form-group">
-            <label for="block-date">Date</label>
-            <input type="date" id="block-date" required>
-          </div>
-          <div class="admin-form-group">
             <label for="block-reason">Reason (Optional)</label>
             <input type="text" id="block-reason" placeholder="e.g., Maintenance">
+          </div>
+        </div>
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label for="block-date-from" style="cursor: pointer;">Date From</label>
+            <input type="date" id="block-date-from" required style="scroll-margin: 0;">
+          </div>
+          <div class="admin-form-group">
+            <label for="block-date-to" style="cursor: pointer;">Date To</label>
+            <input type="date" id="block-date-to" required style="scroll-margin: 0;">
           </div>
         </div>
         <div class="admin-form-actions">
@@ -735,11 +1111,69 @@
         <div id="current-images" class="admin-images-grid"></div>
       </div>
     </section>
+
+    <!-- Account Management Section -->
+    <section id="accounts-section" class="admin-section" style="display: none;">
+      <h2>Account Management</h2>
+      
+      <!-- Filters and Actions -->
+      <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label for="accounts-search-name">Search by Name</label>
+            <input type="text" id="accounts-search-name" placeholder="Enter name to search...">
+          </div>
+          <div class="admin-form-group">
+            <label for="accounts-filter-month">Filter by Month</label>
+            <select id="accounts-filter-month">
+              <option value="">All Months</option>
+              <option value="01">January</option>
+              <option value="02">February</option>
+              <option value="03">March</option>
+              <option value="04">April</option>
+              <option value="05">May</option>
+              <option value="06">June</option>
+              <option value="07">July</option>
+              <option value="08">August</option>
+              <option value="09">September</option>
+              <option value="10">October</option>
+              <option value="11">November</option>
+              <option value="12">December</option>
+            </select>
+          </div>
+          <div class="admin-form-group">
+            <label for="accounts-filter-year">Filter by Year</label>
+            <select id="accounts-filter-year">
+              <option value="">All Years</option>
+            </select>
+          </div>
+        </div>
+        <div class="admin-form-actions" style="margin-top: 16px;">
+          <button id="accounts-filter-apply" class="admin-btn admin-btn-primary">Apply Filters</button>
+          <button id="accounts-filter-reset" class="admin-btn admin-btn-secondary">Reset</button>
+          <button id="accounts-refresh" class="admin-btn admin-btn-secondary">Refresh</button>
+          <button id="accounts-copy-emails" class="admin-btn admin-btn-secondary">Copy All Emails</button>
+          <button id="accounts-copy-phones" class="admin-btn admin-btn-secondary">Copy All Phones</button>
+        </div>
+      </div>
+
+      <!-- Users List -->
+      <div id="accounts-list-container">
+        <div id="accounts-loading" style="text-align: center; padding: 40px;">
+          Loading accounts...
+        </div>
+        <div id="accounts-list" style="display: none;"></div>
+        <div id="accounts-empty" style="display: none; text-align: center; padding: 40px; color: #718096;">
+          No accounts found.
+        </div>
+      </div>
+    </section>
   </div>
 
-  <script src="utils.js?v=13"></script>
-  <script src="script.js?v=13"></script>
-  <script src="admin.js?v=13"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
+  <script src="utils.js?v=34"></script>
+  <script src="script.js?v=34"></script>
+  <script src="admin.js?v=34"></script>
 </body>
 </html>
 

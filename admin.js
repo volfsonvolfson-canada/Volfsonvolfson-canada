@@ -42,16 +42,55 @@ function adminLogout() {
   window.location.href = 'admin-login.html';
 }
 
-// Navigation between sections
+// Two-level navigation system
+let currentPrimary = 'bookings'; // Default primary section
+
+// Switch primary section (Bookings Management, Content Management, Account Management)
+function switchPrimarySection(primaryName) {
+  currentPrimary = primaryName;
+  
+  // Remove active class from all primary tabs
+  document.querySelectorAll('.admin-nav-tab-primary').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  
+  // Add active class to clicked primary tab
+  const activePrimaryTab = document.querySelector(`[data-primary="${primaryName}"]`);
+  if (activePrimaryTab) {
+    activePrimaryTab.classList.add('active');
+  }
+  
+  // Hide all secondary tab groups
+  document.querySelectorAll('.admin-nav-tabs-secondary').forEach(group => {
+    group.classList.add('hidden');
+  });
+  
+  // Show secondary tabs for selected primary section
+  const secondaryTabs = document.querySelector(`.admin-nav-tabs-secondary[data-primary="${primaryName}"]`);
+  if (secondaryTabs) {
+    secondaryTabs.classList.remove('hidden');
+  }
+  
+  // Activate first secondary tab (Dashboard) for the selected primary section
+  if (secondaryTabs) {
+    const firstSecondaryTab = secondaryTabs.querySelector('.admin-nav-tab-secondary');
+    if (firstSecondaryTab) {
+      const sectionName = firstSecondaryTab.getAttribute('data-section');
+      showSection(sectionName);
+    }
+  }
+}
+
+// Navigation between sections (secondary level)
 function showSection(sectionName) {
   // Hide all sections
   document.querySelectorAll('.admin-section').forEach(section => {
     section.style.display = 'none';
   });
   
-  // Remove active class from all nav buttons
-  document.querySelectorAll('.admin-nav-btn').forEach(btn => {
-    btn.classList.remove('active');
+  // Remove active class from all secondary nav tabs
+  document.querySelectorAll('.admin-nav-tab-secondary').forEach(tab => {
+    tab.classList.remove('active');
   });
   
   // Show selected section
@@ -60,10 +99,10 @@ function showSection(sectionName) {
     targetSection.style.display = 'block';
   }
   
-  // Add active class to clicked button
-  const activeBtn = document.querySelector(`[data-section="${sectionName}"]`);
-  if (activeBtn) {
-    activeBtn.classList.add('active');
+  // Add active class to clicked secondary tab
+  const activeTab = document.querySelector(`[data-section="${sectionName}"]`);
+  if (activeTab) {
+    activeTab.classList.add('active');
   }
   
   // Load section data
@@ -104,7 +143,21 @@ function loadSectionData(sectionName) {
       loadBlockedDates();
       initCalendarBlocking();
       break;
+    case 'accounts':
+      loadAccountsData();
+      initAccountsFilters();
+      break;
+    case 'bookings-dashboard':
+      updateBookingsDashboardStats();
+      break;
+    case 'content-dashboard':
+      updateContentDashboardStats();
+      break;
+    case 'accounts-dashboard':
+      updateAccountsDashboardStats();
+      break;
     case 'dashboard':
+      // Legacy support
       updateDashboardStats();
       break;
   }
@@ -829,13 +882,25 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize login form
   initAdminLogin();
   
-  // Initialize navigation
-  document.querySelectorAll('.admin-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const section = btn.getAttribute('data-section');
+  // Initialize two-level navigation
+  // Primary level tabs (Bookings Management, Content Management, Account Management)
+  document.querySelectorAll('.admin-nav-tab-primary').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const primary = tab.getAttribute('data-primary');
+      switchPrimarySection(primary);
+    });
+  });
+  
+  // Secondary level tabs (subsections)
+  document.querySelectorAll('.admin-nav-tab-secondary').forEach(tab => {
+    tab.addEventListener('click', () => {
+      const section = tab.getAttribute('data-section');
       showSection(section);
     });
   });
+  
+  // Initialize default primary section (Bookings Management)
+  switchPrimarySection('bookings');
   
   // Initialize logout
   const logoutBtn = document.getElementById('admin-logout');
@@ -1003,8 +1068,29 @@ async function loadBookingsData() {
     // Get filters
     const status = document.getElementById('bookings-filter-status')?.value || '';
     const room = document.getElementById('bookings-filter-room')?.value || '';
-    const dateFrom = document.getElementById('bookings-filter-date-from')?.value || '';
-    const dateTo = document.getElementById('bookings-filter-date-to')?.value || '';
+    
+    // Get date values from Flatpickr or native input
+    const dateFromInput = document.getElementById('bookings-filter-date-from');
+    const dateToInput = document.getElementById('bookings-filter-date-to');
+    
+    let dateFrom = '';
+    let dateTo = '';
+    
+    if (dateFromInput) {
+      if (dateFromInput._flatpickr) {
+        dateFrom = dateFromInput._flatpickr.input.value || '';
+      } else {
+        dateFrom = dateFromInput.value || '';
+      }
+    }
+    
+    if (dateToInput) {
+      if (dateToInput._flatpickr) {
+        dateTo = dateToInput._flatpickr.input.value || '';
+      } else {
+        dateTo = dateToInput.value || '';
+      }
+    }
     
     // Build query params
     const params = new URLSearchParams({ action: 'get_bookings' });
@@ -1052,16 +1138,54 @@ function renderBookingsList(bookings) {
     const card = document.createElement('div');
     card.className = 'booking-card';
     
-    const statusClass = booking.status || 'pending';
+    // Determine status display based on booking status and payment status
+    let statusText = '';
+    let statusClass = booking.status || 'pending';
+    
+    if (booking.status === 'pending') {
+      statusText = 'Awaiting Confirmation';
+      statusClass = 'pending';
+    } else if (booking.status === 'cancelled') {
+      statusText = 'Rejected';
+      statusClass = 'cancelled';
+    } else if (booking.status === 'confirmed') {
+      if (booking.payment_status === 'paid') {
+        // Check if check-in date has passed
+        const checkinDate = new Date(booking.checkin_date + 'T00:00:00');
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        if (checkinDate > today) {
+          statusText = 'Awaiting Check-in';
+          statusClass = 'checked_in';
+        } else {
+          // Check if checkout date has passed
+          const checkoutDate = new Date(booking.checkout_date + 'T00:00:00');
+          if (checkoutDate < today) {
+            statusText = 'Completed';
+            statusClass = 'completed';
+          } else {
+            statusText = 'Awaiting Check-in';
+            statusClass = 'checked_in';
+          }
+        }
+      } else {
+        statusText = 'Awaiting Payment';
+        statusClass = 'confirmed';
+      }
+    } else {
+      statusText = booking.status || 'Pending';
+    }
+    
     const paymentStatusClass = booking.payment_status || 'pending';
     
     card.innerHTML = `
       <div class="booking-card-header">
         <div>
           <h3 style="margin: 0 0 8px 0;">Booking #${booking.id || '—'}</h3>
-          <div style="display: flex; align-items: center;">
-            <span class="booking-status-badge ${statusClass}">${statusClass}</span>
-            <span class="payment-status-badge ${paymentStatusClass}">${paymentStatusClass}</span>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span class="booking-status-badge ${statusClass}">${statusText}</span>
+            ${booking.payment_status === 'paid' ? `<span class="payment-status-badge paid">Paid</span>` : ''}
           </div>
         </div>
         <div style="text-align: right;">
@@ -1115,14 +1239,15 @@ function renderBookingsList(bookings) {
       
       <div class="booking-actions">
         ${booking.status === 'pending' ? `
-          <button class="admin-btn admin-btn-primary" onclick="confirmBooking(${booking.id})">Confirm</button>
-          <button class="admin-btn admin-btn-danger" onclick="cancelBooking(${booking.id})">Cancel</button>
+          <button class="admin-btn admin-btn-primary" onclick="window.confirmBooking(${booking.id})">Confirm</button>
+          <button class="admin-btn admin-btn-danger" onclick="window.cancelBooking(${booking.id})">Reject</button>
+          <button class="admin-btn admin-btn-danger" onclick="window.deleteBooking(${booking.id})">Delete</button>
         ` : ''}
         ${booking.status === 'confirmed' && booking.payment_status !== 'paid' ? `
-          <button class="admin-btn admin-btn-danger" onclick="cancelBooking(${booking.id})">Cancel</button>
+          <button class="admin-btn admin-btn-danger" onclick="window.cancelBooking(${booking.id})">Cancel</button>
         ` : ''}
         ${booking.status === 'confirmed' ? `
-          <button class="admin-btn admin-btn-secondary" onclick="viewBookingDetails(${booking.id})">View Details</button>
+          <button class="admin-btn admin-btn-secondary" onclick="window.viewBookingDetails(${booking.id})">View Details</button>
         ` : ''}
       </div>
     `;
@@ -1156,7 +1281,7 @@ async function confirmBooking(bookingId) {
     if (result.success) {
       showStatus('Booking confirmed successfully!');
       loadBookingsData();
-      updateDashboardStats();
+      updateBookingsDashboardStats();
     } else {
       throw new Error(result.error || 'Failed to confirm booking');
     }
@@ -1199,13 +1324,139 @@ async function cancelBooking(bookingId) {
     if (result.success) {
       showStatus('Booking cancelled successfully!');
       loadBookingsData();
-      updateDashboardStats();
+      updateBookingsDashboardStats();
     } else {
       throw new Error(result.error || 'Failed to cancel booking');
     }
   } catch (error) {
     console.error('Cancel booking error:', error);
     showStatus('Failed to cancel booking: ' + error.message, 'error');
+  }
+}
+
+// Delete booking (only for pending bookings)
+async function deleteBooking(bookingId) {
+  console.log('deleteBooking called with bookingId:', bookingId);
+  
+  if (!bookingId || bookingId <= 0) {
+    console.error('Invalid booking ID:', bookingId);
+    showStatus('Invalid booking ID', 'error');
+    return;
+  }
+  
+  // Используем кастомное модальное окно для подтверждения
+  return new Promise((resolve) => {
+    // Создаем модальное окно
+    const modal = document.createElement('div');
+    modal.className = 'delete-confirm-modal active';
+    modal.innerHTML = `
+      <div class="delete-confirm-content">
+        <h3>⚠️ Delete Booking #${bookingId}</h3>
+        <p>
+          <strong>Are you ABSOLUTELY SURE you want to PERMANENTLY DELETE this booking?</strong>
+        </p>
+        <p style="color: #718096;">
+          This will:
+          <ul style="margin: 12px 0; padding-left: 20px; color: #718096;">
+            <li>Delete the booking from the database</li>
+            <li>Remove it from the admin panel</li>
+            <li>Remove it from the user account</li>
+          </ul>
+        </p>
+        <p style="color: #e53e3e; font-weight: 600;">
+          This action CANNOT be undone!
+        </p>
+        <div class="delete-confirm-actions">
+          <button class="delete-confirm-btn delete-confirm-btn-cancel">Cancel</button>
+          <button class="delete-confirm-btn delete-confirm-btn-delete">Delete Permanently</button>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    // Обработчики кнопок
+    const cancelBtn = modal.querySelector('.delete-confirm-btn-cancel');
+    const deleteBtn = modal.querySelector('.delete-confirm-btn-delete');
+    
+    const closeModal = () => {
+      modal.classList.remove('active');
+      setTimeout(() => {
+        document.body.removeChild(modal);
+      }, 300);
+    };
+    
+    cancelBtn.addEventListener('click', () => {
+      console.log('User cancelled deletion');
+      closeModal();
+      resolve(false);
+    });
+    
+    deleteBtn.addEventListener('click', async () => {
+      console.log('User confirmed deletion, proceeding...');
+      closeModal();
+      resolve(true);
+      
+      // Выполняем удаление
+      await performDeleteBooking(bookingId);
+    });
+    
+    // Закрытие по клику вне модального окна
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        console.log('User cancelled deletion (clicked outside)');
+        closeModal();
+        resolve(false);
+      }
+    });
+  });
+}
+
+// Функция для выполнения удаления
+async function performDeleteBooking(bookingId) {
+  try {
+    console.log('Starting deletion process for booking:', bookingId);
+    
+    const formData = new FormData();
+    formData.append('action', 'delete_booking');
+    formData.append('booking_id', bookingId);
+    
+    console.log('Sending delete request to api.php');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    console.log('Response received:', response.status, response.statusText);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Delete booking response error:', response.status, errorText);
+      throw new Error(`HTTP ${response.status}: Failed to delete booking`);
+    }
+    
+    const result = await response.json();
+    console.log('Delete booking result:', result);
+    
+    if (result.success) {
+      console.log('Booking deleted successfully');
+      showStatus('Booking deleted successfully!');
+      
+      // Reload bookings list
+      loadBookingsData();
+      updateBookingsDashboardStats();
+      
+      // Note: Booking is deleted from database
+      // If user has it in localStorage, it will be removed when they refresh their account page
+      // The booking will no longer appear in their account because it's deleted from the database
+    } else {
+      console.error('Delete booking failed:', result.error);
+      throw new Error(result.error || 'Failed to delete booking');
+    }
+  } catch (error) {
+    console.error('Delete booking error:', error);
+    showStatus('Failed to delete booking: ' + error.message, 'error');
   }
 }
 
@@ -1257,6 +1508,27 @@ function initBookingsFilters() {
   const applyBtn = document.getElementById('bookings-filter-apply');
   const resetBtn = document.getElementById('bookings-filter-reset');
   const refreshBtn = document.getElementById('bookings-refresh');
+  const dateFromInput = document.getElementById('bookings-filter-date-from');
+  const dateToInput = document.getElementById('bookings-filter-date-to');
+  
+  // Initialize Flatpickr for date filters
+  if (typeof flatpickr !== 'undefined') {
+    if (dateFromInput && !dateFromInput._flatpickr) {
+      flatpickr(dateFromInput, {
+        dateFormat: 'Y-m-d',
+        allowInput: true,
+        clickOpens: true
+      });
+    }
+    
+    if (dateToInput && !dateToInput._flatpickr) {
+      flatpickr(dateToInput, {
+        dateFormat: 'Y-m-d',
+        allowInput: true,
+        clickOpens: true
+      });
+    }
+  }
   
   if (applyBtn) {
     applyBtn.addEventListener('click', () => {
@@ -1268,8 +1540,24 @@ function initBookingsFilters() {
     resetBtn.addEventListener('click', () => {
       document.getElementById('bookings-filter-status').value = '';
       document.getElementById('bookings-filter-room').value = '';
-      document.getElementById('bookings-filter-date-from').value = '';
-      document.getElementById('bookings-filter-date-to').value = '';
+      
+      // Reset Flatpickr dates
+      if (dateFromInput) {
+        if (dateFromInput._flatpickr) {
+          dateFromInput._flatpickr.clear();
+        } else {
+          dateFromInput.value = '';
+        }
+      }
+      
+      if (dateToInput) {
+        if (dateToInput._flatpickr) {
+          dateToInput._flatpickr.clear();
+        } else {
+          dateToInput.value = '';
+        }
+      }
+      
       loadBookingsData();
     });
   }
@@ -1294,11 +1582,13 @@ async function loadCalendarData() {
   if (gridEl) gridEl.style.display = 'none';
   
   try {
-    const roomSelect = document.getElementById('calendar-room-select');
-    const selectedRoom = roomSelect ? roomSelect.value : '';
+    // Получаем выбранную комнату из активной вкладки
+    const activeTab = document.querySelector('.calendar-room-tab.active');
+    const selectedRoom = activeTab ? activeTab.getAttribute('data-room') : '';
     
-    // Get bookings for selected room or all rooms
-    const params = new URLSearchParams({ action: 'get_bookings', status: 'confirmed,pending' });
+    // Get bookings for selected room - получаем confirmed и paid бронирования
+    // Получаем все бронирования, затем фильтруем на клиенте
+    const params = new URLSearchParams({ action: 'get_bookings' });
     if (selectedRoom) {
       params.append('room_name', selectedRoom);
     }
@@ -1331,7 +1621,10 @@ async function loadCalendarData() {
     if (bookingsResponse.ok) {
       const bookingsResult = await bookingsResponse.json();
       if (bookingsResult.success && bookingsResult.data?.bookings) {
-        bookings = bookingsResult.data.bookings;
+        // Фильтруем только confirmed бронирования (включая те, у которых payment_status = 'paid')
+        bookings = bookingsResult.data.bookings.filter(booking => {
+          return booking.status === 'confirmed';
+        });
       }
     }
     
@@ -1367,14 +1660,17 @@ async function loadCalendarData() {
 }
 
 // Render admin calendar
+let calendarStartMonth = 0; // Смещение для навигации по месяцам
+
 function renderAdminCalendar(container, bookings, blockedDates) {
   container.innerHTML = '';
   container.className = 'admin-calendar-grid';
   
   const today = new Date();
   const months = [];
+  // Показываем 3 месяца, начиная с текущего + смещение
   for (let i = 0; i < 3; i++) {
-    const date = new Date(today.getFullYear(), today.getMonth() + i, 1);
+    const date = new Date(today.getFullYear(), today.getMonth() + calendarStartMonth + i, 1);
     months.push(date);
   }
   
@@ -1385,25 +1681,38 @@ function renderAdminCalendar(container, bookings, blockedDates) {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
     const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
     
-    // Month header
+    // Month header (visual separation between months)
+    if (monthIndex > 0) {
+      // Add empty row for spacing before month header (except for first month)
+      for (let i = 0; i < 7; i++) {
+        const spacer = document.createElement('div');
+        spacer.className = 'admin-calendar-spacer';
+        container.appendChild(spacer);
+      }
+    }
+    
     const monthHeader = document.createElement('div');
-    monthHeader.className = 'admin-calendar-month';
+    monthHeader.className = 'admin-calendar-month-header';
     monthHeader.textContent = monthYear;
     container.appendChild(monthHeader);
     
-    // Day headers
-    weekdays.forEach(day => {
-      const dayHeader = document.createElement('div');
-      dayHeader.className = 'admin-calendar-day-header';
-      dayHeader.textContent = day;
-      container.appendChild(dayHeader);
-    });
+    // Day headers (only for first month, or for each month if you want them repeated)
+    if (monthIndex === 0) {
+      // Day headers only once at the top
+      weekdays.forEach(day => {
+        const dayHeader = document.createElement('div');
+        dayHeader.className = 'admin-calendar-day-header';
+        dayHeader.textContent = day;
+        container.appendChild(dayHeader);
+      });
+    }
     
-    // Empty cells for days before first day of month
+    // Empty cells for days before first day of month (keep them visible but empty for grid continuity)
     for (let i = 0; i < firstDay; i++) {
       const emptyCell = document.createElement('div');
       emptyCell.className = 'admin-calendar-day';
       emptyCell.style.visibility = 'hidden';
+      emptyCell.style.pointerEvents = 'none';
       container.appendChild(emptyCell);
     }
     
@@ -1421,15 +1730,42 @@ function renderAdminCalendar(container, bookings, blockedDates) {
       const cellDate = new Date(date);
       cellDate.setHours(0, 0, 0, 0);
       
-      if (cellDate < todayDate) {
-        dayCell.classList.add('past');
-      } else if (blockedDates.includes(dateString)) {
+      // Проверяем тип бронирования для этой даты
+      const bookingInfo = getBookingInfoForDate(dateString, bookings);
+      const isPast = cellDate < todayDate;
+      
+      if (blockedDates.includes(dateString)) {
         dayCell.classList.add('blocked');
-      } else if (isDateBooked(dateString, bookings)) {
-        dayCell.classList.add('booked');
+        if (isPast) {
+          dayCell.classList.add('past');
+        }
+      } else if (bookingInfo) {
+        // Есть бронирование - определяем тип
+        if (bookingInfo.payment_status === 'paid') {
+          dayCell.classList.add('paid');
+          // Для прошедших дат с оплаченными бронированиями - более тусклый зеленый
+          if (isPast) {
+            dayCell.classList.add('past');
+          }
+        } else if (bookingInfo.status === 'confirmed') {
+          dayCell.classList.add('confirmed');
+          // Для прошедших дат с одобренными бронированиями - более тусклый желтый
+          if (isPast) {
+            dayCell.classList.add('past');
+          }
+        } else {
+          dayCell.classList.add('booked');
+          if (isPast) {
+            dayCell.classList.add('past');
+          }
+        }
         dayCell.classList.add('has-booking');
       } else {
+        // Нет бронирования - доступная дата
         dayCell.classList.add('available');
+        if (isPast) {
+          dayCell.classList.add('past');
+        }
       }
       
       container.appendChild(dayCell);
@@ -1440,51 +1776,92 @@ function renderAdminCalendar(container, bookings, blockedDates) {
 // Block date
 async function blockDate() {
   const roomSelect = document.getElementById('block-room-select');
-  const dateInput = document.getElementById('block-date');
+  const dateFromInput = document.getElementById('block-date-from');
+  const dateToInput = document.getElementById('block-date-to');
   const reasonInput = document.getElementById('block-reason');
   
-  if (!roomSelect || !dateInput) {
-    showStatus('Please fill in all required fields', 'error');
+  if (!roomSelect || !dateFromInput || !dateToInput) {
+    showStatus('Room and date inputs not found', 'error');
     return;
   }
   
   const roomName = roomSelect.value;
-  const date = dateInput.value;
+  const dateFrom = dateFromInput.value;
+  const dateTo = dateToInput.value;
   const reason = reasonInput ? reasonInput.value : '';
   
-  if (!roomName || !date) {
-    showStatus('Please select room and date', 'error');
+  if (!roomName || !dateFrom || !dateTo) {
+    showStatus('Please select a room and date range', 'error');
+    return;
+  }
+  
+  if (new Date(dateFrom) > new Date(dateTo)) {
+    showStatus('Date From must be before Date To', 'error');
     return;
   }
   
   try {
-    const formData = new FormData();
-    formData.append('action', 'block_dates');
-    formData.append('room_name', roomName);
-    formData.append('dates[]', date);
-    if (reason) {
-      formData.append('reason', reason);
+    // Block all dates in the range
+    const dateFromObj = new Date(dateFrom);
+    const dateToObj = new Date(dateTo);
+    const datesToBlock = [];
+    
+    for (let d = new Date(dateFromObj); d <= dateToObj; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      datesToBlock.push(dateStr);
     }
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
+    // Block each date
+    let successCount = 0;
+    let errorCount = 0;
     
-    if (!response.ok) {
-      throw new Error('Failed to block date');
+    for (const blockedDate of datesToBlock) {
+      try {
+        const formData = new FormData();
+        formData.append('action', 'block_date');
+        formData.append('room_name', roomName);
+        formData.append('blocked_date', blockedDate);
+        if (reason) {
+          formData.append('reason', reason);
+        }
+        
+        const response = await fetch('api.php', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to block date`);
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
+      } catch (error) {
+        console.error('Error blocking date:', blockedDate, error);
+        errorCount++;
+      }
     }
     
-    const result = await response.json();
-    
-    if (result.success) {
-      showStatus('Date blocked successfully!');
-      if (dateInput) dateInput.value = '';
-      if (reasonInput) reasonInput.value = '';
-      loadBlockedDates();
+    if (successCount > 0) {
+      showStatus(`Successfully blocked ${successCount} date(s)${errorCount > 0 ? ` (${errorCount} failed)` : ''}!`);
+      // Reload calendar and blocked dates list
       loadCalendarData();
-    } else {
-      throw new Error(result.error || 'Failed to block date');
+      loadBlockedDates();
+      
+      // Clear form
+      roomSelect.value = '';
+      dateFromInput.value = '';
+      dateToInput.value = '';
+      if (reasonInput) {
+        reasonInput.value = '';
+      }
+    } else if (errorCount > 0) {
+      showStatus(`Failed to block dates: ${errorCount} date(s) failed`, 'error');
     }
   } catch (error) {
     console.error('Block date error:', error);
@@ -1575,8 +1952,84 @@ async function loadBlockedDates() {
 function initCalendarBlocking() {
   const blockBtn = document.getElementById('block-date-btn');
   const refreshBtn = document.getElementById('calendar-refresh');
-  const roomSelect = document.getElementById('calendar-room-select');
   const syncBtn = document.getElementById('airbnb-sync-btn');
+  
+  // Prevent scrolling on label click for date inputs
+  const dateFromLabel = document.querySelector('label[for="block-date-from"]');
+  const dateToLabel = document.querySelector('label[for="block-date-to"]');
+  
+  if (dateFromLabel) {
+    dateFromLabel.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const dateFromInput = document.getElementById('block-date-from');
+      if (dateFromInput) {
+        // Use setTimeout to prevent scroll
+        setTimeout(() => {
+          dateFromInput.focus({ preventScroll: true });
+        }, 0);
+      }
+    });
+  }
+  
+  if (dateToLabel) {
+    dateToLabel.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const dateToInput = document.getElementById('block-date-to');
+      if (dateToInput) {
+        // Use setTimeout to prevent scroll
+        setTimeout(() => {
+          dateToInput.focus({ preventScroll: true });
+        }, 0);
+      }
+    });
+  }
+  
+  // Also prevent scroll on input focus
+  const dateFromInput = document.getElementById('block-date-from');
+  const dateToInput = document.getElementById('block-date-to');
+  
+  if (dateFromInput) {
+    // Store current scroll position
+    let scrollY = window.scrollY;
+    
+    dateFromInput.addEventListener('focus', () => {
+      // Restore scroll position immediately
+      window.scrollTo(0, scrollY);
+    });
+    
+    dateFromInput.addEventListener('mousedown', () => {
+      scrollY = window.scrollY;
+    });
+  }
+  
+  if (dateToInput) {
+    // Store current scroll position
+    let scrollY = window.scrollY;
+    
+    dateToInput.addEventListener('focus', () => {
+      // Restore scroll position immediately
+      window.scrollTo(0, scrollY);
+    });
+    
+    dateToInput.addEventListener('mousedown', () => {
+      scrollY = window.scrollY;
+    });
+  }
+  
+  // Инициализация вкладок комнат для календаря
+  const roomTabs = document.querySelectorAll('.calendar-room-tab');
+  roomTabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      // Убираем активный класс со всех вкладок
+      roomTabs.forEach(t => t.classList.remove('active'));
+      // Добавляем активный класс к выбранной вкладке
+      tab.classList.add('active');
+      // Загружаем календарь для выбранной комнаты
+      loadCalendarData();
+    });
+  });
   
   if (blockBtn) {
     blockBtn.addEventListener('click', blockDate);
@@ -1588,8 +2041,28 @@ function initCalendarBlocking() {
     });
   }
   
-  if (roomSelect) {
-    roomSelect.addEventListener('change', () => {
+  // Навигация по календарю
+  const prevBtn = document.getElementById('calendar-prev');
+  const nextBtn = document.getElementById('calendar-next');
+  const resetBtn = document.getElementById('calendar-reset');
+  
+  if (prevBtn) {
+    prevBtn.addEventListener('click', () => {
+      calendarStartMonth -= 3;
+      loadCalendarData();
+    });
+  }
+  
+  if (nextBtn) {
+    nextBtn.addEventListener('click', () => {
+      calendarStartMonth += 3;
+      loadCalendarData();
+    });
+  }
+  
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      calendarStartMonth = 0;
       loadCalendarData();
     });
   }
@@ -1688,7 +2161,8 @@ async function loadAirbnbSyncStatus() {
           return `${s.room_name}: ${s.blocked_count} blocked dates, last synced: ${lastSync}`;
         }).join('<br>');
         
-        statusTextEl.innerHTML = `<strong>Last Sync Status:</strong><br>${statusText}`;
+        // Last Sync Status display removed per user request
+        // statusTextEl.innerHTML = `<strong>Last Sync Status:</strong><br>${statusText}`;
         statusTextEl.style.color = '#4a5568';
         statusEl.style.display = 'block';
       } else {
@@ -1709,6 +2183,123 @@ async function loadAirbnbSyncStatus() {
 // ==========================================
 
 // Update dashboard statistics
+// Update Bookings Management Dashboard statistics
+async function updateBookingsDashboardStats() {
+  try {
+    const params = new URLSearchParams({ action: 'get_bookings' });
+    const response = await fetch('api.php?' + params.toString(), {
+      method: 'GET'
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data?.bookings) {
+        const bookings = result.data.bookings;
+        
+        // Calculate statistics
+        const pending = bookings.filter(b => b.status === 'pending').length;
+        const confirmed = bookings.filter(b => b.status === 'confirmed' && (!b.payment_status || b.payment_status !== 'paid')).length;
+        const cancelled = bookings.filter(b => b.status === 'cancelled').length;
+        const total = bookings.length;
+        
+        // Update UI
+        const pendingEl = document.getElementById('pending-bookings');
+        const totalEl = document.getElementById('total-bookings');
+        const confirmedEl = document.getElementById('confirmed-bookings');
+        const cancelledEl = document.getElementById('cancelled-bookings');
+        
+        if (pendingEl) pendingEl.textContent = pending;
+        if (totalEl) totalEl.textContent = total;
+        if (confirmedEl) confirmedEl.textContent = confirmed;
+        if (cancelledEl) cancelledEl.textContent = cancelled;
+      }
+    }
+  } catch (error) {
+    console.error('Error updating bookings dashboard stats:', error);
+  }
+}
+
+// Update Content Management Dashboard statistics
+async function updateContentDashboardStats() {
+  try {
+    // Update rooms count
+    const roomsResponse = await fetch('api.php?action=get_rooms');
+    if (roomsResponse.ok) {
+      const roomsResult = await roomsResponse.json();
+      if (roomsResult.success && roomsResult.data) {
+        const totalRooms = roomsResult.data.length;
+        const roomsEl = document.getElementById('total-rooms');
+        if (roomsEl) roomsEl.textContent = totalRooms;
+      }
+    }
+    
+    // Update massage services count (if available)
+    // Update yoga services count (if available)
+    // Update last updated time
+    const lastUpdatedEl = document.getElementById('last-updated');
+    if (lastUpdatedEl) {
+      lastUpdatedEl.textContent = new Date().toLocaleString();
+    }
+  } catch (error) {
+    console.error('Error updating content dashboard stats:', error);
+  }
+}
+
+// Update Account Management Dashboard statistics
+async function updateAccountsDashboardStats() {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'get_users');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        const users = result.data;
+        
+        // Calculate statistics
+        const total = users.length;
+        const verified = users.filter(u => u.is_verified).length;
+        
+        // New this month
+        const now = new Date();
+        const currentMonth = now.getMonth();
+        const currentYear = now.getFullYear();
+        const newThisMonth = users.filter(u => {
+          const created = new Date(u.created_at);
+          return created.getMonth() === currentMonth && created.getFullYear() === currentYear;
+        }).length;
+        
+        // Active this week
+        const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        const activeThisWeek = users.filter(u => {
+          if (!u.last_session) return false;
+          const lastSession = new Date(u.last_session);
+          return lastSession >= weekAgo;
+        }).length;
+        
+        // Update UI
+        const totalEl = document.getElementById('total-accounts');
+        const verifiedEl = document.getElementById('verified-accounts');
+        const newMonthEl = document.getElementById('new-accounts-month');
+        const activeWeekEl = document.getElementById('active-accounts-week');
+        
+        if (totalEl) totalEl.textContent = total;
+        if (verifiedEl) verifiedEl.textContent = verified;
+        if (newMonthEl) newMonthEl.textContent = newThisMonth;
+        if (activeWeekEl) activeWeekEl.textContent = activeThisWeek;
+      }
+    }
+  } catch (error) {
+    console.error('Error updating accounts dashboard stats:', error);
+  }
+}
+
+// Legacy function for backward compatibility
 async function updateDashboardStats() {
   try {
     const params = new URLSearchParams({ action: 'get_bookings' });
@@ -1790,8 +2381,335 @@ function isDateBooked(dateString, bookings) {
   });
 }
 
+// Получить информацию о бронировании для конкретной даты
+function getBookingInfoForDate(dateString, bookings) {
+  const checkDate = new Date(dateString + 'T00:00:00');
+  
+  for (const booking of bookings) {
+    const checkin = new Date(booking.checkin_date + 'T00:00:00');
+    const checkout = new Date(booking.checkout_date + 'T00:00:00');
+    
+    if (checkDate >= checkin && checkDate < checkout) {
+      return booking;
+    }
+  }
+  
+  return null;
+}
+
+// Account Management functions
+let allAccounts = [];
+let filteredAccounts = [];
+
+// Load accounts data
+async function loadAccountsData() {
+  const loadingEl = document.getElementById('accounts-loading');
+  const listEl = document.getElementById('accounts-list');
+  const emptyEl = document.getElementById('accounts-empty');
+  
+  if (loadingEl) loadingEl.style.display = 'block';
+  if (listEl) listEl.style.display = 'none';
+  if (emptyEl) emptyEl.style.display = 'none';
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'get_users');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        allAccounts = result.data;
+        filteredAccounts = [...allAccounts];
+        renderAccountsList();
+        populateYearFilter();
+      } else {
+        allAccounts = [];
+        filteredAccounts = [];
+        renderAccountsList();
+      }
+    } else {
+      console.error('Failed to load accounts');
+      allAccounts = [];
+      filteredAccounts = [];
+      renderAccountsList();
+    }
+  } catch (error) {
+    console.error('Error loading accounts:', error);
+    allAccounts = [];
+    filteredAccounts = [];
+    renderAccountsList();
+  } finally {
+    if (loadingEl) loadingEl.style.display = 'none';
+  }
+}
+
+// Render accounts list
+function renderAccountsList() {
+  const listEl = document.getElementById('accounts-list');
+  const emptyEl = document.getElementById('accounts-empty');
+  
+  if (!listEl || !emptyEl) return;
+  
+  if (filteredAccounts.length === 0) {
+    listEl.style.display = 'none';
+    emptyEl.style.display = 'block';
+    return;
+  }
+  
+  listEl.style.display = 'block';
+  emptyEl.style.display = 'none';
+  
+  listEl.innerHTML = filteredAccounts.map(user => {
+    const createdDate = new Date(user.created_at);
+    const formattedDate = createdDate.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    });
+    
+    const lastSession = user.last_session ? new Date(user.last_session).toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'long', 
+      day: 'numeric' 
+    }) : 'Never';
+    
+    return `
+      <div class="user-card" data-user-id="${user.id}">
+        <div class="user-card-header">
+          <h3>${escapeHtml(user.name)}</h3>
+          <button class="admin-btn admin-btn-danger" onclick="deleteUser(${user.id})">Delete</button>
+        </div>
+        <div class="user-details-grid">
+          <div class="user-detail-item">
+            <span class="user-detail-label">Email</span>
+            <span class="user-detail-value">${escapeHtml(user.email)}</span>
+          </div>
+          <div class="user-detail-item">
+            <span class="user-detail-label">Phone</span>
+            <span class="user-detail-value">${escapeHtml(user.phone || 'N/A')}</span>
+          </div>
+          <div class="user-detail-item">
+            <span class="user-detail-label">Additional Phone</span>
+            <span class="user-detail-value">${escapeHtml(user.phone2 || 'N/A')}</span>
+          </div>
+          <div class="user-detail-item">
+            <span class="user-detail-label">Registered</span>
+            <span class="user-detail-value">${formattedDate}</span>
+          </div>
+          <div class="user-detail-item">
+            <span class="user-detail-label">Last Session</span>
+            <span class="user-detail-value">${lastSession}</span>
+          </div>
+          <div class="user-detail-item">
+            <span class="user-detail-label">Verified</span>
+            <span class="user-detail-value">${user.is_verified ? 'Yes' : 'No'}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Populate year filter
+function populateYearFilter() {
+  const yearSelect = document.getElementById('accounts-filter-year');
+  if (!yearSelect) return;
+  
+  const years = new Set();
+  allAccounts.forEach(user => {
+    const year = new Date(user.created_at).getFullYear();
+    years.add(year);
+  });
+  
+  const sortedYears = Array.from(years).sort((a, b) => b - a);
+  
+  yearSelect.innerHTML = '<option value="">All Years</option>' + 
+    sortedYears.map(year => `<option value="${year}">${year}</option>`).join('');
+}
+
+// Initialize accounts filters
+function initAccountsFilters() {
+  const applyBtn = document.getElementById('accounts-filter-apply');
+  const resetBtn = document.getElementById('accounts-filter-reset');
+  const refreshBtn = document.getElementById('accounts-refresh');
+  const copyEmailsBtn = document.getElementById('accounts-copy-emails');
+  const copyPhonesBtn = document.getElementById('accounts-copy-phones');
+  const searchInput = document.getElementById('accounts-search-name');
+  
+  if (applyBtn) {
+    applyBtn.addEventListener('click', applyAccountsFilters);
+  }
+  
+  if (resetBtn) {
+    resetBtn.addEventListener('click', resetAccountsFilters);
+  }
+  
+  if (refreshBtn) {
+    refreshBtn.addEventListener('click', loadAccountsData);
+  }
+  
+  if (copyEmailsBtn) {
+    copyEmailsBtn.addEventListener('click', copyAllEmails);
+  }
+  
+  if (copyPhonesBtn) {
+    copyPhonesBtn.addEventListener('click', copyAllPhones);
+  }
+  
+  if (searchInput) {
+    searchInput.addEventListener('keyup', (e) => {
+      if (e.key === 'Enter') {
+        applyAccountsFilters();
+      }
+    });
+  }
+}
+
+// Apply accounts filters
+function applyAccountsFilters() {
+  const searchName = document.getElementById('accounts-search-name')?.value.trim().toLowerCase() || '';
+  const filterMonth = document.getElementById('accounts-filter-month')?.value || '';
+  const filterYear = document.getElementById('accounts-filter-year')?.value || '';
+  
+  filteredAccounts = allAccounts.filter(user => {
+    // Name search
+    if (searchName && !user.name.toLowerCase().includes(searchName)) {
+      return false;
+    }
+    
+    // Month filter
+    if (filterMonth) {
+      const userMonth = String(new Date(user.created_at).getMonth() + 1).padStart(2, '0');
+      if (userMonth !== filterMonth) {
+        return false;
+      }
+    }
+    
+    // Year filter
+    if (filterYear) {
+      const userYear = new Date(user.created_at).getFullYear().toString();
+      if (userYear !== filterYear) {
+        return false;
+      }
+    }
+    
+    return true;
+  });
+  
+  renderAccountsList();
+}
+
+// Reset accounts filters
+function resetAccountsFilters() {
+  const searchInput = document.getElementById('accounts-search-name');
+  const monthSelect = document.getElementById('accounts-filter-month');
+  const yearSelect = document.getElementById('accounts-filter-year');
+  
+  if (searchInput) searchInput.value = '';
+  if (monthSelect) monthSelect.value = '';
+  if (yearSelect) yearSelect.value = '';
+  
+  filteredAccounts = [...allAccounts];
+  renderAccountsList();
+}
+
+// Copy all emails
+async function copyAllEmails() {
+  const emails = filteredAccounts.map(user => user.email).filter(email => email).join('\n');
+  
+  if (!emails) {
+    alert('No emails to copy');
+    return;
+  }
+  
+  try {
+    await navigator.clipboard.writeText(emails);
+    alert(`Copied ${filteredAccounts.length} email(s) to clipboard`);
+  } catch (error) {
+    console.error('Failed to copy emails:', error);
+    alert('Failed to copy emails to clipboard');
+  }
+}
+
+// Copy all phones
+async function copyAllPhones() {
+  const phones = filteredAccounts
+    .map(user => {
+      const phones = [];
+      if (user.phone) phones.push(user.phone);
+      if (user.phone2) phones.push(user.phone2);
+      return phones;
+    })
+    .flat()
+    .filter(phone => phone)
+    .join('\n');
+  
+  if (!phones) {
+    alert('No phones to copy');
+    return;
+  }
+  
+  try {
+    await navigator.clipboard.writeText(phones);
+    const phoneCount = phones.split('\n').length;
+    alert(`Copied ${phoneCount} phone number(s) to clipboard`);
+  } catch (error) {
+    console.error('Failed to copy phones:', error);
+    alert('Failed to copy phones to clipboard');
+  }
+}
+
+// Delete user
+async function deleteUser(userId) {
+  if (!confirm('Are you sure you want to delete this user account? This action cannot be undone.')) {
+    return;
+  }
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'delete_user');
+    formData.append('user_id', userId);
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success) {
+        // Remove from arrays
+        allAccounts = allAccounts.filter(user => user.id !== userId);
+        filteredAccounts = filteredAccounts.filter(user => user.id !== userId);
+        renderAccountsList();
+        alert('User account deleted successfully');
+      } else {
+        alert('Failed to delete user account: ' + (result.error || 'Unknown error'));
+      }
+    } else {
+      alert('Failed to delete user account');
+    }
+  } catch (error) {
+    console.error('Error deleting user:', error);
+    alert('Error deleting user account');
+  }
+}
+
+// Escape HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 // Export functions for global access
 window.showSection = showSection;
+window.deleteUser = deleteUser;
 window.editRoom = (index) => { /* TODO: Implement edit room */ };
 window.deleteRoom = (index) => { /* TODO: Implement delete room */ };
 window.editMassage = (index) => { /* TODO: Implement edit massage */ };
@@ -1801,6 +2719,7 @@ window.deleteYoga = (index) => { /* TODO: Implement delete yoga */ };
 window.deleteImage = (index) => { /* TODO: Implement delete image */ };
 window.confirmBooking = confirmBooking;
 window.cancelBooking = cancelBooking;
+window.deleteBooking = deleteBooking;
 window.viewBookingDetails = viewBookingDetails;
 window.unblockDate = unblockDate;
 
