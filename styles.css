@@ -158,6 +158,159 @@
   color: var(--text) !important;
 }
 
+/* Flatpickr navigation arrows - make them visible on dark background */
+/* Month navigation arrows (left-right) */
+.flatpickr-prev-month,
+.flatpickr-next-month {
+  color: var(--text) !important;
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+}
+
+.flatpickr-prev-month:hover,
+.flatpickr-next-month:hover {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.flatpickr-prev-month svg,
+.flatpickr-next-month svg {
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+  color: var(--text) !important;
+}
+
+.flatpickr-prev-month:hover svg,
+.flatpickr-next-month:hover svg {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.flatpickr-prev-month path,
+.flatpickr-next-month path {
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+}
+
+.flatpickr-prev-month:hover path,
+.flatpickr-next-month:hover path {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Year navigation arrows (up-down) - скрыты, так как используется выпадающий список */
+.flatpickr-prev-year,
+.flatpickr-next-year {
+  display: none !important;
+}
+
+
+/* Year dropdown navigation arrows */
+.flatpickr-yearDropdown-prev,
+.flatpickr-yearDropdown-next,
+.flatpickr-yearDropdown-years button,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-next,
+.flatpickr-yearDropdown-years [class*="prev"],
+.flatpickr-yearDropdown-years [class*="next"] {
+  color: var(--text) !important;
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+}
+
+.flatpickr-yearDropdown-prev:hover,
+.flatpickr-yearDropdown-next:hover,
+.flatpickr-yearDropdown-years button:hover,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev:hover,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-next:hover,
+.flatpickr-yearDropdown-years [class*="prev"]:hover,
+.flatpickr-yearDropdown-years [class*="next"]:hover {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.flatpickr-yearDropdown-prev svg,
+.flatpickr-yearDropdown-next svg,
+.flatpickr-yearDropdown-years button svg,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev svg,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-next svg,
+.flatpickr-yearDropdown-years [class*="prev"] svg,
+.flatpickr-yearDropdown-years [class*="next"] svg {
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+  color: var(--text) !important;
+}
+
+.flatpickr-yearDropdown-prev:hover svg,
+.flatpickr-yearDropdown-next:hover svg,
+.flatpickr-yearDropdown-years button:hover svg,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev:hover svg,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-next:hover svg,
+.flatpickr-yearDropdown-years [class*="prev"]:hover svg,
+.flatpickr-yearDropdown-years [class*="next"]:hover svg {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
+.flatpickr-yearDropdown-prev path,
+.flatpickr-yearDropdown-next path,
+.flatpickr-yearDropdown-years button path,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev path,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-next path,
+.flatpickr-yearDropdown-years [class*="prev"] path,
+.flatpickr-yearDropdown-years [class*="next"] path {
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+}
+
+.flatpickr-yearDropdown-prev:hover path,
+.flatpickr-yearDropdown-next:hover path,
+.flatpickr-yearDropdown-years button:hover path,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev:hover path,
+.flatpickr-yearDropdown-years .flatpickr-yearDropdown-next:hover path,
+.flatpickr-yearDropdown-years [class*="prev"]:hover path,
+.flatpickr-yearDropdown-years [class*="next"]:hover path {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+/* Universal catch-all for all navigation arrows */
+.flatpickr [class*="prev"],
+.flatpickr [class*="next"] {
+  color: var(--text) !important;
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+}
+
+.flatpickr [class*="prev"]:hover,
+.flatpickr [class*="next"]:hover {
+  color: #ffffff !important;
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+}
+
+.flatpickr [class*="prev"] svg,
+.flatpickr [class*="next"] svg,
+.flatpickr [class*="prev"] path,
+.flatpickr [class*="next"] path {
+  fill: var(--text) !important;
+  stroke: var(--text) !important;
+  color: var(--text) !important;
+}
+
+.flatpickr [class*="prev"]:hover svg,
+.flatpickr [class*="next"]:hover svg,
+.flatpickr [class*="prev"]:hover path,
+.flatpickr [class*="next"]:hover path {
+  fill: #ffffff !important;
+  stroke: #ffffff !important;
+  color: #ffffff !important;
+}
+
 .reminder-block { 
   margin-top: 16px; 
   display: flex; 

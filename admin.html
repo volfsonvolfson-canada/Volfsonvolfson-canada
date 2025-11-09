@@ -352,6 +352,17 @@
         color: #e53e3e;
       }
       
+      .admin-calendar-day.pending {
+        background: #fed7aa;
+        color: #9a3412;
+      }
+      
+      .admin-calendar-day.pending.past {
+        background: #fed7aa;
+        color: #9a3412;
+        opacity: 0.6;
+      }
+      
       .admin-calendar-day.confirmed {
         background: #fef3c7;
         color: #92400e;
@@ -374,6 +385,17 @@
         opacity: 0.6;
       }
       
+      .admin-calendar-day.massage.pending {
+        background: #fbcfe8;
+        color: #831843;
+      }
+      
+      .admin-calendar-day.massage.pending.past {
+        background: #fbcfe8;
+        color: #831843;
+        opacity: 0.6;
+      }
+      
       .admin-calendar-day.available.past {
         background: #e2e8f0;
         color: #718096;
@@ -382,6 +404,17 @@
       .admin-calendar-day.blocked {
         background: #4a5568;
         color: #ffffff;
+      }
+      
+      .admin-calendar-day.massage {
+        background: #fce7f3;
+        color: #9f1239;
+      }
+      
+      .admin-calendar-day.massage.past {
+        background: #fce7f3;
+        color: #9f1239;
+        opacity: 0.6;
       }
       
       .calendar-room-tabs {
@@ -393,7 +426,7 @@
       }
       
       .calendar-room-tab {
-        padding: 10px 20px;
+        padding: 8px 12px;
         background: none;
         border: none;
         border-bottom: 3px solid transparent;
@@ -402,6 +435,7 @@
         font-size: 14px;
         color: #718096;
         transition: all 0.2s;
+        white-space: nowrap;
       }
       
       .calendar-room-tab:hover {
@@ -554,6 +588,319 @@
         gap: 10px;
         margin-top: 16px;
       }
+      /* Flatpickr month dropdown styles - dark gray background */
+      .flatpickr-monthDropdown-months {
+        background: #2d3748 !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #4a5568 !important;
+      }
+      
+      .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month {
+        background: #2d3748 !important;
+        color: #e2e8f0 !important;
+      }
+      
+      .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month:hover {
+        background: #4a5568 !important;
+        color: #ffffff !important;
+      }
+      
+      .flatpickr-monthDropdown-months .flatpickr-monthDropdown-month.selected {
+        background: #3182ce !important;
+        color: #ffffff !important;
+      }
+      
+      /* Flatpickr year dropdown styles - dark gray background */
+      .flatpickr-yearDropdown-years {
+        background: #2d3748 !important;
+        color: #e2e8f0 !important;
+        border: 1px solid #4a5568 !important;
+      }
+      
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-year {
+        background: #2d3748 !important;
+        color: #e2e8f0 !important;
+      }
+      
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-year:hover {
+        background: #4a5568 !important;
+        color: #ffffff !important;
+      }
+      
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-year.selected {
+        background: #3182ce !important;
+        color: #ffffff !important;
+      }
+      
+      /* Flatpickr year dropdown arrows - same color as year text */
+      .flatpickr-yearDropdown-prev,
+      .flatpickr-yearDropdown-next,
+      .flatpickr-yearDropdown-years button,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-next,
+      .flatpickr-yearDropdown-years [class*="prev"],
+      .flatpickr-yearDropdown-years [class*="next"],
+      .flatpickr-yearDropdown-years > * {
+        color: #e2e8f0 !important;
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr-yearDropdown-prev:hover,
+      .flatpickr-yearDropdown-next:hover,
+      .flatpickr-yearDropdown-years button:hover,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev:hover,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-next:hover,
+      .flatpickr-yearDropdown-years [class*="prev"]:hover,
+      .flatpickr-yearDropdown-years [class*="next"]:hover,
+      .flatpickr-yearDropdown-years > *:hover {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      /* Flatpickr year dropdown arrows SVG */
+      .flatpickr-yearDropdown-prev svg,
+      .flatpickr-yearDropdown-next svg,
+      .flatpickr-yearDropdown-years button svg,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev svg,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-next svg,
+      .flatpickr-yearDropdown-years [class*="prev"] svg,
+      .flatpickr-yearDropdown-years [class*="next"] svg,
+      .flatpickr-yearDropdown-years > * svg {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr-yearDropdown-prev:hover svg,
+      .flatpickr-yearDropdown-next:hover svg,
+      .flatpickr-yearDropdown-years button:hover svg,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev:hover svg,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-next:hover svg,
+      .flatpickr-yearDropdown-years [class*="prev"]:hover svg,
+      .flatpickr-yearDropdown-years [class*="next"]:hover svg,
+      .flatpickr-yearDropdown-years > *:hover svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      /* Flatpickr year dropdown arrows path */
+      .flatpickr-yearDropdown-prev path,
+      .flatpickr-yearDropdown-next path,
+      .flatpickr-yearDropdown-years button path,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev path,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-next path,
+      .flatpickr-yearDropdown-years [class*="prev"] path,
+      .flatpickr-yearDropdown-years [class*="next"] path,
+      .flatpickr-yearDropdown-years > * path {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr-yearDropdown-prev:hover path,
+      .flatpickr-yearDropdown-next:hover path,
+      .flatpickr-yearDropdown-years button:hover path,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-prev:hover path,
+      .flatpickr-yearDropdown-years .flatpickr-yearDropdown-next:hover path,
+      .flatpickr-yearDropdown-years [class*="prev"]:hover path,
+      .flatpickr-yearDropdown-years [class*="next"]:hover path,
+      .flatpickr-yearDropdown-years > *:hover path {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      /* Flatpickr year navigation arrows in calendar header */
+      .flatpickr-current-month .flatpickr-prev-year,
+      .flatpickr-current-month .flatpickr-next-year {
+        color: #e2e8f0 !important;
+        fill: #e2e8f0 !important;
+      }
+      
+      .flatpickr-current-month .flatpickr-prev-year:hover,
+      .flatpickr-current-month .flatpickr-next-year:hover {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+      }
+      
+      .flatpickr-current-month .flatpickr-prev-year svg,
+      .flatpickr-current-month .flatpickr-next-year svg {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr-current-month .flatpickr-prev-year:hover svg,
+      .flatpickr-current-month .flatpickr-next-year:hover svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      .flatpickr-current-month .flatpickr-prev-year path,
+      .flatpickr-current-month .flatpickr-next-year path {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr-current-month .flatpickr-prev-year:hover path,
+      .flatpickr-current-month .flatpickr-next-year:hover path {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      /* Universal styles for all year navigation arrows */
+      .flatpickr [class*="year"] svg,
+      .flatpickr [class*="year"] path {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr [class*="year"]:hover svg,
+      .flatpickr [class*="year"]:hover path {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      /* Flatpickr month navigation arrows (left-right) */
+      .flatpickr-prev-month,
+      .flatpickr-next-month {
+        color: #e2e8f0 !important;
+        fill: #e2e8f0 !important;
+      }
+      
+      .flatpickr-prev-month:hover,
+      .flatpickr-next-month:hover {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+      }
+      
+      .flatpickr-prev-month svg,
+      .flatpickr-next-month svg {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr-prev-month:hover svg,
+      .flatpickr-next-month:hover svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      .flatpickr-prev-month path,
+      .flatpickr-next-month path {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr-prev-month:hover path,
+      .flatpickr-next-month:hover path {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      /* Flatpickr year navigation arrows (up-down) in dropdown */
+      .flatpickr-yearDropdown-prev,
+      .flatpickr-yearDropdown-next {
+        color: #e2e8f0 !important;
+        fill: #e2e8f0 !important;
+      }
+      
+      .flatpickr-yearDropdown-prev:hover,
+      .flatpickr-yearDropdown-next:hover {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+      }
+      
+      /* All navigation arrows in Flatpickr */
+      .flatpickr .flatpickr-prev-month,
+      .flatpickr .flatpickr-next-month,
+      .flatpickr .flatpickr-prev-year,
+      .flatpickr .flatpickr-next-year,
+      .flatpickr .flatpickr-yearDropdown-prev,
+      .flatpickr .flatpickr-yearDropdown-next {
+        color: #e2e8f0 !important;
+        fill: #e2e8f0 !important;
+      }
+      
+      .flatpickr .flatpickr-prev-month:hover,
+      .flatpickr .flatpickr-next-month:hover,
+      .flatpickr .flatpickr-prev-year:hover,
+      .flatpickr .flatpickr-next-year:hover,
+      .flatpickr .flatpickr-yearDropdown-prev:hover,
+      .flatpickr .flatpickr-yearDropdown-next:hover {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+      }
+      
+      /* All SVG elements in navigation arrows */
+      .flatpickr .flatpickr-prev-month svg,
+      .flatpickr .flatpickr-next-month svg,
+      .flatpickr .flatpickr-prev-year svg,
+      .flatpickr .flatpickr-next-year svg,
+      .flatpickr .flatpickr-yearDropdown-prev svg,
+      .flatpickr .flatpickr-yearDropdown-next svg {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr .flatpickr-prev-month:hover svg,
+      .flatpickr .flatpickr-next-month:hover svg,
+      .flatpickr .flatpickr-prev-year:hover svg,
+      .flatpickr .flatpickr-next-year:hover svg,
+      .flatpickr .flatpickr-yearDropdown-prev:hover svg,
+      .flatpickr .flatpickr-yearDropdown-next:hover svg {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      /* All path elements in navigation arrows */
+      .flatpickr .flatpickr-prev-month path,
+      .flatpickr .flatpickr-next-month path,
+      .flatpickr .flatpickr-prev-year path,
+      .flatpickr .flatpickr-next-year path,
+      .flatpickr .flatpickr-yearDropdown-prev path,
+      .flatpickr .flatpickr-yearDropdown-next path {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr .flatpickr-prev-month:hover path,
+      .flatpickr .flatpickr-next-month:hover path,
+      .flatpickr .flatpickr-prev-year:hover path,
+      .flatpickr .flatpickr-next-year:hover path,
+      .flatpickr .flatpickr-yearDropdown-prev:hover path,
+      .flatpickr .flatpickr-yearDropdown-next:hover path {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
+      /* Universal styles for ALL navigation arrows in Flatpickr (catch-all) */
+      .flatpickr [class*="prev"],
+      .flatpickr [class*="next"] {
+        color: #e2e8f0 !important;
+        fill: #e2e8f0 !important;
+      }
+      
+      .flatpickr [class*="prev"]:hover,
+      .flatpickr [class*="next"]:hover {
+        color: #ffffff !important;
+        fill: #ffffff !important;
+      }
+      
+      .flatpickr [class*="prev"] svg,
+      .flatpickr [class*="next"] svg,
+      .flatpickr [class*="prev"] path,
+      .flatpickr [class*="next"] path {
+        fill: #e2e8f0 !important;
+        stroke: #e2e8f0 !important;
+      }
+      
+      .flatpickr [class*="prev"]:hover svg,
+      .flatpickr [class*="next"]:hover svg,
+      .flatpickr [class*="prev"]:hover path,
+      .flatpickr [class*="next"]:hover path {
+        fill: #ffffff !important;
+        stroke: #ffffff !important;
+      }
+      
     </style>
   </head>
 <body class="admin-body">
@@ -605,6 +952,24 @@
     <!-- Bookings Management - Dashboard Section -->
     <section id="bookings-dashboard-section" class="admin-section">
       <h2>Bookings Management - Dashboard</h2>
+      
+      <!-- Date Filters -->
+      <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label for="bookings-dashboard-date-from">Date From</label>
+            <input type="date" id="bookings-dashboard-date-from" class="dashboard-date-filter">
+          </div>
+          <div class="admin-form-group">
+            <label for="bookings-dashboard-date-to">Date To</label>
+            <input type="date" id="bookings-dashboard-date-to" class="dashboard-date-filter">
+          </div>
+          <div class="admin-form-group" style="display: flex; align-items: flex-end;">
+            <button type="button" id="bookings-dashboard-reset-filter" class="admin-btn admin-btn-secondary" style="margin-left: 10px;">Reset</button>
+          </div>
+        </div>
+      </div>
+      
       <div class="admin-stats">
         <div class="admin-stat-card">
           <h3>Pending Bookings</h3>
@@ -628,6 +993,24 @@
     <!-- Content Management - Dashboard Section -->
     <section id="content-dashboard-section" class="admin-section" style="display: none;">
       <h2>Content Management - Dashboard</h2>
+      
+      <!-- Date Filters -->
+      <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label for="content-dashboard-date-from">Date From</label>
+            <input type="date" id="content-dashboard-date-from" class="dashboard-date-filter">
+          </div>
+          <div class="admin-form-group">
+            <label for="content-dashboard-date-to">Date To</label>
+            <input type="date" id="content-dashboard-date-to" class="dashboard-date-filter">
+          </div>
+          <div class="admin-form-group" style="display: flex; align-items: flex-end;">
+            <button type="button" id="content-dashboard-reset-filter" class="admin-btn admin-btn-secondary" style="margin-left: 10px;">Reset</button>
+          </div>
+        </div>
+      </div>
+      
       <div class="admin-stats">
         <div class="admin-stat-card">
           <h3>Total Rooms</h3>
@@ -651,6 +1034,24 @@
     <!-- Account Management - Dashboard Section -->
     <section id="accounts-dashboard-section" class="admin-section" style="display: none;">
       <h2>Account Management - Dashboard</h2>
+      
+      <!-- Date Filters -->
+      <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+        <div class="admin-form-row">
+          <div class="admin-form-group">
+            <label for="accounts-dashboard-date-from">Date From</label>
+            <input type="date" id="accounts-dashboard-date-from" class="dashboard-date-filter">
+          </div>
+          <div class="admin-form-group">
+            <label for="accounts-dashboard-date-to">Date To</label>
+            <input type="date" id="accounts-dashboard-date-to" class="dashboard-date-filter">
+          </div>
+          <div class="admin-form-group" style="display: flex; align-items: flex-end;">
+            <button type="button" id="accounts-dashboard-reset-filter" class="admin-btn admin-btn-secondary" style="margin-left: 10px;">Reset</button>
+          </div>
+        </div>
+      </div>
+      
       <div class="admin-stats">
         <div class="admin-stat-card">
           <h3>Total Accounts</h3>
@@ -691,13 +1092,14 @@
             </select>
           </div>
           <div class="admin-form-group">
-            <label for="bookings-filter-room">Room</label>
+            <label for="bookings-filter-room">Room / Service</label>
             <select id="bookings-filter-room">
-              <option value="">All Rooms</option>
+              <option value="">All Rooms & Services</option>
               <option value="Basement — Queen">Basement — Queen</option>
               <option value="Ground floor — Queen bed">Ground floor — Queen bed</option>
               <option value="Ground floor — Twin beds">Ground floor — Twin beds</option>
               <option value="Second floor (entire) — Queen bed">Second floor (entire) — Queen bed</option>
+              <option value="Massage">Massage</option>
             </select>
           </div>
           <div class="admin-form-group">
@@ -734,12 +1136,13 @@
       
       <!-- Room Tabs for Calendar -->
       <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
-        <div class="calendar-room-tabs" style="display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; flex-wrap: wrap;">
-          <button class="calendar-room-tab active" data-room="">All Rooms</button>
+        <div class="calendar-room-tabs" style="display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; flex-wrap: nowrap; overflow-x: auto;">
+          <button class="calendar-room-tab active" data-room="">All Bookings</button>
           <button class="calendar-room-tab" data-room="Basement — Queen">Basement — Queen</button>
           <button class="calendar-room-tab" data-room="Ground floor — Queen bed">Ground floor — Queen bed</button>
           <button class="calendar-room-tab" data-room="Ground floor — Twin beds">Ground floor — Twin beds</button>
           <button class="calendar-room-tab" data-room="Second floor (entire) — Queen bed">Second floor (entire) — Queen bed</button>
+          <button class="calendar-room-tab" data-room="Massage">Massage</button>
         </div>
         <div class="admin-form-actions" style="margin-top: 16px;">
           <button id="calendar-refresh" class="admin-btn admin-btn-primary">Refresh Calendar</button>
@@ -760,7 +1163,6 @@
         <!-- Calendar Navigation -->
         <div class="calendar-navigation" style="display: flex; justify-content: center; gap: 12px; margin-top: 16px; align-items: center; flex-wrap: nowrap; max-width: 100%; width: 100%; padding: 0 20px;">
           <button id="calendar-prev" class="admin-btn admin-btn-secondary" style="min-width: 100px; white-space: nowrap;">← Previous 3 Months</button>
-          <button id="calendar-reset" class="admin-btn admin-btn-secondary" style="min-width: 100px; white-space: nowrap;">Reset to Current</button>
           <button id="calendar-next" class="admin-btn admin-btn-secondary" style="min-width: 100px; white-space: nowrap;">Next 3 Months →</button>
         </div>
       </div>
@@ -768,40 +1170,46 @@
       <!-- Manual Date Blocking -->
       <div class="admin-form" style="margin-top: 32px; background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px;">
         <h3 style="color: #000;">Block Date Manually</h3>
+        <form novalidate style="margin: 0;">
         <div class="admin-form-row">
           <div class="admin-form-group">
-            <label for="block-room-select">Room</label>
+            <label for="block-room-select">Bookings</label>
             <select id="block-room-select" required>
-              <option value="">Select Room</option>
+              <option value="">Select Booking</option>
+              <option value="__all__">For all bookings</option>
               <option value="Basement — Queen">Basement — Queen</option>
               <option value="Ground floor — Queen bed">Ground floor — Queen bed</option>
               <option value="Ground floor — Twin beds">Ground floor — Twin beds</option>
               <option value="Second floor (entire) — Queen bed">Second floor (entire) — Queen bed</option>
+              <option value="Massage">Massage</option>
             </select>
+            <small style="color: #718096; font-size: 0.875rem; margin-top: 4px; display: block;">Select a specific booking type or "For all bookings"<br>to block dates for all rooms and massage</small>
           </div>
           <div class="admin-form-group">
             <label for="block-reason">Reason (Optional)</label>
             <input type="text" id="block-reason" placeholder="e.g., Maintenance">
+            <small style="color: #718096; font-size: 0.875rem; margin-top: 4px; display: block;">Optional reason for blocking these dates<br>(e.g., Maintenance, Holiday, Special event)</small>
           </div>
         </div>
         <div class="admin-form-row">
           <div class="admin-form-group">
-            <label for="block-date-from" style="cursor: pointer;">Date From</label>
-            <input type="date" id="block-date-from" required style="scroll-margin: 0;">
+            <label for="block-date-from">Date From</label>
+            <input type="date" id="block-date-from" required>
           </div>
           <div class="admin-form-group">
-            <label for="block-date-to" style="cursor: pointer;">Date To</label>
-            <input type="date" id="block-date-to" required style="scroll-margin: 0;">
+            <label for="block-date-to">Date To</label>
+            <input type="date" id="block-date-to" required>
           </div>
         </div>
         <div class="admin-form-actions">
-          <button id="block-date-btn" class="admin-btn admin-btn-primary">Block Date</button>
+          <button type="button" id="block-date-btn" class="admin-btn admin-btn-primary">Block Date</button>
         </div>
+        </form>
       </div>
 
       <!-- Blocked Dates List -->
       <div style="margin-top: 32px;">
-        <h3>Blocked Dates</h3>
+        <h3 style="color: #000;">Blocked Dates</h3>
         <div id="blocked-dates-list" style="margin-top: 16px;"></div>
       </div>
     </section>
@@ -1170,10 +1578,10 @@
     </section>
   </div>
 
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
-  <script src="utils.js?v=34"></script>
-  <script src="script.js?v=34"></script>
-  <script src="admin.js?v=34"></script>
+  <script src="utils.js?v=49"></script>
+  <script src="admin.js?v=49"></script>
 </body>
 </html>
 
