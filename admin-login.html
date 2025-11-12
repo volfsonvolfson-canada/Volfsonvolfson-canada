@@ -19,7 +19,7 @@
         <p>Sign in to manage your website content</p>
       </div>
       
-      <form id="admin-login-form" class="admin-login-form">
+      <form id="admin-login-form" class="admin-login-form" data-has-submit-handler="true" novalidate>
         <div class="form-group">
           <label for="admin-username">Username</label>
           <input type="text" id="admin-username" name="username" required placeholder="Enter admin username">
@@ -68,40 +68,51 @@
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
   </footer>
 
-  <script src="script.js"></script>
   <script>
-    // Admin login functionality
+    // Admin login functionality - Initialize BEFORE script.js loads
     const ADMIN_CREDENTIALS = {
       username: 'admin',
       password: 'backtobase2024'
     };
 
-    // Login form handler
-    function initAdminLogin() {
+    // Login form handler - Initialize immediately
+    (function initAdminLogin() {
       const loginForm = document.getElementById('admin-login-form');
-      if (!loginForm) return;
+      if (!loginForm) {
+        // If form not ready, wait for DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', initAdminLogin);
+        return;
+      }
+
+      // Mark form as having submit handler
+      loginForm.dataset.hasSubmitHandler = 'true';
 
       loginForm.addEventListener('submit', (e) => {
         e.preventDefault();
+        e.stopImmediatePropagation();
         
         const username = document.getElementById('admin-username').value;
         const password = document.getElementById('admin-password').value;
         const errorDiv = document.getElementById('admin-login-error');
         
+        if (!username || !password) {
+          errorDiv.textContent = 'Please enter both username and password';
+          errorDiv.style.display = 'block';
+          return;
+        }
+        
         if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
           localStorage.setItem('btb_admin_auth', 'true');
-          // Redirect to bookings page by default
-          window.location.href = 'admin-bookings.html';
+          // Redirect to admin panel
+          window.location.href = 'admin.html';
         } else {
           errorDiv.textContent = 'Invalid username or password';
           errorDiv.style.display = 'block';
         }
       });
-    }
-
-    // Initialize on page load
-    document.addEventListener('DOMContentLoaded', initAdminLogin);
+    })();
   </script>
+  <script src="script.js"></script>
 </body>
 </html>
 

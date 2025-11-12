@@ -1,4 +1,8 @@
 <?php
+// Отключаем вывод ошибок для API (чтобы не ломать JSON ответы)
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
 // Include common utilities
 require_once 'common.php';
 

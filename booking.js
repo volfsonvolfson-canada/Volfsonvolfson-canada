@@ -1165,39 +1165,80 @@ async function handleMassageForm(form) {
     // Очищаем все ошибки перед отправкой
     clearFormErrors(form);
 
-    // Здесь можно добавить отправку данных на сервер через API
-    // Пока используем старое поведение - сохраняем в localStorage
-    document.dispatchEvent(new CustomEvent('btb:order:record', { detail: {
-      kind: 'massage',
-      type: formData.type || '',
-      duration: formData.duration || '',
-      date: formData.date || '',
-      time: formData.time || '',
-      name: formData.name || '',
-      phone: formData.phone || '',
-      email: formData.email || '',
-      withRoom: formData.withRoom || '',
-      ts: Date.now(),
-    }}));
-
-    // Показываем сообщение об успехе
-    alert(`Massage booking (${formData.type}, ${formData.duration} min, staying: ${formData.withRoom}) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`);
+    // Отправляем данные на сервер через API
+    console.log('MassageAPI: Creating massage booking...', formData);
     
-    // Показываем напоминание о комнате, если нужно
-    const reminder = document.getElementById('room-reminder');
-    if (formData.withRoom === 'yes' && reminder) {
-      // Проверяем, есть ли уже бронирование комнаты
-      const orders = JSON.parse(localStorage.getItem('btb_orders') || '[]');
-      const hasRoomOrder = orders.some(order => order.kind === 'room');
-      if (!hasRoomOrder) {
-        localStorage.setItem('btb_room_reminder_shown', '1');
-        reminder.style.display = 'block';
-        reminder.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    try {
+      const formDataToSend = new FormData();
+      formDataToSend.append('action', 'create_massage_booking');
+      formDataToSend.append('massage_type', formData.type);
+      formDataToSend.append('duration', formData.duration);
+      formDataToSend.append('massage_date', formData.date);
+      formDataToSend.append('massage_time', formData.time);
+      formDataToSend.append('guest_name', formData.name);
+      formDataToSend.append('email', formData.email);
+      formDataToSend.append('phone', formData.phone);
+      if (formData.withRoom) {
+        formDataToSend.append('with_room', formData.withRoom);
       }
+      
+      const response = await fetch('api.php', {
+        method: 'POST',
+        body: formDataToSend
+      });
+      
+      console.log('MassageAPI: Response status:', response.status);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('MassageAPI: HTTP error:', response.status, errorText);
+        throw new Error(`Failed to create massage booking: HTTP ${response.status}`);
+      }
+      
+      const result = await response.json();
+      console.log('MassageAPI: API response:', result);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to create massage booking');
+      }
+      
+      // Сохраняем в localStorage для истории
+      document.dispatchEvent(new CustomEvent('btb:order:record', { detail: {
+        kind: 'massage',
+        type: formData.type || '',
+        duration: formData.duration || '',
+        date: formData.date || '',
+        time: formData.time || '',
+        name: formData.name || '',
+        phone: formData.phone || '',
+        email: formData.email || '',
+        withRoom: formData.withRoom || '',
+        ts: Date.now(),
+      }}));
+
+      // Показываем сообщение об успехе
+      alert(`Massage booking (${formData.type}, ${formData.duration} min, staying: ${formData.withRoom}) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`);
+      
+      // Показываем напоминание о комнате, если нужно
+      const reminder = document.getElementById('room-reminder');
+      if (formData.withRoom === 'yes' && reminder) {
+        // Проверяем, есть ли уже бронирование комнаты
+        const orders = JSON.parse(localStorage.getItem('btb_orders') || '[]');
+        const hasRoomOrder = orders.some(order => order.kind === 'room');
+        if (!hasRoomOrder) {
+          localStorage.setItem('btb_room_reminder_shown', '1');
+          reminder.style.display = 'block';
+          reminder.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }
+      
+      form.reset();
+      return true;
+    } catch (error) {
+      console.error('MassageAPI: Failed to create massage booking:', error);
+      showFormError(form, 'submit', error.message || 'Failed to create massage booking. Please try again.');
+      return false;
     }
-    
-    form.reset();
-    return true;
   } catch (error) {
     console.error('MassageAPI.handleMassageForm: Exception caught:', error);
     showFormError(form, 'submit', error.message || 'An error occurred');

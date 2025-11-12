@@ -1135,6 +1135,18 @@ function showDateErrorNotification(input, message, isFirstMessage = false) {
 
 // Блокировка занятых дат в date picker
 async function initBlockedDatesForRoom(form, roomName) {
+  // Сразу помечаем инпуты, чтобы enhanceDateInputs их не обрабатывал
+  // Это важно, так как enhanceDateInputs вызывается синхронно в DOMContentLoaded,
+  // а initBlockedDatesForRoom - асинхронная функция
+  const checkinInput = form.querySelector('#checkin');
+  const checkoutInput = form.querySelector('#checkout');
+  
+  if (checkinInput && checkoutInput) {
+    // Помечаем инпуты ДО загрузки данных, чтобы enhanceDateInputs их не обработал
+    checkinInput.dataset.enhancedDate = '1';
+    checkoutInput.dataset.enhancedDate = '1';
+  }
+  
   try {
     // Получаем заблокированные даты (confirmed бронирования + ручные блокировки + Airbnb)
     const params = new URLSearchParams({
@@ -1147,37 +1159,79 @@ async function initBlockedDatesForRoom(form, roomName) {
     });
     
     if (!response.ok) {
-      console.warn('Failed to load blocked dates for room:', roomName);
+      console.warn('Failed to load blocked dates for room:', roomName, 'Status:', response.status);
       return;
     }
     
-    const result = await response.json();
+    // Проверяем, что ответ действительно JSON, а не HTML (ошибка PHP)
+    const contentType = response.headers.get('content-type');
+    let result = null;
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('API returned non-JSON response for blocked dates:', text.substring(0, 200));
+      // Продолжаем без блокировки дат - календарь должен работать
+      result = { success: false, data: { blocked_dates: [], airbnb_blocked_dates: [] } };
+    } else {
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response for blocked dates:', jsonError);
+        // Продолжаем без блокировки дат - календарь должен работать
+        result = { success: false, data: { blocked_dates: [], airbnb_blocked_dates: [] } };
+      }
+    }
+    
     let blockedDates = [];
     
-    // Получаем ручные блокировки
-    if (result.success && result.data?.blocked_dates) {
-      blockedDates = result.data.blocked_dates.map(block => block.blocked_date);
+    // Получаем ручные блокировки (периоды)
+    if (result && result.success && result.data?.blocked_dates) {
+      // Преобразуем периоды в список дат для календаря
+      result.data.blocked_dates.forEach(blocked => {
+        const dateFrom = blocked.date_from || blocked.blocked_date || '';
+        const dateTo = blocked.date_to || blocked.blocked_date || '';
+        
+        if (dateFrom && dateTo) {
+          // Генерируем все даты в периоде, используя parseLocalDate для правильной обработки
+          const fromDate = parseLocalDate(dateFrom);
+          const toDate = parseLocalDate(dateTo);
+          
+          if (fromDate && toDate) {
+            for (let d = new Date(fromDate); d <= toDate; d.setDate(d.getDate() + 1)) {
+              const dateStr = formatDateString(d);
+              blockedDates.push(dateStr);
+            }
+          }
+        } else if (blocked.blocked_date) {
+          // Обратная совместимость: если есть только blocked_date
+          blockedDates.push(blocked.blocked_date);
+        }
+      });
     }
     
     // Получаем Airbnb заблокированные даты
-    if (result.success && result.data?.airbnb_blocked_dates) {
+    if (result && result.success && result.data?.airbnb_blocked_dates) {
       blockedDates = [...blockedDates, ...result.data.airbnb_blocked_dates];
     }
     
-    // Получаем confirmed бронирования
-    const bookingsParams = new URLSearchParams({
-      action: 'get_bookings',
-      room_name: roomName,
-      status: 'confirmed'
-    });
-    
-    const bookingsResponse = await fetch('api.php?' + bookingsParams.toString(), {
-      method: 'GET'
-    });
-    
-    if (bookingsResponse.ok) {
-      const bookingsResult = await bookingsResponse.json();
-      if (bookingsResult.success && bookingsResult.data?.bookings) {
+    // Получаем confirmed бронирования (опционально, не критично для работы календаря)
+    try {
+      const bookingsParams = new URLSearchParams({
+        action: 'get_bookings',
+        room_name: roomName,
+        status: 'confirmed'
+      });
+      
+      const bookingsResponse = await fetch('api.php?' + bookingsParams.toString(), {
+        method: 'GET'
+      });
+      
+      if (bookingsResponse.ok) {
+        const bookingsContentType = bookingsResponse.headers.get('content-type');
+        if (bookingsContentType && bookingsContentType.includes('application/json')) {
+          try {
+            const bookingsResult = await bookingsResponse.json();
+            if (bookingsResult.success && bookingsResult.data?.bookings) {
         // Добавляем все даты из confirmed бронирований
         bookingsResult.data.bookings.forEach(booking => {
           const checkin = parseLocalDate(booking.checkin_date);
@@ -1193,7 +1247,16 @@ async function initBlockedDatesForRoom(form, roomName) {
             }
           }
         });
+            }
+          } catch (bookingsError) {
+            console.warn('Failed to parse bookings response:', bookingsError);
+            // Продолжаем без бронирований - календарь должен работать
+          }
+        }
       }
+    } catch (bookingsFetchError) {
+      console.warn('Failed to fetch bookings:', bookingsFetchError);
+      // Продолжаем без бронирований - календарь должен работать
     }
     
     // Убираем дубликаты
@@ -1209,6 +1272,7 @@ async function initBlockedDatesForRoom(form, roomName) {
       
       if (hasFlatpickr) {
         // Используем Flatpickr для визуальной блокировки дат
+        // blockedDates уже содержит все даты из периодов
         const blockedDatesArray = blockedDates.map(date => {
           const d = parseLocalDate(date);
           return d ? d.toISOString().split('T')[0] : null;
@@ -1671,6 +1735,8 @@ async function initBlockedDatesForRoom(form, roomName) {
     }
   } catch (error) {
     console.error('Error initializing blocked dates:', error);
+    // Не прерываем выполнение - продолжаем инициализацию формы без блокировки дат
+    // Это позволит календарю работать, даже если API недоступен
   }
 }
 
@@ -1734,6 +1800,219 @@ function initMassageTimeRestrictions() {
         defaultMinutes: '00'
       });
     }
+    
+    // Initialize Flatpickr for date input in massage form (same approach as room pages)
+    const dateInput = massageForm.querySelector('input[type="date"]#date');
+    if (dateInput && typeof flatpickr !== 'undefined' && !dateInput.dataset.flatpickrInitialized) {
+      // Mark as enhanced BEFORE Flatpickr initialization to prevent enhanceDateInputs from processing it
+      dateInput.dataset.enhancedDate = '1';
+      // Убеждаемся, что тип input остается "date" для HTML5 валидации
+      dateInput.type = 'date';
+      
+      const fpDate = flatpickr(dateInput, {
+        dateFormat: 'Y-m-d',
+        minDate: 'today',
+        allowInput: false, // Отключаем прямой ввод в input
+        clickOpens: true, // Открываем календарь при клике
+        altInput: true, // Используем альтернативный input для отображения с placeholder
+        altFormat: 'F j, Y', // Формат отображения даты (например: "November 7, 2025")
+        placeholder: 'dd.mm.yyyy', // Плейсхолдер для altInput (соответствует формату браузера)
+        onReady: function(selectedDates, dateStr, instance) {
+          // Убеждаемся, что родительский контейнер имеет position: relative
+          const parent = instance.input.parentElement;
+          if (parent && window.getComputedStyle(parent).position === 'static') {
+            parent.style.position = 'relative';
+          }
+          
+          // Скрываем оригинальный input, так как используем altInput для отображения
+          // Убираем его далеко в сторону, чтобы он не перехватывал клики
+          if (instance.input) {
+            instance.input.style.position = 'absolute';
+            instance.input.style.opacity = '0';
+            instance.input.style.width = '0';
+            instance.input.style.height = '0';
+            instance.input.style.padding = '0';
+            instance.input.style.margin = '0';
+            instance.input.style.border = 'none';
+            instance.input.style.pointerEvents = 'none';
+            instance.input.style.left = '-9999px';
+            instance.input.style.top = '-9999px';
+            instance.input.style.visibility = 'visible'; // Видим для браузера, но невидим для пользователя
+          }
+          
+          // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+          if (instance.altInput) {
+            instance.altInput.style.width = '100%';
+            instance.altInput.style.cursor = 'pointer';
+            // Устанавливаем placeholder после полной инициализации
+            if (!instance.altInput.value) {
+              instance.altInput.placeholder = 'dd.mm.yyyy';
+            }
+          }
+        },
+        onChange: function(selectedDates, dateStr, instance) {
+          // Убеждаемся, что значение реального input обновлено
+          if (dateStr) {
+            dateInput.value = dateStr;
+            // Убеждаемся, что тип остается "date"
+            dateInput.type = 'date';
+            // Вызываем события для валидации формы
+            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+          } else {
+            dateInput.value = '';
+            // Восстанавливаем placeholder если значение пустое
+            if (instance.altInput) {
+              instance.altInput.placeholder = 'dd.mm.yyyy';
+              instance.altInput.value = '';
+            }
+            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+        }
+      });
+      
+      dateInput.dataset.flatpickrInitialized = '1';
+      
+      // Скрываем оригинальный input сразу после инициализации
+      setTimeout(() => {
+        if (fpDate.input && fpDate.altInput) {
+          // Убеждаемся, что родительский контейнер имеет position: relative
+          const parent = fpDate.input.parentElement;
+          if (parent && window.getComputedStyle(parent).position === 'static') {
+            parent.style.position = 'relative';
+          }
+          
+          // Убираем скрытый input далеко в сторону, чтобы он не перехватывал клики
+          fpDate.input.style.position = 'absolute';
+          fpDate.input.style.opacity = '0';
+          fpDate.input.style.width = '0';
+          fpDate.input.style.height = '0';
+          fpDate.input.style.padding = '0';
+          fpDate.input.style.margin = '0';
+          fpDate.input.style.border = 'none';
+          fpDate.input.style.pointerEvents = 'none';
+          fpDate.input.style.left = '-9999px';
+          fpDate.input.style.top = '-9999px';
+          fpDate.input.style.visibility = 'visible';
+          
+          // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+          fpDate.altInput.style.width = '100%';
+          fpDate.altInput.style.cursor = 'pointer';
+          
+          // Убеждаемся, что placeholder установлен в altInput после инициализации
+          if (!fpDate.altInput.value) {
+            fpDate.altInput.placeholder = 'dd.mm.yyyy';
+          }
+        }
+      }, 50);
+      
+      // Загружаем заблокированные даты для массажа
+      initBlockedDatesForMassage(massageForm, fpDate);
+    }
+  }
+}
+
+// Блокировка занятых дат в date picker для массажа
+async function initBlockedDatesForMassage(form, fpInstance) {
+  if (!form || !fpInstance) return;
+  
+  try {
+    // Получаем заблокированные даты для массажа (ручные блокировки для "Massage" и "__all__")
+    const params = new URLSearchParams({
+      action: 'get_blocked_dates',
+      room_name: 'Massage'
+    });
+    
+    const response = await fetch('api.php?' + params.toString(), {
+      method: 'GET'
+    });
+    
+    if (!response.ok) {
+      console.warn('Failed to load blocked dates for massage:', 'Status:', response.status);
+      return;
+    }
+    
+    // Проверяем, что ответ действительно JSON, а не HTML (ошибка PHP)
+    const contentType = response.headers.get('content-type');
+    let result = null;
+    
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('API returned non-JSON response for blocked dates:', text.substring(0, 200));
+      // Продолжаем без блокировки дат - календарь должен работать
+      result = { success: false, data: { blocked_dates: [] } };
+    } else {
+      try {
+        result = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse JSON response for blocked dates:', jsonError);
+        // Продолжаем без блокировки дат - календарь должен работать
+        result = { success: false, data: { blocked_dates: [] } };
+      }
+    }
+    
+    let blockedDates = [];
+    
+    // Получаем ручные блокировки (периоды)
+    if (result && result.success && result.data?.blocked_dates) {
+      // Преобразуем периоды в список дат для календаря
+      result.data.blocked_dates.forEach(blocked => {
+        // Учитываем блокировки для "Massage" и "__all__" (для всех)
+        const isRelevant = blocked.room_name === 'Massage' || blocked.room_name === '__all__';
+        
+        if (isRelevant) {
+          const dateFrom = blocked.date_from || blocked.blocked_date || '';
+          const dateTo = blocked.date_to || blocked.blocked_date || '';
+          
+          if (dateFrom && dateTo) {
+            // Генерируем все даты в периоде, используя parseLocalDate для правильной обработки
+            const fromDate = parseLocalDate(dateFrom);
+            const toDate = parseLocalDate(dateTo);
+            
+            if (fromDate && toDate) {
+              for (let d = new Date(fromDate); d <= toDate; d.setDate(d.getDate() + 1)) {
+                const dateStr = formatDateString(d);
+                blockedDates.push(dateStr);
+              }
+            }
+          } else if (blocked.blocked_date) {
+            // Обратная совместимость: если есть только blocked_date
+            blockedDates.push(blocked.blocked_date);
+          }
+        }
+      });
+    }
+    
+    // Убираем дубликаты
+    blockedDates = [...new Set(blockedDates)];
+    
+    // Блокируем даты в Flatpickr
+    if (blockedDates.length > 0) {
+      // Преобразуем даты в формат для Flatpickr (YYYY-MM-DD)
+      const blockedDatesArray = blockedDates.map(date => {
+        const d = parseLocalDate(date);
+        return d ? d.toISOString().split('T')[0] : null;
+      }).filter(Boolean);
+      
+      // Обновляем опцию disable в Flatpickr
+      if (fpInstance && fpInstance.config) {
+        // Получаем текущие заблокированные даты
+        const currentDisabled = fpInstance.config.disable || [];
+        
+        // Объединяем с новыми заблокированными датами
+        const allDisabled = [...new Set([...currentDisabled, ...blockedDatesArray])];
+        
+        // Обновляем конфигурацию Flatpickr
+        fpInstance.set('disable', allDisabled);
+        
+        console.log(`Blocked dates initialized for Massage: ${blockedDates.length} dates`);
+      }
+    } else {
+      console.log('Blocked dates initialized for Massage: 0 dates');
+    }
+  } catch (error) {
+    console.error('Failed to initialize blocked dates for massage:', error);
+    // Продолжаем без блокировки дат - календарь должен работать
   }
 }
 
@@ -1794,7 +2073,7 @@ function enhanceDateInputs(root) {
     if (!d || Number.isNaN(d.getTime())) return '';
     return `${monthNames[d.getMonth()]} ${String(d.getDate()).padStart(2,'0')}, ${d.getFullYear()}`;
   };
-  const dateInputs = Array.from(root.querySelectorAll('input[type="date"]')).filter(i => !i.dataset.enhancedDate);
+  const dateInputs = Array.from(root.querySelectorAll('input[type="date"]')).filter(i => !i.dataset.enhancedDate && !i._flatpickr);
   dateInputs.forEach(real => {
     real.dataset.enhancedDate = '1';
     const display = document.createElement('input');
@@ -2181,8 +2460,10 @@ document.addEventListener('DOMContentLoaded', () => {
   // Скрываем иконку домика на страницах комнат, если она была создана
   hideOrderIndicatorOnRoomPages();
   
-  initDateTimeUX();
+  // Initialize Flatpickr for massage form BEFORE enhanceDateInputs to prevent conflicts
   initMassageTimeRestrictions();
+  
+  initDateTimeUX();
   initClickableMassageOptions();
   
   // Check and show wellness section if user has seen it before

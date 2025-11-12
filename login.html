@@ -75,112 +75,8 @@
 
   <main class="section">
     <div class="container">
-      <div class="auth-container">
-        <div class="auth-tabs">
-          <button class="tab-btn active" data-tab="signin">Sign In</button>
-          <button class="tab-btn" data-tab="register">Create Account</button>
-        </div>
-        
-        <!-- Форма входа -->
-        <div id="signin-form" class="auth-form active">
-          <form id="login-form">
-            <div class="form-row">
-              <div>
-                <label for="login-email">Email address</label>
-                <input id="login-email" name="email" type="email" required 
-                       placeholder="Enter your email" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <label for="login-password">Password</label>
-                <input id="login-password" name="password" type="password" required 
-                       placeholder="Enter your password" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <button type="submit" class="btn primary">Sign In</button>
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <a href="#" class="forgot-password" id="forgot-password-link">Forgot password?</a>
-              </div>
-            </div>
-          </form>
-          
-          <!-- Форма восстановления пароля -->
-          <form id="forgot-password-form" style="display: none;">
-            <div class="form-row">
-              <div>
-                <label for="reset-email">Email address</label>
-                <input id="reset-email" name="email" type="email" required 
-                       placeholder="Enter your email" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <button type="submit" class="btn primary">Send Reset Link</button>
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <a href="#" class="back-to-login" id="back-to-login-link">← Back to Sign In</a>
-              </div>
-            </div>
-          </form>
-        </div>
-        
-        <!-- Форма регистрации -->
-        <div id="register-form" class="auth-form">
-          <form id="registration-form">
-            <div class="form-row">
-              <div>
-                <label for="reg-name">Full name</label>
-                <input id="reg-name" name="name" type="text" required 
-                       placeholder="Enter your full name" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <label for="reg-email">Email address</label>
-                <input id="reg-email" name="email" type="email" required 
-                       placeholder="Enter your email" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <label for="reg-phone">Phone number</label>
-                <input id="reg-phone" name="phone" type="tel" required 
-                       placeholder="+1 555 123-4567" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <label for="reg-password">Password</label>
-                <input id="reg-password" name="password" type="password" required 
-                       placeholder="Create a password" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <label for="reg-confirm-password">Confirm password</label>
-                <input id="reg-confirm-password" name="confirmPassword" type="password" required 
-                       placeholder="Confirm your password" />
-              </div>
-            </div>
-            <div class="form-row">
-              <div>
-                <button type="submit" class="btn primary">Create Account</button>
-              </div>
-            </div>
-          </form>
-        </div>
-        
-        <!-- Сообщения об ошибках и успехе -->
-        <div id="auth-messages"></div>
-      </div>
+      <!-- Контейнер для формы авторизации (будет создан через createAuthMenu) -->
+      <div id="auth-container"></div>
     </div>
   </main>
 
@@ -214,5 +110,24 @@
   <script src="utils.js?v=26"></script>
   <script src="script.js?v=26"></script>
   <script src="auth.js?v=26"></script>
+  <script src="auth-menu.js?v=26"></script>
+  <script>
+    // Инициализация формы авторизации с полным функционалом
+    document.addEventListener('DOMContentLoaded', () => {
+      if (window.createAuthMenu) {
+        window.createAuthMenu('#auth-container', {
+          defaultTab: 'signin',
+          onLogin: (user) => {
+            // После успешного входа перенаправляем на dashboard
+            window.location.href = 'dashboard.html';
+          },
+          onRegister: (user) => {
+            // После успешной регистрации перенаправляем на dashboard
+            window.location.href = 'dashboard.html';
+          }
+        });
+      }
+    });
+  </script>
 </body>
 </html>

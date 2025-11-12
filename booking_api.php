@@ -4,6 +4,10 @@
  * Обработка всех API запросов, связанных с бронированиями
  */
 
+// Отключаем вывод ошибок для API (чтобы не ломать JSON ответы)
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
 require_once 'common.php';
 require_once 'payment_service.php';
 require_once 'email_service.php';
@@ -60,6 +64,26 @@ switch ($action) {
     
     case 'get_airbnb_sync_status':
         handleGetAirbnbSyncStatus();
+        break;
+    
+    case 'get_massage_bookings':
+        handleGetMassageBookings();
+        break;
+    
+    case 'create_massage_booking':
+        handleCreateMassageBooking();
+        break;
+    
+    case 'confirm_massage_booking':
+        handleConfirmMassageBooking();
+        break;
+    
+    case 'cancel_massage_booking':
+        handleCancelMassageBooking();
+        break;
+    
+    case 'delete_massage_booking':
+        handleDeleteMassageBooking();
         break;
     
     default:
@@ -543,14 +567,17 @@ function handleDeleteBooking() {
         // Удаляем само бронирование
         $result = deleteRecord($conn, 'bookings', 'id = ?', [$bookingId]);
         
-        if (!$result) {
-            sendError('Failed to delete booking');
+        // Проверяем, что удаление прошло успешно (affected_rows > 0)
+        if ($result === false || $result <= 0) {
+            sendError('Failed to delete booking from database');
         }
         
-        logActivity("Booking deleted permanently: ID {$bookingId}, Room: {$booking['room_name']}, Guest: {$booking['guest_name']}");
+        logActivity("Booking deleted permanently: ID {$bookingId}, Room: {$booking['room_name']}, Guest: {$booking['guest_name']}, Email: {$booking['email']}");
         
         sendSuccess([
-            'message' => 'Booking deleted successfully'
+            'message' => 'Booking deleted successfully',
+            'booking_id' => $bookingId,
+            'email' => $booking['email'] ?? ''
         ]);
         
     } catch (Exception $e) {
@@ -629,49 +656,118 @@ function handleBlockDate() {
         }
         
         $roomName = sanitizeInput($_POST['room_name'] ?? '');
-        $blockedDate = sanitizeInput($_POST['blocked_date'] ?? '');
+        $dateFrom = sanitizeInput($_POST['date_from'] ?? '');
+        $dateTo = sanitizeInput($_POST['date_to'] ?? '');
         $reason = sanitizeInput($_POST['reason'] ?? 'Manually blocked by admin');
         
-        if (empty($roomName) || empty($blockedDate)) {
-            sendError('Room name and blocked date are required');
+        // Поддержка старого формата (blocked_date) для обратной совместимости
+        if (empty($dateFrom) && !empty($_POST['blocked_date'] ?? '')) {
+            $dateFrom = sanitizeInput($_POST['blocked_date']);
+            $dateTo = $dateFrom;
         }
         
-        // Проверяем валидность даты
-        $date = DateTime::createFromFormat('Y-m-d', $blockedDate);
-        if (!$date) {
+        if (empty($roomName) || empty($dateFrom) || empty($dateTo)) {
+            sendError('Room name, date from, and date to are required');
+        }
+        
+        // Проверяем валидность дат
+        $dateFromObj = DateTime::createFromFormat('Y-m-d', $dateFrom);
+        $dateToObj = DateTime::createFromFormat('Y-m-d', $dateTo);
+        
+        if (!$dateFromObj || !$dateToObj) {
             sendError('Invalid date format');
         }
         
-        // Проверяем, не заблокирована ли уже эта дата
-        $existing = fetchOne($conn, 
-            "SELECT * FROM blocked_dates WHERE room_name = ? AND blocked_date = ?",
-            [$roomName, $blockedDate]
-        );
-        
-        if ($existing) {
-            sendError('Date is already blocked');
+        if ($dateFromObj > $dateToObj) {
+            sendError('Date from must be before or equal to date to');
         }
         
-        // Создаем блокировку
+        // Проверяем, не пересекается ли период с существующими блокировками
+        // Если room_name = "__all__", проверяем пересечения для всех комнат и массажа
+        // Безопасный SQL: сначала пробуем с date_from/date_to, если не работает - используем blocked_date
+        $existing = [];
+        try {
+            // Пробуем запрос с date_from/date_to (новый формат)
+            if ($roomName === '__all__') {
+                // Для "__all__" проверяем пересечения с любыми блокировками (включая другие "__all__")
+                $existing = fetchAll($conn, 
+                    "SELECT * FROM blocked_dates 
+                     WHERE (
+                         (date_from <= ? AND date_to >= ?) OR
+                         (date_from <= ? AND date_to >= ?) OR
+                         (date_from >= ? AND date_to <= ?)
+                     )",
+                    [$dateFrom, $dateFrom, $dateTo, $dateTo, $dateFrom, $dateTo]
+                );
+            } else {
+                // Для конкретной комнаты проверяем пересечения с блокировками этой комнаты или "__all__"
+                $existing = fetchAll($conn, 
+                    "SELECT * FROM blocked_dates 
+                     WHERE (room_name = ? OR room_name = '__all__')
+                     AND (
+                         (date_from <= ? AND date_to >= ?) OR
+                         (date_from <= ? AND date_to >= ?) OR
+                         (date_from >= ? AND date_to <= ?)
+                     )",
+                    [$roomName, $dateFrom, $dateFrom, $dateTo, $dateTo, $dateFrom, $dateTo]
+                );
+            }
+        } catch (Exception $e) {
+            // Если запрос упал (поля не существуют), используем старый формат
+            try {
+                if ($roomName === '__all__') {
+                    $existing = fetchAll($conn, 
+                        "SELECT * FROM blocked_dates 
+                         WHERE blocked_date >= ? 
+                         AND blocked_date <= ?",
+                        [$dateFrom, $dateTo]
+                    );
+                } else {
+                    $existing = fetchAll($conn, 
+                        "SELECT * FROM blocked_dates 
+                         WHERE (room_name = ? OR room_name = '__all__')
+                         AND blocked_date >= ? 
+                         AND blocked_date <= ?",
+                        [$roomName, $dateFrom, $dateTo]
+                    );
+                }
+            } catch (Exception $e2) {
+                // Если и это не работает, считаем что пересечений нет
+                logActivity("Check blocked dates overlap error: " . $e2->getMessage(), 'ERROR');
+                $existing = [];
+            }
+        }
+        
+        if (!empty($existing)) {
+            sendError('This date range overlaps with an existing blocked period');
+        }
+        
+        // Создаем блокировку периода
         $blockData = [
             'room_name' => $roomName,
-            'blocked_date' => $blockedDate,
+            'date_from' => $dateFrom,
+            'date_to' => $dateTo,
             'reason' => $reason
         ];
+        
+        // Если есть старое поле blocked_date, используем его для обратной совместимости
+        if (isset($_POST['blocked_date']) && !isset($blockData['blocked_date'])) {
+            $blockData['blocked_date'] = $dateFrom; // Для обратной совместимости
+        }
         
         $blockId = insertRecord($conn, 'blocked_dates', $blockData);
         
         if (!$blockId) {
-            sendError('Failed to block date');
+            sendError('Failed to block date period');
         }
         
-        logActivity("Date blocked: Room {$roomName}, Date {$blockedDate}");
+        logActivity("Date period blocked: Room {$roomName}, From {$dateFrom} to {$dateTo}, Reason: {$reason}");
         
-        sendSuccess(['block_id' => $blockId, 'message' => 'Date blocked successfully']);
+        sendSuccess(['block_id' => $blockId, 'message' => 'Date period blocked successfully']);
         
     } catch (Exception $e) {
         logActivity("Block date error: " . $e->getMessage(), 'ERROR');
-        sendError('Failed to block date: ' . $e->getMessage());
+        sendError('Failed to block date period: ' . $e->getMessage());
     }
 }
 
@@ -686,25 +782,35 @@ function handleUnblockDate() {
             sendError('Admin authentication required');
         }
         
-        $blockId = intval($_POST['block_id'] ?? 0);
+        // Поддержка старого формата (blocked_date_id) для обратной совместимости
+        $blockId = intval($_POST['block_id'] ?? $_POST['blocked_date_id'] ?? 0);
         
         if ($blockId <= 0) {
             sendError('Invalid block ID');
         }
         
+        // Получаем информацию о блокировке перед удалением
+        $blocked = fetchOne($conn, "SELECT * FROM blocked_dates WHERE id = ?", [$blockId]);
+        
+        if (!$blocked) {
+            sendError('Blocked period not found');
+        }
+        
         $result = deleteRecord($conn, 'blocked_dates', 'id = ?', [$blockId]);
         
         if (!$result) {
-            sendError('Failed to unblock date');
+            sendError('Failed to unblock date period');
         }
         
-        logActivity("Date unblocked: Block ID {$blockId}");
+        $dateFrom = $blocked['date_from'] ?? $blocked['blocked_date'] ?? 'unknown';
+        $dateTo = $blocked['date_to'] ?? $blocked['blocked_date'] ?? 'unknown';
+        logActivity("Date period unblocked: Block ID {$blockId}, Room: {$blocked['room_name']}, From {$dateFrom} to {$dateTo}");
         
-        sendSuccess(['message' => 'Date unblocked successfully']);
+        sendSuccess(['message' => 'Date period unblocked successfully']);
         
     } catch (Exception $e) {
         logActivity("Unblock date error: " . $e->getMessage(), 'ERROR');
-        sendError('Failed to unblock date: ' . $e->getMessage());
+        sendError('Failed to unblock date period: ' . $e->getMessage());
     }
 }
 
@@ -718,18 +824,56 @@ function handleGetBlockedDates() {
         $roomName = sanitizeInput($_GET['room_name'] ?? $_POST['room_name'] ?? '');
         
         // Получаем ручные блокировки
+        // Если запрашивается конкретная комната, возвращаем блокировки для этой комнаты И блокировки "__all__" (для всех)
+        // Если room_name не указан, возвращаем все блокировки
         $where = [];
         $params = [];
         
         if (!empty($roomName)) {
-            $where[] = 'room_name = ?';
+            // Для конкретной комнаты показываем блокировки этой комнаты и "__all__"
+            $where[] = '(room_name = ? OR room_name = \'__all__\')';
             $params[] = $roomName;
         }
         
         $whereClause = !empty($where) ? implode(' AND ', $where) : '1=1';
-        $sql = "SELECT * FROM blocked_dates WHERE {$whereClause} ORDER BY blocked_date ASC";
         
-        $blockedDates = fetchAll($conn, $sql, $params);
+        // Безопасный SQL запрос: сначала пробуем с date_from/date_to, если не работает - используем blocked_date
+        // Проверяем, существуют ли поля date_from и date_to в таблице
+        $blockedDates = [];
+        try {
+            // Пробуем запрос с date_from/date_to (новый формат)
+            $orderBy = "COALESCE(date_from, blocked_date) ASC";
+            $sql = "SELECT * FROM blocked_dates WHERE {$whereClause} ORDER BY {$orderBy}";
+            $result = fetchAll($conn, $sql, $params);
+            // fetchAll может вернуть false при ошибке, проверяем это
+            if ($result !== false) {
+                $blockedDates = $result;
+            }
+        } catch (Exception $e) {
+            // Если запрос упал (поля не существуют), используем старый формат
+            try {
+                $sql = "SELECT * FROM blocked_dates WHERE {$whereClause} ORDER BY blocked_date ASC";
+                $result = fetchAll($conn, $sql, $params);
+                if ($result !== false) {
+                    $blockedDates = $result;
+                }
+            } catch (Exception $e2) {
+                // Если и это не работает, возвращаем пустой массив
+                logActivity("Get blocked dates SQL error: " . $e2->getMessage(), 'ERROR');
+                $blockedDates = [];
+            }
+        }
+        
+        // Для обратной совместимости: если есть blocked_date но нет date_from/date_to, создаем период
+        if (is_array($blockedDates)) {
+            foreach ($blockedDates as &$blocked) {
+                if (empty($blocked['date_from']) && !empty($blocked['blocked_date'])) {
+                    $blocked['date_from'] = $blocked['blocked_date'];
+                    $blocked['date_to'] = $blocked['blocked_date'];
+                }
+            }
+            unset($blocked);
+        }
         
         // Также получаем Airbnb заблокированные даты
         $airbnbBlockedDates = [];
@@ -808,6 +952,283 @@ function handleGetAirbnbSyncStatus() {
     }
 }
 
+/**
+ * Получение бронирований массажа
+ */
+function handleGetMassageBookings() {
+    global $conn;
+    
+    try {
+        // Проверяем, существует ли таблица massage_bookings
+        $tableExists = false;
+        try {
+            $result = $conn->query("SHOW TABLES LIKE 'massage_bookings'");
+            $tableExists = $result && $result->num_rows > 0;
+        } catch (Exception $e) {
+            // Таблица не существует
+            $tableExists = false;
+        }
+        
+        if (!$tableExists) {
+            // Если таблица не существует, возвращаем пустой массив
+            sendSuccess(['bookings' => []]);
+            return;
+        }
+        
+        // Получаем параметры фильтрации
+        $status = sanitizeInput($_GET['status'] ?? $_POST['status'] ?? '');
+        $dateFrom = sanitizeInput($_GET['date_from'] ?? $_POST['date_from'] ?? '');
+        $dateTo = sanitizeInput($_GET['date_to'] ?? $_POST['date_to'] ?? '');
+        
+        // Строим SQL запрос с фильтрами
+        $where = [];
+        $params = [];
+        
+        // Фильтр по статусу
+        if (!empty($status)) {
+            $where[] = 'status = ?';
+            $params[] = $status;
+        }
+        
+        // Фильтр по дате (date_from)
+        if (!empty($dateFrom)) {
+            $where[] = 'massage_date >= ?';
+            $params[] = $dateFrom;
+        }
+        
+        // Фильтр по дате (date_to)
+        if (!empty($dateTo)) {
+            $where[] = 'massage_date <= ?';
+            $params[] = $dateTo;
+        }
+        
+        // Формируем WHERE clause
+        $whereClause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
+        
+        // Получаем все бронирования массажа (включая pending, если не указан фильтр по статусу)
+        $sql = "SELECT * FROM massage_bookings 
+                {$whereClause}
+                ORDER BY created_at DESC, massage_date ASC, massage_time ASC";
+        
+        $bookings = fetchAll($conn, $sql, $params);
+        
+        if ($bookings === false) {
+            $bookings = [];
+        }
+        
+        sendSuccess(['bookings' => $bookings]);
+        
+    } catch (Exception $e) {
+        logActivity("Get massage bookings error: " . $e->getMessage(), 'ERROR');
+        sendSuccess(['bookings' => []]); // Возвращаем пустой массив вместо ошибки
+    }
+}
+
+/**
+ * Создание бронирования массажа
+ */
+function handleCreateMassageBooking() {
+    global $conn;
+    
+    try {
+        // Получаем данные из запроса
+        $data = [
+            'guest_name' => sanitizeInput($_POST['guest_name'] ?? ''),
+            'email' => sanitizeInput($_POST['email'] ?? ''),
+            'phone' => sanitizeInput($_POST['phone'] ?? ''),
+            'massage_date' => sanitizeInput($_POST['massage_date'] ?? ''),
+            'massage_time' => sanitizeInput($_POST['massage_time'] ?? ''),
+            'massage_type' => sanitizeInput($_POST['massage_type'] ?? ''),
+            'duration' => intval($_POST['duration'] ?? 60),
+            'with_room' => sanitizeInput($_POST['with_room'] ?? ''),
+            'status' => 'pending'
+        ];
+        
+        // Валидация обязательных полей
+        if (empty($data['guest_name']) || empty($data['email']) || empty($data['phone']) || 
+            empty($data['massage_date']) || empty($data['massage_time'])) {
+            sendError('All required fields must be filled');
+        }
+        
+        // Валидация email
+        if (!filter_var($data['email'], FILTER_VALIDATE_EMAIL)) {
+            sendError('Invalid email address');
+        }
+        
+        // Валидация даты
+        $massageDate = DateTime::createFromFormat('Y-m-d', $data['massage_date']);
+        if (!$massageDate || $massageDate->format('Y-m-d') !== $data['massage_date']) {
+            sendError('Invalid massage date format');
+        }
+        
+        // Проверяем, что дата не в прошлом
+        $today = new DateTime();
+        $today->setTime(0, 0, 0);
+        $massageDate->setTime(0, 0, 0);
+        if ($massageDate < $today) {
+            sendError('Massage date cannot be in the past');
+        }
+        
+        // Проверяем, существует ли таблица massage_bookings
+        $tableExists = false;
+        try {
+            $result = $conn->query("SHOW TABLES LIKE 'massage_bookings'");
+            $tableExists = $result && $result->num_rows > 0;
+        } catch (Exception $e) {
+            $tableExists = false;
+        }
+        
+        if (!$tableExists) {
+            sendError('Massage bookings table does not exist');
+        }
+        
+        // Создаем бронирование
+        $bookingData = [
+            'guest_name' => $data['guest_name'],
+            'email' => $data['email'],
+            'phone' => $data['phone'],
+            'massage_date' => $data['massage_date'],
+            'massage_time' => $data['massage_time'],
+            'massage_type' => $data['massage_type'],
+            'duration' => $data['duration'],
+            'status' => $data['status'],
+            'notes' => $data['with_room'] ? 'Staying with us: ' . $data['with_room'] : ''
+        ];
+        
+        $bookingId = insertRecord($conn, 'massage_bookings', $bookingData);
+        
+        if (!$bookingId) {
+            sendError('Failed to create massage booking');
+        }
+        
+        // Генерируем код подтверждения
+        $confirmationCode = 'MASS-' . time() . '-' . str_pad($bookingId, 4, '0', STR_PAD_LEFT);
+        
+        // Обновляем код подтверждения
+        updateRecord($conn, 'massage_bookings', ['confirmation_code' => $confirmationCode], 'id = ?', [$bookingId]);
+        
+        logActivity("Massage booking created: ID {$bookingId}, Guest: {$data['guest_name']}, Date: {$data['massage_date']}, Time: {$data['massage_time']}");
+        
+        sendSuccess([
+            'booking_id' => $bookingId,
+            'confirmation_code' => $confirmationCode,
+            'message' => 'Massage booking created successfully'
+        ]);
+        
+    } catch (Exception $e) {
+        logActivity("Create massage booking error: " . $e->getMessage(), 'ERROR');
+        sendError('Failed to create massage booking: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Подтверждение бронирования массажа
+ */
+function handleConfirmMassageBooking() {
+    global $conn;
+    
+    try {
+        if (!isAdminAuthenticated()) {
+            sendError('Admin authentication required');
+        }
+        
+        $bookingId = intval($_POST['booking_id'] ?? 0);
+        
+        if ($bookingId <= 0) {
+            sendError('Invalid booking ID');
+        }
+        
+        // Обновляем статус
+        $result = updateRecord($conn, 'massage_bookings', ['status' => 'confirmed'], 'id = ?', [$bookingId]);
+        
+        if (!$result) {
+            sendError('Failed to confirm massage booking');
+        }
+        
+        logActivity("Massage booking confirmed: ID {$bookingId}");
+        
+        sendSuccess(['message' => 'Massage booking confirmed successfully']);
+        
+    } catch (Exception $e) {
+        logActivity("Confirm massage booking error: " . $e->getMessage(), 'ERROR');
+        sendError('Failed to confirm massage booking: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Отмена бронирования массажа
+ */
+function handleCancelMassageBooking() {
+    global $conn;
+    
+    try {
+        if (!isAdminAuthenticated()) {
+            sendError('Admin authentication required');
+        }
+        
+        $bookingId = intval($_POST['booking_id'] ?? 0);
+        $reason = sanitizeInput($_POST['reason'] ?? '');
+        
+        if ($bookingId <= 0) {
+            sendError('Invalid booking ID');
+        }
+        
+        // Обновляем статус
+        $updateData = ['status' => 'cancelled'];
+        if ($reason) {
+            $updateData['notes'] = ($updateData['notes'] ?? '') . ' Cancellation reason: ' . $reason;
+        }
+        
+        $result = updateRecord($conn, 'massage_bookings', $updateData, 'id = ?', [$bookingId]);
+        
+        if (!$result) {
+            sendError('Failed to cancel massage booking');
+        }
+        
+        logActivity("Massage booking cancelled: ID {$bookingId}, Reason: {$reason}");
+        
+        sendSuccess(['message' => 'Massage booking cancelled successfully']);
+        
+    } catch (Exception $e) {
+        logActivity("Cancel massage booking error: " . $e->getMessage(), 'ERROR');
+        sendError('Failed to cancel massage booking: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Удаление бронирования массажа
+ */
+function handleDeleteMassageBooking() {
+    global $conn;
+    
+    try {
+        if (!isAdminAuthenticated()) {
+            sendError('Admin authentication required');
+        }
+        
+        $bookingId = intval($_POST['booking_id'] ?? 0);
+        
+        if ($bookingId <= 0) {
+            sendError('Invalid booking ID');
+        }
+        
+        // Удаляем бронирование
+        $result = deleteRecord($conn, 'massage_bookings', 'id = ?', [$bookingId]);
+        
+        if (!$result) {
+            sendError('Failed to delete massage booking');
+        }
+        
+        logActivity("Massage booking deleted: ID {$bookingId}");
+        
+        sendSuccess(['message' => 'Massage booking deleted successfully']);
+        
+    } catch (Exception $e) {
+        logActivity("Delete massage booking error: " . $e->getMessage(), 'ERROR');
+        sendError('Failed to delete massage booking: ' . $e->getMessage());
+    }
+}
+
 // ==========================================
 // Вспомогательные функции
 // ==========================================
@@ -865,13 +1286,36 @@ function checkDateAvailability($conn, $roomName, $checkinDate, $checkoutDate) {
             }
         }
         
-        // Проверяем заблокированные даты
-        $sql = "SELECT COUNT(*) as count FROM blocked_dates 
-                WHERE room_name = ? 
-                AND blocked_date >= ? 
-                AND blocked_date < ?";
-        
-        $result = fetchOne($conn, $sql, [$roomName, $checkinDate, $checkoutDate]);
+        // Проверяем заблокированные даты (периоды)
+        // Проверяем, пересекается ли период бронирования с заблокированными периодами
+        // Учитываем блокировки для конкретной комнаты и блокировки "__all__" (для всех комнат и массажа)
+        // Безопасный SQL: сначала пробуем с date_from/date_to, если не работает - используем blocked_date
+        $result = null;
+        try {
+            // Пробуем запрос с date_from/date_to (новый формат)
+            // Проверяем блокировки для конкретной комнаты И блокировки "__all__" (для всех)
+            $sql = "SELECT COUNT(*) as count FROM blocked_dates 
+                    WHERE (room_name = ? OR room_name = '__all__')
+                    AND (
+                        (COALESCE(date_from, blocked_date) <= ? AND COALESCE(date_to, blocked_date) >= ?) OR
+                        (COALESCE(date_from, blocked_date) <= ? AND COALESCE(date_to, blocked_date) >= ?) OR
+                        (COALESCE(date_from, blocked_date) >= ? AND COALESCE(date_to, blocked_date) < ?)
+                    )";
+            $result = fetchOne($conn, $sql, [$roomName, $checkinDate, $checkinDate, $checkoutDate, $checkoutDate, $checkinDate, $checkoutDate]);
+        } catch (Exception $e) {
+            // Если запрос упал (поля не существуют), используем старый формат
+            try {
+                $sql = "SELECT COUNT(*) as count FROM blocked_dates 
+                        WHERE (room_name = ? OR room_name = '__all__')
+                        AND blocked_date >= ? 
+                        AND blocked_date < ?";
+                $result = fetchOne($conn, $sql, [$roomName, $checkinDate, $checkoutDate]);
+            } catch (Exception $e2) {
+                // Если и это не работает, считаем что даты не заблокированы
+                error_log("Check availability: WARNING - Database error when checking blocked_dates, assuming available to avoid blocking");
+                $result = ['count' => 0];
+            }
+        }
         
         if ($result === false) {
             error_log("Check availability: WARNING - Database error when checking blocked_dates, assuming available to avoid blocking");

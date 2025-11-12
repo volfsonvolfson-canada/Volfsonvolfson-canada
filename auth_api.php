@@ -258,6 +258,52 @@ if ($action === 'change_password') {
     sendSuccess(['message' => 'Password changed successfully']);
 }
 
+// Получение списка всех пользователей (для админки)
+if ($action === 'get_users') {
+    // TODO: Add admin authentication check here
+    // For now, allow access (should be protected in production)
+    
+    try {
+        $users = fetchAll($conn, "SELECT id, email, name, phone, phone2, is_verified, created_at, last_session FROM users ORDER BY created_at DESC");
+        
+        if ($users === false) {
+            sendError('Failed to fetch users');
+        }
+        
+        sendSuccess(['data' => $users]);
+    } catch (Exception $e) {
+        sendError('Error fetching users: ' . $e->getMessage());
+    }
+}
+
+// Удаление пользователя (для админки)
+if ($action === 'delete_user') {
+    // TODO: Add admin authentication check here
+    // For now, allow access (should be protected in production)
+    
+    $userId = intval($_POST['user_id'] ?? 0);
+    
+    if ($userId <= 0) {
+        sendError('Invalid user ID');
+    }
+    
+    try {
+        // Удаляем токены пользователя (если есть)
+        executeQuery($conn, "DELETE FROM user_tokens WHERE user_id = ?", [$userId]);
+        
+        // Удаляем пользователя
+        $result = executeQuery($conn, "DELETE FROM users WHERE id = ?", [$userId]);
+        
+        if ($result === false) {
+            sendError('Failed to delete user');
+        }
+        
+        sendSuccess(['message' => 'User deleted successfully']);
+    } catch (Exception $e) {
+        sendError('Error deleting user: ' . $e->getMessage());
+    }
+}
+
 // Если действие не распознано
 sendError('Invalid action');
 
