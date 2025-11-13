@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Account — Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('btb_theme');
+      const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+      const initialTheme = userSetTheme && savedTheme ? savedTheme : 'dark';
+      document.documentElement.setAttribute('data-theme', initialTheme);
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img alt="Back to Base" class="logo-img" />
+        <span class="logo-text">Back to Base</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#rooms">Rooms</a>
+        <a href="massage.html">Massage</a>
+        <a href="retreat-and-workshop.html">Retreat and Workshop</a>
+        <a href="special.html">Special</a>
+        <a href="about.html">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="theme-text">Light</span>
+        </button>
+        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="breadcrumbs"><a href="index.html">Home</a> / My Bookings</div>
+      <h1>My Bookings</h1>
+      <p class="section-lead">Review and adjust your booking request. We will confirm availability by email. Payment becomes available after confirmation.</p>
+    </div>
+  </div>
+
+  <main class="section">
+    <div class="container">
+      <section class="card" id="order-card">
+        <h2>My Bookings</h2>
+        <div id="order-empty" class="notice">No order saved yet. Please book a room or a massage first.</div>
+        <div id="orders-list"></div>
+      </section>
+
+      <section class="card" id="payment-card" style="margin-top:16px; display:none;">
+        <div style="display:flex; gap:16px; align-items:flex-start; justify-content:space-between;">
+          <div style="flex:1 1 auto; min-width:0;">
+            <h2>Payment</h2>
+            <p class="notice">Payment becomes available after host confirms your booking. You will receive an email confirmation.</p>
+            <button class="btn primary" disabled>Pay now</button>
+          </div>
+          <div style="flex:0 0 auto; text-align:right; min-width:220px;">
+            <h2 id="orders-total" style="margin-top:10px; font-size:22px;">Total: 0 CAD</h2>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>British Columbia, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="index.html#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="retreat-and-workshop.html">Retreat and Workshop</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <script src="script.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const elEmpty = document.getElementById('order-empty');
+      const list = document.getElementById('orders-list');
+      const elPayment = document.getElementById('payment-card');
+      const renderSummary = (order, editable) => {
+        const esc = escapeHtml; const at = escapeAttr;
+        if (order.kind === 'massage') {
+          return editable
+            ? `<p><span class="label-muted">Massage:</span> <select><option${order.type==='Relaxing Massage'?' selected':''}>Relaxing Massage</option><option${order.type==='Deep Tissue Massage'?' selected':''}>Deep Tissue Massage</option><option${order.type==='Reiki Energy Healing'?' selected':''}>Reiki Energy Healing</option></select></p>
+               <p><span class="label-muted">Duration:</span> <select><option value="60"${String(order.duration)==='60'?' selected':''}>60 min</option><option value="90"${String(order.duration)==='90'?' selected':''}>90 min</option><option value="15"${String(order.duration)==='15'?' selected':''}>15 min</option><option value="30"${String(order.duration)==='30'?' selected':''}>30 min</option></select></p>
+               <p><span class="label-muted">Date:</span> <input data-field="date" type="date" value="${at(order.date||'')}" style="margin-left:6px;" /> <input data-field="time" type="time" value="${at(order.time||'')}" style="margin-left:6px;" /></p>
+               <p><span class="label-muted">Name:</span> <input data-field="name" type="text" value="${at(order.name||'')}" style="margin-left:6px;" /></p>
+               <p><span class="label-muted">Email:</span> <input data-field="email" type="email" value="${at(order.email||'')}" style="margin-left:6px;" /></p>`
+            : `<p><span class="label-muted">Massage:</span> ${esc(order.type||'')}</p>
+               <p><span class="label-muted">Duration:</span> ${esc(order.duration||'')} min</p>
+               <p><span class="label-muted">Date:</span> ${prettyDate(order.date)} ${esc(order.time||'')}</p>
+               <p><span class="label-muted">Name:</span> ${esc(order.name||'')}</p>
+               <p><span class="label-muted">Email:</span> ${esc(order.email||'')}</p>
+               <p><span class="label-muted">Phone:</span> ${esc(order.phone||'')}</p>`;
+        }
+        const isSecond = order.room==='Second floor — Loft suite' || order.room==='Second floor — Loft suite (entire)' || order.room==='Second floor (entire) — Queen bed';
+        return editable
+          ? `<p><span class="label-muted">Room:</span> <select><option${order.room==='Basement — Queen'?' selected':''}>Basement — Queen</option><option${order.room==='Ground floor — Queen bed'?' selected':''}>Ground floor — Queen bed</option><option${order.room==='Ground floor — Twin beds'?' selected':''}>Ground floor — Twin beds</option><option${isSecond?' selected':''}>Second floor (entire) — Queen bed</option></select></p>
+             <p><span class="label-muted">Check‑in:</span> <input data-field="checkin" type="date" value="${at(order.checkin||'')}" style="margin-left:6px;" /></p>
+             <p><span class="label-muted">Check‑out:</span> <input data-field="checkout" type="date" value="${at(order.checkout||'')}" style="margin-left:6px;" /></p>
+             <p><span class="label-muted">Guests:</span> <select><option value="1"${String(order.guests)==='1'?' selected':''}>1</option><option value="2"${String(order.guests)==='2'?' selected':''}>2</option></select></p>
+             <p><span class="label-muted">Pets:</span> <select><option value="add"${String(order.pets)==='add'?' selected':''}>Add pets</option><option value="no"${String(order.pets)==='no'?' selected':''}>No pets</option></select></p>
+             <p><span class="label-muted">Name:</span> <input data-field="name" type="text" value="${at(order.name||'')}" style="margin-left:6px;" /></p>
+             <p><span class="label-muted">Email:</span> <input data-field="email" type="email" value="${at(order.email||'')}" style="margin-left:6px;" /></p>
+             <p><span class="label-muted">Phone:</span> <input data-field="phone" type="tel" value="${at(order.phone||'')}" style="margin-left:6px;" /></p>`
+          : `<p><span class="label-muted">Room:</span> ${esc(mapRoomName(order.room||''))}</p>
+             <p><span class="label-muted">Check‑in:</span> ${prettyDate(order.checkin)}</p>
+             <p><span class="label-muted">Check‑out:</span> ${prettyDate(order.checkout)}</p>
+             <p><span class="label-muted">Guests:</span> ${esc(order.guests||'')}</p>
+             <p><span class="label-muted">Pets:</span> ${esc(order.pets==='add'?'Add pets':'No pets')}</p>
+             <p><span class="label-muted">Name:</span> ${esc(order.name||'')}</p>
+             <p><span class="label-muted">Email:</span> ${esc(order.email||'')}</p>
+             <p><span class="label-muted">Phone:</span> ${esc(order.phone||'')}</p>`;
+      };
+      const load = () => {
+        const raw = localStorage.getItem('btb_orders');
+        let arr = [];
+        try { arr = JSON.parse(raw || '[]'); } catch (_) {}
+        list.innerHTML = '';
+        if (!Array.isArray(arr) || arr.length === 0) {
+          elEmpty.style.display = 'block';
+          elPayment.style.display = 'none';
+          return;
+        }
+        elEmpty.style.display = 'none';
+        elPayment.style.display = 'block';
+        // Button state: disabled until confirmed
+        const payBtn = elPayment.querySelector('button');
+        const isConfirmed = Array.isArray(arr) && arr.some(o => o && o.confirmed === true);
+        if (payBtn) payBtn.disabled = !isConfirmed;
+        const rooms = arr.filter(o => o.kind === 'room');
+        const massages = arr.filter(o => o.kind === 'massage');
+        if (rooms.length) {
+          const h = document.createElement('h2');
+          h.textContent = 'Room booking';
+          list.appendChild(h);
+        }
+        rooms.forEach((order, idx) => {
+          const card = document.createElement('div');
+          card.className = 'card card-massage';
+          card.style.marginBottom = '12px';
+          const body = document.createElement('div');
+          body.className = 'card-body';
+          const actions = document.createElement('div');
+          actions.style.display = 'flex';
+          actions.style.gap = '10px';
+          actions.style.alignItems = 'start';
+
+          const editBtn = document.createElement('button');
+          editBtn.className = 'btn';
+          editBtn.textContent = 'Edit details';
+
+          const clearBtn = document.createElement('button');
+          clearBtn.className = 'btn';
+          clearBtn.textContent = 'Clear';
+
+          const saveBtn = document.createElement('button');
+          saveBtn.className = 'btn primary';
+          saveBtn.textContent = 'Save changes';
+          saveBtn.style.display = 'none';
+          saveBtn.style.marginTop = '12px';
+
+          // Summary with editable inputs
+          const summary = document.createElement('div');
+          summary.innerHTML = renderSummary(order, false);
+
+          body.appendChild(summary);
+          body.appendChild(saveBtn);
+          card.appendChild(body);
+          card.appendChild(actions);
+          actions.appendChild(editBtn);
+          actions.appendChild(clearBtn);
+          const priceEl = document.createElement('div');
+          priceEl.className = 'notice price';
+          priceEl.style.marginTop = '8px';
+          {
+            const rate = getRoomNightRate(order);
+            const nights = nightsBetween(order.checkin, order.checkout);
+            const total = calcRoomPrice(order);
+            const cleaningFee = order.room === 'Second floor (entire) — Queen bed' ? 100 : 60;
+            const petsFee = order.pets === 'add' ? 75 : 0;
+            priceEl.innerHTML = `
+              <div>Price: ${rate} CAD/night × ${nights} night${nights===1?'':'s'} = ${total} CAD</div>
+              <div style="margin-top: 4px; color: var(--muted);">Cleaning fee: +${cleaningFee} CAD</div>
+              ${petsFee > 0 ? `<div style="margin-top: 4px; color: var(--muted);">Pets fee: +${petsFee} CAD</div>` : ''}
+            `;
+          }
+          card.appendChild(priceEl);
+          list.appendChild(card);
+
+          clearBtn.addEventListener('click', () => {
+            const confirmed = confirm('Are you sure you want to cancel this booking?');
+            if (confirmed) {
+              const next = arr.filter(a => a.id !== order.id);
+              localStorage.setItem('btb_orders', JSON.stringify(next));
+              load();
+            }
+          });
+
+          editBtn.addEventListener('click', () => {
+            summary.innerHTML = renderSummary(order, true);
+            editBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            saveBtn.style.display = 'block';
+            // enhance new date inputs to show month names
+            if (window.enhanceDateInputs) window.enhanceDateInputs(summary);
+            if (window.applyCheckinCheckoutConstraint && order.kind === 'room') window.applyCheckinCheckoutConstraint(summary);
+            if (window.configureTimeInputs) window.configureTimeInputs(summary);
+            if (window.enhanceTimeInputs) window.enhanceTimeInputs(summary);
+            priceEl.style.display = 'none';
+          });
+
+          saveBtn.addEventListener('click', () => {
+            const flash = (el) => { try { if (window.flashDateField) window.flashDateField(el); else { el && el.classList.add('invalid-field'); setTimeout(() => el && el.classList.remove('invalid-field'), 600); } } catch (_) {} };
+            if (order.kind === 'massage') {
+              const selects = summary.querySelectorAll('select');
+              if (selects[0]) order.type = selects[0].value;
+              if (selects[1]) order.duration = selects[1].value;
+              const dateI = summary.querySelector('input[data-field="date"]');
+              const timeI = summary.querySelector('input[data-field="time"]');
+              const nameI = summary.querySelector('input[data-field="name"]');
+              const emailI = summary.querySelector('input[data-field="email"]');
+              const phoneI = summary.querySelector('input[type="tel"]');
+              order.date = dateI ? dateI.value : order.date;
+              order.time = timeI ? timeI.value : order.time;
+              order.name = nameI ? nameI.value : order.name;
+              order.email = emailI ? emailI.value : order.email;
+              order.phone = phoneI ? phoneI.value : order.phone;
+            } else {
+              const selects = summary.querySelectorAll('select');
+              if (selects[0]) order.room = selects[0].value;
+              if (selects[1]) order.guests = selects[1].value;
+              if (selects[2]) order.pets = selects[2].value;
+              const inI = summary.querySelector('input[data-field="checkin"]');
+              const outI = summary.querySelector('input[data-field="checkout"]');
+              const nameI = summary.querySelector('input[data-field="name"]');
+              const emailI = summary.querySelector('input[data-field="email"]');
+              const phoneI = summary.querySelector('input[data-field="phone"]');
+              const newIn = inI ? inI.value : order.checkin;
+              const newOut = outI ? outI.value : order.checkout;
+              // Required fields in specific order, mirroring room form
+              if (!newIn) { if (inI && inI.reportValidity) inI.reportValidity(); else alert('Please fill out this field.'); flash(inI); inI && inI.focus(); return; }
+              if (!newOut) { if (outI && outI.reportValidity) outI.reportValidity(); else alert('Please fill out this field.'); flash(outI); outI && outI.focus(); return; }
+              // validate dates: checkout must be after checkin
+              if (newIn && newOut) {
+                const dIn = parseLocalDate(newIn);
+                const dOut = parseLocalDate(newOut);
+                if (dOut <= dIn) {
+                  if (outI && outI.setCustomValidity) {
+                    outI.setCustomValidity(''); // ensure native bubble doesn't conflict
+                  }
+                  // Show custom two-line bubble near the visible proxy
+                  try {
+                    const proxy = outI && outI.previousElementSibling;
+                    if (window.showValidationBubble && proxy) {
+                      window.showValidationBubble(proxy, 'Check‑out cannot be earlier than Check‑in.\nPlease select a later date.');
+                    }
+                  } catch (_) {}
+                  flash(outI); outI && outI.focus();
+                  return; // keep edit mode open
+                }
+                if (window.hideValidationBubble) window.hideValidationBubble();
+                if (outI && outI.setCustomValidity) outI.setCustomValidity('');
+                if (window.clearDateFieldFlash) window.clearDateFieldFlash(outI);
+              }
+              if (!nameI || !nameI.value.trim()) { if (nameI && nameI.reportValidity) nameI.reportValidity(); else alert('Please fill out this field.'); flash(nameI); nameI && nameI.focus(); return; }
+              if (!emailI || !emailI.value.trim()) { if (emailI && emailI.reportValidity) emailI.reportValidity(); else alert('Please fill out this field.'); flash(emailI); emailI && emailI.focus(); return; }
+              if (!phoneI || !phoneI.value.trim()) { if (phoneI && phoneI.reportValidity) phoneI.reportValidity(); else alert('Please fill out this field.'); flash(phoneI); phoneI && phoneI.focus(); return; }
+              if (!selects[1] || !selects[1].value) { selects[1] && selects[1].reportValidity ? selects[1].reportValidity() : alert('Please fill out this field.'); selects[1] && selects[1].focus(); return; }
+              if (!selects[2] || !selects[2].value) { selects[2] && selects[2].reportValidity ? selects[2].reportValidity() : alert('Please fill out this field.'); selects[2] && selects[2].focus(); return; }
+              order.checkin = newIn;
+              order.checkout = newOut;
+              order.name = nameI ? nameI.value : order.name;
+              order.email = emailI ? emailI.value : order.email;
+              order.phone = phoneI ? phoneI.value : order.phone;
+            }
+            arr[idx] = order;
+            localStorage.setItem('btb_orders', JSON.stringify(arr));
+            summary.innerHTML = renderSummary(order, false);
+            saveBtn.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            clearBtn.style.display = 'inline-block';
+            {
+              const rate = getRoomNightRate(order);
+              const nights = nightsBetween(order.checkin, order.checkout);
+              const total = calcRoomPrice(order);
+              const cleaningFee = order.room === 'Second floor (entire) — Queen bed' ? 100 : 60;
+              const petsFee = order.pets === 'add' ? 75 : 0;
+              priceEl.innerHTML = `
+                <div>Price: ${rate} CAD/night × ${nights} night${nights===1?'':'s'} = ${total} CAD</div>
+                <div style="margin-top: 4px; color: var(--muted);">Cleaning fee: +${cleaningFee} CAD</div>
+                ${petsFee > 0 ? `<div style="margin-top: 4px; color: var(--muted);">Pets fee: +${petsFee} CAD</div>` : ''}
+              `;
+            }
+            priceEl.style.display = 'block';
+            updateTotal();
+            // Re-evaluate payment button enabled state
+            const payBtn2 = elPayment.querySelector('button');
+            const isConfirmed2 = arr.some(o => o && o.confirmed === true);
+            if (payBtn2) payBtn2.disabled = !isConfirmed2;
+          });
+        });
+        if (massages.length) {
+          const h = document.createElement('h2');
+          h.textContent = 'Massage booking';
+          h.style.marginTop = '18px';
+          list.appendChild(h);
+        }
+        massages.forEach((order, idx) => {
+          const card = document.createElement('div');
+          card.className = 'card card-massage';
+          card.style.marginBottom = '12px';
+          const body = document.createElement('div');
+          body.className = 'card-body';
+          const actions = document.createElement('div');
+          actions.style.display = 'flex';
+          actions.style.gap = '10px';
+          actions.style.alignItems = 'start';
+
+          const editBtn = document.createElement('button');
+          editBtn.className = 'btn';
+          editBtn.textContent = 'Edit details';
+
+          const clearBtn = document.createElement('button');
+          clearBtn.className = 'btn';
+          clearBtn.textContent = 'Clear';
+
+          const saveBtn = document.createElement('button');
+          saveBtn.className = 'btn primary';
+          saveBtn.textContent = 'Save changes';
+          saveBtn.style.display = 'none';
+          saveBtn.style.marginTop = '12px';
+
+          const summary = document.createElement('div');
+          summary.innerHTML = renderSummary(order, false);
+
+          body.appendChild(summary);
+          body.appendChild(saveBtn);
+          card.appendChild(body);
+          card.appendChild(actions);
+          actions.appendChild(editBtn);
+          actions.appendChild(clearBtn);
+          const priceEl = document.createElement('div');
+          priceEl.className = 'notice price';
+          priceEl.style.marginTop = '8px';
+          priceEl.textContent = `Price: ${calcMassagePrice(order)} CAD`;
+          card.appendChild(priceEl);
+          list.appendChild(card);
+
+          clearBtn.addEventListener('click', () => {
+            const confirmed = confirm('Are you sure you want to cancel this booking?');
+            if (confirmed) {
+              const next = arr.filter(a => a.id !== order.id);
+              localStorage.setItem('btb_orders', JSON.stringify(next));
+              load();
+            }
+          });
+
+          editBtn.addEventListener('click', () => {
+            summary.innerHTML = renderSummary(order, true);
+            editBtn.style.display = 'none';
+            clearBtn.style.display = 'none';
+            saveBtn.style.display = 'block';
+            // enhance new date inputs for massage card too
+            if (window.enhanceDateInputs) window.enhanceDateInputs(summary);
+            if (window.configureTimeInputs) window.configureTimeInputs(summary);
+            if (window.enhanceTimeInputs) window.enhanceTimeInputs(summary);
+            priceEl.style.display = 'none';
+          });
+
+          saveBtn.addEventListener('click', () => {
+            const selects = summary.querySelectorAll('select');
+            if (selects[0]) order.type = selects[0].value;
+            if (selects[1]) order.duration = selects[1].value;
+            const [dateI, timeI, nameI, emailI] = summary.querySelectorAll('input');
+            order.date = dateI ? dateI.value : order.date;
+            order.time = timeI ? timeI.value : order.time;
+            order.name = nameI ? nameI.value : order.name;
+            order.email = emailI ? emailI.value : order.email;
+            const next = arr.map(a => a.id === order.id ? order : a);
+            localStorage.setItem('btb_orders', JSON.stringify(next));
+            summary.innerHTML = renderSummary(order, false);
+            saveBtn.style.display = 'none';
+            editBtn.style.display = 'inline-block';
+            clearBtn.style.display = 'inline-block';
+            priceEl.textContent = `Price: ${calcMassagePrice(order)} CAD`;
+            priceEl.style.display = 'block';
+            updateTotal();
+          });
+        });
+        updateTotal();
+      };
+
+      function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
+      function escapeAttr(s) { return escapeHtml(s); }
+      function prettyDate(iso) {
+        try {
+          if (!iso) return '';
+          const d = parseLocalDate(iso);
+          if (!d || Number.isNaN(d.getTime())) return iso;
+          const m = ['January','February','March','April','May','June','July','August','September','October','November','December'][d.getMonth()];
+          return `${m} ${String(d.getDate()).padStart(2,'0')}, ${d.getFullYear()}`;
+        } catch (_) { return iso || ''; }
+      }
+
+      // Local ISO (yyyy-mm-dd) to Date without TZ shift
+      function parseLocalDate(iso) {
+        if (!iso) return null;
+        const parts = String(iso).split('-');
+        if (parts.length !== 3) return null;
+        const y = parseInt(parts[0], 10);
+        const m = parseInt(parts[1], 10) - 1;
+        const d = parseInt(parts[2], 10);
+        return new Date(y, m, d);
+      }
+
+      // map legacy room names to new naming
+      function mapRoomName(name) {
+        if (name === 'Second floor — Loft suite' || name === 'Second floor — Loft suite (entire)') {
+          return 'Second floor (entire) — Queen bed';
+        }
+        return name;
+      }
+
+      load();
+
+      function nightsBetween(a, b) {
+        try { const d1 = parseLocalDate(a); const d2 = parseLocalDate(b); return Math.max(0, Math.round((d2 - d1) / 86400000)); } catch(_) { return 0; }
+      }
+      function getRoomNightRate(o) {
+        const per = {
+          'Basement — Queen': 140,
+          'Ground floor — Queen bed': 130,
+          'Ground floor — Twin beds': 125,
+          'Second floor — Loft suite': 210,
+          'Second floor — Loft suite (entire)': 210,
+          'Second floor (entire) — Queen bed': 210,
+        };
+        return per[o.room] || 0;
+      }
+      function calcRoomPrice(o) {
+        const base = getRoomNightRate(o);
+        const nights = nightsBetween(o.checkin, o.checkout);
+        return base * nights;
+      }
+      function calcMassagePrice(o) {
+        const t = String(o.type || '');
+        const d = String(o.duration || '');
+        if (t === 'Relaxing Massage') return d==='90'?160:110;
+        if (t === 'Deep Tissue Massage') return d==='90'?170:120;
+        if (t === 'Reiki Energy Healing') return d==='30'?50:25;
+        return 0;
+      }
+
+      function updateTotal() {
+        let sum = 0;
+        let roomCount = 0;
+        try {
+          const raw2 = localStorage.getItem('btb_orders');
+          const a2 = JSON.parse(raw2 || '[]');
+          a2.forEach(o => { 
+            if (o.kind === 'room') {
+              sum += calcRoomPrice(o);
+              roomCount++;
+            } else {
+              sum += calcMassagePrice(o);
+            }
+          });
+          // Добавляем плату за уборку для каждого бронирования комнаты
+          if (roomCount > 0) {
+            a2.forEach(o => {
+              if (o.kind === 'room') {
+                // Second floor (entire) — Queen bed: +100 CAD, остальные: +60 CAD
+                if (o.room === 'Second floor (entire) — Queen bed') {
+                  sum += 100;
+                } else {
+                  sum += 60;
+                }
+                
+                // Добавляем плату за домашних животных: +75 CAD
+                if (o.pets === 'add') {
+                  sum += 75;
+                }
+              }
+            });
+          }
+        } catch (_) {}
+        const current = document.getElementById('orders-total');
+        if (current) current.textContent = `Total: ${sum} CAD`;
+      }
+    });
+  </script>
+  <script src="auth.js"></script>
+</body>
+</html>
+

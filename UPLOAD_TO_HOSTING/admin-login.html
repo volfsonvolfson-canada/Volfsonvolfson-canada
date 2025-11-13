@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login — Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body class="admin-body">
+  <div class="admin-login-container">
+    <div class="admin-login-card">
+      <div class="admin-login-header">
+        <h1>Back to Base</h1>
+        <h2>Admin Panel</h2>
+        <p>Sign in to manage your website content</p>
+      </div>
+      
+      <form id="admin-login-form" class="admin-login-form" data-has-submit-handler="true" novalidate>
+        <div class="form-group">
+          <label for="admin-username">Email address</label>
+          <input type="email" id="admin-username" name="username" required placeholder="Enter admin email address">
+        </div>
+        
+        <div class="form-group">
+          <label for="admin-password">Password</label>
+          <input type="password" id="admin-password" name="password" required placeholder="Enter admin password">
+        </div>
+        
+        <button type="submit" class="btn primary admin-login-btn">Sign In</button>
+        
+        <div id="admin-login-error" class="error-message" style="display: none;"></div>
+      </form>
+      
+      <div class="admin-login-footer">
+        <a href="index.html" class="admin-back-link">← Back to website</a>
+      </div>
+    </div>
+  </div>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>Nelson, BC, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="index.html#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="retreat-and-workshop.html">Retreat and Workshop</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+          <li><a href="admin-login.html" style="color: #4a5568; font-size: 0.875rem;">Admin</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <script>
+    // Admin login functionality - Initialize BEFORE script.js loads
+    // Login form handler - Initialize immediately
+    (function initAdminLogin() {
+      const loginForm = document.getElementById('admin-login-form');
+      if (!loginForm) {
+        // If form not ready, wait for DOMContentLoaded
+        document.addEventListener('DOMContentLoaded', initAdminLogin);
+        return;
+      }
+
+      // Mark form as having submit handler
+      loginForm.dataset.hasSubmitHandler = 'true';
+
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        
+        const username = document.getElementById('admin-username').value;
+        const password = document.getElementById('admin-password').value;
+        const errorDiv = document.getElementById('admin-login-error');
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
+        
+        if (!username || !password) {
+          errorDiv.textContent = 'Please enter both email and password';
+          errorDiv.style.display = 'block';
+          return;
+        }
+        
+        // Disable submit button
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Signing in...';
+        }
+        
+        try {
+          const formData = new FormData();
+          formData.append('action', 'admin_login');
+          formData.append('username', username);
+          formData.append('password', password);
+          
+          console.log('Sending admin login request...');
+          
+          const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+          });
+          
+          console.log('Response status:', response.status);
+          console.log('Response ok:', response.ok);
+          
+          // Проверяем, что ответ успешный
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Response error:', errorText);
+            errorDiv.textContent = 'Server error: ' + response.status + '. Please check console for details.';
+            errorDiv.style.display = 'block';
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Sign In';
+            }
+            return;
+          }
+          
+          // Получаем текст ответа для отладки
+          const responseText = await response.text();
+          console.log('Response text:', responseText);
+          
+          let result;
+          try {
+            result = JSON.parse(responseText);
+            console.log('Parsed result:', result);
+          } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response text was:', responseText);
+            errorDiv.textContent = 'Invalid response from server. Please check console.';
+            errorDiv.style.display = 'block';
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Sign In';
+            }
+            return;
+          }
+          
+          if (result.success && result.user) {
+            console.log('Login successful!', result);
+            // Сохраняем токен в localStorage для проверки на других страницах
+            if (result.token) {
+              localStorage.setItem('btb_admin_token', result.token);
+              console.log('Token saved to localStorage');
+            }
+            // Redirect to admin panel
+            console.log('Redirecting to admin.html...');
+            window.location.href = 'admin.html';
+          } else {
+            console.error('Login failed:', result);
+            errorDiv.textContent = result.error || 'Invalid username or password';
+            errorDiv.style.display = 'block';
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Sign In';
+            }
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          console.error('Error stack:', error.stack);
+          errorDiv.textContent = 'An error occurred: ' + error.message + '. Please check console for details.';
+          errorDiv.style.display = 'block';
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign In';
+          }
+        }
+      });
+    })();
+  </script>
+  <script src="script.js"></script>
+</body>
+</html>
+

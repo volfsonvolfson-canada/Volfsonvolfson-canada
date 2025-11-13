@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>About us — Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    // UNIVERSAL THEME INITIALIZATION - Works on ALL pages
+    (function() {
+      'use strict';
+      try {
+        const savedTheme = localStorage.getItem('btb_theme');
+        const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+        let initialTheme = 'dark';
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+          initialTheme = savedTheme;
+        }
+        document.documentElement.setAttribute('data-theme', initialTheme);
+      } catch (error) {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    /* About page specific styles */
+    .about-hero {
+      position: relative;
+      height: 60vh;
+      min-height: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, rgba(0,0,0,0.4) 0%, rgba(0,0,0,0.6) 100%),
+                  url('assets/about_procter.jpg') center/cover,
+                  url('assets/about_procter.jpeg') center/cover,
+                  url('assets/about_procter.JPG') center/cover,
+                  url('assets/about_procter.png') center/cover;
+      background-size: cover;
+      background-position: center;
+      color: white;
+      text-align: center;
+      margin-bottom: 0;
+    }
+    .about-hero-content {
+      max-width: 800px;
+      padding: 0 20px;
+    }
+    .about-hero h1 {
+      font-size: clamp(2.5rem, 5vw, 4rem);
+      margin-bottom: 1rem;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+    }
+    .about-hero p {
+      font-size: clamp(1.1rem, 2vw, 1.5rem);
+      opacity: 0.95;
+      text-shadow: 0 1px 5px rgba(0,0,0,0.5);
+    }
+
+    .about-section {
+      padding: 50px 0;
+    }
+    .about-section.alt {
+      background: var(--bg-alt);
+    }
+
+    .founder-card {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 60px;
+      align-items: center;
+      margin-bottom: 0;
+    }
+    .founder-photo {
+      width: 100%;
+      max-width: 350px;
+      border-radius: 16px;
+      object-fit: cover;
+      aspect-ratio: 3/4;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+    }
+    .founder-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .founder-content h2,
+    .about-section h2 {
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+    .founder-content p {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: var(--text-muted);
+    }
+    .founder-content-expandable {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.4s ease-out;
+    }
+    .founder-content-expandable.expanded {
+      max-height: 2000px;
+      transition: max-height 0.6s ease-in;
+    }
+    .read-more-btn {
+      margin-top: 20px;
+      padding: 10px 16px;
+      background: var(--brand);
+      color: white;
+      border: 1px solid var(--brand);
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+      display: inline-block;
+      text-decoration: none;
+    }
+    .read-more-btn:hover {
+      background: var(--brand-600);
+      transform: translateY(-1px);
+      border-color: var(--brand-600);
+    }
+    .read-more-btn:active {
+      transform: translateY(0);
+    }
+    .founder-signature {
+      margin-top: 20px;
+      font-style: italic;
+      color: var(--brand);
+    }
+
+    .location-section-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 40px;
+      align-items: start;
+      margin-top: 30px;
+    }
+    .location-text-content {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .location-map-container {
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.15);
+      height: 400px;
+      background: var(--card);
+      position: sticky;
+      top: 20px;
+    }
+    #location-map {
+      width: 100%;
+      height: 100%;
+      border: none;
+    }
+    /* Google Maps iframe styling */
+    .location-map-container iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      border-radius: 16px;
+    }
+
+    .directions-box {
+      background: var(--card);
+      padding: 30px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+    }
+    .directions-box p {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+    }
+    .directions-box p:last-of-type {
+      margin-bottom: 0;
+    }
+    .coordinates {
+      background: var(--bg-alt);
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.95rem;
+      display: inline-block;
+    }
+    .deer-warning {
+      background: rgba(245, 158, 11, 0.1);
+      border-left: 4px solid #f59e0b;
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-top: 20px;
+      font-size: 1rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    .attractions-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 30px;
+      margin-top: 30px;
+      margin-bottom: 0;
+    }
+    .attraction-card {
+      background: var(--card);
+      padding: 0;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .attraction-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    }
+    .attraction-card-image {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.3s ease;
+    }
+    .attraction-card[data-gallery="procter"] .attraction-card-image {
+      object-position: center 90%;
+    }
+    .attraction-card-image:hover {
+      transform: scale(1.05);
+    }
+    .attraction-card-content {
+      padding: 30px;
+    }
+    .attraction-card h4 {
+      color: var(--brand);
+      margin-bottom: 10px;
+      font-size: 1.3rem;
+    }
+    .attraction-card .distance {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 15px;
+    }
+    .attraction-card p {
+      line-height: 1.7;
+      color: var(--text-muted);
+    }
+
+    /* Gallery Modal */
+    .gallery-modal {
+      display: none;
+      position: fixed;
+      z-index: 10000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(10px);
+    }
+    .gallery-modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gallery-modal-content {
+      position: relative;
+      max-width: 90%;
+      max-height: 90%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gallery-modal-image {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+    .gallery-modal-close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: white;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10001;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      transition: background 0.3s ease;
+    }
+    .gallery-modal-close:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .gallery-modal-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: white;
+      font-size: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10001;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    .gallery-modal-nav:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .gallery-modal-prev {
+      left: 20px;
+    }
+    .gallery-modal-next {
+      right: 20px;
+    }
+    .gallery-modal-counter {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+
+    /* Contact Form Styles */
+    .contact-section-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      align-items: start;
+      background: var(--card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .contact-text {
+      padding: 30px;
+    }
+    .contact-form-wrapper {
+      padding: 30px;
+      border-left: 1px solid var(--border);
+    }
+    .contact-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .form-group label {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .required {
+      color: #ff4d4d;
+    }
+    .form-input {
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.3s ease;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(44, 123, 229, 0.1);
+    }
+    .form-input:invalid:not(:placeholder-shown) {
+      border-color: #ff4d4d;
+    }
+    .contact-submit-btn {
+      width: 100%;
+      margin-top: 10px;
+    }
+    .form-message {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+    }
+    .form-message.success {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      display: block;
+    }
+    .form-message.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      display: block;
+    }
+    @media (max-width: 768px) {
+      .contact-section-grid {
+        grid-template-columns: 1fr;
+      }
+      .contact-form-wrapper {
+        border-left: none;
+        border-top: 1px solid var(--border);
+      }
+    }
+
+    .parks-list {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 15px;
+      margin-top: 30px;
+      margin-bottom: 0;
+    }
+    .park-item {
+      background: var(--card);
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+    .park-item::before {
+      content: "🌲";
+      font-size: 1.5rem;
+    }
+
+
+    @media (max-width: 768px) {
+      .founder-card {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+      .founder-photo {
+        max-width: 300px;
+        margin: 0 auto;
+      }
+      .location-section-grid {
+        grid-template-columns: 1fr;
+        gap: 30px;
+      }
+      .location-map-container {
+        height: 400px;
+        position: relative;
+      }
+      .about-hero {
+        height: 50vh;
+        min-height: 300px;
+      }
+      .attractions-grid {
+        grid-template-columns: 1fr;
+      }
+      .parks-list {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img alt="Back to Base" class="logo-img" />
+        <span class="logo-text">Back to Base</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#rooms">Rooms</a>
+        <a href="massage.html">Massage</a>
+        <a href="retreat-and-workshop.html">Retreat and Workshop</a>
+        <a href="special.html">Special</a>
+        <a href="about.html">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="theme-text">Light</span>
+        </button>
+        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Hero Section -->
+  <section class="about-hero">
+    <div class="about-hero-content reveal">
+      <h1>About Back to Base</h1>
+      <p>A personal retreat in the heart of British Columbia</p>
+    </div>
+  </section>
+
+  <main>
+    <!-- Idea and Origins Section -->
+    <section class="about-section">
+      <div class="container">
+        <div class="founder-card reveal">
+          <div class="founder-photo-wrap">
+            <img src="assets/Rob Vuik.jpg" 
+                 alt="Rob Vuik, founder of Back to Base" 
+                 class="founder-photo reveal"
+                 onerror="this.onerror=null; this.src='assets/Rob Vuik.jpeg'; this.onerror=function(){this.onerror=null; this.src='assets/Rob Vuik.png'; this.onerror=function(){this.onerror=null; this.src='assets/Rob%20Vuik.jpg'; this.onerror=function(){this.onerror=null; this.src='assets/rob-vuik.jpg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop';};};};};">
+          </div>
+          <div class="founder-content reveal">
+            <h2>Idea and Origins</h2>
+            <p>Hi! My name is <strong>Rob Vuik</strong>. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.</p>
+            <div class="founder-content-expandable" id="founder-expandable">
+              <p>Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.</p>
+              <p>Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Halcyon Hot Springs Resort. Naturally, I'm happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Halcyon Hot Springs Resort.</p>
+              <p>We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.</p>
+              <p class="founder-signature">I look forward to welcoming you!</p>
+            </div>
+            <button class="read-more-btn" id="read-more-btn" onclick="toggleFounderText()">Read more</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- How to Find Us Section -->
+    <section class="about-section alt">
+      <div class="container">
+        <h2 class="reveal">How to Find Us</h2>
+        
+        <div class="location-section-grid reveal">
+          <div class="location-text-content">
+            <div class="directions-box">
+              <p>Back to Base is located in the village of Procter, 35 km from Nelson, B.C.</p>
+              <p>You'll need to take the 24/7 Harrop–Procter ferry,</p>
+              <p>then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.</p>
+              <p>From there, it's just a 3-minute drive up the mountain road — and you're here!</p>
+              <div class="coordinates">
+                <strong>Coordinates:</strong> 49.6125, -116.9579
+              </div>
+            </div>
+            <div class="deer-warning">
+              🦌 <strong>Be careful</strong> — we have a lot of deer in the area!
+            </div>
+          </div>
+          
+          <div class="location-map-container">
+            <iframe 
+              id="location-map"
+              src="https://www.google.com/maps?q=49.6125,-116.9579&hl=en&z=12&output=embed"
+              allowfullscreen=""
+              loading="lazy"
+              referrerpolicy="no-referrer-when-downgrade"
+              title="Back to Base Location - Procter, BC">
+            </iframe>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- About the Location Section -->
+    <section class="about-section">
+      <div class="container">
+        <h2 class="reveal">About the Location</h2>
+        <p class="section-lead reveal">Discover the natural beauty and attractions surrounding Back to Base</p>
+
+        <!-- Attractions Grid -->
+        <div class="attractions-grid reveal">
+          <div class="attraction-card" data-gallery="procter">
+            <img src="assets/procter_1.jpg" 
+                 alt="Procter Village" 
+                 class="attraction-card-image"
+                 onclick="openGallery('procter', 0)"
+                 onerror="this.onerror=null; this.src='assets/procter_1.jpeg'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.JPG'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.png'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.PNG';};};};">
+            <div class="attraction-card-content">
+              <h4>Procter Village</h4>
+              <div class="distance">In the same village</div>
+              <p>In the village of Procter, you'll find the <strong>Procter Café</strong> with their famous cinnamon buns, a small grocery store, and a gas station.</p>
+            </div>
+          </div>
+          <div class="attraction-card" data-gallery="halcyon">
+            <img src="https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=800&auto=format&fit=crop" 
+                 alt="Halcyon Hot Springs Resort" 
+                 class="attraction-card-image"
+                 onclick="openGallery('halcyon', 0)">
+            <div class="attraction-card-content">
+              <h4>Halcyon Hot Springs Resort</h4>
+              <div class="distance">30 km from Back to Base</div>
+              <p>Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!</p>
+            </div>
+          </div>
+          <div class="attraction-card" data-gallery="whitewater">
+            <img src="https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop" 
+                 alt="Whitewater Mountain Resort" 
+                 class="attraction-card-image"
+                 onclick="openGallery('whitewater', 0)">
+            <div class="attraction-card-content">
+              <h4>Whitewater Mountain Resort</h4>
+              <div class="distance">60 km from Back to Base</div>
+              <p>Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.</p>
+            </div>
+          </div>
+          <div class="attraction-card" data-gallery="nelson">
+            <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop" 
+                 alt="Nelson" 
+                 class="attraction-card-image"
+                 onclick="openGallery('nelson', 0)">
+            <div class="attraction-card-content">
+              <h4>Nelson</h4>
+              <div class="distance">35 km from Back to Base</div>
+              <p>A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="reveal" style="margin-top: 50px;">
+          <h3 style="margin-bottom: 20px;">Provincial Parks Nearby</h3>
+          <p>If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base:</p>
+          
+          <div class="parks-list">
+            <div class="park-item">Kokanee Creek Provincial Park</div>
+            <div class="park-item">Kokanee Glacier Provincial Park</div>
+            <div class="park-item">Lockhart Beach Provincial Park</div>
+            <div class="park-item">Kianuko Provincial Park</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact us Section -->
+    <section class="about-section">
+      <div class="container">
+        <h2 class="reveal">Contact us</h2>
+          <div class="contact-section-grid" style="margin-top: 30px;">
+            <div class="contact-text">
+              <p style="font-size: 1.2rem; line-height: 1.8;">
+                At Back to Base, you can find exactly the kind of rest you need.<br>
+                <strong>We'll be happy to help you plan your stay and answer any questions!</strong>
+              </p>
+              <div class="contact-info" style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--border);">
+                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Procter, British Columbia, Canada</p>
+                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Phone: +1 (555) 123‑4567</p>
+                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 0;">Email: hello@backtobase.example</p>
+              </div>
+            </div>
+            <div class="contact-form-wrapper">
+              <form id="contact-form" class="contact-form">
+                <div class="form-group">
+                  <label for="contact-message">Message</label>
+                  <textarea id="contact-message" name="message" rows="4" 
+                            placeholder="Your message..." 
+                            class="form-input"></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="contact-email">Email</label>
+                  <input type="email" id="contact-email" name="email" required 
+                         placeholder="your.email@example.com" 
+                         class="form-input">
+                  <span class="field-error" id="email-error"></span>
+                </div>
+                <div class="form-group">
+                  <label for="contact-phone">Phone</label>
+                  <input type="tel" id="contact-phone" name="phone" required 
+                         placeholder="+1 (555) 123-4567" 
+                         class="form-input">
+                  <span class="field-error" id="phone-error"></span>
+                </div>
+                <div class="form-group">
+                  <label for="contact-captcha"><span id="captcha-question">What is 5 + 3?</span></label>
+                  <input type="number" id="contact-captcha" name="captcha" required 
+                         placeholder="Enter the answer" 
+                         class="form-input">
+                  <input type="hidden" id="captcha-answer" name="captcha_answer" value="8">
+                  <span class="field-error" id="captcha-error"></span>
+                </div>
+                <button type="submit" class="btn primary contact-submit-btn">
+                  Send Message
+                </button>
+                <div id="contact-form-message" class="form-message"></div>
+              </form>
+            </div>
+          </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>British Columbia, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="index.html#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="retreat-and-workshop.html">Retreat and Workshop</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <!-- Gallery Modal -->
+  <div id="gallery-modal" class="gallery-modal">
+    <span class="gallery-modal-close" onclick="closeGallery()">&times;</span>
+    <span class="gallery-modal-nav gallery-modal-prev" onclick="changeGalleryImage(-1)">&#10094;</span>
+    <span class="gallery-modal-nav gallery-modal-next" onclick="changeGalleryImage(1)">&#10095;</span>
+    <div class="gallery-modal-content">
+      <img id="gallery-modal-image" class="gallery-modal-image" src="" alt="">
+    </div>
+    <div class="gallery-modal-counter">
+      <span id="gallery-counter">1 / 1</span>
+    </div>
+  </div>
+
+  <script src="utils.js?v=26"></script>
+  <script src="script.js?v=26"></script>
+  <script src="auth.js"></script>
+  <script>
+    // Gallery data for each attraction
+    const galleries = {
+      procter: [
+        'assets/procter_1.jpg',
+        'assets/procter_2.jpg',
+        'assets/procter_3.jpg',
+        'assets/procter_4.jpg',
+        'assets/procter_5.jpg',
+        'assets/procter_6.jpg',
+        'assets/procter_7.jpg',
+        'assets/procter_8.jpg'
+      ],
+      halcyon: [
+        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop'
+      ],
+      whitewater: [
+        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop'
+      ],
+      nelson: [
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop'
+      ]
+    };
+
+    let currentGallery = null;
+    let currentImageIndex = 0;
+
+    function openGallery(galleryName, imageIndex) {
+      currentGallery = galleryName;
+      currentImageIndex = imageIndex || 0;
+      const gallery = galleries[galleryName];
+      
+      if (!gallery || gallery.length === 0) return;
+      
+      const modal = document.getElementById('gallery-modal');
+      const modalImage = document.getElementById('gallery-modal-image');
+      const counter = document.getElementById('gallery-counter');
+      
+      modalImage.src = gallery[currentImageIndex];
+      counter.textContent = `${currentImageIndex + 1} / ${gallery.length}`;
+      modal.classList.add('active');
+      
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeGallery() {
+      const modal = document.getElementById('gallery-modal');
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    function changeGalleryImage(direction) {
+      if (!currentGallery) return;
+      
+      const gallery = galleries[currentGallery];
+      if (!gallery || gallery.length === 0) return;
+      
+      currentImageIndex += direction;
+      
+      if (currentImageIndex < 0) {
+        currentImageIndex = gallery.length - 1;
+      } else if (currentImageIndex >= gallery.length) {
+        currentImageIndex = 0;
+      }
+      
+      const modalImage = document.getElementById('gallery-modal-image');
+      const counter = document.getElementById('gallery-counter');
+      
+      modalImage.src = gallery[currentImageIndex];
+      counter.textContent = `${currentImageIndex + 1} / ${gallery.length}`;
+    }
+
+    // Close gallery on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeGallery();
+      } else if (e.key === 'ArrowLeft') {
+        changeGalleryImage(-1);
+      } else if (e.key === 'ArrowRight') {
+        changeGalleryImage(1);
+      }
+    });
+
+    // Close gallery when clicking outside image
+    document.getElementById('gallery-modal').addEventListener('click', function(e) {
+      if (e.target === this || e.target.classList.contains('gallery-modal-content')) {
+        closeGallery();
+      }
+    });
+
+    // Generate random captcha
+    function generateCaptcha() {
+      const num1 = Math.floor(Math.random() * 10) + 1;
+      const num2 = Math.floor(Math.random() * 10) + 1;
+      const answer = num1 + num2;
+      
+      document.getElementById('captcha-question').textContent = `What is ${num1} + ${num2}?`;
+      document.getElementById('captcha-answer').value = answer;
+      document.getElementById('contact-captcha').value = '';
+    }
+
+    // Initialize captcha on page load
+    generateCaptcha();
+
+    // Contact form handler
+    document.getElementById('contact-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const form = this;
+      const formData = new FormData(form);
+      const messageDiv = document.getElementById('contact-form-message');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      
+      // Clear previous errors
+      document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+      messageDiv.className = 'form-message';
+      messageDiv.textContent = '';
+      
+      // Validate captcha
+      const captchaAnswer = parseInt(document.getElementById('captcha-answer').value);
+      const captchaInput = parseInt(formData.get('captcha'));
+      
+      if (captchaInput !== captchaAnswer) {
+        document.getElementById('captcha-error').textContent = 'Incorrect answer. Please try again.';
+        generateCaptcha();
+        return;
+      }
+      
+      // Validate email
+      const email = formData.get('email');
+      if (!email || !email.includes('@')) {
+        document.getElementById('email-error').textContent = 'Please enter a valid email address.';
+        return;
+      }
+      
+      // Validate phone
+      const phone = formData.get('phone');
+      if (!phone || phone.trim().length < 5) {
+        document.getElementById('phone-error').textContent = 'Please enter a valid phone number.';
+        return;
+      }
+      
+      // Disable submit button
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+      
+      try {
+        const response = await fetch('contact_form.php', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          messageDiv.className = 'form-message success';
+          messageDiv.textContent = 'Thank you! Your message has been sent successfully.';
+          form.reset();
+          generateCaptcha();
+        } else {
+          messageDiv.className = 'form-message error';
+          messageDiv.textContent = result.error || 'An error occurred. Please try again.';
+        }
+      } catch (error) {
+        messageDiv.className = 'form-message error';
+        messageDiv.textContent = 'Network error. Please try again later.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message';
+      }
+    });
+
+    // Toggle founder text expand/collapse
+    function toggleFounderText() {
+      const expandable = document.getElementById('founder-expandable');
+      const button = document.getElementById('read-more-btn');
+      
+      if (expandable.classList.contains('expanded')) {
+        expandable.classList.remove('expanded');
+        button.textContent = 'Read more';
+      } else {
+        expandable.classList.add('expanded');
+        button.textContent = 'Read less';
+      }
+    }
+
+    // Initialize reveal animations
+    if (window.AnimationUtils && window.AnimationUtils.initReveal) {
+      window.AnimationUtils.initReveal();
+    } else {
+      const revealElements = document.querySelectorAll('.reveal');
+      const reveal = () => {
+        const trigger = window.innerHeight * 0.88;
+        revealElements.forEach(el => {
+          const rect = el.getBoundingClientRect();
+          if (rect.top < trigger) {
+            el.classList.add('visible');
+          }
+        });
+      };
+      reveal();
+      window.addEventListener('scroll', reveal, { passive: true });
+    }
+  </script>
+</body>
+</html>

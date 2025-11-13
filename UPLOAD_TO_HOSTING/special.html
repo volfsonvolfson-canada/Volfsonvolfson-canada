@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Special offer — Back to Base</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    // UNIVERSAL THEME INITIALIZATION - Works on ALL pages
+    // This script runs synchronously in <head> before page render
+    // User can land on ANY page first time - theme defaults to 'dark'
+    (function() {
+      'use strict';
+      try {
+        // Get saved theme and user preference flag
+        const savedTheme = localStorage.getItem('btb_theme');
+        const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+        
+        // Determine initial theme:
+        // - If user explicitly set theme (userSetTheme=true) AND savedTheme is valid, use savedTheme
+        // - Otherwise default to 'dark' (first-time visitor on any page)
+        let initialTheme = 'dark';
+        
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+          initialTheme = savedTheme; // User has chosen theme - use it
+        }
+        // Else: first-time visitor or invalid theme - use default 'dark'
+        
+        // Set theme immediately before page renders
+        document.documentElement.setAttribute('data-theme', initialTheme);
+      } catch (error) {
+        // If localStorage fails, default to dark
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    })();
+  </script>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="logo" href="index.html">
+        <img alt="Back to Base" class="logo-img" />
+        <span class="logo-text">Back to Base</span>
+      </a>
+      <nav class="nav">
+        <a href="index.html#rooms">Rooms</a>
+        <a href="massage.html">Massage</a>
+        <a href="retreat-and-workshop.html">Retreat and Workshop</a>
+        <a href="special.html">Special</a>
+        <a href="about.html">About us</a>
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+          <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          <span id="theme-text">Light</span>
+        </button>
+        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+      </div>
+    </div>
+  </header>
+
+  <div class="page-header">
+    <div class="container">
+      <div class="breadcrumbs"><a href="index.html">Home</a> / Special</div>
+      <h1>Soak & Savor at Ainsworth Hot Springs</h1>
+    </div>
+  </div>
+
+  <main class="section">
+    <div class="container grid-2">
+      <section class="card">
+        <img class="floor-photo" src="https://images.unsplash.com/photo-1519824145371-296894a0daa9?q=80&w=1600&auto=format&fit=crop" alt="Hot springs spa" />
+      </section>
+      <section class="card">
+        <p><strong>Soak & Savor at Ainsworth Hot Springs</strong><br/>
+        Ainsworth Hot Springs is just a short scenic drive from Back to Base. Relax in the soothing, mineral-rich waters of the hot springs pools, and explore the unique natural limestone cave, where warm geothermal waters cascade through the grotto for a truly one-of-a-kind relaxation experience. After your soak, add locally inspired dining experience at the onsite restaurant. With stunning views of Kootenay Lake and the surrounding mountains, the menu combines fresh regional ingredients with creative flair, making every meal a delight.</p>
+        <p>Maybe add a visit to the Spirit Water Spa where my skillful colleagues offer a full range of signature treatments.</p>
+        <p><strong>Exclusive Offer:</strong> Book a minimum 5-night stay at our Erasmus Suite and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!</p>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-grid">
+      <div>
+        <h4>Contact</h4>
+        <p>British Columbia, Canada</p>
+        <p>Phone: +1 (555) 123‑4567</p>
+        <p>Email: hello@backtobase.example</p>
+      </div>
+      <div>
+        <h4>Navigation</h4>
+        <ul class="footer-nav">
+          <li><a href="index.html#rooms">Rooms</a></li>
+          <li><a href="massage.html">Massage</a></li>
+          <li><a href="retreat-and-workshop.html">Retreat and Workshop</a></li>
+          <li><a href="special.html">Special</a></li>
+          <li><a href="about.html">About us</a></li>
+        </ul>
+      </div>
+      <div>
+        <h4>Quiet hours</h4>
+        <p>22:00 — 07:00</p>
+      </div>
+    </div>
+    <div class="container copyright">© <span id="year"></span> Back to Base</div>
+  </footer>
+
+  <script src="script.js?v=26"></script>
+  <script src="auth.js?v=26"></script>
+</body>
+</html>
