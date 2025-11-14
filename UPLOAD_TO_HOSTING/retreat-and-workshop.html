@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Retreat and Workshop — Back to Base</title>
+  <title>Retreats and Workshops — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -42,9 +42,18 @@
       text-align: center;
       margin-bottom: 0;
     }
+    .retreat-hero .container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      max-width: 100%;
+    }
     .retreat-hero-content {
       max-width: 800px;
       padding: 0 20px;
+      text-align: center;
+      width: 100%;
     }
     .retreat-hero h1 {
       font-size: clamp(2.5rem, 5vw, 4rem);
@@ -60,19 +69,23 @@
     .retreat-section {
       padding: 80px 0;
     }
+    .retreat-section:first-of-type {
+      padding-bottom: 40px;
+    }
     .retreat-section.alt {
       background: var(--bg-alt);
+      padding-top: 40px;
     }
 
     .retreat-section h2 {
       font-size: 2.5rem;
-      margin-bottom: 20px;
+      margin-bottom: 80px;
       color: var(--text);
     }
     .retreat-section h3 {
       font-size: 2rem;
       margin-bottom: 15px;
-      color: var(--brand);
+      color: var(--text);
     }
     .retreat-section p {
       font-size: 1.1rem;
@@ -84,7 +97,7 @@
     .intro-section {
       max-width: 900px;
       margin: 0 auto;
-      text-align: center;
+      text-align: left;
     }
     .intro-section p {
       font-size: 1.2rem;
@@ -104,16 +117,58 @@
     .space-card.reverse > * {
       direction: ltr;
     }
+    .space-image-wrapper {
+      position: relative;
+      cursor: pointer;
+      border-radius: 16px;
+      overflow: hidden;
+    }
     .space-image {
       width: 100%;
       border-radius: 16px;
       object-fit: cover;
       aspect-ratio: 4/3;
       box-shadow: 0 10px 40px rgba(0,0,0,0.2);
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, opacity 0.3s ease;
+      display: block;
     }
-    .space-image:hover {
+    .space-image-wrapper:hover .space-image {
       transform: scale(1.02);
+      opacity: 0.9;
+    }
+    .space-image-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.3);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: 16px;
+    }
+    .space-image-wrapper:hover .space-image-overlay {
+      opacity: 1;
+    }
+    .space-image-overlay-icon {
+      width: 60px;
+      height: 60px;
+      background: rgba(255, 255, 255, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text);
+      font-size: 24px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    .space-image-overlay-icon img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
     }
     .space-content h3 {
       margin-top: 0;
@@ -133,32 +188,159 @@
       content: "✓";
       position: absolute;
       left: 0;
-      color: var(--brand);
+      color: var(--text);
       font-weight: bold;
     }
 
-    .activities-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 30px;
-      margin-top: 40px;
+    .workshops-list {
+      list-style: none;
+      padding: 0;
+      margin: 40px 0;
     }
-    .activity-item {
-      background: var(--card);
-      padding: 25px;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-    .activity-item:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.1);
-    }
-    .activity-item strong {
-      color: var(--brand);
-      display: block;
-      margin-bottom: 10px;
+    .workshops-list li {
+      padding: 6px 0;
+      padding-left: 25px;
+      position: relative;
+      color: var(--text-muted);
+      line-height: 1.5;
       font-size: 1.1rem;
+    }
+    .workshops-list li:before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      color: var(--text);
+      font-weight: bold;
+    }
+    .collaboration-section .workshops-list li {
+      color: rgba(255, 255, 255, 0.9);
+    }
+    .collaboration-section .workshops-list li:before {
+      color: white;
+    }
+
+    .contact-form-wrapper {
+      flex: 1;
+      min-width: 0;
+    }
+    .contact-form {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .form-group label {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text);
+    }
+    .form-input {
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.3s ease;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(44, 123, 229, 0.1);
+    }
+    .form-input:invalid:not(:placeholder-shown) {
+      border-color: #ff4d4d;
+    }
+    .contact-submit-btn {
+      width: 100%;
+      margin-top: 10px;
+    }
+    .form-message {
+      margin-top: 15px;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .form-message.success,
+    .form-message.error {
+      display: block;
+      opacity: 1;
+    }
+    .form-message.success {
+      background: rgba(34, 197, 94, 0.1);
+      color: #22c55e;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+    .form-message.error {
+      background: rgba(239, 68, 68, 0.1);
+      color: #ef4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    .field-error {
+      color: #ef4444;
+      font-size: 12px;
+      display: none;
+    }
+    .field-error.show {
+      display: block;
+    }
+    .organizer-learn-more {
+      text-align: center;
+      padding: 0;
+    }
+    .organizer-learn-more h3 {
+      font-size: 1.3rem;
+      margin-bottom: 20px;
+      color: var(--text);
+    }
+    .learn-more-btn {
+      background: var(--brand);
+      color: white;
+      border: none;
+      padding: 12px 30px;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.3s ease, transform 0.2s ease;
+    }
+    .learn-more-btn:hover {
+      background: var(--brand-600);
+      transform: translateY(-2px);
+    }
+    .learn-more-btn.active {
+      background: var(--brand-600);
+    }
+    #workshops-section {
+      animation: slideDown 0.5s ease;
+    }
+    @keyframes slideDown {
+      from {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @media (max-width: 768px) {
+      .contact-section-grid {
+        grid-template-columns: 1fr;
+      }
+      .contact-form-wrapper {
+        border-left: none;
+        border-top: 1px solid var(--border);
+        padding-top: 30px;
+      }
     }
 
     .collaboration-section {
@@ -220,6 +402,104 @@
       .retreat-section {
         padding: 50px 0;
       }
+      .retreat-section:first-of-type {
+        padding-bottom: 30px;
+      }
+      .retreat-section.alt {
+        padding-top: 30px;
+      }
+    }
+    
+    /* Gallery Modal Styles */
+    .gallery-modal {
+      display: none;
+      position: fixed;
+      z-index: 10000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(10px);
+    }
+    .gallery-modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gallery-modal-content {
+      position: relative;
+      max-width: 90%;
+      max-height: 90%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gallery-modal-image {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+    .gallery-modal-close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: white;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10001;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      transition: background 0.3s ease;
+    }
+    .gallery-modal-close:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .gallery-modal-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: white;
+      font-size: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10001;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    .gallery-modal-nav:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .gallery-modal-prev {
+      left: 20px;
+    }
+    .gallery-modal-next {
+      right: 20px;
+    }
+    .gallery-modal-counter {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
     }
   </style>
 </head>
@@ -233,7 +513,7 @@
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
         <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreat and Workshop</a>
+        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
         <a href="special.html">Special</a>
         <a href="about.html">About us</a>
       </nav>
@@ -269,16 +549,21 @@
     </section>
 
     <!-- Spaces Created for Presence Section -->
-    <section class="retreat-section alt">
+    <section class="retreat-section alt" style="padding-bottom: 20px;">
       <div class="container">
-        <h2 class="reveal">Spaces Created for Presence</h2>
+        <h2 class="reveal">Our locations for your workshops</h2>
 
         <!-- Forest Platforms -->
         <div class="space-card reveal">
-          <div>
-            <img src="https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1200&auto=format&fit=crop" 
+          <div class="space-image-wrapper" onclick="window.openGallery('forest', 0)">
+            <img src="assets/plarform_1.png" 
                  alt="Forest platforms by the creek" 
                  class="space-image">
+            <div class="space-image-overlay">
+              <div class="space-image-overlay-icon">
+                <img src="assets/ruka.png" alt="Click to view gallery" style="width: 100%; height: 100%; object-fit: contain;">
+              </div>
+            </div>
           </div>
           <div class="space-content">
             <h3>Forest platforms by the creek</h3>
@@ -295,10 +580,15 @@
 
         <!-- Indoor Space -->
         <div class="space-card reverse reveal">
-          <div>
+          <div class="space-image-wrapper" onclick="window.openGallery('indoor', 0)">
             <img src="https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1200&auto=format&fit=crop" 
                  alt="Warm, bright indoor space" 
                  class="space-image">
+            <div class="space-image-overlay">
+              <div class="space-image-overlay-icon">
+                <img src="assets/ruka.png" alt="Click to view gallery" style="width: 100%; height: 100%; object-fit: contain;">
+              </div>
+            </div>
           </div>
           <div class="space-content">
             <h3>Warm, bright indoor space at Back to Base</h3>
@@ -309,10 +599,15 @@
 
         <!-- Home Theatre -->
         <div class="space-card reveal">
-          <div>
+          <div class="space-image-wrapper" onclick="window.openGallery('theatre', 0)">
             <img src="https://images.unsplash.com/photo-1533750516457-a7f992034fec?q=80&w=1200&auto=format&fit=crop" 
                  alt="Cozy mini home theatre" 
                  class="space-image">
+            <div class="space-image-overlay">
+              <div class="space-image-overlay-icon">
+                <img src="assets/ruka.png" alt="Click to view gallery" style="width: 100%; height: 100%; object-fit: contain;">
+              </div>
+            </div>
           </div>
           <div class="space-content">
             <h3>Cozy mini home theatre</h3>
@@ -322,79 +617,105 @@
       </div>
     </section>
 
-    <!-- What You Can Host Here Section -->
-    <section class="retreat-section">
+    <!-- Contact Form Section -->
+    <section class="retreat-section" style="padding-top: 0; padding-bottom: 40px; margin-top: -40px;">
       <div class="container">
-        <h2 class="reveal">What You Can Host Here</h2>
-        <p class="reveal" style="font-size: 1.2rem; margin-bottom: 20px;">Back to Base is ideal for:</p>
-        
-        <div class="activities-grid reveal">
-          <div class="activity-item">
-            <strong>Group and private yoga sessions</strong>
-            <p>From intimate one-on-one practices to small group classes in nature.</p>
+        <div class="space-card reveal">
+          <div class="space-content">
+            <h2 style="font-size: 2rem; margin-bottom: 20px; color: var(--text);">Are you looking for a place to retreat or interested in joining a workshop?</h2>
+            <p style="font-size: 1.2rem; line-height: 1.8;">
+              Just send us a message with your preferences, and we will create a program tailored specifically for you!
+            </p>
           </div>
-          <div class="activity-item">
-            <strong>Meditations and mindfulness practices</strong>
-            <p>Deepen your practice in the peaceful forest setting.</p>
-          </div>
-          <div class="activity-item">
-            <strong>Sound healing and breathwork</strong>
-            <p>Experience transformative healing sessions surrounded by nature.</p>
-          </div>
-          <div class="activity-item">
-            <strong>Creative and educational workshops</strong>
-            <p>Host workshops that inspire creativity and learning.</p>
-          </div>
-          <div class="activity-item">
-            <strong>Mini-lectures and intimate gatherings</strong>
-            <p>Perfect space for small group discussions and learning.</p>
-          </div>
-          <div class="activity-item">
-            <strong>Short retreats for small groups</strong>
-            <p>Create memorable retreat experiences for your community.</p>
-          </div>
-          <div class="activity-item" style="grid-column: 1 / -1;">
-            <strong>Restorative outdoor practices</strong>
-            <p>Nature here is not just a backdrop — it becomes a full participant. People open up more easily, rest more deeply, and return to themselves more naturally.</p>
+          <div class="contact-form-wrapper" style="background: var(--card); padding: 30px; border-radius: 16px; border: 1px solid var(--border);">
+            <form id="contact-form" class="contact-form">
+              <div class="form-group">
+                <label for="contact-message">Message</label>
+                <textarea id="contact-message" name="message" rows="4" 
+                          placeholder="Your message..." 
+                          class="form-input" required></textarea>
+                <span class="field-error" id="message-error"></span>
+              </div>
+              <div class="form-group">
+                <label for="contact-email">Email</label>
+                <input type="email" id="contact-email" name="email" required 
+                       placeholder="your.email@example.com" 
+                       class="form-input">
+                <span class="field-error" id="email-error"></span>
+              </div>
+              <div class="form-group">
+                <label for="contact-phone">Phone</label>
+                <input type="tel" id="contact-phone" name="phone" required 
+                       placeholder="+1 (555) 123-4567" 
+                       class="form-input">
+                <span class="field-error" id="phone-error"></span>
+              </div>
+              <div class="form-group">
+                <label for="contact-captcha"><span id="captcha-question">What is 8 + 10?</span></label>
+                <input type="number" id="contact-captcha" name="captcha" required 
+                       placeholder="Enter the answer" 
+                       class="form-input">
+                <input type="hidden" id="captcha-answer" name="captcha_answer" value="18">
+                <span class="field-error" id="captcha-error"></span>
+              </div>
+              <button type="submit" class="btn primary contact-submit-btn">
+                Send Message
+              </button>
+              <div id="contact-form-message" class="form-message"></div>
+            </form>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Invitation to Collaborate Section -->
-    <section class="retreat-section collaboration-section">
+    <!-- Organizer Learn More Section -->
+    <section class="retreat-section" style="padding-top: 20px; padding-bottom: 20px;">
       <div class="container">
-        <h2 class="reveal">Invitation to Collaborate</h2>
-        <p class="reveal" style="font-size: 1.2rem; margin-bottom: 30px;">Back to Base welcomes those who create transformative practices and help people heal and restore.</p>
-        
-        <h3 class="reveal">We are looking for:</h3>
-        
-        <div class="collaboration-grid reveal">
-          <div class="collaboration-item">
-            <strong>Program creators</strong>
-          </div>
-          <div class="collaboration-item">
-            <strong>Yoga instructors</strong>
-          </div>
-          <div class="collaboration-item">
-            <strong>Meditation teachers</strong>
-          </div>
-          <div class="collaboration-item">
-            <strong>Massage therapists</strong>
-          </div>
-          <div class="collaboration-item">
-            <strong>Reiki practitioners</strong>
-          </div>
-          <div class="collaboration-item">
-            <strong>Acupuncturists</strong>
-          </div>
-          <div class="collaboration-item">
-            <strong>Body-oriented specialists</strong>
-          </div>
+        <div class="organizer-learn-more reveal">
+          <h3>Are you a yoga instructor or an event organizer looking for a place to host your sessions?</h3>
+          <button class="learn-more-btn" onclick="toggleWorkshopsSection(this)">
+            Learn More
+          </button>
         </div>
+      </div>
+    </section>
 
-        <p class="reveal" style="margin-top: 40px; font-size: 1.2rem; text-align: center;">
-          If you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you.
+    <!-- What workshops are our spaces suitable for? Section -->
+    <section id="workshops-section" class="retreat-section" style="padding-top: 0; padding-bottom: 80px; display: none;">
+      <div class="container">
+        <h2 class="reveal" style="margin-bottom: 15px;">What workshops are our spaces suitable for?</h2>
+        
+        <p class="reveal" style="font-size: 1.1rem; line-height: 1.8; color: var(--text-muted); margin-bottom: 1.65rem;">
+          The indoor spaces, forest platforms, and the forest itself are ideal for the following practices:
+        </p>
+        
+        <ul class="workshops-list reveal" style="margin-top: 0; margin-bottom: 1.65rem;">
+          <li>Group and private yoga sessions</li>
+          <li>Meditations and mindfulness practices</li>
+          <li>Sound healing and breathwork</li>
+          <li>Creative and educational workshops</li>
+          <li>Mini-lectures and intimate gatherings</li>
+        </ul>
+        
+        <p class="reveal" style="font-size: 1.1rem; margin-top: 0; line-height: 1.8;">
+          Create memorable retreat experiences for your community. Nature here is not just a backdrop — it becomes a full participant. People open up more easily, rest more deeply, and return to themselves more naturally.
+        </p>
+
+        <h2 class="reveal" style="font-size: 2rem; margin-top: 60px; margin-bottom: 15px; color: var(--text);">Invitation to Collaborate</h2>
+        <p class="reveal" style="font-size: 1.1rem; line-height: 1.8; color: var(--text-muted); margin-bottom: 1.65rem;">Back to Base welcomes those who create transformative practices and help people heal and restore.<br>We are looking for:</p>
+        
+        <ul class="workshops-list reveal" style="margin-top: 0; margin-bottom: 1.65rem;">
+          <li>Program creators</li>
+          <li>Yoga instructors</li>
+          <li>Meditation teachers</li>
+          <li>Massage therapists</li>
+          <li>Reiki practitioners</li>
+          <li>Acupuncturists</li>
+          <li>Body-oriented specialists</li>
+        </ul>
+
+        <p class="reveal" style="font-size: 1.1rem; margin-top: 0; line-height: 1.8;">
+          If you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you.<br>Just call or message us!
         </p>
       </div>
     </section>
@@ -413,7 +734,7 @@
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
           <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreat and Workshop</a></li>
+          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.html">Special</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>
@@ -426,9 +747,196 @@
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
   </footer>
 
+  <!-- Gallery Modal -->
+  <div id="gallery-modal" class="gallery-modal">
+    <span class="gallery-modal-close" onclick="window.closeGallery()">&times;</span>
+    <span class="gallery-modal-nav gallery-modal-prev" onclick="window.changeGalleryImage(-1)">&#10094;</span>
+    <span class="gallery-modal-nav gallery-modal-next" onclick="window.changeGalleryImage(1)">&#10095;</span>
+    <div class="gallery-modal-content">
+      <img id="gallery-modal-image" class="gallery-modal-image" src="" alt="">
+    </div>
+    <div class="gallery-modal-counter">
+      <span id="gallery-counter">1 / 1</span>
+    </div>
+  </div>
+
   <script src="script.js?v=26"></script>
   <script src="auth.js?v=26"></script>
   <script>
+    // Gallery data for space images
+    const galleries = {
+      forest: [
+        'assets/plarform_1.png',
+        'assets/plarform_2.png',
+        'https://images.unsplash.com/photo-1533750516457-a7f992034fec?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1519904981063-e0dca86916b1?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1447752875215-b2761acb3c5d?q=80&w=1200&auto=format&fit=crop'
+      ],
+      indoor: [
+        'https://images.unsplash.com/photo-1506126613408-eca07ce68773?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1493663284031-6c6c18a7c93a?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1493809842364-78817add7ffb?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1505843513577-22bb7d21e455?q=80&w=1200&auto=format&fit=crop'
+      ],
+      theatre: [
+        'https://images.unsplash.com/photo-1533750516457-a7f992034fec?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1512070679279-8988d32161be?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?q=80&w=1200&auto=format&fit=crop',
+        'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=1200&auto=format&fit=crop'
+      ]
+    };
+
+    let currentGallery = null;
+    let currentImageIndex = 0;
+
+    // Gallery functions - make them globally available
+    window.openGallery = function(galleryName, imageIndex) {
+      currentGallery = galleryName;
+      currentImageIndex = imageIndex || 0;
+      const gallery = galleries[galleryName];
+      
+      if (!gallery || gallery.length === 0) return;
+      
+      const modal = document.getElementById('gallery-modal');
+      const modalImage = document.getElementById('gallery-modal-image');
+      const counter = document.getElementById('gallery-counter');
+      
+      modalImage.src = gallery[currentImageIndex];
+      counter.textContent = `${currentImageIndex + 1} / ${gallery.length}`;
+      modal.classList.add('active');
+      
+      // Prevent body scroll
+      document.body.style.overflow = 'hidden';
+    }
+
+    window.closeGallery = function() {
+      const modal = document.getElementById('gallery-modal');
+      modal.classList.remove('active');
+      document.body.style.overflow = '';
+    }
+
+    window.changeGalleryImage = function(direction) {
+      if (!currentGallery) return;
+      
+      const gallery = galleries[currentGallery];
+      if (!gallery || gallery.length === 0) return;
+      
+      currentImageIndex += direction;
+      
+      if (currentImageIndex < 0) {
+        currentImageIndex = gallery.length - 1;
+      } else if (currentImageIndex >= gallery.length) {
+        currentImageIndex = 0;
+      }
+      
+      const modalImage = document.getElementById('gallery-modal-image');
+      const counter = document.getElementById('gallery-counter');
+      
+      modalImage.src = gallery[currentImageIndex];
+      counter.textContent = `${currentImageIndex + 1} / ${gallery.length}`;
+    }
+
+    // Close gallery on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        window.closeGallery();
+      } else if (e.key === 'ArrowLeft') {
+        window.changeGalleryImage(-1);
+      } else if (e.key === 'ArrowRight') {
+        window.changeGalleryImage(1);
+      }
+    });
+
+    // Close gallery when clicking outside image
+    document.getElementById('gallery-modal').addEventListener('click', function(e) {
+      if (e.target === this || e.target.classList.contains('gallery-modal-content')) {
+        window.closeGallery();
+      }
+    });
+
+    // Toggle workshops section
+    function toggleWorkshopsSection(button) {
+      const section = document.getElementById('workshops-section');
+      const isVisible = section.style.display !== 'none';
+      
+      if (isVisible) {
+        section.style.display = 'none';
+        button.classList.remove('active');
+        button.textContent = 'Learn More';
+      } else {
+        section.style.display = 'block';
+        button.classList.add('active');
+        button.textContent = 'Show Less';
+        // Scroll to section
+        setTimeout(() => {
+          section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    }
+    window.toggleWorkshopsSection = toggleWorkshopsSection;
+
+    // Contact form handling
+    document.getElementById('contact-form').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const form = this;
+      const formData = new FormData(form);
+      const messageDiv = document.getElementById('contact-form-message');
+      const submitBtn = form.querySelector('.contact-submit-btn');
+      
+      // Clear previous errors
+      document.querySelectorAll('.field-error').forEach(el => el.classList.remove('show'));
+      messageDiv.className = 'form-message';
+      
+      // Validate captcha
+      const captchaAnswer = parseInt(document.getElementById('captcha-answer').value);
+      const captchaInput = parseInt(document.getElementById('contact-captcha').value);
+      
+      if (captchaInput !== captchaAnswer) {
+        document.getElementById('captcha-error').textContent = 'Incorrect answer';
+        document.getElementById('captcha-error').classList.add('show');
+        return;
+      }
+      
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Sending...';
+      
+      try {
+        const response = await fetch('email_service.php', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          messageDiv.className = 'form-message success';
+          messageDiv.textContent = 'Message sent successfully! We will get back to you soon.';
+          form.reset();
+        } else {
+          messageDiv.className = 'form-message error';
+          messageDiv.textContent = result.message || 'Error sending message. Please try again.';
+        }
+      } catch (error) {
+        messageDiv.className = 'form-message error';
+        messageDiv.textContent = 'Error sending message. Please try again.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Send Message';
+      }
+    });
+
     // Scroll reveal animation
     const observerOptions = {
       threshold: 0.1,
