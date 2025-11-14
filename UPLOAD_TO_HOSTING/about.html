@@ -98,13 +98,31 @@
       color: var(--text-muted);
     }
     .founder-content-expandable {
-      max-height: 0;
+      position: relative;
+      max-height: 3em; /* Показываем примерно одну строку второго абзаца */
       overflow: hidden;
       transition: max-height 0.4s ease-out;
+    }
+    .founder-content-expandable::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 2em;
+      background: linear-gradient(to bottom, transparent, var(--bg));
+      pointer-events: none;
+      transition: opacity 0.3s ease;
     }
     .founder-content-expandable.expanded {
       max-height: 2000px;
       transition: max-height 0.6s ease-in;
+    }
+    .founder-content-expandable.expanded::after {
+      opacity: 0;
+    }
+    [data-theme="light"] .founder-content-expandable::after {
+      background: linear-gradient(to bottom, transparent, var(--bg));
     }
     .read-more-btn {
       margin-top: 20px;
@@ -138,7 +156,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 40px;
-      align-items: start;
+      align-items: stretch;
       margin-top: 30px;
     }
     .location-text-content {
@@ -146,26 +164,210 @@
       flex-direction: column;
       gap: 20px;
     }
+    .location-map-wrapper {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+    .location-map-button-wrapper {
+      display: flex;
+      align-items: flex-start;
+      margin-top: auto;
+    }
     .location-map-container {
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 10px 40px rgba(0,0,0,0.15);
-      height: 400px;
+      flex: 1;
+      min-height: 0;
       background: var(--card);
-      position: sticky;
-      top: 20px;
     }
     #location-map {
       width: 100%;
       height: 100%;
       border: none;
+      border-radius: 16px;
     }
-    /* Google Maps iframe styling */
-    .location-map-container iframe {
+    #map-modal-map {
       width: 100%;
       height: 100%;
       border: none;
-      border-radius: 16px;
+    }
+    .open-map-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 20px;
+      background: var(--brand);
+      color: white;
+      border: 1px solid var(--brand);
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+    .open-map-btn:hover {
+      background: var(--brand-600);
+      transform: translateY(-1px);
+      border-color: var(--brand-600);
+    }
+    .open-map-btn:active {
+      transform: translateY(0);
+    }
+    .open-map-btn svg {
+      flex-shrink: 0;
+    }
+    
+    /* Map Modal Styles */
+    .map-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 10000;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      backdrop-filter: blur(4px);
+    }
+    .map-modal.active {
+      display: flex;
+    }
+    .map-modal-content {
+      position: relative;
+      width: calc(100% - 40px);
+      height: calc(100% - 40px);
+      max-width: 100%;
+      max-height: 100%;
+      background: var(--bg);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      border: 2px solid var(--border);
+      display: flex;
+      flex-direction: column;
+    }
+    .map-modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--card);
+      flex-shrink: 0;
+    }
+    .map-modal-header h3 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: var(--text);
+    }
+    .map-modal-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .map-modal-close {
+      background: rgba(239, 68, 68, 0.9);
+      border: 2px solid rgba(239, 68, 68, 1);
+      color: white;
+      font-size: 1.8rem;
+      font-weight: bold;
+      cursor: pointer;
+      padding: 8px 12px;
+      border-radius: 8px;
+      transition: 0.2s ease;
+      line-height: 1;
+      min-width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    }
+    .map-modal-close:hover {
+      background: rgba(239, 68, 68, 1);
+      transform: scale(1.1);
+      box-shadow: 0 6px 16px rgba(239, 68, 68, 0.6);
+    }
+    .map-modal-close:active {
+      transform: scale(0.95);
+    }
+    .map-modal-body {
+      flex: 1;
+      position: relative;
+      min-height: 0;
+      height: 100%;
+      overflow: hidden;
+    }
+    .map-modal-body iframe,
+    .map-modal-body #map-modal-map {
+      width: 100%;
+      height: 100%;
+      border: none;
+      display: block;
+    }
+    .open-google-maps-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      background: var(--bg-alt);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+      text-decoration: none;
+    }
+    .open-google-maps-btn:hover {
+      background: var(--brand);
+      color: white;
+      border-color: var(--brand);
+    }
+    .open-google-maps-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    @media (max-width: 768px) {
+      .map-modal {
+        padding: 10px;
+      }
+      .map-modal-content {
+        width: calc(100% - 20px);
+        height: calc(100% - 20px);
+        border-radius: 8px;
+      }
+      .map-modal-body {
+        height: 100%;
+        min-height: 0;
+      }
+      .map-modal-header {
+        padding: 16px 20px;
+      }
+      .map-modal-header h3 {
+        font-size: 1.25rem;
+      }
+      .map-modal-close {
+        min-width: 36px;
+        height: 36px;
+        font-size: 1.5rem;
+        padding: 6px 10px;
+      }
+      .location-map-container {
+        position: relative;
+        min-height: 300px;
+      }
+      .location-map-wrapper {
+        gap: 20px;
+      }
     }
 
     .directions-box {
@@ -411,18 +613,23 @@
       border-radius: 8px;
       font-size: 14px;
       display: none;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .form-message.success,
+    .form-message.error {
+      display: block;
+      opacity: 1;
     }
     .form-message.success {
       background: rgba(34, 197, 94, 0.1);
       color: #22c55e;
       border: 1px solid rgba(34, 197, 94, 0.3);
-      display: block;
     }
     .form-message.error {
       background: rgba(239, 68, 68, 0.1);
       color: #ef4444;
       border: 1px solid rgba(239, 68, 68, 0.3);
-      display: block;
     }
     @media (max-width: 768px) {
       .contact-section-grid {
@@ -535,8 +742,8 @@
             <h2>Idea and Origins</h2>
             <p>Hi! My name is <strong>Rob Vuik</strong>. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.</p>
             <div class="founder-content-expandable" id="founder-expandable">
-              <p>Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.</p>
-              <p>Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Halcyon Hot Springs Resort. Naturally, I'm happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Halcyon Hot Springs Resort.</p>
+              <p style="margin-top: 0;">Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.</p>
+              <p>Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I'm happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.</p>
               <p>We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.</p>
               <p class="founder-signature">I look forward to welcoming you!</p>
             </div>
@@ -567,15 +774,28 @@
             </div>
           </div>
           
-          <div class="location-map-container">
-            <iframe 
-              id="location-map"
-              src="https://www.google.com/maps?q=49.6125,-116.9579&hl=en&z=12&output=embed"
-              allowfullscreen=""
-              loading="lazy"
-              referrerpolicy="no-referrer-when-downgrade"
-              title="Back to Base Location - Procter, BC">
-            </iframe>
+          <div class="location-map-wrapper">
+            <div class="location-map-container">
+              <iframe 
+                id="location-map"
+                src="https://www.google.com/maps?q=Back+to+Base+BnB,+Procter,+BC,+Canada&hl=en&z=12&output=embed"
+                width="100%" 
+                height="100%" 
+                style="border:0;" 
+                allowfullscreen="" 
+                loading="lazy" 
+                referrerpolicy="no-referrer-when-downgrade">
+              </iframe>
+            </div>
+            <div class="location-map-button-wrapper">
+              <button class="open-map-btn" onclick="openMapModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                  <circle cx="12" cy="10" r="3"></circle>
+                </svg>
+                Open the map in full size
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -603,11 +823,11 @@
           </div>
           <div class="attraction-card" data-gallery="halcyon">
             <img src="https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=800&auto=format&fit=crop" 
-                 alt="Halcyon Hot Springs Resort" 
+                 alt="Ainsworth Hot Springs Resort" 
                  class="attraction-card-image"
                  onclick="openGallery('halcyon', 0)">
             <div class="attraction-card-content">
-              <h4>Halcyon Hot Springs Resort</h4>
+              <h4>Ainsworth Hot Springs Resort</h4>
               <div class="distance">30 km from Back to Base</div>
               <p>Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!</p>
             </div>
@@ -672,7 +892,8 @@
                   <label for="contact-message">Message</label>
                   <textarea id="contact-message" name="message" rows="4" 
                             placeholder="Your message..." 
-                            class="form-input"></textarea>
+                            class="form-input" required></textarea>
+                  <span class="field-error" id="message-error"></span>
                 </div>
                 <div class="form-group">
                   <label for="contact-email">Email</label>
@@ -746,10 +967,14 @@
     </div>
   </div>
 
+  <!-- Google Maps Embed API (no API key required for basic usage, but we use it for better control) -->
+  
   <script src="utils.js?v=26"></script>
   <script src="script.js?v=26"></script>
   <script src="auth.js"></script>
   <script>
+    // Wait for DOM to be fully loaded
+    document.addEventListener('DOMContentLoaded', function() {
     // Gallery data for each attraction
     const galleries = {
       procter: [
@@ -875,41 +1100,204 @@
     // Initialize captcha on page load
     generateCaptcha();
 
-    // Contact form handler
-    document.getElementById('contact-form').addEventListener('submit', async function(e) {
-      e.preventDefault();
+    // Contact form handler - try multiple approaches
+    function initContactForm() {
+      const contactForm = document.getElementById('contact-form');
+      if (!contactForm) {
+        console.error('Contact form not found!');
+        return false;
+      }
       
-      const form = this;
-      const formData = new FormData(form);
-      const messageDiv = document.getElementById('contact-form-message');
-      const submitBtn = form.querySelector('button[type="submit"]');
+      console.log('Contact form found, attaching submit handler');
+      
+      // Mark form as having handler attached
+      contactForm.setAttribute('data-handler-attached', 'true');
+      
+      // Also attach handler to submit button directly as backup
+      const submitBtn = contactForm.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        console.log('Submit button found, attaching click handler');
+        submitBtn.addEventListener('click', async function(e) {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log('Submit button clicked directly!');
+          
+          // Call the form handler directly instead of dispatching event
+          const form = contactForm;
+          const formData = new FormData(form);
+          const messageDiv = document.getElementById('contact-form-message');
+          const btn = form.querySelector('button[type="submit"]');
+          
+          console.log('Form data:', {
+            email: formData.get('email'),
+            phone: formData.get('phone'),
+            message: formData.get('message'),
+            captcha: formData.get('captcha')
+          });
+          
+          // Check if messageDiv exists
+          if (!messageDiv) {
+            console.error('Message div not found!');
+            alert('Form error: message container not found');
+            return;
+          }
+        
+          // Clear previous errors
+          document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
+          messageDiv.className = 'form-message';
+          messageDiv.textContent = '';
+          messageDiv.style.display = 'none';
+          
+          // Validate message (first)
+          const message = formData.get('message');
+          if (!message || message.trim().length === 0) {
+            document.getElementById('message-error').textContent = 'Please enter your message.';
+            return;
+          }
+          
+          // Validate email (second)
+          const email = formData.get('email');
+          if (!email || !email.includes('@')) {
+            document.getElementById('email-error').textContent = 'Please enter a valid email address.';
+            return;
+          }
+          
+          // Validate phone (third)
+          const phone = formData.get('phone');
+          if (!phone || phone.trim().length < 5) {
+            document.getElementById('phone-error').textContent = 'Please enter a valid phone number.';
+            return;
+          }
+          
+          // Validate captcha (last)
+          const captchaAnswer = parseInt(document.getElementById('captcha-answer').value);
+          const captchaInput = parseInt(formData.get('captcha'));
+          
+          if (captchaInput !== captchaAnswer) {
+            document.getElementById('captcha-error').textContent = 'Incorrect answer. Please try again.';
+            generateCaptcha();
+            return;
+          }
+          
+          // Disable submit button
+          btn.disabled = true;
+          btn.textContent = 'Sending...';
+          
+          try {
+            const response = await fetch('contact_form.php', {
+              method: 'POST',
+              body: formData
+            });
+            
+            // Check if response is OK
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            // Get response text first to check if it's valid JSON
+            const responseText = await response.text();
+            let result;
+            
+            try {
+              result = JSON.parse(responseText);
+            } catch (parseError) {
+              console.error('Failed to parse JSON response:', parseError);
+              console.error('Response text:', responseText);
+              messageDiv.className = 'form-message error';
+              messageDiv.textContent = 'Server error. Please try again later.';
+              messageDiv.style.display = 'block';
+              btn.disabled = false;
+              btn.textContent = 'Send Message';
+              return;
+            }
+            
+            if (result.success) {
+              messageDiv.className = 'form-message success';
+              messageDiv.textContent = 'Thank you! Your message has been sent successfully.';
+              messageDiv.style.display = 'block';
+              form.reset();
+              generateCaptcha();
+              
+              // Scroll to message
+              messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+              messageDiv.className = 'form-message error';
+              messageDiv.textContent = result.error || 'An error occurred. Please try again.';
+              messageDiv.style.display = 'block';
+              
+              // Scroll to message
+              messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+          } catch (error) {
+            console.error('Error sending form:', error);
+            messageDiv.className = 'form-message error';
+            messageDiv.textContent = 'Network error. Please try again later.';
+            messageDiv.style.display = 'block';
+          } finally {
+            btn.disabled = false;
+            btn.textContent = 'Send Message';
+          }
+        });
+      }
+      
+      // Attach submit handler directly
+      contactForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        console.log('Form submit event triggered');
+        
+        const form = this;
+        const formData = new FormData(form);
+        const messageDiv = document.getElementById('contact-form-message');
+        const submitBtn = form.querySelector('button[type="submit"]');
+        
+        console.log('Form data:', {
+          email: formData.get('email'),
+          phone: formData.get('phone'),
+          message: formData.get('message'),
+          captcha: formData.get('captcha')
+        });
+        
+        // Check if messageDiv exists
+        if (!messageDiv) {
+          console.error('Message div not found!');
+          alert('Form error: message container not found');
+          return;
+        }
       
       // Clear previous errors
       document.querySelectorAll('.field-error').forEach(el => el.textContent = '');
       messageDiv.className = 'form-message';
       messageDiv.textContent = '';
+      messageDiv.style.display = 'none';
       
-      // Validate captcha
-      const captchaAnswer = parseInt(document.getElementById('captcha-answer').value);
-      const captchaInput = parseInt(formData.get('captcha'));
-      
-      if (captchaInput !== captchaAnswer) {
-        document.getElementById('captcha-error').textContent = 'Incorrect answer. Please try again.';
-        generateCaptcha();
+      // Validate message (first)
+      const message = formData.get('message');
+      if (!message || message.trim().length === 0) {
+        document.getElementById('message-error').textContent = 'Please enter your message.';
         return;
       }
       
-      // Validate email
+      // Validate email (second)
       const email = formData.get('email');
       if (!email || !email.includes('@')) {
         document.getElementById('email-error').textContent = 'Please enter a valid email address.';
         return;
       }
       
-      // Validate phone
+      // Validate phone (third)
       const phone = formData.get('phone');
       if (!phone || phone.trim().length < 5) {
         document.getElementById('phone-error').textContent = 'Please enter a valid phone number.';
+        return;
+      }
+      
+      // Validate captcha (last)
+      const captchaAnswer = parseInt(document.getElementById('captcha-answer').value);
+      const captchaInput = parseInt(formData.get('captcha'));
+      
+      if (captchaInput !== captchaAnswer) {
+        document.getElementById('captcha-error').textContent = 'Incorrect answer. Please try again.';
+        generateCaptcha();
         return;
       }
       
@@ -923,23 +1311,89 @@
           body: formData
         });
         
-        const result = await response.json();
+        // Check if response is OK
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        // Get response text first to check if it's valid JSON
+        const responseText = await response.text();
+        let result;
+        
+        try {
+          result = JSON.parse(responseText);
+        } catch (parseError) {
+          console.error('Failed to parse JSON response:', parseError);
+          console.error('Response text:', responseText);
+          messageDiv.className = 'form-message error';
+          messageDiv.textContent = 'Server error. Please try again later.';
+          messageDiv.style.display = 'block';
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Send Message';
+          return;
+        }
         
         if (result.success) {
           messageDiv.className = 'form-message success';
           messageDiv.textContent = 'Thank you! Your message has been sent successfully.';
+          messageDiv.style.display = 'block';
           form.reset();
           generateCaptcha();
+          
+          // Scroll to message
+          messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } else {
           messageDiv.className = 'form-message error';
           messageDiv.textContent = result.error || 'An error occurred. Please try again.';
+          messageDiv.style.display = 'block';
+          
+          // Scroll to message
+          messageDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
       } catch (error) {
+        console.error('Error sending form:', error);
         messageDiv.className = 'form-message error';
         messageDiv.textContent = 'Network error. Please try again later.';
+        messageDiv.style.display = 'block';
       } finally {
         submitBtn.disabled = false;
         submitBtn.textContent = 'Send Message';
+      }
+      });
+      
+      return true;
+    }
+    
+    // Try to initialize immediately
+    console.log('Attempting to initialize contact form...');
+    if (!initContactForm()) {
+      // If form not ready, try again after a short delay
+      console.log('Form not found, retrying in 100ms...');
+      setTimeout(function() {
+        if (!initContactForm()) {
+          console.error('Failed to initialize contact form after retry');
+          // Last resort: try to attach handler to button directly
+          const submitBtn = document.querySelector('#contact-form button[type="submit"]');
+          if (submitBtn) {
+            console.log('Found submit button, attaching click handler');
+            submitBtn.addEventListener('click', function(e) {
+              e.preventDefault();
+              console.log('Button clicked!');
+              const form = document.getElementById('contact-form');
+              if (form) {
+                form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+              }
+            });
+          }
+        }
+      }, 100);
+    }
+    
+    // Also try on window load as backup
+    window.addEventListener('load', function() {
+      console.log('Window loaded, checking contact form again...');
+      if (!document.getElementById('contact-form').hasAttribute('data-handler-attached')) {
+        initContactForm();
       }
     });
 
@@ -956,6 +1410,43 @@
         button.textContent = 'Read less';
       }
     }
+    
+    // Google Maps Embed API - no JavaScript API needed!
+    // Maps are loaded via iframe, which supports search by name without API key
+    // The iframe uses Google Maps Embed API which can search by place name using the 'q' parameter
+    
+    // Map Modal Functions
+    function openMapModal() {
+      const modal = document.getElementById('map-modal');
+      if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Prevent background scrolling
+        // Map is already loaded via iframe, no initialization needed
+      }
+    }
+    
+    function closeMapModal() {
+      const modal = document.getElementById('map-modal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = ''; // Restore scrolling
+      }
+    }
+    
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeMapModal();
+      }
+    });
+    
+    // Close modal when clicking on backdrop
+    document.addEventListener('click', function(e) {
+      const modal = document.getElementById('map-modal');
+      if (modal && e.target === modal) {
+        closeMapModal();
+      }
+    });
 
     // Initialize reveal animations
     if (window.AnimationUtils && window.AnimationUtils.initReveal) {
@@ -974,6 +1465,44 @@
       reveal();
       window.addEventListener('scroll', reveal, { passive: true });
     }
+    }); // End of DOMContentLoaded
   </script>
+  
+  <!-- Map Modal -->
+  <div id="map-modal" class="map-modal">
+    <div class="map-modal-content">
+      <div class="map-modal-header">
+        <h3>Back to Base Location</h3>
+        <div class="map-modal-actions">
+          <a href="https://www.google.com/maps?q=49.6125,-116.9579&hl=en" 
+             target="_blank" 
+             rel="noopener noreferrer"
+             class="open-google-maps-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+              <polyline points="15 3 21 3 21 9"></polyline>
+              <line x1="10" y1="14" x2="21" y2="3"></line>
+            </svg>
+            Открыть в Google Maps
+          </a>
+          <button class="map-modal-close" onclick="closeMapModal()" aria-label="Close map">
+            ×
+          </button>
+        </div>
+      </div>
+      <div class="map-modal-body">
+        <iframe 
+          id="map-modal-map"
+          src="https://www.google.com/maps?q=Back+to+Base+BnB,+Procter,+BC,+Canada&hl=en&z=14&output=embed"
+          width="100%" 
+          height="100%" 
+          style="border:0;" 
+          allowfullscreen="" 
+          loading="lazy" 
+          referrerpolicy="no-referrer-when-downgrade">
+        </iframe>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
