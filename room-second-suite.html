@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <title>Second floor — Loft suite (entire) | Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +24,7 @@
         // - Otherwise default to 'dark' (first-time visitor on any page)
         let initialTheme = 'dark';
         
-        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'twilight')) {
           initialTheme = savedTheme; // User has chosen theme - use it
         }
         // Else: first-time visitor or invalid theme - use default 'dark'
@@ -48,10 +49,13 @@
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
         <a href="massage.html">Massage</a>
-        <a href="yoga.html">Yoga</a>
+        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
         <a href="special.html">Special</a>
         <a href="about.html">About us</a>
       </nav>
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
+        ☰
+      </button>
       <div class="header-actions">
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
           <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -64,9 +68,27 @@
     </div>
   </header>
 
+  <!-- Mobile Navigation Overlay -->
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+  
+  <!-- Mobile Navigation Menu -->
+  <nav class="mobile-nav" id="mobile-nav">
+    <a href="index.html#rooms">Rooms</a>
+    <a href="massage.html">Massage</a>
+    <a href="retreat-and-workshop.html">Retreats and Workshops</a>
+    <a href="special.html">Special</a>
+    <a href="about.html">About us</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
+      <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="mobile-theme-text">Light</span>
+    </button>
+  </nav>
+
   <div class="page-header">
     <div class="container">
-      <div class="breadcrumbs"><a href="index.html">Home</a> / Rooms / Second floor (entire) — Queen bed</div>
       <h1>Second floor (entire) — Queen bed</h1>
       <p class="section-lead">A private loft under the roof: bedroom, kitchenette, shower, study and balcony.</p>
     </div>
@@ -92,12 +114,9 @@
         <h2>Book this floor</h2>
         <p><strong>Price:</strong> 210 CAD / night (entire floor)</p>
         <p><strong>Capacity:</strong> up to 2 guests</p>
-        <ul class="massage-list">
-          <li>Separate kitchenette and shower</li>
-          <li>Study</li>
-          <li>Balcony with view</li>
-        </ul>
-        <form class="booking-form" data-room="Second floor — Loft suite" data-custom-handler novalidate>
+        <p style="margin-top: 32px;">A fully private floor featuring a large living area with a king-size bed, a separate kitchen, a private bathroom with a shower, a bright workspace, and a spacious balcony with stunning views of the lake and mountains.</p>
+        <p>This suite offers maximum privacy and independence, making it ideal for guests who need their own living space. From the balcony, you can enjoy not only breathtaking views but also watch wild deer that come almost daily to graze on the lawn in front of the house.</p>
+        <form class="booking-form" data-room="Second floor — Loft suite" data-custom-handler novalidate style="margin-top: 40px;">
           <div class="form-row">
             <div>
               <label for="checkin">Check‑in</label>
@@ -145,7 +164,8 @@
             </div>
           </div>
           <button class="btn primary" type="submit">Book now</button>
-          <p class="notice">Prices are approximate. Confirmation will be sent by email.</p>
+          <p class="notice" style="margin-bottom: 0;">Prices are approximate. Confirmation will be sent by email.</p>
+          <p class="notice" style="margin-top: 0;"><a href="#" id="checkin-conditions-link" style="color: var(--brand); text-decoration: underline; cursor: pointer;">Check-in conditions</a></p>
         </form>
       </aside>
     </div>
@@ -177,7 +197,7 @@
           <h2>Yoga</h2>
           <p>On the property, surrounded by a cozy forest, you’ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.</p>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a class="btn primary" href="yoga.html">Book yoga</a>
+            <a class="btn primary" href="retreat-and-workshop.html">Book retreat</a>
           </div>
         </div>
       </section>
@@ -210,7 +230,7 @@
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
           <li><a href="massage.html">Massage</a></li>
-          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.html">Special</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>
@@ -222,6 +242,17 @@
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
   </footer>
+
+  <!-- Check-in Conditions Modal -->
+  <div id="checkin-conditions-modal" class="checkin-modal">
+    <div class="checkin-modal-overlay"></div>
+    <div class="checkin-modal-content">
+      <button class="checkin-modal-close" id="checkin-close">&times;</button>
+      <h3>Check-in conditions</h3>
+      <p>Check-in from 3:00 PM, Check-out until 11:00 AM.</p>
+      <p>Detailed information on how to find our house and what is located nearby can be found on the About Us page</p>
+    </div>
+  </div>
 
   <!-- Gallery Modal -->
   <div id="gallery-modal" class="gallery-modal">
@@ -236,6 +267,40 @@
 
   <script src="utils.js?v=26"></script>
   <script src="script.js?v=26"></script>
+  <script>
+    // Check-in conditions modal
+    (function() {
+      const modal = document.getElementById('checkin-conditions-modal');
+      const link = document.getElementById('checkin-conditions-link');
+      const closeBtn = document.getElementById('checkin-close');
+      const overlay = modal.querySelector('.checkin-modal-overlay');
+      
+      if (!modal || !link) return;
+      
+      // Open modal
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      });
+      
+      // Close modal
+      function closeModal() {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
+      
+      closeBtn.addEventListener('click', closeModal);
+      overlay.addEventListener('click', closeModal);
+      
+      // Close on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.classList.contains('active')) {
+          closeModal();
+        }
+      });
+    })();
+  </script>
   <script src="auth.js?v=26"></script>
   <script>
     // Gallery functionality for Second floor — Loft suite

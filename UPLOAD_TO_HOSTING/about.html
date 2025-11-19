@@ -15,7 +15,7 @@
         const savedTheme = localStorage.getItem('btb_theme');
         const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
         let initialTheme = 'dark';
-        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'twilight')) {
           initialTheme = savedTheme;
         }
         document.documentElement.setAttribute('data-theme', initialTheme);
@@ -703,7 +703,7 @@
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
         <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreat and Workshop</a>
+        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
         <a href="special.html">Special</a>
         <a href="about.html">About us</a>
       </nav>
@@ -941,7 +941,7 @@
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
           <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreat and Workshop</a></li>
+          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.html">Special</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>
@@ -1022,7 +1022,8 @@
     let currentGallery = null;
     let currentImageIndex = 0;
 
-    function openGallery(galleryName, imageIndex) {
+    // Gallery functions - make them globally available
+    window.openGallery = function(galleryName, imageIndex) {
       currentGallery = galleryName;
       currentImageIndex = imageIndex || 0;
       const gallery = galleries[galleryName];
@@ -1041,13 +1042,13 @@
       document.body.style.overflow = 'hidden';
     }
 
-    function closeGallery() {
+    window.closeGallery = function() {
       const modal = document.getElementById('gallery-modal');
       modal.classList.remove('active');
       document.body.style.overflow = '';
     }
 
-    function changeGalleryImage(direction) {
+    window.changeGalleryImage = function(direction) {
       if (!currentGallery) return;
       
       const gallery = galleries[currentGallery];
@@ -1071,18 +1072,18 @@
     // Close gallery on Escape key
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
-        closeGallery();
+        window.closeGallery();
       } else if (e.key === 'ArrowLeft') {
-        changeGalleryImage(-1);
+        window.changeGalleryImage(-1);
       } else if (e.key === 'ArrowRight') {
-        changeGalleryImage(1);
+        window.changeGalleryImage(1);
       }
     });
 
     // Close gallery when clicking outside image
     document.getElementById('gallery-modal').addEventListener('click', function(e) {
       if (e.target === this || e.target.classList.contains('gallery-modal-content')) {
-        closeGallery();
+        window.closeGallery();
       }
     });
 
@@ -1397,8 +1398,8 @@
       }
     });
 
-    // Toggle founder text expand/collapse
-    function toggleFounderText() {
+    // Toggle founder text expand/collapse - make it globally available
+    window.toggleFounderText = function() {
       const expandable = document.getElementById('founder-expandable');
       const button = document.getElementById('read-more-btn');
       
@@ -1415,8 +1416,8 @@
     // Maps are loaded via iframe, which supports search by name without API key
     // The iframe uses Google Maps Embed API which can search by place name using the 'q' parameter
     
-    // Map Modal Functions
-    function openMapModal() {
+    // Map Modal Functions - make them globally available
+    window.openMapModal = function() {
       const modal = document.getElementById('map-modal');
       if (modal) {
         modal.classList.add('active');
@@ -1425,7 +1426,7 @@
       }
     }
     
-    function closeMapModal() {
+    window.closeMapModal = function() {
       const modal = document.getElementById('map-modal');
       if (modal) {
         modal.classList.remove('active');
@@ -1436,15 +1437,15 @@
     // Close modal on Escape key
     document.addEventListener('keydown', function(e) {
       if (e.key === 'Escape') {
-        closeMapModal();
+        window.closeMapModal();
       }
     });
-    
+
     // Close modal when clicking on backdrop
     document.addEventListener('click', function(e) {
       const modal = document.getElementById('map-modal');
       if (modal && e.target === modal) {
-        closeMapModal();
+        window.closeMapModal();
       }
     });
 

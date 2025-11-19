@@ -331,6 +331,19 @@
   --accent: #3ddc97;
 }
 
+/* Twilight theme variables */
+[data-theme="twilight"] {
+  --bg: #0f0f2e;
+  --bg-alt: #1a1a3e;
+  --text: #e9eef3;
+  --muted: #9fb0c0;
+  --brand: #d4af37;
+  --brand-600: #b8941f;
+  --card: #1a1a3e;
+  --card-2: #14142a;
+  --accent: #d4af37;
+}
+
 /* Light theme variables */
 [data-theme="light"] {
   --bg: #ffffff;
@@ -352,6 +365,10 @@ body {
   color: var(--text);
   background: #0a0f14;
   transition: background 0.3s ease, color 0.3s ease;
+}
+
+[data-theme="twilight"] body {
+  background: #0f0f2e;
 }
 
 [data-theme="light"] body {
@@ -1550,6 +1567,27 @@ select:-webkit-autofill:focus {
 
 [data-theme="light"] .massage-list li {
   color: var(--muted);
+}
+
+/* Twilight theme - gold headings */
+[data-theme="twilight"] h1,
+[data-theme="twilight"] h2,
+[data-theme="twilight"] h3,
+[data-theme="twilight"] h4,
+[data-theme="twilight"] h5,
+[data-theme="twilight"] h6 {
+  color: #d4af37;
+}
+
+[data-theme="twilight"] .hero h1,
+[data-theme="twilight"] .section h2,
+[data-theme="twilight"] .section h3,
+[data-theme="twilight"] .section h4,
+[data-theme="twilight"] .page-header h1,
+[data-theme="twilight"] .card h2,
+[data-theme="twilight"] .card h3,
+[data-theme="twilight"] .card h4 {
+  color: #d4af37;
 }
 
 /* Room features list - plain text, not interactive */

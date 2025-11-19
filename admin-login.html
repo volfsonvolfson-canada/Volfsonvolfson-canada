@@ -21,8 +21,8 @@
       
       <form id="admin-login-form" class="admin-login-form" data-has-submit-handler="true" novalidate>
         <div class="form-group">
-          <label for="admin-username">Username</label>
-          <input type="text" id="admin-username" name="username" required placeholder="Enter admin username">
+          <label for="admin-username">Email address</label>
+          <input type="email" id="admin-username" name="username" required placeholder="Enter admin email address">
         </div>
         
         <div class="form-group">
@@ -54,7 +54,7 @@
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
           <li><a href="massage.html">Massage</a></li>
-          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.html">Special</a></li>
           <li><a href="about.html">About us</a></li>
           <li><a href="admin-login.html" style="color: #4a5568; font-size: 0.875rem;">Admin</a></li>
@@ -70,11 +70,6 @@
 
   <script>
     // Admin login functionality - Initialize BEFORE script.js loads
-    const ADMIN_CREDENTIALS = {
-      username: 'admin',
-      password: 'backtobase2024'
-    };
-
     // Login form handler - Initialize immediately
     (function initAdminLogin() {
       const loginForm = document.getElementById('admin-login-form');
@@ -87,27 +82,104 @@
       // Mark form as having submit handler
       loginForm.dataset.hasSubmitHandler = 'true';
 
-      loginForm.addEventListener('submit', (e) => {
+      loginForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         e.stopImmediatePropagation();
         
         const username = document.getElementById('admin-username').value;
         const password = document.getElementById('admin-password').value;
         const errorDiv = document.getElementById('admin-login-error');
+        const submitBtn = loginForm.querySelector('button[type="submit"]');
         
         if (!username || !password) {
-          errorDiv.textContent = 'Please enter both username and password';
+          errorDiv.textContent = 'Please enter both email and password';
           errorDiv.style.display = 'block';
           return;
         }
         
-        if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-          localStorage.setItem('btb_admin_auth', 'true');
-          // Redirect to admin panel
-          window.location.href = 'admin.html';
-        } else {
-          errorDiv.textContent = 'Invalid username or password';
+        // Disable submit button
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Signing in...';
+        }
+        
+        try {
+          const formData = new FormData();
+          formData.append('action', 'admin_login');
+          formData.append('username', username);
+          formData.append('password', password);
+          
+          console.log('Sending admin login request...');
+          
+          const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+          });
+          
+          console.log('Response status:', response.status);
+          console.log('Response ok:', response.ok);
+          
+          // Проверяем, что ответ успешный
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error('Response error:', errorText);
+            errorDiv.textContent = 'Server error: ' + response.status + '. Please check console for details.';
+            errorDiv.style.display = 'block';
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Sign In';
+            }
+            return;
+          }
+          
+          // Получаем текст ответа для отладки
+          const responseText = await response.text();
+          console.log('Response text:', responseText);
+          
+          let result;
+          try {
+            result = JSON.parse(responseText);
+            console.log('Parsed result:', result);
+          } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response text was:', responseText);
+            errorDiv.textContent = 'Invalid response from server. Please check console.';
+            errorDiv.style.display = 'block';
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Sign In';
+            }
+            return;
+          }
+          
+          if (result.success && result.user) {
+            console.log('Login successful!', result);
+            // Сохраняем токен в localStorage для проверки на других страницах
+            if (result.token) {
+              localStorage.setItem('btb_admin_token', result.token);
+              console.log('Token saved to localStorage');
+            }
+            // Redirect to admin panel
+            console.log('Redirecting to admin.html...');
+            window.location.href = 'admin.html';
+          } else {
+            console.error('Login failed:', result);
+            errorDiv.textContent = result.error || 'Invalid username or password';
+            errorDiv.style.display = 'block';
+            if (submitBtn) {
+              submitBtn.disabled = false;
+              submitBtn.textContent = 'Sign In';
+            }
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          console.error('Error stack:', error.stack);
+          errorDiv.textContent = 'An error occurred: ' + error.message + '. Please check console for details.';
           errorDiv.style.display = 'block';
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sign In';
+          }
         }
       });
     })();

@@ -1027,12 +1027,7 @@ function validateMassageForm(formData) {
     errors.email = 'Invalid email address';
   }
 
-  // 7. Потом withRoom (остановка с нами)
-  if (!formData.withRoom || !formData.withRoom.trim()) {
-    errors.withRoom = 'Please specify if you are staying with us';
-  }
-
-  // 8. Потом phone (телефон)
+  // 7. Потом phone (телефон)
   if (!formData.phone || !formData.phone.trim()) {
     errors.phone = 'Phone number is required';
   } else {
@@ -1072,7 +1067,7 @@ async function handleMassageForm(form) {
       name: form.querySelector('#name')?.value || '',
       email: form.querySelector('#email')?.value || '',
       phone: form.querySelector('#phone')?.value || '',
-      withRoom: form.querySelector('#with-room')?.value || ''
+      withRoom: '' // Field removed, always empty
     };
     
     console.log('MassageAPI.handleMassageForm: Collected form data:', formData);
@@ -1085,14 +1080,13 @@ async function handleMassageForm(form) {
       console.error('MassageAPI: Validation failed:', validation.errors);
       
       // Находим первое поле с ошибкой в правильной последовательности:
-      // 1. type, 2. duration, 3. date, 4. time, 5. name, 6. email, 7. withRoom, 8. phone
+      // 1. type, 2. duration, 3. date, 4. time, 5. name, 6. email, 7. phone
       const typeEl = form.querySelector('#type');
       const durationEl = form.querySelector('#duration');
       const dateEl = form.querySelector('#date');
       const timeEl = form.querySelector('#time');
       const nameEl = form.querySelector('#name');
       const emailEl = form.querySelector('#email');
-      const withRoomEl = form.querySelector('#with-room');
       const phoneEl = form.querySelector('#phone');
       
       // 1. Сначала type
@@ -1143,15 +1137,7 @@ async function handleMassageForm(form) {
         return false;
       }
       
-      // 7. Потом withRoom
-      if (validation.errors.withRoom && withRoomEl) {
-        window.showFieldError(withRoomEl, validation.errors.withRoom);
-        withRoomEl.classList.add('flash-invalid');
-        withRoomEl.focus();
-        return false;
-      }
-      
-      // 8. Потом phone
+      // 7. Потом phone
       if (validation.errors.phone && phoneEl) {
         window.showFieldError(phoneEl, validation.errors.phone);
         phoneEl.classList.add('flash-invalid');
@@ -1217,11 +1203,11 @@ async function handleMassageForm(form) {
       }}));
 
       // Показываем сообщение об успехе
-      alert(`Massage booking (${formData.type}, ${formData.duration} min, staying: ${formData.withRoom}) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`);
+      alert(`Massage booking (${formData.type}, ${formData.duration} min) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`);
       
-      // Показываем напоминание о комнате, если нужно
+      // Показываем напоминание о комнате всегда после бронирования массажа
       const reminder = document.getElementById('room-reminder');
-      if (formData.withRoom === 'yes' && reminder) {
+      if (reminder) {
         // Проверяем, есть ли уже бронирование комнаты
         const orders = JSON.parse(localStorage.getItem('btb_orders') || '[]');
         const hasRoomOrder = orders.some(order => order.kind === 'room');

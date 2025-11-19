@@ -258,7 +258,7 @@ const initMassageForm = () => {
   prefillContact(form);
   const typeSel = form.querySelector('select#type');
   const durationSel = form.querySelector('select#duration');
-  const withRoomSel = form.querySelector('select#with-room');
+  // const withRoomSel = form.querySelector('select#with-room'); // Field removed
   const reminder = document.getElementById('room-reminder');
   // Temporarily disable auto-show from localStorage; keep hidden until successful booking submit
   if (reminder) {
@@ -316,7 +316,7 @@ const initMassageForm = () => {
       const phoneEl = form.querySelector('input[name="phone"]');
       const type = typeSel ? typeSel.value : '';
       const dur = durationSel ? durationSel.value : '';
-      const withRoom = withRoomSel ? withRoomSel.value : '';
+      const withRoom = ''; // Field removed
 
       // Ordered validation с новым стилем подсказок
       if (!type) { 
@@ -370,12 +370,7 @@ const initMassageForm = () => {
         emailEl.focus();
         return; 
       }
-      if (!withRoom) { 
-        if (window.showFieldError) window.showFieldError(withRoomSel, 'Please specify if you are staying with us');
-        withRoomSel.classList.add('flash-invalid');
-        withRoomSel.focus();
-        return; 
-      }
+      // withRoom field removed - no validation needed
       if (!phoneEl.value.trim()) { 
         if (window.showFieldError) window.showFieldError(phoneEl, 'Phone number is required');
         phoneEl.classList.add('flash-invalid');
@@ -397,14 +392,14 @@ const initMassageForm = () => {
         ts: Date.now(),
       }}));
 
-      // Show reminder only after successful submit if staying == yes
-      if (withRoom === 'yes' && reminder && !hasOrder('room')) {
+      // Show reminder after successful submit
+      if (reminder && !hasOrder('room')) {
         localStorage.setItem('btb_room_reminder_shown', '1');
         reminder.style.display = 'block';
         reminder.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
-      alert(`Massage booking (${type}, ${dur} min, staying: ${withRoom}) sent!\n${dateEl.value} at ${timeEl.value}. We will confirm by email.`);
+      alert(`Massage booking (${type}, ${dur} min) sent!\n${dateEl.value} at ${timeEl.value}. We will confirm by email.`);
       form.reset();
       setDurations();
     }
@@ -498,15 +493,7 @@ function setupMassageFieldErrorClearing(form) {
     });
   }
   
-  // Поле withRoom - очищаем ошибку при выборе значения
-  const withRoomSelect = form.querySelector('#with-room');
-  if (withRoomSelect) {
-    withRoomSelect.addEventListener('change', () => {
-      if (withRoomSelect.value && window.clearFieldError) {
-        window.clearFieldError(withRoomSelect);
-      }
-    });
-  }
+  // withRoom field removed - no event listener needed
   
   // Поле phone - очищаем ошибку при вводе корректного телефона
   const phoneInput = form.querySelector('#phone');
@@ -2635,7 +2622,7 @@ class ThemeManager {
     const currentDataTheme = document.documentElement.getAttribute('data-theme');
     
     // Use the theme from inline script - it's always correct
-    if (currentDataTheme === 'dark' || currentDataTheme === 'light') {
+    if (currentDataTheme === 'dark' || currentDataTheme === 'light' || currentDataTheme === 'twilight') {
       this.currentTheme = currentDataTheme;
     } else {
       // Fallback only if inline script didn't work (shouldn't happen)
@@ -2659,10 +2646,25 @@ class ThemeManager {
         this.toggleTheme();
       });
     }
+    
+    // Also handle mobile theme toggle
+    const mobileThemeToggle = document.getElementById('mobile-theme-toggle');
+    if (mobileThemeToggle) {
+      mobileThemeToggle.addEventListener('click', () => {
+        this.toggleTheme();
+      });
+    }
   }
 
   toggleTheme() {
-    this.currentTheme = this.currentTheme === 'dark' ? 'light' : 'dark';
+    // Cycle through themes: dark -> twilight -> light -> dark
+    if (this.currentTheme === 'dark') {
+      this.currentTheme = 'twilight';
+    } else if (this.currentTheme === 'twilight') {
+      this.currentTheme = 'light';
+    } else {
+      this.currentTheme = 'dark';
+    }
     this.applyTheme(this.currentTheme);
     localStorage.setItem('btb_theme', this.currentTheme);
     localStorage.setItem('btb_theme_user', '1');
@@ -2675,26 +2677,47 @@ class ThemeManager {
 
   updateThemeToggle(theme) {
     const themeText = document.getElementById('theme-text');
-    const themeIcon = document.querySelector('.theme-toggle-icon path');
+    const mobileThemeText = document.getElementById('mobile-theme-text');
+    const themeIcons = document.querySelectorAll('.theme-toggle-icon path');
     
+    // Update desktop theme text
     if (themeText) {
-      // Show the opposite theme name - if current theme is 'dark', show 'Light' to switch to light
-      // If current theme is 'light', show 'Dark' to switch to dark
-      themeText.textContent = theme === 'dark' ? 'Light' : 'Dark';
+      // Show the next theme name in cycle: dark -> twilight -> light -> dark
+      if (theme === 'dark') {
+        themeText.textContent = 'Twilight';
+      } else if (theme === 'twilight') {
+        themeText.textContent = 'Light';
+      } else {
+        themeText.textContent = 'Dark';
+      }
     }
     
-    if (themeIcon) {
-      // Update icon based on what theme we'll switch TO, not current theme
-      // If current theme is 'dark', show sun icon (to switch to light)
-      // If current theme is 'light', show moon icon (to switch to dark)
+    // Update mobile theme text
+    if (mobileThemeText) {
       if (theme === 'dark') {
+        mobileThemeText.textContent = 'Twilight';
+      } else if (theme === 'twilight') {
+        mobileThemeText.textContent = 'Light';
+      } else {
+        mobileThemeText.textContent = 'Dark';
+      }
+    }
+    
+    // Update all theme icons (desktop and mobile)
+    themeIcons.forEach(themeIcon => {
+      // Update icon based on what theme we'll switch TO, not current theme
+      // dark -> twilight -> light -> dark
+      if (theme === 'dark') {
+        // Show icon for twilight (next theme)
+        themeIcon.setAttribute('d', 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z');
+      } else if (theme === 'twilight') {
         // Sun icon for switching to light
         themeIcon.setAttribute('d', 'M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z');
       } else {
         // Moon icon for switching to dark
         themeIcon.setAttribute('d', 'M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z');
       }
-    }
+    });
   }
 }
 
@@ -2992,4 +3015,111 @@ if (document.readyState === 'loading') {
 } else {
   // DOM already loaded, call immediately
   initFloorPlanData();
+}
+
+// Mobile Navigation Menu
+function initMobileMenu() {
+  const menuToggle = document.getElementById('mobile-menu-toggle');
+  const mobileNav = document.getElementById('mobile-nav');
+  const overlay = document.getElementById('mobile-nav-overlay');
+  
+  if (!menuToggle || !mobileNav || !overlay) {
+    return; // Mobile menu elements not found on this page
+  }
+  
+  function openMenu() {
+    menuToggle.classList.add('active');
+    mobileNav.classList.add('active');
+    overlay.classList.add('active');
+    document.body.style.overflow = 'hidden'; // Prevent body scroll
+  }
+  
+  function closeMenu() {
+    menuToggle.classList.remove('active');
+    mobileNav.classList.remove('active');
+    overlay.classList.remove('active');
+    document.body.style.overflow = ''; // Restore body scroll
+  }
+  
+  // Toggle menu on button click
+  menuToggle.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (mobileNav.classList.contains('active')) {
+      closeMenu();
+    } else {
+      openMenu();
+    }
+  });
+  
+  // Close menu when clicking overlay
+  overlay.addEventListener('click', closeMenu);
+  
+  // Close menu when clicking a link (but not theme toggle)
+  const mobileNavLinks = mobileNav.querySelectorAll('a');
+  mobileNavLinks.forEach(link => {
+    link.addEventListener('click', () => {
+      closeMenu();
+    });
+  });
+  
+  // Update mobile nav sign in button if user is authenticated
+  const mobileNavSignin = mobileNav.querySelector('#mobile-nav-signin');
+  if (mobileNavSignin && window.authSystem) {
+    // Check auth status and update button text if needed
+    const updateMobileSignin = () => {
+      try {
+        if (window.authSystem && typeof window.authSystem.isAuthenticated === 'function') {
+          const isAuth = window.authSystem.isAuthenticated();
+          if (isAuth && window.authSystem.user) {
+            mobileNavSignin.textContent = window.authSystem.user.name || 'Account';
+            mobileNavSignin.href = 'dashboard.html';
+          } else {
+            mobileNavSignin.textContent = 'Sign In';
+            mobileNavSignin.href = 'login.html';
+          }
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+    };
+    
+    // Update on load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', updateMobileSignin);
+    } else {
+      updateMobileSignin();
+    }
+    
+    // Listen for auth changes
+    window.addEventListener('authStateChanged', updateMobileSignin);
+  }
+  
+  // Don't close menu when clicking theme toggle button
+  const mobileThemeToggle = mobileNav.querySelector('#mobile-theme-toggle');
+  if (mobileThemeToggle) {
+    mobileThemeToggle.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent menu from closing
+    });
+  }
+  
+  // Close menu on Escape key
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && mobileNav.classList.contains('active')) {
+      closeMenu();
+    }
+  });
+  
+  // Close menu on window resize if screen becomes larger than mobile
+  window.addEventListener('resize', () => {
+    if (window.innerWidth > 767 && mobileNav.classList.contains('active')) {
+      closeMenu();
+    }
+  });
+}
+
+// Initialize mobile menu when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMobileMenu);
+} else {
+  initMobileMenu();
 }

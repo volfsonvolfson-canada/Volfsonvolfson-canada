@@ -24,7 +24,7 @@
       // - Otherwise, default to 'dark' (first-time visitor or invalid theme)
       let initialTheme = 'dark'; // Default for first-time visitors
       
-      if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+      if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'twilight')) {
         // User has explicitly chosen a theme and it's valid - use it
         initialTheme = savedTheme;
       }

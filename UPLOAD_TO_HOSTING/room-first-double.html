@@ -23,7 +23,7 @@
         // - Otherwise default to 'dark' (first-time visitor on any page)
         let initialTheme = 'dark';
         
-        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'twilight')) {
           initialTheme = savedTheme; // User has chosen theme - use it
         }
         // Else: first-time visitor or invalid theme - use default 'dark'
@@ -48,7 +48,7 @@
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
         <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreat and Workshop</a>
+        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
         <a href="special.html">Special</a>
         <a href="about.html">About us</a>
       </nav>
@@ -208,7 +208,7 @@
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
           <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreat and Workshop</a></li>
+          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.html">Special</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>

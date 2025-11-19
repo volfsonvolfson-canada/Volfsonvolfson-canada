@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <title>Special offer — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +24,7 @@
         // - Otherwise default to 'dark' (first-time visitor on any page)
         let initialTheme = 'dark';
         
-        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'twilight')) {
           initialTheme = savedTheme; // User has chosen theme - use it
         }
         // Else: first-time visitor or invalid theme - use default 'dark'
@@ -48,10 +49,13 @@
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
         <a href="massage.html">Massage</a>
-        <a href="yoga.html">Yoga</a>
+        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
         <a href="special.html">Special</a>
         <a href="about.html">About us</a>
       </nav>
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
+        ☰
+      </button>
       <div class="header-actions">
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
           <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -63,6 +67,25 @@
       </div>
     </div>
   </header>
+
+  <!-- Mobile Navigation Overlay -->
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+  
+  <!-- Mobile Navigation Menu -->
+  <nav class="mobile-nav" id="mobile-nav">
+    <a href="index.html#rooms">Rooms</a>
+    <a href="massage.html">Massage</a>
+    <a href="retreat-and-workshop.html">Retreats and Workshops</a>
+    <a href="special.html">Special</a>
+    <a href="about.html">About us</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
+      <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="mobile-theme-text">Light</span>
+    </button>
+  </nav>
 
   <div class="page-header">
     <div class="container">
@@ -98,7 +121,7 @@
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
           <li><a href="massage.html">Massage</a></li>
-          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.html">Special</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>

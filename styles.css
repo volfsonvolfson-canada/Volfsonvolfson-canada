@@ -321,6 +321,7 @@
 
 :root {
   --bg: #0a0f14;
+  --bg-alt: #0b1219;
   --text: #e9eef3;
   --muted: #9fb0c0;
   --brand: #2c7be5;
@@ -330,9 +331,23 @@
   --accent: #3ddc97;
 }
 
+/* Twilight theme variables */
+[data-theme="twilight"] {
+  --bg: #2E86AB;
+  --bg-alt: #1E6B8A;
+  --text: #e9eef3;
+  --muted: #9fb0c0;
+  --brand: #d4af37;
+  --brand-600: #b8941f;
+  --card: #1E6B8A;
+  --card-2: #1A5F7A;
+  --accent: #d4af37;
+}
+
 /* Light theme variables */
 [data-theme="light"] {
   --bg: #ffffff;
+  --bg-alt: #f8fafc;
   --text: #1a1a1a;
   --muted: #666666;
   --brand: #2563eb;
@@ -344,16 +359,281 @@
 
 * { box-sizing: border-box; }
 html, body { height: 100%; }
+
+/* Force color-scheme based on site theme, not system preference */
+html {
+  color-scheme: light dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="dark"],
+[data-theme="twilight"] {
+  color-scheme: dark;
+}
+
 body {
   margin: 0;
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--text);
-  background: linear-gradient(180deg, #0a0f14 0%, #0b1219 100%);
+  background: var(--bg);
   transition: background 0.3s ease, color 0.3s ease;
+  /* Force background color to override system dark mode */
+  background-color: var(--bg) !important;
+}
+
+/* Explicit background colors for better compatibility with Samsung devices */
+/* Override system dark mode preferences */
+[data-theme="twilight"] body {
+  background: #2E86AB !important;
+  background-color: #2E86AB !important;
+  color: #e9eef3 !important;
+  -webkit-text-fill-color: #e9eef3 !important;
 }
 
 [data-theme="light"] body {
-  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #1a1a1a !important;
+  -webkit-text-fill-color: #1a1a1a !important;
+}
+
+[data-theme="dark"] body {
+  background: #0a0f14 !important;
+  background-color: #0a0f14 !important;
+  color: #e9eef3 !important;
+  -webkit-text-fill-color: #e9eef3 !important;
+}
+
+/* Additional Safari and Samsung Internet overrides for light theme */
+[data-theme="light"] body,
+[data-theme="light"] html {
+  -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Force light theme for Samsung Internet - more aggressive approach */
+/* Samsung Internet sometimes ignores color-scheme, so we need explicit colors everywhere */
+[data-theme="light"] {
+  /* Force light color scheme */
+  color-scheme: light !important;
+  -webkit-color-scheme: light !important;
+}
+
+/* Override system dark mode for light theme */
+@media (prefers-color-scheme: dark) {
+  [data-theme="light"] body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
+  }
+  
+  [data-theme="light"] html {
+    background-color: #ffffff !important;
+  }
+  
+  [data-theme="light"] {
+    color-scheme: light !important;
+  }
+}
+
+/* Safari-specific fixes for dark mode override */
+/* Force light theme colors in Safari when light theme is selected */
+@supports (-webkit-touch-callout: none) {
+  /* This targets Safari specifically */
+  [data-theme="light"] {
+    color-scheme: light !important;
+    -webkit-color-scheme: light !important;
+  }
+  
+  [data-theme="light"] body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+  }
+  
+  [data-theme="light"] html {
+    background-color: #ffffff !important;
+  }
+  
+  /* Override Safari's automatic dark mode styles */
+  [data-theme="light"] * {
+    -webkit-text-fill-color: inherit !important;
+  }
+  
+  /* Ensure inputs and form elements are light in light theme */
+  [data-theme="light"] input,
+  [data-theme="light"] textarea,
+  [data-theme="light"] select {
+    background-color: #f8fafc !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+  }
+  
+  [data-theme="light"] input::placeholder,
+  [data-theme="light"] textarea::placeholder {
+    color: #666666 !important;
+    -webkit-text-fill-color: #666666 !important;
+  }
+  
+  /* Override Safari dark mode for cards and other elements */
+  [data-theme="light"] .card,
+  [data-theme="light"] .card-2 {
+    background-color: #f8fafc !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+  }
+  
+  [data-theme="light"] .btn {
+    background-color: var(--card) !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+  }
+  
+  [data-theme="light"] .btn.primary {
+    background-color: var(--brand) !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+  }
+  
+  /* Ensure text elements are visible */
+  [data-theme="light"] p,
+  [data-theme="light"] h1,
+  [data-theme="light"] h2,
+  [data-theme="light"] h3,
+  [data-theme="light"] h4,
+  [data-theme="light"] h5,
+  [data-theme="light"] h6 {
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+  }
+  
+  [data-theme="light"] .muted {
+    color: #666666 !important;
+    -webkit-text-fill-color: #666666 !important;
+  }
+  
+  /* Use CSS variables for burger button like other buttons */
+  /* Safari will respect CSS variables the same way as theme-toggle */
+  [data-theme="dark"] .mobile-menu-toggle,
+  [data-theme="twilight"] .mobile-menu-toggle,
+  [data-theme="light"] .mobile-menu-toggle {
+    color: var(--text) !important;
+  }
+}
+
+/* Samsung Internet specific fixes for dark mode override */
+/* Samsung Internet uses WebKit but has its own dark mode implementation */
+@supports (-webkit-appearance: none) {
+  /* Additional rules for Samsung Internet */
+  [data-theme="light"] {
+    color-scheme: light !important;
+    -webkit-color-scheme: light !important;
+  }
+  
+  [data-theme="light"] body {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+  }
+  
+  [data-theme="light"] html {
+    background-color: #ffffff !important;
+    background-image: none !important;
+  }
+  
+  /* Override Samsung Internet's automatic dark mode for all elements */
+  [data-theme="light"] * {
+    -webkit-text-fill-color: inherit !important;
+  }
+  
+  /* Force light colors for form elements in Samsung Internet */
+  [data-theme="light"] input,
+  [data-theme="light"] textarea,
+  [data-theme="light"] select {
+    background-color: #f8fafc !important;
+    background-image: none !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  [data-theme="light"] input::placeholder,
+  [data-theme="light"] textarea::placeholder {
+    color: #666666 !important;
+    -webkit-text-fill-color: #666666 !important;
+    opacity: 1 !important;
+  }
+  
+  /* Override Samsung Internet dark mode for cards */
+  [data-theme="light"] .card,
+  [data-theme="light"] .card-2,
+  [data-theme="light"] .plan-card,
+  [data-theme="light"] .room-card {
+    background-color: #f8fafc !important;
+    background-image: none !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  /* Override for buttons */
+  [data-theme="light"] .btn {
+    background-color: var(--card) !important;
+    background-image: none !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    border-color: rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  [data-theme="light"] .btn.primary {
+    background-color: var(--brand) !important;
+    background-image: none !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+  }
+  
+  /* Ensure all text is visible */
+  [data-theme="light"] p,
+  [data-theme="light"] h1,
+  [data-theme="light"] h2,
+  [data-theme="light"] h3,
+  [data-theme="light"] h4,
+  [data-theme="light"] h5,
+  [data-theme="light"] h6,
+  [data-theme="light"] span,
+  [data-theme="light"] div,
+  [data-theme="light"] a {
+    color: inherit !important;
+    -webkit-text-fill-color: inherit !important;
+  }
+  
+  [data-theme="light"] .muted {
+    color: #666666 !important;
+    -webkit-text-fill-color: #666666 !important;
+  }
+  
+  /* Override for date inputs */
+  [data-theme="light"] input[type="date"],
+  [data-theme="light"] input[type="time"] {
+    color-scheme: light !important;
+    -webkit-color-scheme: light !important;
+    background-color: #f8fafc !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+  }
+  
+  /* Use CSS variables for burger button like other buttons */
+  /* Samsung Internet will respect CSS variables the same way as theme-toggle */
+  [data-theme="dark"] .mobile-menu-toggle,
+  [data-theme="twilight"] .mobile-menu-toggle,
+  [data-theme="light"] .mobile-menu-toggle {
+    color: var(--text) !important;
+  }
 }
 
 html { scroll-behavior: smooth; }
@@ -362,8 +642,9 @@ html { scroll-behavior: smooth; }
 
 /* Header */
 .site-header { position: sticky; top: 0; z-index: 20; background: rgba(10,15,20,.6); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,.06); transition: background 0.3s ease, border-color 0.3s ease; }
+[data-theme="twilight"] .site-header { background: rgba(46,134,171,.6); backdrop-filter: blur(10px); border-bottom: 1px solid rgba(255,255,255,.06); }
 [data-theme="light"] .site-header { background: rgba(255,255,255,.8); border-bottom: 1px solid rgba(0,0,0,.1); }
-.header-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 0; position: relative; }
 .logo { 
   color: #fff; 
   text-decoration: none; 
@@ -404,6 +685,207 @@ html { scroll-behavior: smooth; }
 .nav a:hover { color: #fff; }
 [data-theme="light"] .nav a:hover { color: var(--text); }
 
+/* Mobile Navigation */
+.mobile-menu-toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  z-index: 1001;
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--text);
+  transition: all 0.3s ease;
+  /* Use same approach as btn-signin - text-based */
+}
+
+.mobile-menu-toggle:hover {
+  opacity: 0.8;
+}
+
+.mobile-menu-toggle.active {
+  transform: translateY(-50%) rotate(90deg);
+}
+
+/* Ensure burger button uses CSS variables like other buttons */
+[data-theme="light"] .mobile-menu-toggle {
+  color: var(--text) !important;
+}
+
+[data-theme="twilight"] .mobile-menu-toggle,
+[data-theme="dark"] .mobile-menu-toggle {
+  color: var(--text) !important;
+}
+
+.mobile-nav-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.mobile-nav-overlay.active {
+  display: block;
+  opacity: 1;
+}
+
+.mobile-nav {
+  display: none;
+  position: fixed;
+  top: 0;
+  right: -100%;
+  width: 280px;
+  max-width: 85vw;
+  height: 100vh;
+  background: var(--card);
+  z-index: 1000;
+  padding: 80px 24px 24px;
+  overflow-y: auto;
+  transition: right 0.3s ease;
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.3);
+}
+
+.mobile-nav.active {
+  right: 0;
+}
+
+.mobile-nav a {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  padding: 16px 0;
+  font-size: 18px;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: color 0.3s ease, padding-left 0.3s ease;
+  margin: 0;
+}
+
+.mobile-nav a:hover,
+.mobile-nav a:active {
+  color: var(--brand);
+  padding-left: 12px;
+}
+
+.mobile-nav-signin {
+  display: block;
+  color: var(--text);
+  text-decoration: none;
+  padding: 16px 0;
+  font-size: 18px;
+  font-weight: 500;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: color 0.3s ease, padding-left 0.3s ease;
+  margin: 0;
+}
+
+.mobile-nav-signin:hover,
+.mobile-nav-signin:active {
+  color: var(--brand);
+  padding-left: 12px;
+}
+
+[data-theme="light"] .mobile-nav-signin {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+.mobile-nav .theme-toggle {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 16px 0;
+  margin-top: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: none;
+  border-left: none;
+  border-right: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: color 0.3s ease, padding-left 0.3s ease;
+}
+
+.mobile-nav .theme-toggle:hover,
+.mobile-nav .theme-toggle:active {
+  color: var(--brand);
+  padding-left: 12px;
+}
+
+.mobile-nav .theme-toggle-icon {
+  width: 20px;
+  height: 20px;
+}
+
+[data-theme="light"] .mobile-nav .theme-toggle {
+  border-top-color: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .mobile-nav {
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="light"] .mobile-nav a {
+  border-bottom-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Hide desktop nav on mobile, show mobile toggle */
+@media (max-width: 767px) {
+  .nav {
+    display: none;
+  }
+  
+  .mobile-menu-toggle {
+    display: flex;
+  }
+  
+  .mobile-nav {
+    display: block;
+  }
+  
+  /* Hide theme toggle and sign in button in header on mobile */
+  .header-actions .theme-toggle {
+    display: none !important;
+  }
+  
+  .header-actions .btn-signin {
+    display: none !important;
+  }
+  
+  /* Increase touch targets */
+  .header-actions {
+    gap: 12px;
+  }
+  
+  .logo-text {
+    font-size: 1.25rem;
+  }
+  
+  .header-inner {
+    padding: 10px 0;
+  }
+}
+
 /* Full-bleed hero */
 .hero { position: relative; min-height: 100vh; display: grid; place-items: end; overflow: hidden; }
 .hero-bg { position: absolute; inset: 0; background-size: cover; background-position: center; transform: none; filter: none; }
@@ -421,7 +903,7 @@ html { scroll-behavior: smooth; }
 
 /* Sections */
 .section { padding: 56px 0; }
-.section.alt { background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,.0)); }
+.section.alt { background: var(--bg); }
 .section h2 { margin: 0 0 8px; font-size: clamp(22px, 4vw, 32px); }
 .section-lead { margin: 0 0 24px; color: var(--muted); }
 
@@ -455,7 +937,7 @@ html { scroll-behavior: smooth; }
 .floor-photo { width: 100%; height: auto; display: block; border-radius: 10px; border: 1px solid rgba(255,255,255,.08); box-shadow: 0 6px 16px rgba(0,0,0,.25); }
 
 /* Footer */
-.site-footer { border-top: 1px solid rgba(255,255,255,.06); background: #0b1118; margin-top: 32px; }
+.site-footer { border-top: 1px solid rgba(255,255,255,.06); background: var(--card); margin-top: 32px; }
 .footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 24px 0; }
 .footer-nav { list-style: none; padding: 0; margin: 0; }
 .footer-nav a { color: var(--muted); text-decoration: none; }
@@ -494,6 +976,10 @@ label { font-weight: 600; font-size: 14px; }
 .nowrap { white-space: nowrap; }
 input, select, textarea { width: 100%; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.1); background: var(--card-2); color: #fff; }
 input[type="date"] { color-scheme: dark; }
+[data-theme="light"] input[type="date"] { 
+  color-scheme: light !important;
+  -webkit-color-scheme: light !important;
+}
 input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
 
 /* Keep dark background even with browser autofill */
@@ -514,10 +1000,35 @@ select:-webkit-autofill:focus {
 
 .card { background: var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 18px; }
 .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
+@media (max-width: 767px) {
+  .grid-2 { 
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+  }
+  /* Ensure images come first on mobile - move divs with images to top */
+  .grid-2 > div:has(img) {
+    order: -1;
+  }
+  /* For sections where image is in second div (like Massage), move it first */
+  .grid-2 > div:nth-child(2):has(img) {
+    order: -1;
+  }
+}
 
 /* Room page */
-.page-header { padding: 24px 0; border-bottom: 1px solid rgba(255,255,255,.06); background: #0b1118; }
+.page-header { padding: 24px 0; }
 .breadcrumbs { color: var(--muted); font-size: 14px; }
+.room-info-description { padding: 24px 0; }
+.room-info-description .card { padding-left: 24px; padding-right: 24px; }
+.room-info-description h2 { margin: 0 0 16px; font-size: 24px; }
+.room-info-description p { margin: 0 0 16px; color: var(--text); line-height: 1.6; }
+.room-info-description p:last-of-type { margin-bottom: 0; }
+.check-in-out { margin-top: 24px; padding-top: 24px; border-top: 1px solid rgba(255,255,255,.06); }
+[data-theme="light"] .check-in-out { border-top-color: rgba(0,0,0,.1); }
+.check-in-out h3 { margin: 0 0 12px; font-size: 18px; }
+.check-in-out p { margin: 8px 0; color: var(--text); }
+
 .room-hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; align-items: start; padding: 24px 0 0; }
 .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .gallery img { width: 100%; height: 220px; object-fit: cover; border-radius: 10px; }
@@ -602,6 +1113,103 @@ select:-webkit-autofill:focus {
 @media (max-width: 900px) { .card-massage--alt .card-img, .card-massage--alt .card-body { order: initial; } }
 
 .wide-field select { width: 100%; }
+
+/* Check-in Conditions Modal */
+.checkin-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.checkin-modal.active {
+  display: flex;
+}
+
+.checkin-modal-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+}
+
+.checkin-modal-content {
+  position: relative;
+  background: var(--card);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 32px;
+  max-width: 500px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+  z-index: 1001;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.checkin-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: opacity 0.2s ease;
+}
+
+.checkin-modal-close:hover {
+  opacity: 0.7;
+}
+
+.checkin-modal-content h3 {
+  margin: 0 0 16px;
+  font-size: 24px;
+  color: var(--text);
+}
+
+.checkin-modal-content p {
+  margin: 0 0 16px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.checkin-modal-content p:last-child {
+  margin-bottom: 0;
+}
+
+.checkin-modal-content a {
+  color: var(--brand);
+  text-decoration: underline;
+}
+
+.checkin-modal-content a:hover {
+  color: var(--brand-600);
+}
+
+[data-theme="light"] .checkin-modal-overlay {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .checkin-modal-content {
+  border-color: rgba(0, 0, 0, 0.1);
+}
 
 /* Authentication styles */
 .header-actions {
@@ -989,6 +1597,41 @@ select:-webkit-autofill:focus {
 
 .auth-form input::placeholder {
   color: var(--muted);
+}
+
+/* Стили для автозаполнения в формах авторизации - темная тема */
+.auth-form input:-webkit-autofill,
+.auth-form input:-webkit-autofill:hover,
+.auth-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #fff !important;
+  -webkit-box-shadow: 0 0 0px 1000px var(--card-2) inset !important;
+  box-shadow: 0 0 0px 1000px var(--card-2) inset !important;
+  transition: background-color 9999s ease-out 0s, -webkit-text-fill-color 0s ease-out 0s !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+.auth-form input:-webkit-autofill:focus {
+  border-color: var(--brand) !important;
+}
+
+/* Стили для автозаполнения в формах авторизации - светлая тема */
+[data-theme="light"] .auth-form input:-webkit-autofill,
+[data-theme="light"] .auth-form input:-webkit-autofill:hover,
+[data-theme="light"] .auth-form input:-webkit-autofill:focus {
+  -webkit-text-fill-color: #4a5568 !important;
+  -webkit-box-shadow: 0 0 0px 1000px var(--card-2) inset !important;
+  box-shadow: 0 0 0px 1000px var(--card-2) inset !important;
+  transition: background-color 9999s ease-out 0s, -webkit-text-fill-color 0s ease-out 0s !important;
+  border-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+[data-theme="light"] .auth-form input:-webkit-autofill:focus {
+  border-color: var(--brand) !important;
+}
+
+/* Placeholder для светлой темы в формах авторизации */
+[data-theme="light"] .auth-form input::placeholder {
+  color: #9ca3af !important; /* Темно-серый цвет для placeholder в светлой теме */
 }
 
 .auth-form .btn {
@@ -1430,15 +2073,23 @@ select:-webkit-autofill:focus {
   border-color: rgba(0, 0, 0, 0.1);
 }
 
+[data-theme="twilight"] .site-footer {
+  background: var(--card);
+  border-top-color: rgba(255,255,255,.06);
+}
+
 [data-theme="light"] .site-footer {
   background: var(--card-2);
   border-top-color: rgba(0, 0, 0, 0.1);
 }
 
-/* Page header and breadcrumbs light theme */
+/* Page header and breadcrumbs themes */
+[data-theme="twilight"] .page-header {
+  /* Background removed */
+}
+
 [data-theme="light"] .page-header {
-  background: var(--card-2);
-  border-bottom-color: rgba(0, 0, 0, 0.1);
+  /* Background removed */
 }
 
 [data-theme="light"] .breadcrumbs {
@@ -1513,6 +2164,27 @@ select:-webkit-autofill:focus {
 
 [data-theme="light"] .massage-list li {
   color: var(--muted);
+}
+
+/* Twilight theme - gold headings */
+[data-theme="twilight"] h1,
+[data-theme="twilight"] h2,
+[data-theme="twilight"] h3,
+[data-theme="twilight"] h4,
+[data-theme="twilight"] h5,
+[data-theme="twilight"] h6 {
+  color: #d4b86e;
+}
+
+[data-theme="twilight"] .hero h1,
+[data-theme="twilight"] .section h2,
+[data-theme="twilight"] .section h3,
+[data-theme="twilight"] .section h4,
+[data-theme="twilight"] .page-header h1,
+[data-theme="twilight"] .card h2,
+[data-theme="twilight"] .card h3,
+[data-theme="twilight"] .card h4 {
+  color: #d4b86e;
 }
 
 /* Room features list - plain text, not interactive */

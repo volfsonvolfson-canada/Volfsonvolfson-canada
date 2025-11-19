@@ -26,7 +26,7 @@
         // - Otherwise default to 'dark' (first-time visitor on any page)
         let initialTheme = 'dark';
         
-        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'twilight')) {
           initialTheme = savedTheme; // User has chosen theme - use it
         }
         // Else: first-time visitor or invalid theme - use default 'dark'
@@ -137,7 +137,7 @@
       <nav class="nav">
         <a href="#rooms">Rooms</a>
         <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreat and Workshop</a>
+        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
         <a href="special.html">Special</a>
         <a href="about.html">About us</a>
       </nav>
@@ -304,7 +304,7 @@
         <ul class="footer-nav">
           <li><a href="#rooms">Rooms</a></li>
           <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreat and Workshop</a></li>
+          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.html">Special</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>
@@ -317,8 +317,58 @@
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
   </footer>
 
+  <style>
+    /* Scroll offset for anchor links to account for fixed header */
+    #rooms {
+      scroll-margin-top: 100px;
+    }
+    
+    /* Additional JavaScript-based scroll adjustment for better positioning */
+  </style>
+
   <script src="utils.js?v=26"></script>
   <script src="script.js?v=26"></script>
   <script src="auth.js?v=26"></script>
+  <script>
+    // Adjust scroll position for anchor links to place content at top
+    (function() {
+      function scrollToAnchor(hash, immediate) {
+        const element = document.getElementById(hash);
+        if (element) {
+          const headerHeight = document.querySelector('.site-header')?.offsetHeight || 80;
+          const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+          const offsetPosition = elementPosition - headerHeight - 20; // 20px extra spacing
+          
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: immediate ? 'auto' : 'smooth'
+          });
+        }
+      }
+      
+      // Handle hash on page load (when coming from another page)
+      if (window.location.hash) {
+        // Use immediate scroll for page load
+        setTimeout(function() {
+          const hash = window.location.hash.substring(1);
+          scrollToAnchor(hash, true);
+        }, 50);
+      }
+      
+      // Handle anchor link clicks on same page
+      document.querySelectorAll('a[href="#rooms"], a[href*="#rooms"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+          const href = this.getAttribute('href');
+          const hash = href.includes('#') ? href.split('#')[1] : null;
+          if (hash && hash === 'rooms') {
+            e.preventDefault();
+            scrollToAnchor(hash, false);
+            // Update URL without triggering scroll
+            history.pushState(null, null, '#' + hash);
+          }
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

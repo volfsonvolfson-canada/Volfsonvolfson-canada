@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="light dark">
   <title>Back to Base — Boutique Retreat in British Columbia</title>
   <meta name="description" content="Back to Base — boutique forest retreat in British Columbia, Canada. Rooms for rent, massage services, yoga, and nature immersion.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,7 +27,7 @@
         // - Otherwise default to 'dark' (first-time visitor on any page)
         let initialTheme = 'dark';
         
-        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light')) {
+        if (userSetTheme && savedTheme && (savedTheme === 'dark' || savedTheme === 'light' || savedTheme === 'twilight')) {
           initialTheme = savedTheme; // User has chosen theme - use it
         }
         // Else: first-time visitor or invalid theme - use default 'dark'
@@ -137,10 +138,13 @@
       <nav class="nav">
         <a href="#rooms">Rooms</a>
         <a href="massage.html">Massage</a>
-        <a href="yoga.html">Yoga</a>
+        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
         <a href="special.html">Special</a>
         <a href="about.html">About us</a>
       </nav>
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
+        ☰
+      </button>
       <div class="header-actions">
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
           <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -152,6 +156,25 @@
       </div>
     </div>
   </header>
+
+  <!-- Mobile Navigation Overlay -->
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+  
+  <!-- Mobile Navigation Menu -->
+  <nav class="mobile-nav" id="mobile-nav">
+    <a href="index.html#rooms">Rooms</a>
+    <a href="massage.html">Massage</a>
+    <a href="retreat-and-workshop.html">Retreats and Workshops</a>
+    <a href="special.html">Special</a>
+    <a href="about.html">About us</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
+      <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="mobile-theme-text">Light</span>
+    </button>
+  </nav>
 
   <section class="hero hero-full" aria-label="Back to Base hero photo">
     <img class="hero-full-img" src="assets/hero.jpg" alt="Blue two‑storey house in the forest with mountains and a lake nearby" />
@@ -285,7 +308,7 @@
           <h2>Yoga</h2>
           <p class="margin-bottom-small">Try an incredible forest meditation experience by the stream, guided by an experienced instructor. We offer a secluded and peaceful spot in the shade of the trees, away from city noise yet close to the house, where you can warm up and enjoy a cup of tea.</p>
           <p class="margin-bottom-large" style="margin-bottom: 40px;">Both individual and group sessions are available, either as an add-on to your room booking or as a stand-alone option.</p>
-          <a class="btn primary" href="yoga.html">Learn more</a>
+          <a class="btn primary" href="retreat-and-workshop.html">Learn more</a>
         </div>
       </div>
     </section
@@ -304,7 +327,7 @@
         <ul class="footer-nav">
           <li><a href="#rooms">Rooms</a></li>
           <li><a href="massage.html">Massage</a></li>
-          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.html">Special</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>
@@ -317,8 +340,58 @@
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
   </footer>
 
+  <style>
+    /* Scroll offset for anchor links to account for fixed header */
+    #rooms {
+      scroll-margin-top: 100px;
+    }
+    
+    /* Additional JavaScript-based scroll adjustment for better positioning */
+  </style>
+
   <script src="utils.js?v=26"></script>
   <script src="script.js?v=26"></script>
   <script src="auth.js?v=26"></script>
+  <script>
+    // Adjust scroll position for anchor links to place content at top
+    (function() {
+      function scrollToAnchor(hash, immediate) {
+        const element = document.getElementById(hash);
+        if (element) {
+          const headerHeight = document.querySelector('.site-header')?.offsetHeight || 80;
+          const elementPosition = element.getBoundingClientRect().top + window.pageYOffset;
+          const offsetPosition = elementPosition - headerHeight - 20; // 20px extra spacing
+          
+          window.scrollTo({
+            top: offsetPosition,
+            behavior: immediate ? 'auto' : 'smooth'
+          });
+        }
+      }
+      
+      // Handle hash on page load (when coming from another page)
+      if (window.location.hash) {
+        // Use immediate scroll for page load
+        setTimeout(function() {
+          const hash = window.location.hash.substring(1);
+          scrollToAnchor(hash, true);
+        }, 50);
+      }
+      
+      // Handle anchor link clicks on same page
+      document.querySelectorAll('a[href="#rooms"], a[href*="#rooms"]').forEach(anchor => {
+        anchor.addEventListener('click', function(e) {
+          const href = this.getAttribute('href');
+          const hash = href.includes('#') ? href.split('#')[1] : null;
+          if (hash && hash === 'rooms') {
+            e.preventDefault();
+            scrollToAnchor(hash, false);
+            // Update URL without triggering scroll
+            history.pushState(null, null, '#' + hash);
+          }
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

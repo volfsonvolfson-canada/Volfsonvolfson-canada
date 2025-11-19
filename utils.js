@@ -367,7 +367,15 @@ const ThemeUtils = {
   toggleTheme: function() {
     try {
       const currentTheme = this.getCurrentTheme();
-      const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+      // Cycle through themes: dark -> twilight -> light -> dark
+      let newTheme;
+      if (currentTheme === 'dark') {
+        newTheme = 'twilight';
+      } else if (currentTheme === 'twilight') {
+        newTheme = 'light';
+      } else {
+        newTheme = 'dark';
+      }
       return this.setTheme(newTheme);
     } catch (error) {
       ErrorHandler.handleError(error, 'toggleTheme');
@@ -384,7 +392,13 @@ const ThemeUtils = {
       // Update theme toggle button text
       const themeText = DOMUtils.getElement('#theme-text');
       if (themeText) {
-        themeText.textContent = savedTheme === 'dark' ? 'Light' : 'Dark';
+        if (savedTheme === 'dark') {
+          themeText.textContent = 'Twilight';
+        } else if (savedTheme === 'twilight') {
+          themeText.textContent = 'Light';
+        } else {
+          themeText.textContent = 'Dark';
+        }
       }
       
       return true;
