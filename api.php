@@ -284,8 +284,35 @@ if ($action === 'save_content') {
                 }
             }
             
+            // Protect full texts from being overwritten by shortened versions
+            // Get current value from database
+            $currentResult = $conn->query("SELECT $field FROM content_settings WHERE id = 1");
+            $currentRow = $currentResult->fetch_assoc();
+            $currentValue = $currentRow[$field] ?? '';
+            $newValue = $_POST[$field];
+            
+            // Don't overwrite full text with shortened version
+            // Check if current value is longer and new value looks like a shortened version
+            if (!empty($currentValue) && !empty($newValue)) {
+                $currentLength = strlen($currentValue);
+                $newLength = strlen($newValue);
+                
+                // If current text is significantly longer (more than 30% difference)
+                // and new text contains ellipsis or is much shorter, skip update
+                if ($currentLength > $newLength * 1.3) {
+                    // Check if new value looks like a shortened version (contains ellipsis or ends with ...)
+                    if (strpos($newValue, '...') !== false || 
+                        strpos($newValue, '…') !== false ||
+                        ($newLength < 100 && $currentLength > 150)) {
+                        // Skip this update - keep the full text
+                        error_log("Skipping update for $field: current text is longer and new text appears to be shortened");
+                        continue;
+                    }
+                }
+            }
+            
             $fields[] = "$field = ?";
-            $values[] = $_POST[$field];
+            $values[] = $newValue;
             $types .= 's';
         }
     }

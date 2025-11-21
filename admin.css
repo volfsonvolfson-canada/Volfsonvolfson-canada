@@ -44,6 +44,97 @@ html body.admin-body,
   overflow: visible;
 }
 
+.retreat-helper-panel {
+  display: flex;
+  gap: 20px;
+  padding: 16px 20px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #f8fafc;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.retreat-helper-copy {
+  flex: 1 1 260px;
+  min-width: 220px;
+  color: #4b5563;
+}
+
+.retreat-helper-heading {
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0 0 6px 0;
+}
+
+.retreat-helper-tip {
+  margin: 8px 0 0;
+  font-size: 0.85rem;
+  color: #1f2937;
+}
+
+.retreat-helper-kbd {
+  display: inline-flex;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #cbd5f5;
+  background: #eef2ff;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #3730a3;
+}
+
+.retreat-helper-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.retreat-helper-actions .admin-btn {
+  white-space: nowrap;
+}
+
+.retreat-status-bar {
+  margin: 12px 0 0;
+}
+
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-badge.neutral {
+  background: #f3f4f6;
+  color: #4b5563;
+}
+
+.status-badge.success {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.status-badge.warning {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+@media (max-width: 768px) {
+  .retreat-helper-panel {
+    flex-direction: column;
+  }
+  .retreat-helper-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
 /* Login Page */
 .admin-login-container {
   display: flex;

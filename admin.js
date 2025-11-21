@@ -283,6 +283,7 @@ function loadSectionData(sectionName) {
       loadRetreatImagesData();
       initRetreatImageUpload();
       initRetreatSaveHandler();
+      initRetreatHelperUI();
       // Initialize auto-save after a short delay to ensure all elements are loaded
       setTimeout(() => {
         if (typeof initRetreatAutoSave === 'function') {
@@ -2003,6 +2004,143 @@ function initRoomSecondImageUpload() {
 // PAGE CONTENT MANAGEMENT
 // ==========================================
 
+const retreatDefaultValues = {
+  'retreat-hero-title': 'Activities and Practices at Back to Base',
+  'retreat-hero-subtitle': 'Where nature and quiet become part of your practice',
+  'retreat-intro-text': 'Back to Base is a place where nature and quiet become part of your practice. Everything here is designed so that any activity — from yoga to a small creative workshop — takes place in an atmosphere of calm, depth, and inspiration.',
+  'retreat-locations-title': 'Our locations for your workshops',
+  'retreat-forest-title': 'Forest platforms by the creek',
+  'retreat-forest-description': 'Just a few steps from the house, a winding path leads into the forest, where wooden platforms are hidden among tall trees. The air feels lighter here, the sound of the creek creates a natural meditation, and the soft light filtering through the canopy makes every practice deeper.',
+  "retreat-forest-list-label": "It's an ideal spot for:",
+  'retreat-forest-list-items': 'Sunrise yoga\nEvening meditations\nBreathwork\nAny activity that benefits from a strong connection to nature',
+  'retreat-indoor-title': 'Warm, bright indoor space at Back to Base',
+  'retreat-indoor-description': 'Inside the house, there is a spacious room with large windows filled with light, warmth, and a sense of comfort — perfect for group gatherings, mini-lectures, workshops, breathwork sessions, or yoga during cooler weather.',
+  'retreat-indoor-additional': 'And if you need a more intimate atmosphere or plan to use visual materials, the room can easily be darkened with blackout curtains.',
+  'retreat-theatre-title': 'Cozy mini home theatre',
+  'retreat-theatre-description': 'For presentations, educational films, documentaries, or shared viewing sessions, we offer a small but very cozy home theatre. Soft lighting, quality sound, and a calm environment help create a fully immersive experience.',
+  'retreat-contact-title': 'Are you looking for a place to retreat or interested in joining a workshop?',
+  'retreat-contact-text': 'Just send us a message with your preferences, and we will create a program tailored specifically for you!',
+  'retreat-organizer-title': 'Are you a yoga instructor or an event organizer looking for a place to host your sessions?',
+  'retreat-workshops-title': 'What workshops are our spaces suitable for?',
+  'retreat-workshops-intro': 'The indoor spaces, forest platforms, and the forest itself are ideal for the following practices:',
+  'retreat-workshops-list': 'Group and private yoga sessions\nMeditations and mindfulness practices\nSound healing and breathwork\nCreative and educational workshops\nMini-lectures and intimate gatherings',
+  'retreat-workshops-conclusion': 'Create memorable retreat experiences for your community. Nature here is not just a backdrop — it becomes a full participant. People open up more easily, rest more deeply, and return to themselves more naturally.',
+  'retreat-collaboration-title': 'Invitation to Collaborate',
+  'retreat-collaboration-intro': 'Back to Base welcomes those who create transformative practices and help people heal and restore.\nWe are looking for:',
+  'retreat-collaboration-list': 'Program creators\nYoga instructors\nMeditation teachers\nMassage therapists\nReiki practitioners\nAcupuncturists\nBody-oriented specialists',
+  'retreat-collaboration-conclusion': 'If you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you.\nJust call or message us!'
+};
+
+const retreatFieldChecklist = [
+  { id: 'retreat-hero-title', label: 'Hero title' },
+  { id: 'retreat-hero-subtitle', label: 'Hero subtitle' },
+  { id: 'retreat-intro-text', label: 'Introduction' },
+  { id: 'retreat-forest-description', label: 'Forest description' },
+  { id: 'retreat-indoor-description', label: 'Indoor description' },
+  { id: 'retreat-theatre-description', label: 'Theatre description' },
+  { id: 'retreat-contact-text', label: 'Contact text' },
+  { id: 'retreat-workshops-list', label: 'Workshops list' },
+  { id: 'retreat-collaboration-list', label: 'Collaboration list' }
+];
+
+let retreatHelperInitialized = false;
+
+function getRetreatFieldValue(id) {
+  const el = document.getElementById(id);
+  if (!el) return '';
+  return Object.prototype.hasOwnProperty.call(el, 'value') ? (el.value || '') : (el.textContent || '');
+}
+
+function setRetreatFieldValue(el, value) {
+  if (!el) return;
+  if (Object.prototype.hasOwnProperty.call(el, 'value')) {
+    el.value = value;
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  } else {
+    el.textContent = value;
+  }
+}
+
+function applyRetreatDefaults(options = {}) {
+  const onlyEmpty = options.onlyEmpty !== false;
+  let updated = 0;
+  Object.entries(retreatDefaultValues).forEach(([id, defaultValue]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const current = getRetreatFieldValue(id).trim();
+    if (onlyEmpty && current) {
+      return;
+    }
+    setRetreatFieldValue(el, defaultValue);
+    updated++;
+  });
+  updateRetreatContentStatus();
+  return updated;
+}
+
+function updateRetreatContentStatus() {
+  const statusEl = document.getElementById('retreat-content-status');
+  if (!statusEl) return;
+  const missing = retreatFieldChecklist.filter(field => !getRetreatFieldValue(field.id).trim());
+  if (!missing.length) {
+    statusEl.textContent = 'All key sections look complete';
+    statusEl.className = 'status-badge success';
+    return;
+  }
+  const preview = missing.slice(0, 3).map(field => field.label).join(', ');
+  const remainder = missing.length > 3 ? ` +${missing.length - 3}` : '';
+  statusEl.textContent = `Missing text: ${preview}${remainder}`;
+  statusEl.className = 'status-badge warning';
+}
+
+function initRetreatHelperUI() {
+  if (retreatHelperInitialized) {
+    updateRetreatContentStatus();
+    return;
+  }
+  const section = document.getElementById('retreat-workshop-section');
+  if (!section) return;
+  retreatHelperInitialized = true;
+  
+  const fillBtn = document.getElementById('retreat-fill-missing');
+  if (fillBtn) {
+    fillBtn.addEventListener('click', (event) => {
+      const fillAll = event.shiftKey;
+      if (fillAll) {
+        const confirmed = window.confirm('Replace all Retreats and Workshops texts with the default story? This cannot be undone.');
+        if (!confirmed) return;
+      }
+      const updated = applyRetreatDefaults({ onlyEmpty: !fillAll });
+      if (typeof showStatus === 'function') {
+        if (updated === 0) {
+          showStatus(fillAll ? 'Default copy already applied to every field.' : 'All fields already contain text.');
+        } else if (fillAll) {
+          showStatus('Retreat copy reset to the default story for every section.');
+        } else {
+          showStatus(`Filled ${updated} empty field${updated === 1 ? '' : 's'} with the default story.`);
+        }
+      }
+    });
+  }
+  
+  const previewBtn = document.getElementById('retreat-scroll-preview');
+  if (previewBtn) {
+    previewBtn.addEventListener('click', () => {
+      const preview = document.querySelector('#retreat-workshop-section .schematic-preview');
+      if (preview) {
+        preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
+  
+  section.querySelectorAll('input, textarea').forEach(input => {
+    input.addEventListener('input', updateRetreatContentStatus);
+  });
+  
+  updateRetreatContentStatus();
+}
+
 // Load retreat and workshop data
 async function loadRetreatWorkshopData() {
   console.log('Loading retreat and workshop data...');
@@ -2066,6 +2204,7 @@ async function loadRetreatWorkshopData() {
         
         // Update preview
         updateRetreatPreview(data);
+        updateRetreatContentStatus();
         
         // Reset unsaved changes flag after loading
         if (typeof retreatHasUnsavedChanges !== 'undefined') {
@@ -4534,6 +4673,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initialize save buttons for page content
   initPageContentSaveHandlers();
+
+  // Initialize retreat helper UI (buttons + content status badge)
+  initRetreatHelperUI();
   
   // Initialize save buttons for homepage rooms and wellness
   initHomepageRoomsSaveHandler();
