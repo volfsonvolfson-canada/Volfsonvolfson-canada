@@ -510,6 +510,17 @@ body {
     -webkit-text-fill-color: #1a1a1a !important;
   }
   
+  /* Exception: Keep white text in hero sections for better readability */
+  [data-theme="light"] .retreat-hero h1,
+  [data-theme="light"] .retreat-hero p,
+  [data-theme="light"] .special-hero h1,
+  [data-theme="light"] .special-hero p,
+  [data-theme="light"] .about-hero h1,
+  [data-theme="light"] .about-hero p {
+    color: white !important;
+    -webkit-text-fill-color: white !important;
+  }
+  
   [data-theme="light"] .muted {
     color: #666666 !important;
     -webkit-text-fill-color: #666666 !important;
@@ -610,6 +621,17 @@ body {
   [data-theme="light"] a {
     color: inherit !important;
     -webkit-text-fill-color: inherit !important;
+  }
+  
+  /* Exception: Keep white text in hero sections for better readability */
+  [data-theme="light"] .retreat-hero h1,
+  [data-theme="light"] .retreat-hero p,
+  [data-theme="light"] .special-hero h1,
+  [data-theme="light"] .special-hero p,
+  [data-theme="light"] .about-hero h1,
+  [data-theme="light"] .about-hero p {
+    color: white !important;
+    -webkit-text-fill-color: white !important;
   }
   
   [data-theme="light"] .muted {
@@ -902,10 +924,15 @@ html { scroll-behavior: smooth; }
 .btn.primary[disabled] { background: #5a6474; border-color: #5a6474; }
 
 /* Sections */
-.section { padding: 56px 0; }
+.section { padding: 4px 0 21px 0; }
 .section.alt { background: var(--bg); }
 .section h2 { margin: 0 0 8px; font-size: clamp(22px, 4vw, 32px); }
-.section-lead { margin: 0 0 24px; color: var(--muted); }
+.section-lead { margin: 0 0 12px; color: var(--muted); font-size: 16px; line-height: 1.6; }
+
+/* Add margin for section-lead in page-header to create spacing before floor plan cards */
+.page-header .section-lead {
+  margin-bottom: 44px;
+}
 
 .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .plan-card { background: var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 18px; }
@@ -1017,7 +1044,10 @@ select:-webkit-autofill:focus {
 }
 
 /* Room page */
-.page-header { padding: 24px 0; }
+.page-header { padding: 24px 0 2px 0; }
+.page-header h1 {
+  font-size: clamp(32px, 6vw, 52px);
+}
 .breadcrumbs { color: var(--muted); font-size: 14px; }
 .room-info-description { padding: 24px 0; }
 .room-info-description .card { padding-left: 24px; padding-right: 24px; }
@@ -1043,6 +1073,119 @@ select:-webkit-autofill:focus {
   .plan-grid { grid-template-columns: 1fr; }
   .room-hero { grid-template-columns: 1fr; }
   .gallery { grid-template-columns: 1fr 1fr; }
+}
+
+/* Mobile horizontal scroll for floor plan cards */
+@media (max-width: 767px) {
+  /* Increase h2 font size on mobile (for other sections) */
+  .section h2 {
+    font-size: clamp(32px, 6vw, 52px) !important;
+  }
+  
+  /* Add consistent left padding for page-header content on mobile */
+  /* Match the padding used for section-lead text */
+  .page-header .container {
+    padding-left: 4%;
+    padding-right: 4%;
+  }
+  
+  /* Allow plan-grid to extend beyond container for horizontal scroll */
+  #plan .container {
+    padding-right: 0;
+    width: 100%;
+    /* Add left padding to create space before first card */
+    padding-left: 20px;
+  }
+  
+  /* Allow rooms-grid to extend beyond container for horizontal scroll */
+  #rooms .container {
+    padding-left: 0;
+    padding-right: 0;
+    width: 100%;
+    /* Add left padding to create space before first card */
+    padding-left: 20px;
+  }
+  
+  .rooms-grid {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    gap: 16px;
+    padding-bottom: 8px;
+    padding-right: 4%;
+    /* Show first card fully (90%) and 10% of second card */
+    /* Each card is 90% width, so first card (90%) + gap (16px) + 10% of second card = visible area */
+    /* Left padding is handled by #rooms .container */
+  }
+  
+  .rooms-grid::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
+  .room-card {
+    /* Card width: 90% of viewport width (minus padding), so first card shows fully and second card shows 10% */
+    flex: 0 0 90%;
+    min-width: 90%;
+    max-width: 90%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  
+  .plan-grid {
+    display: flex;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+    gap: 16px;
+    padding-bottom: 8px;
+    padding-right: 4%;
+    /* Show first card fully (90%) and 10% of second card */
+    /* Each card is 90% width, so first card (90%) + gap (16px) + 10% of second card = visible area */
+    /* Left padding is handled by #plan .container */
+  }
+  
+  .plan-grid::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+  }
+  
+  .plan-card {
+    /* Card width: 90% of viewport width (minus padding), so first card shows fully and second card shows 10% */
+    /* Viewport width minus 8% padding (4% on each side) = 92% available width */
+    /* Card takes 90% of available width, leaving 10% visible of next card */
+    flex: 0 0 90%;
+    min-width: 90%;
+    max-width: 90%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+  
+  /* Hint text below cards */
+  .plan-swipe-hint {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    margin-top: 16px;
+    margin-bottom: 0;
+    display: block;
+    padding-left: 4%;
+    padding-right: 4%;
+  }
+}
+
+/* Hide swipe hint on desktop */
+@media (min-width: 768px) {
+  .plan-swipe-hint {
+    display: none;
+  }
 }
 @media (max-width: 640px) {
   .rooms-grid { grid-template-columns: 1fr; }
@@ -1071,7 +1214,7 @@ select:-webkit-autofill:focus {
 @media (max-width: 900px) { .hero-full-img { height: 55vh; object-position: center 53%; } }
 
 /* Add space before plan */
-#plan.section { padding-top: 72px; }
+#plan.section { padding-top: 4px; }
 
 /* Room cards: align buttons to bottom */
 .room-card { display: flex; flex-direction: column; }
@@ -1081,7 +1224,7 @@ select:-webkit-autofill:focus {
 
 /* Tight section (used for blurb between hero and plan) */
 .section-tight { padding: 36px 0; }
-.section-tight p { font-size: clamp(18px, 2.6vw, 24px); line-height: 1.6; }
+.section-tight p { font-size: clamp(18px, 2vw, 22px); line-height: 1.6; }
 
 .media-43 { width: 100%; aspect-ratio: 4 / 3; height: auto; object-fit: cover; }
 

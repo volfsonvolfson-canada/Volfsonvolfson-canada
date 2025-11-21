@@ -159,6 +159,9 @@
               localStorage.setItem('btb_admin_token', result.token);
               console.log('Token saved to localStorage');
             }
+            // Сохраняем флаг авторизации для checkAdminAuth()
+            localStorage.setItem('btb_admin_auth', 'true');
+            console.log('Admin auth flag set to true');
             // Redirect to admin panel
             console.log('Redirecting to admin.html...');
             window.location.href = 'admin.html';

@@ -115,6 +115,102 @@
         }
       }
       
+      // Update hero images from localStorage (Home Page)
+      try {
+        const contentData = localStorage.getItem('btb_content');
+        if (contentData) {
+          const data = JSON.parse(contentData);
+          
+          // Update hero image (first hero section)
+          if (data.heroImageUrl) {
+            const heroImg = document.querySelector('.hero-full-img');
+            if (heroImg) {
+              const imageUrl = data.heroImageUrl + '?v=' + Date.now();
+              heroImg.src = imageUrl;
+              heroImg.srcset = imageUrl;
+              console.log('Hero image updated to:', imageUrl);
+            }
+          }
+          
+          // Update hero2 image (second hero section)
+          if (data.hero2ImageUrl) {
+            const hero2Img = document.querySelector('.hero-contained-img');
+            if (hero2Img) {
+              const imageUrl = data.hero2ImageUrl + '?v=' + Date.now();
+              hero2Img.src = imageUrl;
+              hero2Img.srcset = imageUrl;
+              console.log('Hero2 image updated to:', imageUrl);
+            }
+          }
+          
+          // Update wellness images
+          if (data.wellnessMassageImageUrl) {
+            const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
+            if (wellnessCards.length >= 1) {
+              const massageImg = wellnessCards[0].querySelector('.card-img img');
+              if (massageImg) {
+                massageImg.src = data.wellnessMassageImageUrl + '?v=' + Date.now();
+                massageImg.srcset = data.wellnessMassageImageUrl + '?v=' + Date.now();
+              }
+            }
+          }
+          
+          if (data.wellnessYogaImageUrl) {
+            const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
+            if (wellnessCards.length >= 2) {
+              const yogaImg = wellnessCards[1].querySelector('.card-img img');
+              if (yogaImg) {
+                yogaImg.src = data.wellnessYogaImageUrl + '?v=' + Date.now();
+                yogaImg.srcset = data.wellnessYogaImageUrl + '?v=' + Date.now();
+              }
+            }
+          }
+          
+          if (data.wellnessSaunaImageUrl) {
+            const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
+            if (wellnessCards.length >= 3) {
+              const saunaImg = wellnessCards[2].querySelector('.card-img img');
+              if (saunaImg) {
+                saunaImg.src = data.wellnessSaunaImageUrl + '?v=' + Date.now();
+                saunaImg.srcset = data.wellnessSaunaImageUrl + '?v=' + Date.now();
+              }
+            }
+          }
+          
+          // Update room cards images
+          const roomCards = document.querySelectorAll('.room-card');
+          if (roomCards.length >= 1 && data.roomBasementCardImageUrl) {
+            const roomMedia = roomCards[0].querySelector('.room-media');
+            if (roomMedia) {
+              roomMedia.style.backgroundImage = `url('${data.roomBasementCardImageUrl}?v=${Date.now()}')`;
+            }
+          }
+          
+          if (roomCards.length >= 2 && data.roomGroundQueenCardImageUrl) {
+            const roomMedia = roomCards[1].querySelector('.room-media');
+            if (roomMedia) {
+              roomMedia.style.backgroundImage = `url('${data.roomGroundQueenCardImageUrl}?v=${Date.now()}')`;
+            }
+          }
+          
+          if (roomCards.length >= 3 && data.roomGroundTwinCardImageUrl) {
+            const roomMedia = roomCards[2].querySelector('.room-media');
+            if (roomMedia) {
+              roomMedia.style.backgroundImage = `url('${data.roomGroundTwinCardImageUrl}?v=${Date.now()}')`;
+            }
+          }
+          
+          if (roomCards.length >= 4 && data.roomSecondCardImageUrl) {
+            const roomMedia = roomCards[3].querySelector('.room-media');
+            if (roomMedia) {
+              roomMedia.style.backgroundImage = `url('${data.roomSecondCardImageUrl}?v=${Date.now()}')`;
+            }
+          }
+        }
+      } catch(e) {
+        console.error('Hero image update error:', e);
+      }
+      
       // Call immediately if DOM is ready, otherwise wait
       if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', updateImagePaths);
@@ -194,10 +290,15 @@
       </div>
     </section>
 
+    <div class="page-header">
+      <div class="container">
+        <h1>Floor plan</h1>
+        <p class="section-lead">Three levels of comfort: basement, ground floor and a cozy loft under the roof.</p>
+      </div>
+    </div>
+
     <section id="plan" class="section">
       <div class="container">
-        <h2>Floor plan</h2>
-        <p class="section-lead">Three levels of comfort: basement, ground floor and a cozy loft under the roof.</p>
         <div class="plan-grid reveal">
           <article class="plan-card floor-card">
             <h3>Basement</h3>
@@ -236,12 +337,18 @@
             </picture>
           </article>
         </div>
+        <p class="plan-swipe-hint">Swipe to see more</p>
       </div>
     </section>
 
+    <div class="page-header">
+      <div class="container">
+        <h1>Choose your room</h1>
+      </div>
+    </div>
+
     <section id="rooms" class="section alt">
       <div class="container">
-        <h2>Choose your room</h2>
         <div class="rooms-grid">
           <article class="room-card reveal">
             <div class="room-media" style="background-image:url('assets/basement1.jpeg?v=1'), url('assets/basement1.jpg?v=1'), url('assets/basement1.JPG?v=1'), url('assets/basement1.JPEG?v=1');"></div>
@@ -283,35 +390,59 @@
             </div>
           </article>
         </div>
+        <p class="plan-swipe-hint">Swipe to see more</p>
       </div>
     </section>
 
-    <section class="section">
-      <div class="container grid-2">
-        <div>
-          <h2>Massage services</h2>
-          <p class="margin-bottom-large" style="margin-bottom: 40px;">Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.</p>
-          <a class="btn primary" href="massage.html">Choose a massage</a>
-        </div>
-        <div>
-          <img class="floor-photo" src="assets/massage.jpg" alt="Relaxing massage" />
-        </div>
+    <div class="page-header">
+      <div class="container">
+        <h1>Wellness Experiences</h1>
+        <p class="section-lead">Enhance your stay with our additional wellness services.<br>Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna &mdash; all designed to make your vacation even more restorative.</p>
+      </div>
+    </div>
+
+    <section class="section alt" id="wellness-experiences">
+      <div class="container">
+        <section class="card card-massage">
+          <div class="card-img">
+            <img class="floor-photo media-43" src="assets/massage.jpg" alt="Massage at Back to Base" />
+          </div>
+          <div class="card-body">
+            <h2>Massage</h2>
+            <p>Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session &mdash; the choice is yours.</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <a class="btn primary" href="massage.html">Book massage</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="card card-massage card-massage--alt">
+          <div class="card-img">
+            <img class="floor-photo media-43" src="assets/yoga.jpg" alt="Yoga at Back to Base" />
+          </div>
+          <div class="card-body">
+            <h2>Yoga</h2>
+            <p>On the property, surrounded by a cozy forest, you’ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <a class="btn primary" href="retreat-and-workshop.html">Book retreat</a>
+            </div>
+          </div>
+        </section>
+
+        <section class="card card-massage">
+          <div class="card-img">
+            <img class="floor-photo media-43" src="assets/plan-basement-bedroom.jpg" alt="Sauna at Back to Base" />
+          </div>
+          <div class="card-body">
+            <h2>Sauna</h2>
+            <p>After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.</p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+              <a class="btn primary" href="massage.html">Book sauna session</a>
+            </div>
+          </div>
+        </section>
       </div>
     </section>
-
-    <section class="section">
-      <div class="container grid-2">
-        <div>
-          <img class="floor-photo media-43" src="assets/yoga.jpg" alt="Girl meditating on a wooden platform in a Canadian conifer forest clearing" />
-        </div>
-        <div>
-          <h2>Yoga</h2>
-          <p class="margin-bottom-small">Try an incredible forest meditation experience by the stream, guided by an experienced instructor. We offer a secluded and peaceful spot in the shade of the trees, away from city noise yet close to the house, where you can warm up and enjoy a cup of tea.</p>
-          <p class="margin-bottom-large" style="margin-bottom: 40px;">Both individual and group sessions are available, either as an add-on to your room booking or as a stand-alone option.</p>
-          <a class="btn primary" href="retreat-and-workshop.html">Learn more</a>
-        </div>
-      </div>
-    </section
   </main>
 
   <footer id="contacts" class="site-footer">

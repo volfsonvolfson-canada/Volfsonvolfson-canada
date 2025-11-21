@@ -273,11 +273,17 @@ const initMassageForm = () => {
         { v: '15', t: '15 minutes' },
         { v: '30', t: '30 minutes' },
       ];
+    } else if (type === 'Sauna') {
+      options = [
+        { v: '60', t: '1 hour' },
+      ];
+      durationSel.disabled = true;
     } else {
       options = [
         { v: '60', t: '60 minutes' },
         { v: '90', t: '90 minutes' },
       ];
+      durationSel.disabled = false;
     }
     durationSel.innerHTML = '';
     options.forEach(o => {
@@ -285,6 +291,10 @@ const initMassageForm = () => {
       opt.value = o.v; opt.textContent = o.t;
       durationSel.appendChild(opt);
     });
+    // Auto-select first option for Sauna
+    if (type === 'Sauna' && options.length > 0) {
+      durationSel.value = options[0].v;
+    }
   };
   if (typeSel) typeSel.addEventListener('change', setDurations);
   setDurations();
@@ -2020,9 +2030,16 @@ function initClickableMassageOptions() {
       const massageType = card.querySelector('h2').textContent;
       const durationText = option.textContent;
       
-      // Extract duration value (e.g., "60 minutes" -> "60")
-      const durationMatch = durationText.match(/(\d+)\s*minutes?/);
-      const duration = durationMatch ? durationMatch[1] : '';
+      // Extract duration value (e.g., "60 minutes" -> "60" or "1 hour" -> "60")
+      let duration = '';
+      const minutesMatch = durationText.match(/(\d+)\s*minutes?/);
+      const hourMatch = durationText.match(/(\d+)\s*hour/);
+      if (minutesMatch) {
+        duration = minutesMatch[1];
+      } else if (hourMatch) {
+        // Convert hours to minutes (1 hour = 60 minutes)
+        duration = String(parseInt(hourMatch[1]) * 60);
+      }
       
       // Set form values
       if (typeSelect) {
@@ -2031,7 +2048,10 @@ function initClickableMassageOptions() {
       }
       
       if (durationSelect && duration) {
-        durationSelect.value = duration;
+        // Wait for duration options to be updated after type change
+        setTimeout(() => {
+          durationSelect.value = duration;
+        }, 0);
       }
       
       // Smooth scroll to form
@@ -2759,6 +2779,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Load floorplan data from admin
   loadFloorplanFromAdmin();
+  
+  // Load homepage data from admin
+  loadHomepageFromAdmin();
 });
 
 // Load floorplan data from admin and update content
@@ -2786,6 +2809,170 @@ async function loadFloorplanFromAdmin() {
   } catch (error) {
     // Silently fail - site should show default content
     console.log('Floorplan API not available, using default content');
+  }
+}
+
+// Load homepage data from admin and update hero images
+async function loadHomepageFromAdmin() {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'get_content');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      
+      // Only update if we have actual data from database
+      if (result.success && result.data) {
+        updateHomepageContent(result.data);
+      }
+    }
+  } catch (error) {
+    // Silently fail - site should show default content
+    console.log('Homepage API not available, using default content');
+  }
+}
+
+// Update homepage hero images on the page
+function updateHomepageContent(data) {
+  try {
+    console.log('Updating homepage content with data:', data);
+    
+    // Update hero image (first hero section)
+    const heroImageUrl = data.heroImageUrl || data.hero_image_url || '';
+    if (heroImageUrl) {
+      const heroImg = document.querySelector('.hero-full-img');
+      if (heroImg) {
+        const imageUrl = heroImageUrl + '?v=' + Date.now();
+        heroImg.src = imageUrl;
+        heroImg.srcset = imageUrl;
+        console.log('Updated hero image:', imageUrl);
+      }
+    }
+    
+    // Update hero2 image (second hero section)
+    const hero2ImageUrl = data.hero2ImageUrl || data.hero2_image_url || '';
+    if (hero2ImageUrl) {
+      const hero2Img = document.querySelector('.hero-contained-img');
+      if (hero2Img) {
+        const imageUrl = hero2ImageUrl + '?v=' + Date.now();
+        hero2Img.src = imageUrl;
+        hero2Img.srcset = imageUrl;
+        console.log('Updated hero2 image:', imageUrl);
+      }
+    }
+    
+    // Update wellness images
+    const wellnessMassageImageUrl = data.wellnessMassageImageUrl || data.wellness_massage_image_url || '';
+    const wellnessYogaImageUrl = data.wellnessYogaImageUrl || data.wellness_yoga_image_url || '';
+    const wellnessSaunaImageUrl = data.wellnessSaunaImageUrl || data.wellness_sauna_image_url || '';
+    
+    // Update wellness massage image
+    if (wellnessMassageImageUrl) {
+      const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
+      if (wellnessCards.length >= 1) {
+        const massageImg = wellnessCards[0].querySelector('.card-img img');
+        if (massageImg) {
+          massageImg.src = wellnessMassageImageUrl + '?v=' + Date.now();
+          massageImg.srcset = wellnessMassageImageUrl + '?v=' + Date.now();
+          console.log('Updated wellness massage image:', wellnessMassageImageUrl);
+        }
+      }
+    }
+    
+    // Update wellness yoga image
+    if (wellnessYogaImageUrl) {
+      const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
+      if (wellnessCards.length >= 2) {
+        const yogaImg = wellnessCards[1].querySelector('.card-img img');
+        if (yogaImg) {
+          yogaImg.src = wellnessYogaImageUrl + '?v=' + Date.now();
+          yogaImg.srcset = wellnessYogaImageUrl + '?v=' + Date.now();
+          console.log('Updated wellness yoga image:', wellnessYogaImageUrl);
+        }
+      }
+    }
+    
+    // Update wellness sauna image
+    if (wellnessSaunaImageUrl) {
+      const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
+      if (wellnessCards.length >= 3) {
+        const saunaImg = wellnessCards[2].querySelector('.card-img img');
+        if (saunaImg) {
+          saunaImg.src = wellnessSaunaImageUrl + '?v=' + Date.now();
+          saunaImg.srcset = wellnessSaunaImageUrl + '?v=' + Date.now();
+          console.log('Updated wellness sauna image:', wellnessSaunaImageUrl);
+        }
+      }
+    }
+    
+    // Update room cards images
+    const roomBasementCardImageUrl = data.roomBasementCardImageUrl || data.room_basement_card_image_url || '';
+    const roomGroundQueenCardImageUrl = data.roomGroundQueenCardImageUrl || data.room_ground_queen_card_image_url || '';
+    const roomGroundTwinCardImageUrl = data.roomGroundTwinCardImageUrl || data.room_ground_twin_card_image_url || '';
+    const roomSecondCardImageUrl = data.roomSecondCardImageUrl || data.room_second_card_image_url || '';
+    
+    // Update room cards background images
+    const roomCards = document.querySelectorAll('.room-card');
+    if (roomCards.length >= 1 && roomBasementCardImageUrl) {
+      const basementCard = roomCards[0];
+      const roomMedia = basementCard.querySelector('.room-media');
+      if (roomMedia) {
+        roomMedia.style.backgroundImage = `url('${roomBasementCardImageUrl}?v=${Date.now()}')`;
+        console.log('Updated basement room card image:', roomBasementCardImageUrl);
+      }
+    }
+    
+    if (roomCards.length >= 2 && roomGroundQueenCardImageUrl) {
+      const groundQueenCard = roomCards[1];
+      const roomMedia = groundQueenCard.querySelector('.room-media');
+      if (roomMedia) {
+        roomMedia.style.backgroundImage = `url('${roomGroundQueenCardImageUrl}?v=${Date.now()}')`;
+        console.log('Updated ground queen room card image:', roomGroundQueenCardImageUrl);
+      }
+    }
+    
+    if (roomCards.length >= 3 && roomGroundTwinCardImageUrl) {
+      const groundTwinCard = roomCards[2];
+      const roomMedia = groundTwinCard.querySelector('.room-media');
+      if (roomMedia) {
+        roomMedia.style.backgroundImage = `url('${roomGroundTwinCardImageUrl}?v=${Date.now()}')`;
+        console.log('Updated ground twin room card image:', roomGroundTwinCardImageUrl);
+      }
+    }
+    
+    if (roomCards.length >= 4 && roomSecondCardImageUrl) {
+      const secondCard = roomCards[3];
+      const roomMedia = secondCard.querySelector('.room-media');
+      if (roomMedia) {
+        roomMedia.style.backgroundImage = `url('${roomSecondCardImageUrl}?v=${Date.now()}')`;
+        console.log('Updated second floor room card image:', roomSecondCardImageUrl);
+      }
+    }
+    
+    // Save to localStorage for immediate updates
+    const contentData = {
+      homepageDescription: data.homepageDescription || data.homepage_description || '',
+      homepageSubtitle: data.homepageSubtitle || data.homepage_subtitle || '',
+      heroImageUrl: heroImageUrl,
+      hero2ImageUrl: hero2ImageUrl,
+      wellnessMassageImageUrl: wellnessMassageImageUrl,
+      wellnessYogaImageUrl: wellnessYogaImageUrl,
+      wellnessSaunaImageUrl: wellnessSaunaImageUrl,
+      roomBasementCardImageUrl: roomBasementCardImageUrl,
+      roomGroundQueenCardImageUrl: roomGroundQueenCardImageUrl,
+      roomGroundTwinCardImageUrl: roomGroundTwinCardImageUrl,
+      roomSecondCardImageUrl: roomSecondCardImageUrl
+    };
+    localStorage.setItem('btb_content', JSON.stringify(contentData));
+    console.log('Homepage data saved to localStorage');
+    
+  } catch (error) {
+    console.error('Error updating homepage content:', error);
   }
 }
 

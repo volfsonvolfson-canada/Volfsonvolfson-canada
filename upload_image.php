@@ -86,30 +86,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
             
             // Universal field name mapping - all use {section}_image_url format
             $fieldName = '';
+            $tableName = '';
+            $isHomepage = false;
+            
+            // Universal field name mapping - all use {section}_image_url format
+            $fieldName = '';
+            $tableName = '';
+            $isHomepage = false;
+            
             if (in_array($imageType, ['basement', 'ground', 'loft'])) {
                 $fieldName = $imageType . '_image_url';
+                $tableName = 'floorplan_settings';
+            } elseif (in_array($imageType, ['hero', 'hero2'])) {
+                // Map hero types to database field names
+                if ($imageType === 'hero') {
+                    $fieldName = 'hero_image_url';
+                } else {
+                    $fieldName = 'hero2_image_url';
+                }
+                $tableName = 'content_settings';
+                $isHomepage = true;
+            } elseif (in_array($imageType, ['wellness-massage', 'wellness-yoga', 'wellness-sauna'])) {
+                // Wellness experiences images - store in content_settings or new wellness_settings table
+                // For now, use content_settings with prefixed field names
+                $wellnessType = str_replace('wellness-', '', $imageType);
+                $fieldName = 'wellness_' . $wellnessType . '_image_url';
+                $tableName = 'content_settings';
+                $isHomepage = true;
+            } elseif (in_array($imageType, ['room-basement-card', 'room-ground-queen-card', 'room-ground-twin-card', 'room-second-card'])) {
+                // Homepage room cards - store in content_settings
+                $roomType = str_replace(['room-', '-card'], '', $imageType);
+                $fieldName = 'room_' . str_replace('-', '_', $roomType) . '_card_image_url';
+                $tableName = 'content_settings';
+                $isHomepage = true;
+            } elseif (in_array($imageType, ['basement-banner', 'ground-queen-banner', 'ground-twin-banner', 'second-banner'])) {
+                // Room page banners - store in content_settings
+                $bannerType = str_replace('-banner', '', $imageType);
+                $fieldName = 'room_' . str_replace('-', '_', $bannerType) . '_banner_image_url';
+                $tableName = 'content_settings';
+                $isHomepage = true;
+            } elseif (in_array($imageType, ['massage-relaxing', 'massage-deep-tissue', 'massage-reiki', 'massage-sauna', 'massage-room-booking'])) {
+                // Massage page images - store in content_settings
+                $massageType = str_replace('massage-', '', $imageType);
+                $fieldName = 'massage_' . str_replace('-', '_', $massageType) . '_image_url';
+                $tableName = 'content_settings';
+                $isHomepage = true;
+            } elseif (in_array($imageType, ['retreat-hero', 'retreat-forest', 'retreat-indoor', 'retreat-theatre'])) {
+                // Retreat and Workshop page images - store in content_settings
+                $retreatType = str_replace('retreat-', '', $imageType);
+                $fieldName = 'retreat_' . str_replace('-', '_', $retreatType) . '_image_url';
+                $tableName = 'content_settings';
+                $isHomepage = true;
+            } elseif (in_array($imageType, ['special-hero', 'special-pools', 'special-dining'])) {
+                // Special page images - store in content_settings
+                $specialType = str_replace('special-', '', $imageType);
+                $fieldName = 'special_' . str_replace('-', '_', $specialType) . '_image_url';
+                $tableName = 'content_settings';
+                $isHomepage = true;
+            } elseif (in_array($imageType, ['about-hero', 'about-founder', 'about-procter'])) {
+                // About us page images - store in content_settings
+                $aboutType = str_replace('about-', '', $imageType);
+                $fieldName = 'about_' . str_replace('-', '_', $aboutType) . '_image_url';
+                $tableName = 'content_settings';
+                $isHomepage = true;
             } else {
-                sendError('Invalid image type');
+                sendError('Invalid image type: ' . $imageType);
                 exit;
             }
             
-            error_log("Field name determined: $fieldName");
+            error_log("Field name determined: $fieldName, table: $tableName");
             
             // Check if table exists
-            $tableCheck = $conn->query("SHOW TABLES LIKE 'floorplan_settings'");
+            $tableCheck = $conn->query("SHOW TABLES LIKE '$tableName'");
             if ($tableCheck->num_rows === 0) {
-                error_log('Table floorplan_settings does not exist');
+                error_log("Table $tableName does not exist");
                 sendError('Database table does not exist');
                 exit;
             }
             
-            error_log('Table floorplan_settings exists');
+            error_log("Table $tableName exists");
             
             // Check if record exists
-            $recordCheck = $conn->query("SELECT id FROM floorplan_settings WHERE id = 1");
+            $recordCheck = $conn->query("SELECT id FROM $tableName WHERE id = 1");
             if ($recordCheck->num_rows === 0) {
                 error_log('No record with id=1, creating one');
-                $insertStmt = $conn->prepare("INSERT INTO floorplan_settings (id) VALUES (1)");
+                $insertStmt = $conn->prepare("INSERT INTO $tableName (id) VALUES (1)");
                 if (!$insertStmt->execute()) {
                     error_log('Failed to create record: ' . $conn->error);
                     sendError('Failed to create database record');
@@ -120,23 +181,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
             
             error_log('Record with id=1 exists');
             
+            // Check if column exists (for dynamic columns like wellness images)
+            $columnExists = false;
+            if ($isHomepage && in_array($imageType, ['wellness-massage', 'wellness-yoga', 'wellness-sauna', 'room-basement-card', 'room-ground-queen-card', 'room-ground-twin-card', 'room-second-card', 'basement-banner', 'ground-queen-banner', 'ground-twin-banner', 'second-banner', 'massage-relaxing', 'massage-deep-tissue', 'massage-reiki', 'massage-sauna', 'massage-room-booking', 'retreat-hero', 'retreat-forest', 'retreat-indoor', 'retreat-theatre', 'special-hero', 'special-pools', 'special-dining', 'about-hero', 'about-founder', 'about-procter'])) {
+                $columnCheck = $conn->query("SHOW COLUMNS FROM $tableName LIKE '$fieldName'");
+                $columnExists = $columnCheck->num_rows > 0;
+                
+                if (!$columnExists) {
+                    error_log("Column $fieldName does not exist, creating it");
+                    $alterStmt = $conn->prepare("ALTER TABLE $tableName ADD COLUMN $fieldName VARCHAR(255) DEFAULT NULL");
+                    if (!$alterStmt->execute()) {
+                        error_log('Failed to create column: ' . $conn->error);
+                        sendError('Database error: Failed to create column ' . $fieldName . ': ' . $conn->error);
+                        exit;
+                    }
+                    $alterStmt->close();
+                    error_log("Column $fieldName created successfully");
+                }
+            } else {
+                // For existing columns, assume they exist
+                $columnExists = true;
+            }
+            
             // Update database
             // Universal: for ground, also update ground_queen_image for compatibility
             if ($imageType === 'ground') {
                 $stmt = $conn->prepare("UPDATE floorplan_settings SET ground_image_url = ?, ground_queen_image = ? WHERE id = 1");
                 $stmt->bind_param("ss", $filepath, $filepath);
             } else {
-                $stmt = $conn->prepare("UPDATE floorplan_settings SET $fieldName = ? WHERE id = 1");
+                $stmt = $conn->prepare("UPDATE $tableName SET $fieldName = ? WHERE id = 1");
                 $stmt->bind_param("s", $filepath);
             }
             
-            error_log("Updating database: field=$fieldName, path=$filepath");
+            error_log("Updating database: table=$tableName, field=$fieldName, path=$filepath");
             
             if ($stmt->execute()) {
                 error_log('Database updated successfully');
                 
                 // Verify the update
-                $verifyStmt = $conn->prepare("SELECT $fieldName FROM floorplan_settings WHERE id = 1");
+                $verifyStmt = $conn->prepare("SELECT $fieldName FROM $tableName WHERE id = 1");
                 $verifyStmt->execute();
                 $result = $verifyStmt->get_result();
                 $row = $result->fetch_assoc();

@@ -24,6 +24,24 @@
         document.documentElement.setAttribute('data-theme', 'dark');
       }
     })();
+    
+    // Load and update retreat content from localStorage immediately (synchronous)
+    (function() {
+      'use strict';
+      const storedContent = localStorage.getItem('btb_retreat_workshop_content');
+      if (storedContent) {
+        try {
+          const content = JSON.parse(storedContent);
+          // Update hero section immediately
+          const heroTitle = document.querySelector('.retreat-hero-title');
+          const heroSubtitle = document.querySelector('.retreat-hero-subtitle');
+          if (heroTitle && content.retreatHeroTitle) heroTitle.textContent = content.retreatHeroTitle;
+          if (heroSubtitle && content.retreatHeroSubtitle) heroSubtitle.textContent = content.retreatHeroSubtitle;
+        } catch (e) {
+          console.error('Failed to parse stored retreat content:', e);
+        }
+      }
+    })();
   </script>
   <link rel="stylesheet" href="styles.css">
   <style>
@@ -35,7 +53,10 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: url('https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1600&auto=format&fit=crop') center/cover;
+      background: url('assets/retreat-hero.jpg') center/cover,
+                  url('assets/retreat-hero.jpeg') center/cover,
+                  url('assets/retreat-hero.JPG') center/cover,
+                  url('https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?q=80&w=1600&auto=format&fit=crop') center/cover;
       background-size: cover;
       background-position: center;
       color: white;
@@ -70,15 +91,17 @@
     .retreat-hero h1 {
       font-size: clamp(2.5rem, 5vw, 4rem);
       margin-bottom: 1rem;
-      text-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      color: white !important;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.8);
     }
     [data-theme="twilight"] .retreat-hero h1 {
-      color: #d4b86e;
+      color: #d4b86e !important;
     }
     .retreat-hero p {
       font-size: clamp(1.1rem, 2vw, 1.5rem);
       opacity: 0.95;
-      text-shadow: 0 1px 5px rgba(0,0,0,0.5);
+      color: white !important;
+      text-shadow: 0 1px 5px rgba(0,0,0,0.8);
     }
 
     .retreat-section {
@@ -582,8 +605,8 @@
   <div class="retreat-hero">
     <div class="container">
       <div class="retreat-hero-content reveal">
-        <h1>Activities and Practices at Back to Base</h1>
-        <p>Where nature and quiet become part of your practice</p>
+        <h1 class="retreat-hero-title">Activities and Practices at Back to Base</h1>
+        <p class="retreat-hero-subtitle">Where nature and quiet become part of your practice</p>
       </div>
     </div>
   </div>
@@ -593,7 +616,7 @@
     <section class="retreat-section">
       <div class="container">
         <div class="intro-section reveal">
-          <p>Back to Base is a place where nature and quiet become part of your practice. Everything here is designed so that any activity — from yoga to a small creative workshop — takes place in an atmosphere of calm, depth, and inspiration.</p>
+          <p class="retreat-intro-text">Back to Base is a place where nature and quiet become part of your practice. Everything here is designed so that any activity — from yoga to a small creative workshop — takes place in an atmosphere of calm, depth, and inspiration.</p>
         </div>
       </div>
     </section>
@@ -601,7 +624,7 @@
     <!-- Spaces Created for Presence Section -->
     <section class="retreat-section alt" style="padding-bottom: 20px;">
       <div class="container">
-        <h2 class="reveal">Our locations for your workshops</h2>
+        <h2 class="reveal retreat-locations-title">Our locations for your workshops</h2>
 
         <!-- Forest Platforms -->
         <div class="space-card reveal">
@@ -616,10 +639,10 @@
             </div>
           </div>
           <div class="space-content">
-            <h3>Forest platforms by the creek</h3>
-            <p>Just a few steps from the house, a winding path leads into the forest, where wooden platforms are hidden among tall trees. The air feels lighter here, the sound of the creek creates a natural meditation, and the soft light filtering through the canopy makes every practice deeper.</p>
-            <p>It's an ideal spot for:</p>
-            <ul>
+            <h3 class="retreat-forest-title">Forest platforms by the creek</h3>
+            <p class="retreat-forest-description">Just a few steps from the house, a winding path leads into the forest, where wooden platforms are hidden among tall trees. The air feels lighter here, the sound of the creek creates a natural meditation, and the soft light filtering through the canopy makes every practice deeper.</p>
+            <p class="retreat-forest-label">It's an ideal spot for:</p>
+            <ul class="retreat-forest-list">
               <li>Sunrise yoga</li>
               <li>Evening meditations</li>
               <li>Breathwork</li>
@@ -641,9 +664,9 @@
             </div>
           </div>
           <div class="space-content">
-            <h3>Warm, bright indoor space at Back to Base</h3>
-            <p>Inside the house, there is a spacious room with large windows filled with light, warmth, and a sense of comfort — perfect for group gatherings, mini-lectures, workshops, breathwork sessions, or yoga during cooler weather.</p>
-            <p>And if you need a more intimate atmosphere or plan to use visual materials, the room can easily be darkened with blackout curtains.</p>
+            <h3 class="retreat-indoor-title">Warm, bright indoor space at Back to Base</h3>
+            <p class="retreat-indoor-description">Inside the house, there is a spacious room with large windows filled with light, warmth, and a sense of comfort — perfect for group gatherings, mini-lectures, workshops, breathwork sessions, or yoga during cooler weather.</p>
+            <p class="retreat-indoor-additional">And if you need a more intimate atmosphere or plan to use visual materials, the room can easily be darkened with blackout curtains.</p>
           </div>
         </div>
 
@@ -660,8 +683,8 @@
             </div>
           </div>
           <div class="space-content">
-            <h3>Cozy mini home theatre</h3>
-            <p>For presentations, educational films, documentaries, or shared viewing sessions, we offer a small but very cozy home theatre. Soft lighting, quality sound, and a calm environment help create a fully immersive experience.</p>
+            <h3 class="retreat-theatre-title">Cozy mini home theatre</h3>
+            <p class="retreat-theatre-description">For presentations, educational films, documentaries, or shared viewing sessions, we offer a small but very cozy home theatre. Soft lighting, quality sound, and a calm environment help create a fully immersive experience.</p>
           </div>
         </div>
       </div>
@@ -672,8 +695,8 @@
       <div class="container">
         <div class="space-card reveal">
           <div class="space-content">
-            <h2 style="font-size: 2rem; margin-bottom: 20px;">Are you looking for a place to retreat or interested in joining a workshop?</h2>
-            <p style="font-size: 1.2rem; line-height: 1.8;">
+            <h2 class="retreat-contact-title" style="font-size: 2rem; margin-bottom: 20px;">Are you looking for a place to retreat or interested in joining a workshop?</h2>
+            <p class="retreat-contact-text" style="font-size: 1.2rem; line-height: 1.8;">
               Just send us a message with your preferences, and we will create a program tailored specifically for you!
             </p>
           </div>
@@ -722,7 +745,7 @@
     <section class="retreat-section" style="padding-top: 20px; padding-bottom: 20px;">
       <div class="container">
         <div class="organizer-learn-more reveal">
-          <h3>Are you a yoga instructor or an event organizer looking for a place to host your sessions?</h3>
+          <h3 class="retreat-organizer-title">Are you a yoga instructor or an event organizer looking for a place to host your sessions?</h3>
           <button class="learn-more-btn" onclick="toggleWorkshopsSection(this)">
             Learn More
           </button>
@@ -733,13 +756,13 @@
     <!-- What workshops are our spaces suitable for? Section -->
     <section id="workshops-section" class="retreat-section" style="padding-top: 0; padding-bottom: 80px; display: none;">
       <div class="container">
-        <h2 class="reveal" style="margin-bottom: 15px;">What workshops are our spaces suitable for?</h2>
+        <h2 class="reveal retreat-workshops-title" style="margin-bottom: 15px;">What workshops are our spaces suitable for?</h2>
         
-        <p class="reveal" style="font-size: 1.1rem; line-height: 1.8; color: var(--text-muted); margin-bottom: 1.65rem;">
+        <p class="reveal retreat-workshops-intro" style="font-size: 1.1rem; line-height: 1.8; color: var(--text-muted); margin-bottom: 1.65rem;">
           The indoor spaces, forest platforms, and the forest itself are ideal for the following practices:
         </p>
         
-        <ul class="workshops-list reveal" style="margin-top: 0; margin-bottom: 1.65rem;">
+        <ul class="workshops-list reveal retreat-workshops-list" style="margin-top: 0; margin-bottom: 1.65rem;">
           <li>Group and private yoga sessions</li>
           <li>Meditations and mindfulness practices</li>
           <li>Sound healing and breathwork</li>
@@ -747,14 +770,14 @@
           <li>Mini-lectures and intimate gatherings</li>
         </ul>
         
-        <p class="reveal" style="font-size: 1.1rem; margin-top: 0; line-height: 1.8;">
+        <p class="reveal retreat-workshops-conclusion" style="font-size: 1.1rem; margin-top: 0; line-height: 1.8;">
           Create memorable retreat experiences for your community. Nature here is not just a backdrop — it becomes a full participant. People open up more easily, rest more deeply, and return to themselves more naturally.
         </p>
 
-        <h2 class="reveal" style="font-size: 2rem; margin-top: 60px; margin-bottom: 15px;">Invitation to Collaborate</h2>
-        <p class="reveal" style="font-size: 1.1rem; line-height: 1.8; color: var(--text-muted); margin-bottom: 1.65rem;">Back to Base welcomes those who create transformative practices and help people heal and restore.<br>We are looking for:</p>
+        <h2 class="reveal retreat-collaboration-title" style="font-size: 2rem; margin-top: 60px; margin-bottom: 15px;">Invitation to Collaborate</h2>
+        <p class="reveal retreat-collaboration-intro" style="font-size: 1.1rem; line-height: 1.8; color: var(--text-muted); margin-bottom: 1.65rem;">Back to Base welcomes those who create transformative practices and help people heal and restore.<br>We are looking for:</p>
         
-        <ul class="workshops-list reveal" style="margin-top: 0; margin-bottom: 1.65rem;">
+        <ul class="workshops-list reveal retreat-collaboration-list" style="margin-top: 0; margin-bottom: 1.65rem;">
           <li>Program creators</li>
           <li>Yoga instructors</li>
           <li>Meditation teachers</li>
@@ -764,7 +787,7 @@
           <li>Body-oriented specialists</li>
         </ul>
 
-        <p class="reveal" style="font-size: 1.1rem; margin-top: 0; line-height: 1.8;">
+        <p class="reveal retreat-collaboration-conclusion" style="font-size: 1.1rem; margin-top: 0; line-height: 1.8;">
           If you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you.<br>Just call or message us!
         </p>
       </div>
@@ -813,8 +836,113 @@
   <script src="script.js?v=26"></script>
   <script src="auth.js?v=26"></script>
   <script>
-    // Gallery data for space images
-    const galleries = {
+    // Load retreat images from admin
+    (function() {
+      function updateRetreatImages() {
+        try {
+          const contentData = localStorage.getItem('btb_content');
+          if (contentData) {
+            const data = JSON.parse(contentData);
+            
+            // Update hero background
+            if (data.retreatHeroImageUrl) {
+              const heroSection = document.querySelector('.retreat-hero');
+              if (heroSection) {
+                heroSection.style.backgroundImage = `url('${data.retreatHeroImageUrl}?v=${Date.now()}')`;
+              }
+            }
+            
+            // Update forest platforms image
+            if (data.retreatForestImageUrl) {
+              const forestCard = document.querySelectorAll('.space-card')[0];
+              if (forestCard) {
+                const img = forestCard.querySelector('.space-image');
+                if (img) {
+                  img.src = data.retreatForestImageUrl + '?v=' + Date.now();
+                }
+              }
+            }
+            
+            // Update indoor space image
+            if (data.retreatIndoorImageUrl) {
+              const indoorCard = document.querySelectorAll('.space-card')[1];
+              if (indoorCard) {
+                const img = indoorCard.querySelector('.space-image');
+                if (img) {
+                  img.src = data.retreatIndoorImageUrl + '?v=' + Date.now();
+                }
+              }
+            }
+            
+            // Update home theatre image
+            if (data.retreatTheatreImageUrl) {
+              const theatreCard = document.querySelectorAll('.space-card')[2];
+              if (theatreCard) {
+                const img = theatreCard.querySelector('.space-image');
+                if (img) {
+                  img.src = data.retreatTheatreImageUrl + '?v=' + Date.now();
+                }
+              }
+            }
+          }
+        } catch(e) {
+          console.error('Error updating retreat images:', e);
+        }
+      }
+      
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateRetreatImages);
+      } else {
+        updateRetreatImages();
+      }
+      
+      // Also try to load from API
+      async function loadRetreatImagesFromAPI() {
+        try {
+          const formData = new FormData();
+          formData.append('action', 'get_content');
+          
+          const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              const contentData = {
+                retreatHeroImageUrl: result.data.retreatHeroImageUrl || '',
+                retreatForestImageUrl: result.data.retreatForestImageUrl || '',
+                retreatIndoorImageUrl: result.data.retreatIndoorImageUrl || '',
+                retreatTheatreImageUrl: result.data.retreatTheatreImageUrl || ''
+              };
+              
+              const existing = localStorage.getItem('btb_content');
+              let existingData = {};
+              if (existing) {
+                try {
+                  existingData = JSON.parse(existing);
+                } catch(e) {
+                  console.error('Failed to parse existing localStorage:', e);
+                }
+              }
+              
+              const mergedData = { ...existingData, ...contentData };
+              localStorage.setItem('btb_content', JSON.stringify(mergedData));
+              
+              updateRetreatImages();
+            }
+          }
+        } catch (error) {
+          console.log('Failed to load retreat images from API:', error);
+        }
+      }
+      
+      setTimeout(loadRetreatImagesFromAPI, 100);
+    })();
+    
+    // Gallery data for space images - will be updated with admin images
+    let galleries = {
       forest: [
         'assets/plarform_1.png',
         'assets/plarform_2.png',
@@ -846,6 +974,25 @@
         'https://images.unsplash.com/photo-1517604931442-7e0c8ed2963c?q=80&w=1200&auto=format&fit=crop'
       ]
     };
+    
+    // Update galleries with admin images
+    try {
+      const contentData = localStorage.getItem('btb_content');
+      if (contentData) {
+        const data = JSON.parse(contentData);
+        if (data.retreatForestImageUrl && galleries.forest.length > 0) {
+          galleries.forest[0] = data.retreatForestImageUrl;
+        }
+        if (data.retreatIndoorImageUrl && galleries.indoor.length > 0) {
+          galleries.indoor[0] = data.retreatIndoorImageUrl;
+        }
+        if (data.retreatTheatreImageUrl && galleries.theatre.length > 0) {
+          galleries.theatre[0] = data.retreatTheatreImageUrl;
+        }
+      }
+    } catch(e) {
+      console.error('Error updating galleries:', e);
+    }
 
     let currentGallery = null;
     let currentImageIndex = 0;
@@ -1012,6 +1159,158 @@
         setTimeout(() => hero.classList.add('active'), 100);
       }
     });
+
+    // Load and update retreat content from localStorage or API
+    (function() {
+      'use strict';
+      
+      // Try to load from localStorage first (fastest)
+      const storedContent = localStorage.getItem('btb_retreat_workshop_content');
+      if (storedContent) {
+        try {
+          const content = JSON.parse(storedContent);
+          updateRetreatPageContent(content);
+        } catch (e) {
+          console.error('Failed to parse stored retreat content:', e);
+        }
+      }
+      
+      // Also fetch from API to ensure we have the latest data
+      fetch('api.php', {
+        method: 'POST',
+        body: (() => {
+          const formData = new FormData();
+          formData.append('action', 'get_content');
+          return formData;
+        })()
+      })
+      .then(response => response.json())
+      .then(result => {
+        if (result.success && result.data) {
+          const data = result.data;
+          const content = {
+            retreatHeroTitle: data.retreatHeroTitle || '',
+            retreatHeroSubtitle: data.retreatHeroSubtitle || '',
+            retreatIntroText: data.retreatIntroText || '',
+            retreatLocationsTitle: data.retreatLocationsTitle || '',
+            retreatForestTitle: data.retreatForestTitle || '',
+            retreatForestDescription: data.retreatForestDescription || '',
+            retreatForestListLabel: data.retreatForestListLabel || '',
+            retreatForestListItems: data.retreatForestListItems || '',
+            retreatIndoorTitle: data.retreatIndoorTitle || '',
+            retreatIndoorDescription: data.retreatIndoorDescription || '',
+            retreatIndoorAdditional: data.retreatIndoorAdditional || '',
+            retreatTheatreTitle: data.retreatTheatreTitle || '',
+            retreatTheatreDescription: data.retreatTheatreDescription || '',
+            retreatContactTitle: data.retreatContactTitle || '',
+            retreatContactText: data.retreatContactText || '',
+            retreatOrganizerTitle: data.retreatOrganizerTitle || '',
+            retreatWorkshopsTitle: data.retreatWorkshopsTitle || '',
+            retreatWorkshopsIntro: data.retreatWorkshopsIntro || '',
+            retreatWorkshopsList: data.retreatWorkshopsList || '',
+            retreatWorkshopsConclusion: data.retreatWorkshopsConclusion || '',
+            retreatCollaborationTitle: data.retreatCollaborationTitle || '',
+            retreatCollaborationIntro: data.retreatCollaborationIntro || '',
+            retreatCollaborationList: data.retreatCollaborationList || '',
+            retreatCollaborationConclusion: data.retreatCollaborationConclusion || ''
+          };
+          
+          // Save to localStorage for future loads
+          localStorage.setItem('btb_retreat_workshop_content', JSON.stringify(content));
+          
+          // Update page
+          updateRetreatPageContent(content);
+        }
+      })
+      .catch(error => {
+        console.error('Failed to load retreat content from API:', error);
+      });
+      
+      function updateRetreatPageContent(content) {
+        // Hero section
+        const heroTitle = document.querySelector('.retreat-hero-title');
+        const heroSubtitle = document.querySelector('.retreat-hero-subtitle');
+        if (heroTitle && content.retreatHeroTitle) heroTitle.textContent = content.retreatHeroTitle;
+        if (heroSubtitle && content.retreatHeroSubtitle) heroSubtitle.textContent = content.retreatHeroSubtitle;
+        
+        // Introduction
+        const introText = document.querySelector('.retreat-intro-text');
+        if (introText && content.retreatIntroText) introText.textContent = content.retreatIntroText;
+        
+        // Locations title
+        const locationsTitle = document.querySelector('.retreat-locations-title');
+        if (locationsTitle && content.retreatLocationsTitle) locationsTitle.textContent = content.retreatLocationsTitle;
+        
+        // Forest Platforms
+        const forestTitle = document.querySelector('.retreat-forest-title');
+        const forestDesc = document.querySelector('.retreat-forest-description');
+        const forestLabel = document.querySelector('.retreat-forest-label');
+        const forestList = document.querySelector('.retreat-forest-list');
+        if (forestTitle && content.retreatForestTitle) forestTitle.textContent = content.retreatForestTitle;
+        if (forestDesc && content.retreatForestDescription) forestDesc.textContent = content.retreatForestDescription;
+        if (forestLabel && content.retreatForestListLabel) forestLabel.textContent = content.retreatForestListLabel;
+        if (forestList && content.retreatForestListItems) {
+          const items = content.retreatForestListItems.split('\n').filter(item => item.trim());
+          forestList.innerHTML = items.map(item => `<li>${item.trim()}</li>`).join('');
+        } else if (forestList && !content.retreatForestListItems) {
+          // Keep default if no content
+        }
+        
+        // Indoor Space
+        const indoorTitle = document.querySelector('.retreat-indoor-title');
+        const indoorDesc = document.querySelector('.retreat-indoor-description');
+        const indoorAdd = document.querySelector('.retreat-indoor-additional');
+        if (indoorTitle && content.retreatIndoorTitle) indoorTitle.textContent = content.retreatIndoorTitle;
+        if (indoorDesc && content.retreatIndoorDescription) indoorDesc.textContent = content.retreatIndoorDescription;
+        if (indoorAdd && content.retreatIndoorAdditional) indoorAdd.textContent = content.retreatIndoorAdditional;
+        
+        // Home Theatre
+        const theatreTitle = document.querySelector('.retreat-theatre-title');
+        const theatreDesc = document.querySelector('.retreat-theatre-description');
+        if (theatreTitle && content.retreatTheatreTitle) theatreTitle.textContent = content.retreatTheatreTitle;
+        if (theatreDesc && content.retreatTheatreDescription) theatreDesc.textContent = content.retreatTheatreDescription;
+        
+        // Contact Form
+        const contactTitle = document.querySelector('.retreat-contact-title');
+        const contactText = document.querySelector('.retreat-contact-text');
+        if (contactTitle && content.retreatContactTitle) contactTitle.textContent = content.retreatContactTitle;
+        if (contactText && content.retreatContactText) contactText.textContent = content.retreatContactText;
+        
+        // Organizer
+        const organizerTitle = document.querySelector('.retreat-organizer-title');
+        if (organizerTitle && content.retreatOrganizerTitle) organizerTitle.textContent = content.retreatOrganizerTitle;
+        
+        // Workshops
+        const workshopsTitle = document.querySelector('.retreat-workshops-title');
+        const workshopsIntro = document.querySelector('.retreat-workshops-intro');
+        const workshopsList = document.querySelector('.retreat-workshops-list');
+        const workshopsConclusion = document.querySelector('.retreat-workshops-conclusion');
+        if (workshopsTitle && content.retreatWorkshopsTitle) workshopsTitle.textContent = content.retreatWorkshopsTitle;
+        if (workshopsIntro && content.retreatWorkshopsIntro) workshopsIntro.textContent = content.retreatWorkshopsIntro;
+        if (workshopsList && content.retreatWorkshopsList) {
+          const items = content.retreatWorkshopsList.split('\n').filter(item => item.trim());
+          workshopsList.innerHTML = items.map(item => `<li>${item.trim()}</li>`).join('');
+        } else if (workshopsList && !content.retreatWorkshopsList) {
+          // Keep default if no content
+        }
+        if (workshopsConclusion && content.retreatWorkshopsConclusion) workshopsConclusion.textContent = content.retreatWorkshopsConclusion;
+        
+        // Collaboration
+        const collaborationTitle = document.querySelector('.retreat-collaboration-title');
+        const collaborationIntro = document.querySelector('.retreat-collaboration-intro');
+        const collaborationList = document.querySelector('.retreat-collaboration-list');
+        const collaborationConclusion = document.querySelector('.retreat-collaboration-conclusion');
+        if (collaborationTitle && content.retreatCollaborationTitle) collaborationTitle.textContent = content.retreatCollaborationTitle;
+        if (collaborationIntro && content.retreatCollaborationIntro) collaborationIntro.textContent = content.retreatCollaborationIntro;
+        if (collaborationList && content.retreatCollaborationList) {
+          const items = content.retreatCollaborationList.split('\n').filter(item => item.trim());
+          collaborationList.innerHTML = items.map(item => `<li>${item.trim()}</li>`).join('');
+        } else if (collaborationList && !content.retreatCollaborationList) {
+          // Keep default if no content
+        }
+        if (collaborationConclusion && content.retreatCollaborationConclusion) collaborationConclusion.textContent = content.retreatCollaborationConclusion;
+      }
+    })();
   </script>
 </body>
 </html>

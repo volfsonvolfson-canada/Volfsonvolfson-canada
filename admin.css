@@ -2,9 +2,46 @@
 @import url('common.css');
 
 .admin-body {
-  background: #f7fafc;
+  background: #ffffff !important;
   min-height: 100vh;
   font-family: 'Inter', sans-serif;
+}
+
+/* Ensure white background for admin pages regardless of theme */
+body.admin-body,
+html body.admin-body,
+[data-theme="light"] body.admin-body,
+[data-theme="dark"] body.admin-body,
+[data-theme="twilight"] body.admin-body {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+}
+
+/* Visual truncation for preview text elements - show full text but visually truncate */
+#retreat-workshop-section .editable-preview {
+  max-height: 4.5em; /* ~3 lines of text */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  word-wrap: break-word;
+}
+
+/* For longer text fields, allow more lines */
+#retreat-workshop-section .editable-preview[data-field*="intro"],
+#retreat-workshop-section .editable-preview[data-field*="description"],
+#retreat-workshop-section .editable-preview[data-field*="conclusion"],
+#retreat-workshop-section .editable-preview[data-field*="text"] {
+  max-height: 6em; /* ~4 lines of text */
+  -webkit-line-clamp: 4;
+}
+
+/* When focused, show full text */
+#retreat-workshop-section .editable-preview:focus {
+  max-height: none;
+  -webkit-line-clamp: none;
+  overflow: visible;
 }
 
 /* Login Page */
@@ -135,14 +172,42 @@
   gap: 12px;
   margin-bottom: 24px;
   flex-wrap: wrap;
+  background: transparent !important;
+}
+
+/* Ensure navigation tabs have white/light background - override inline styles */
+.admin-nav-container,
+.admin-nav-tabs-primary,
+.admin-nav-tabs-secondary {
+  background: transparent !important;
+}
+
+.admin-nav-tab-primary,
+.admin-nav-tab-secondary {
+  background: transparent !important;
+  background-color: transparent !important;
+  color: #4a5568 !important;
+}
+
+.admin-nav-tab-primary.active,
+.admin-nav-tab-secondary.active {
+  background: #f7fafc !important;
+  background-color: #f7fafc !important;
+  color: #667eea !important;
+}
+
+.admin-nav-tab-primary:hover,
+.admin-nav-tab-secondary:hover {
+  background: #f7fafc !important;
+  background-color: #f7fafc !important;
 }
 
 .admin-nav-btn {
   padding: 12px 20px;
-  background: white;
+  background: white !important;
   border: 2px solid #e2e8f0;
   border-radius: 8px;
-  color: #4a5568;
+  color: #4a5568 !important;
   text-decoration: none;
   font-weight: 600;
   transition: all 0.2s;
@@ -155,9 +220,9 @@
 }
 
 .admin-nav-btn.active {
-  background: #667eea;
+  background: #667eea !important;
   border-color: #667eea;
-  color: white;
+  color: white !important;
 }
 
 .admin-section {
@@ -657,6 +722,50 @@ input.flash-invalid {
 .flatpickr [class*="next"]:hover path {
   fill: #ffffff !important;
   stroke: #ffffff !important;
+}
+
+/* Override footer background on admin-login page - must be at the end to override all other rules */
+body.admin-body .site-footer,
+body.admin-body [data-theme="light"] .site-footer,
+body.admin-body [data-theme="dark"] .site-footer,
+body.admin-body [data-theme="twilight"] .site-footer,
+html body.admin-body .site-footer,
+html[data-theme="light"] body.admin-body .site-footer,
+html[data-theme="dark"] body.admin-body .site-footer,
+html[data-theme="twilight"] body.admin-body .site-footer {
+  background: #2d3748 !important;
+  background-color: #2d3748 !important;
+  border-top-color: rgba(255,255,255,.1) !important;
+}
+
+body.admin-body .site-footer h4,
+body.admin-body .site-footer p,
+body.admin-body .site-footer a,
+body.admin-body [data-theme="light"] .site-footer h4,
+body.admin-body [data-theme="light"] .site-footer p,
+body.admin-body [data-theme="light"] .site-footer a,
+html[data-theme="light"] body.admin-body .site-footer h4,
+html[data-theme="light"] body.admin-body .site-footer p,
+html[data-theme="light"] body.admin-body .site-footer a {
+  color: rgba(255,255,255,0.9) !important;
+}
+
+body.admin-body .site-footer .footer-nav a,
+body.admin-body [data-theme="light"] .site-footer .footer-nav a,
+html[data-theme="light"] body.admin-body .site-footer .footer-nav a {
+  color: rgba(255,255,255,0.7) !important;
+}
+
+body.admin-body .site-footer .footer-nav a:hover,
+body.admin-body [data-theme="light"] .site-footer .footer-nav a:hover,
+html[data-theme="light"] body.admin-body .site-footer .footer-nav a:hover {
+  color: rgba(255,255,255,1) !important;
+}
+
+body.admin-body .site-footer .copyright,
+body.admin-body [data-theme="light"] .site-footer .copyright,
+html[data-theme="light"] body.admin-body .site-footer .copyright {
+  color: rgba(255,255,255,0.6) !important;
 }
 
 /* Additional selectors for arrow buttons */

@@ -1203,9 +1203,11 @@ async function handleMassageForm(form) {
       }}));
 
       // Показываем сообщение об успехе
-      alert(`Massage booking (${formData.type}, ${formData.duration} min) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`);
+      const serviceType = formData.type === 'Sauna' ? 'Sauna' : 'Massage';
+      const durationText = formData.type === 'Sauna' ? '1 hour' : `${formData.duration} min`;
+      alert(`${serviceType} booking (${formData.type}, ${durationText}) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`);
       
-      // Показываем напоминание о комнате всегда после бронирования массажа
+      // Показываем напоминание о комнате всегда после бронирования массажа или сауны
       const reminder = document.getElementById('room-reminder');
       if (reminder) {
         // Проверяем, есть ли уже бронирование комнаты

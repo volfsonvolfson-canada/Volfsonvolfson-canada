@@ -131,7 +131,7 @@
         </div>
         <div class="card-body">
           <h2>Reiki Energy Healing</h2>
-          <p>Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body’s energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.</p>
+          <p>Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body's energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.</p>
           <ul class="massage-list">
             <li>15 minutes on the go — 25 CAD</li>
             <li>30 minutes as an add-on — 50 CAD</li>
@@ -139,16 +139,30 @@
         </div>
       </section>
 
+      <section class="card card-massage card-massage--alt">
+        <div class="card-img">
+          <img class="floor-photo media-43" data-src-base="assets/plan-basement-bedroom|assets/sauna|assets/Sauna" alt="Sauna at Back to Base" />
+        </div>
+        <div class="card-body">
+          <h2>Sauna</h2>
+          <p>After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.</p>
+          <ul class="massage-list">
+            <li>1 hour — 25 CAD</li>
+          </ul>
+        </div>
+      </section>
+
       <section class="card" id="book">
-        <h2>Book a massage</h2>
+        <h2>Book a massage or sauna</h2>
         <form id="massage-form" novalidate>
           <div class="form-row">
             <div>
-              <label for="type">Massage type</label>
+              <label for="type">Service type</label>
               <select id="type" name="type" required>
                 <option>Relaxing Massage</option>
                 <option>Deep Tissue Massage</option>
                 <option>Reiki Energy Healing</option>
+                <option>Sauna</option>
               </select>
             </div>
             <div>
@@ -184,7 +198,7 @@
               <input id="phone" name="phone" type="tel" placeholder="+1 555 123‑4567" required />
             </div>
           </div>
-          <button class="btn primary" type="submit">Book massage</button>
+          <button class="btn primary" type="submit">Book service</button>
         </form>
       </section>
 
@@ -389,6 +403,137 @@
   <script src="booking.js"></script>
   <script src="auth.js?v=26"></script>
   <script>
+    // Load massage images from admin
+    (function() {
+      function updateMassageImages() {
+        try {
+          // First try localStorage
+          const contentData = localStorage.getItem('btb_content');
+          if (contentData) {
+            const data = JSON.parse(contentData);
+            
+            // Update Relaxing Massage image
+            if (data.massageRelaxingImageUrl) {
+              const relaxingCard = document.querySelectorAll('.card-massage')[0];
+              if (relaxingCard) {
+                const img = relaxingCard.querySelector('.card-img img');
+                if (img) {
+                  img.src = data.massageRelaxingImageUrl + '?v=' + Date.now();
+                  img.srcset = data.massageRelaxingImageUrl + '?v=' + Date.now();
+                }
+              }
+            }
+            
+            // Update Deep Tissue Massage image
+            if (data.massageDeepTissueImageUrl) {
+              const deepTissueCard = document.querySelectorAll('.card-massage')[1];
+              if (deepTissueCard) {
+                const img = deepTissueCard.querySelector('.card-img img');
+                if (img) {
+                  img.src = data.massageDeepTissueImageUrl + '?v=' + Date.now();
+                  img.srcset = data.massageDeepTissueImageUrl + '?v=' + Date.now();
+                }
+              }
+            }
+            
+            // Update Reiki Energy Healing image
+            if (data.massageReikiImageUrl) {
+              const reikiCard = document.querySelectorAll('.card-massage')[2];
+              if (reikiCard) {
+                const img = reikiCard.querySelector('.card-img img');
+                if (img) {
+                  img.src = data.massageReikiImageUrl + '?v=' + Date.now();
+                  img.srcset = data.massageReikiImageUrl + '?v=' + Date.now();
+                }
+              }
+            }
+            
+            // Update Sauna image
+            if (data.massageSaunaImageUrl) {
+              const saunaCard = document.querySelectorAll('.card-massage')[3];
+              if (saunaCard) {
+                const img = saunaCard.querySelector('.card-img img');
+                if (img) {
+                  img.src = data.massageSaunaImageUrl + '?v=' + Date.now();
+                  img.srcset = data.massageSaunaImageUrl + '?v=' + Date.now();
+                }
+              }
+            }
+            
+            // Update Room Booking image
+            if (data.massageRoomBookingImageUrl) {
+              const roomBookingImg = document.getElementById('room-gallery-main');
+              if (roomBookingImg) {
+                roomBookingImg.src = data.massageRoomBookingImageUrl + '?v=' + Date.now();
+              }
+              // Also update first image in gallery array
+              if (roomGalleryImages.length > 0) {
+                roomGalleryImages[0] = data.massageRoomBookingImageUrl;
+              }
+            }
+          }
+        } catch(e) {
+          console.error('Error updating massage images:', e);
+        }
+      }
+      
+      // Update immediately if DOM is ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', updateMassageImages);
+      } else {
+        updateMassageImages();
+      }
+      
+      // Also try to load from API
+      async function loadMassageImagesFromAPI() {
+        try {
+          const formData = new FormData();
+          formData.append('action', 'get_content');
+          
+          const response = await fetch('api.php', {
+            method: 'POST',
+            body: formData
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success && result.data) {
+              // Save to localStorage
+              const contentData = {
+                massageRelaxingImageUrl: result.data.massageRelaxingImageUrl || '',
+                massageDeepTissueImageUrl: result.data.massageDeepTissueImageUrl || '',
+                massageReikiImageUrl: result.data.massageReikiImageUrl || '',
+                massageSaunaImageUrl: result.data.massageSaunaImageUrl || '',
+                massageRoomBookingImageUrl: result.data.massageRoomBookingImageUrl || ''
+              };
+              
+              // Merge with existing localStorage data
+              const existing = localStorage.getItem('btb_content');
+              let existingData = {};
+              if (existing) {
+                try {
+                  existingData = JSON.parse(existing);
+                } catch(e) {
+                  console.error('Failed to parse existing localStorage:', e);
+                }
+              }
+              
+              const mergedData = { ...existingData, ...contentData };
+              localStorage.setItem('btb_content', JSON.stringify(mergedData));
+              
+              // Update images
+              updateMassageImages();
+            }
+          }
+        } catch (error) {
+          console.log('Failed to load massage images from API:', error);
+        }
+      }
+      
+      // Load from API after a short delay
+      setTimeout(loadMassageImagesFromAPI, 100);
+    })();
+    
     // Room Gallery
     const roomGalleryImages = [
       'assets/hero.jpg',
