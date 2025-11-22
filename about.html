@@ -968,9 +968,9 @@
     <div class="container footer-grid">
       <div>
         <h4>Contact</h4>
-        <p>British Columbia, Canada</p>
-        <p>Phone: +1 (555) 123‑4567</p>
-        <p>Email: hello@backtobase.example</p>
+        <p id="footer-contact-address">British Columbia, Canada</p>
+        <p id="footer-contact-phone">Phone: +1 (555) 123‑4567</p>
+        <p id="footer-contact-email">Email: hello@backtobase.example</p>
       </div>
       <div>
         <h4>Navigation</h4>
@@ -1056,7 +1056,7 @@
       }
       
       // Also try to load from API
-      async function loadAboutImagesFromAPI() {
+      async function loadAboutContentFromAPI() {
         try {
           const formData = new FormData();
           formData.append('action', 'get_content');
@@ -1069,10 +1069,13 @@
           if (response.ok) {
             const result = await response.json();
             if (result.success && result.data) {
+              const data = result.data;
+              
+              // Update images
               const contentData = {
-                aboutHeroImageUrl: result.data.aboutHeroImageUrl || '',
-                aboutFounderImageUrl: result.data.aboutFounderImageUrl || '',
-                aboutProcterImageUrl: result.data.aboutProcterImageUrl || ''
+                aboutHeroImageUrl: data.aboutHeroImageUrl || '',
+                aboutFounderImageUrl: data.aboutFounderImageUrl || '',
+                aboutProcterImageUrl: data.aboutProcterImageUrl || ''
               };
               
               const existing = localStorage.getItem('btb_content');
@@ -1089,14 +1092,116 @@
               localStorage.setItem('btb_content', JSON.stringify(mergedData));
               
               updateAboutImages();
+              
+              // Update text content
+              const heroTitle = document.querySelector('.about-hero h1');
+              const heroSubtitle = document.querySelector('.about-hero p');
+              if (heroTitle && data.aboutHeroTitle) heroTitle.textContent = data.aboutHeroTitle;
+              if (heroSubtitle && data.aboutHeroSubtitle) heroSubtitle.textContent = data.aboutHeroSubtitle;
+              
+              const ideaTitle = document.querySelector('.founder-content h2');
+              const ideaIntro = document.querySelector('.founder-content p');
+              if (ideaTitle && data.aboutIdeaTitle) ideaTitle.textContent = data.aboutIdeaTitle;
+              if (ideaIntro && data.aboutIdeaIntro) {
+                const introText = data.aboutIdeaIntro;
+                ideaIntro.innerHTML = introText.replace(/<strong>Rob Vuik<\/strong>/g, '<strong>Rob Vuik</strong>');
+              }
+              
+              const ideaP1 = document.querySelector('.founder-content-expandable p:nth-of-type(1)');
+              const ideaP2 = document.querySelector('.founder-content-expandable p:nth-of-type(2)');
+              const ideaP3 = document.querySelector('.founder-content-expandable p:nth-of-type(3)');
+              const ideaSignature = document.querySelector('.founder-content p:last-of-type');
+              if (ideaP1 && data.aboutIdeaParagraph1) ideaP1.textContent = data.aboutIdeaParagraph1;
+              if (ideaP2 && data.aboutIdeaParagraph2) ideaP2.textContent = data.aboutIdeaParagraph2;
+              if (ideaP3 && data.aboutIdeaParagraph3) ideaP3.textContent = data.aboutIdeaParagraph3;
+              if (ideaSignature && data.aboutIdeaSignature) ideaSignature.textContent = data.aboutIdeaSignature;
+              
+              const locTitle = document.querySelector('.about-section.alt h2');
+              if (locTitle && data.aboutLocationTitle) locTitle.textContent = data.aboutLocationTitle;
+              
+              const locParagraphs = document.querySelectorAll('.directions-box p');
+              if (locParagraphs.length >= 4) {
+                if (data.aboutLocationParagraph1) locParagraphs[0].textContent = data.aboutLocationParagraph1;
+                if (data.aboutLocationParagraph2) locParagraphs[1].textContent = data.aboutLocationParagraph2;
+                if (data.aboutLocationParagraph3) locParagraphs[2].textContent = data.aboutLocationParagraph3;
+                if (data.aboutLocationParagraph4) locParagraphs[3].textContent = data.aboutLocationParagraph4;
+              }
+              
+              const coords = document.querySelector('.coordinates');
+              if (coords && data.aboutLocationCoordinates) coords.textContent = data.aboutLocationCoordinates;
+              
+              const deerWarning = document.querySelector('.deer-warning');
+              if (deerWarning && data.aboutLocationDeerWarning) deerWarning.textContent = data.aboutLocationDeerWarning;
+              
+              const attrTitle = document.querySelector('.about-section:not(.alt) h2');
+              if (attrTitle && data.aboutAttractionsTitle) attrTitle.textContent = data.aboutAttractionsTitle;
+              
+              const attrLead = document.querySelector('.about-section:not(.alt) p');
+              if (attrLead && data.aboutAttractionsLead) attrLead.textContent = data.aboutAttractionsLead;
+              
+              // Update attraction cards
+              const procterCard = document.querySelector('[data-gallery="procter"]');
+              if (procterCard) {
+                const procterTitle = procterCard.querySelector('h4');
+                const procterDist = procterCard.querySelector('.distance');
+                const procterDesc = procterCard.querySelector('p');
+                if (procterTitle && data.aboutProcterTitle) procterTitle.textContent = data.aboutProcterTitle;
+                if (procterDist && data.aboutProcterDistance) procterDist.textContent = data.aboutProcterDistance;
+                if (procterDesc && data.aboutProcterDescription) procterDesc.textContent = data.aboutProcterDescription;
+              }
+              
+              const halcyonCard = document.querySelector('[data-gallery="halcyon"]');
+              if (halcyonCard) {
+                const halcyonTitle = halcyonCard.querySelector('h4');
+                const halcyonDist = halcyonCard.querySelector('.distance');
+                const halcyonDesc = halcyonCard.querySelector('p');
+                if (halcyonTitle && data.aboutHalcyonTitle) halcyonTitle.textContent = data.aboutHalcyonTitle;
+                if (halcyonDist && data.aboutHalcyonDistance) halcyonDist.textContent = data.aboutHalcyonDistance;
+                if (halcyonDesc && data.aboutHalcyonDescription) halcyonDesc.textContent = data.aboutHalcyonDescription;
+              }
+              
+              const whitewaterCard = document.querySelector('[data-gallery="whitewater"]');
+              if (whitewaterCard) {
+                const whitewaterTitle = whitewaterCard.querySelector('h4');
+                const whitewaterDist = whitewaterCard.querySelector('.distance');
+                const whitewaterDesc = whitewaterCard.querySelector('p');
+                if (whitewaterTitle && data.aboutWhitewaterTitle) whitewaterTitle.textContent = data.aboutWhitewaterTitle;
+                if (whitewaterDist && data.aboutWhitewaterDistance) whitewaterDist.textContent = data.aboutWhitewaterDistance;
+                if (whitewaterDesc && data.aboutWhitewaterDescription) whitewaterDesc.textContent = data.aboutWhitewaterDescription;
+              }
+              
+              const nelsonCard = document.querySelector('[data-gallery="nelson"]');
+              if (nelsonCard) {
+                const nelsonTitle = nelsonCard.querySelector('h4');
+                const nelsonDist = nelsonCard.querySelector('.distance');
+                const nelsonDesc = nelsonCard.querySelector('p');
+                if (nelsonTitle && data.aboutNelsonTitle) nelsonTitle.textContent = data.aboutNelsonTitle;
+                if (nelsonDist && data.aboutNelsonDistance) nelsonDist.textContent = data.aboutNelsonDistance;
+                if (nelsonDesc && data.aboutNelsonDescription) nelsonDesc.textContent = data.aboutNelsonDescription;
+              }
+              
+              // Update parks section
+              const parksTitle = document.querySelector('.about-section:last-of-type h2');
+              if (parksTitle && data.aboutParksTitle) parksTitle.textContent = data.aboutParksTitle;
+              
+              const parksIntro = document.querySelector('.about-section:last-of-type p');
+              if (parksIntro && data.aboutParksIntro) parksIntro.textContent = data.aboutParksIntro;
+              
+              if (data.aboutParksList) {
+                const parksList = document.querySelector('.parks-list');
+                if (parksList) {
+                  const items = data.aboutParksList.split('\n').filter(item => item.trim());
+                  parksList.innerHTML = items.map(item => `<div class="park-item">${item.trim()}</div>`).join('');
+                }
+              }
             }
           }
         } catch (error) {
-          console.log('Failed to load about images from API:', error);
+          console.log('Failed to load about content from API:', error);
         }
       }
       
-      setTimeout(loadAboutImagesFromAPI, 100);
+      setTimeout(loadAboutContentFromAPI, 100);
     })();
     
     // Wait for DOM to be fully loaded

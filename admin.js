@@ -128,6 +128,7 @@ function applyFlatpickrArrowStyles(instance) {
 
 // Two-level navigation system
 let currentPrimary = 'bookings'; // Default primary section
+const contentEditorRegistry = {};
 
 // Switch primary section (Bookings Management, Content Management, Account Management)
 function switchPrimarySection(primaryName) {
@@ -246,6 +247,17 @@ function performSectionSwitch(sectionName) {
 }
 
 // Load data for specific section
+function registerContentEditor(sectionName, initializer) {
+  if (!sectionName || typeof initializer !== 'function') return;
+  contentEditorRegistry[sectionName] = initializer;
+}
+
+function initContentEditor(sectionName) {
+  if (typeof contentEditorRegistry[sectionName] === 'function') {
+    contentEditorRegistry[sectionName]();
+  }
+}
+
 function loadSectionData(sectionName) {
   switch(sectionName) {
     case 'homepage':
@@ -257,58 +269,37 @@ function loadSectionData(sectionName) {
       initFloorplanImageUpload();
       break;
     case 'room-basement':
-      loadRoomBasementData();
-      initRoomBasementImageUpload();
+      initContentEditor('room-basement');
       break;
     case 'room-ground-queen':
-      loadRoomGroundQueenData();
-      initRoomGroundQueenImageUpload();
+      initContentEditor('room-ground-queen');
       break;
     case 'room-ground-twin':
-      loadRoomGroundTwinData();
-      initRoomGroundTwinImageUpload();
+      initContentEditor('room-ground-twin');
       break;
     case 'room-second':
-      loadRoomSecondData();
-      initRoomSecondImageUpload();
+      initContentEditor('room-second');
       break;
     case 'massage':
-      loadMassageData();
-      loadMassageImagesData();
-      initMassageImageUpload();
-      initMassageSaveHandler();
+      initContentEditor('massage');
       break;
     case 'retreat-workshop':
-      loadRetreatWorkshopData();
-      loadRetreatImagesData();
-      initRetreatImageUpload();
-      initRetreatSaveHandler();
-      initRetreatHelperUI();
-      // Initialize auto-save after a short delay to ensure all elements are loaded
-      setTimeout(() => {
-        if (typeof initRetreatAutoSave === 'function') {
-          initRetreatAutoSave();
-        }
-      }, 100);
+      initContentEditor('retreat-workshop');
       break;
     case 'special':
-      loadSpecialData();
-      loadSpecialImagesData();
-      initSpecialImageUpload();
-      initSpecialSaveHandler();
+      initContentEditor('special');
       break;
     case 'about':
-      loadAboutData();
-      loadAboutImagesData();
-      initAboutImageUpload();
-      initAboutSaveHandler();
+      initContentEditor('about');
+      break;
+    case 'about':
+      // Handled by registerContentEditor
       break;
     case 'contact':
-      loadContactData();
+      // Handled by registerContentEditor
       break;
     case 'wellness-experiences':
-      loadWellnessExperiencesData();
-      initWellnessExperiencesImageUpload();
+      initContentEditor('wellness-experiences');
       break;
     case 'rooms':
       loadRoomsData();
@@ -668,9 +659,9 @@ function loadMassageData() {
   `).join('');
 }
 
-// Load massage page images
-async function loadMassageImagesData() {
-  console.log('Loading massage images data...');
+// Load massage page data (text and images)
+async function loadMassageData() {
+  console.log('Loading massage page data...');
   try {
     const formData = new FormData();
     formData.append('action', 'get_content');
@@ -683,102 +674,150 @@ async function loadMassageImagesData() {
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.data) {
-        // Load images with preview
-        const relaxingImageUrl = result.data.massageRelaxingImageUrl || '';
-        const deepTissueImageUrl = result.data.massageDeepTissueImageUrl || '';
-        const reikiImageUrl = result.data.massageReikiImageUrl || '';
-        const saunaImageUrl = result.data.massageSaunaImageUrl || '';
-        const roomBookingImageUrl = result.data.massageRoomBookingImageUrl || '';
+        const data = result.data;
         
-        // Update relaxing image preview
-        if (relaxingImageUrl) {
-          const preview = document.getElementById('massage-relaxing-preview');
-          const pathDisplay = document.getElementById('massage-relaxing-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = relaxingImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = relaxingImageUrl;
-            pathDisplay.style.display = 'block';
-          }
-        }
+        // Hero section
+        const heroTitleField = document.getElementById('massage-hero-title');
+        const introField = document.getElementById('massage-intro');
+        const heroTitlePreview = document.getElementById('preview-massage-hero-title');
+        const introPreview = document.getElementById('preview-massage-intro');
+        if (heroTitleField) heroTitleField.value = data.massageHeroTitle || '';
+        if (introField) introField.value = data.massageIntro || '';
+        if (heroTitlePreview) heroTitlePreview.textContent = data.massageHeroTitle || 'Massage services';
+        if (introPreview) introPreview.textContent = data.massageIntro || 'Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.';
         
-        // Update deep tissue image preview
-        if (deepTissueImageUrl) {
-          const preview = document.getElementById('massage-deep-tissue-preview');
-          const pathDisplay = document.getElementById('massage-deep-tissue-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = deepTissueImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = deepTissueImageUrl;
-            pathDisplay.style.display = 'block';
-          }
-        }
+        // Relaxing Massage
+        const relaxingTitleField = document.getElementById('massage-relaxing-title');
+        const relaxingDescField = document.getElementById('massage-relaxing-description');
+        const relaxingTitlePreview = document.getElementById('preview-massage-relaxing-title');
+        const relaxingDescPreview = document.getElementById('preview-massage-relaxing-desc');
+        if (relaxingTitleField) relaxingTitleField.value = data.massageRelaxingTitle || '';
+        if (relaxingDescField) relaxingDescField.value = data.massageRelaxingDescription || '';
+        if (relaxingTitlePreview) relaxingTitlePreview.textContent = data.massageRelaxingTitle || 'Relaxing Massage';
+        if (relaxingDescPreview) relaxingDescPreview.textContent = data.massageRelaxingDescription || 'This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.';
         
-        // Update reiki image preview
-        if (reikiImageUrl) {
-          const preview = document.getElementById('massage-reiki-preview');
-          const pathDisplay = document.getElementById('massage-reiki-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = reikiImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = reikiImageUrl;
-            pathDisplay.style.display = 'block';
-          }
-        }
+        // Deep Tissue Massage
+        const deepTissueTitleField = document.getElementById('massage-deep-tissue-title');
+        const deepTissueDescField = document.getElementById('massage-deep-tissue-description');
+        const deepTissueTitlePreview = document.getElementById('preview-massage-deep-tissue-title');
+        const deepTissueDescPreview = document.getElementById('preview-massage-deep-tissue-desc');
+        if (deepTissueTitleField) deepTissueTitleField.value = data.massageDeepTissueTitle || '';
+        if (deepTissueDescField) deepTissueDescField.value = data.massageDeepTissueDescription || '';
+        if (deepTissueTitlePreview) deepTissueTitlePreview.textContent = data.massageDeepTissueTitle || 'Deep Tissue Massage';
+        if (deepTissueDescPreview) deepTissueDescPreview.textContent = data.massageDeepTissueDescription || 'For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.';
         
-        // Update sauna image preview
-        if (saunaImageUrl) {
-          const preview = document.getElementById('massage-sauna-preview');
-          const pathDisplay = document.getElementById('massage-sauna-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = saunaImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = saunaImageUrl;
-            pathDisplay.style.display = 'block';
-          }
-        }
+        // Reiki Energy Healing
+        const reikiTitleField = document.getElementById('massage-reiki-title');
+        const reikiDescField = document.getElementById('massage-reiki-description');
+        const reikiTitlePreview = document.getElementById('preview-massage-reiki-title');
+        const reikiDescPreview = document.getElementById('preview-massage-reiki-desc');
+        if (reikiTitleField) reikiTitleField.value = data.massageReikiTitle || '';
+        if (reikiDescField) reikiDescField.value = data.massageReikiDescription || '';
+        if (reikiTitlePreview) reikiTitlePreview.textContent = data.massageReikiTitle || 'Reiki Energy Healing';
+        if (reikiDescPreview) reikiDescPreview.textContent = data.massageReikiDescription || 'Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body\'s energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.';
         
-        // Update room booking image preview
-        if (roomBookingImageUrl) {
-          const preview = document.getElementById('massage-room-booking-preview');
-          const pathDisplay = document.getElementById('massage-room-booking-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = roomBookingImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = roomBookingImageUrl;
-            pathDisplay.style.display = 'block';
-          }
-        }
+        // Sauna
+        const saunaTitleField = document.getElementById('massage-sauna-title');
+        const saunaDescField = document.getElementById('massage-sauna-description');
+        const saunaTitlePreview = document.getElementById('preview-massage-sauna-title');
+        const saunaDescPreview = document.getElementById('preview-massage-sauna-desc');
+        if (saunaTitleField) saunaTitleField.value = data.massageSaunaTitle || '';
+        if (saunaDescField) saunaDescField.value = data.massageSaunaDescription || '';
+        if (saunaTitlePreview) saunaTitlePreview.textContent = data.massageSaunaTitle || 'Sauna';
+        if (saunaDescPreview) saunaDescPreview.textContent = data.massageSaunaDescription || 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.';
         
-        // Save to localStorage
-        const stored = localStorage.getItem('btb_massage_images') || '{}';
-        const storedJson = JSON.parse(stored);
-        const massageImagesData = {
-          ...storedJson,
-          relaxing: relaxingImageUrl || storedJson.relaxing || '',
-          deepTissue: deepTissueImageUrl || storedJson.deepTissue || '',
-          reiki: reikiImageUrl || storedJson.reiki || '',
-          sauna: saunaImageUrl || storedJson.sauna || '',
-          roomBooking: roomBookingImageUrl || storedJson.roomBooking || ''
-        };
-        localStorage.setItem('btb_massage_images', JSON.stringify(massageImagesData));
-        console.log('Massage images data saved to localStorage');
+        // Booking title
+        const bookingTitleField = document.getElementById('massage-booking-title');
+        const bookingTitlePreview = document.getElementById('preview-massage-booking-title');
+        if (bookingTitleField) bookingTitleField.value = data.massageBookingTitle || '';
+        if (bookingTitlePreview) bookingTitlePreview.textContent = data.massageBookingTitle || 'Book a massage or sauna';
+        
+        // Load images
+        await loadMassageImagesData(data);
       }
+    }
+  } catch (error) {
+    console.log('Failed to load massage page data:', error);
+  }
+}
+
+// Load massage page images
+async function loadMassageImagesData(data = null) {
+  console.log('Loading massage images data...');
+  try {
+    if (!data) {
+      const formData = new FormData();
+      formData.append('action', 'get_content');
+      
+      const response = await fetch('api.php', {
+        method: 'POST',
+        body: formData
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.data) {
+          data = result.data;
+        }
+      }
+    }
+    
+    if (data) {
+      const relaxingImageUrl = data.massageRelaxingImageUrl || '';
+      const deepTissueImageUrl = data.massageDeepTissueImageUrl || '';
+      const reikiImageUrl = data.massageReikiImageUrl || '';
+      const saunaImageUrl = data.massageSaunaImageUrl || '';
+      const roomBookingImageUrl = data.massageRoomBookingImageUrl || '';
+      
+      // Update image previews in schematic preview
+      const relaxingImg = document.getElementById('preview-massage-relaxing-img');
+      if (relaxingImg && relaxingImageUrl) {
+        relaxingImg.src = relaxingImageUrl + '?v=' + Date.now();
+        relaxingImg.style.display = 'block';
+        relaxingImg.parentElement.querySelector('span').style.display = 'none';
+      }
+      
+      const deepTissueImg = document.getElementById('preview-massage-deep-tissue-img');
+      if (deepTissueImg && deepTissueImageUrl) {
+        deepTissueImg.src = deepTissueImageUrl + '?v=' + Date.now();
+        deepTissueImg.style.display = 'block';
+        deepTissueImg.parentElement.querySelector('span').style.display = 'none';
+      }
+      
+      const reikiImg = document.getElementById('preview-massage-reiki-img');
+      if (reikiImg && reikiImageUrl) {
+        reikiImg.src = reikiImageUrl + '?v=' + Date.now();
+        reikiImg.style.display = 'block';
+        reikiImg.parentElement.querySelector('span').style.display = 'none';
+      }
+      
+      const saunaImg = document.getElementById('preview-massage-sauna-img');
+      if (saunaImg && saunaImageUrl) {
+        saunaImg.src = saunaImageUrl + '?v=' + Date.now();
+        saunaImg.style.display = 'block';
+        saunaImg.parentElement.querySelector('span').style.display = 'none';
+      }
+      
+      const roomBookingImg = document.getElementById('preview-massage-room-booking-img');
+      if (roomBookingImg && roomBookingImageUrl) {
+        roomBookingImg.src = roomBookingImageUrl + '?v=' + Date.now();
+        roomBookingImg.style.display = 'block';
+        roomBookingImg.parentElement.querySelector('span').style.display = 'none';
+      }
+      
+      // Save to localStorage
+      const stored = localStorage.getItem('btb_massage_images') || '{}';
+      const storedJson = JSON.parse(stored);
+      const massageImagesData = {
+        ...storedJson,
+        relaxing: relaxingImageUrl || storedJson.relaxing || '',
+        deepTissue: deepTissueImageUrl || storedJson.deepTissue || '',
+        reiki: reikiImageUrl || storedJson.reiki || '',
+        sauna: saunaImageUrl || storedJson.sauna || '',
+        roomBooking: roomBookingImageUrl || storedJson.roomBooking || ''
+      };
+      localStorage.setItem('btb_massage_images', JSON.stringify(massageImagesData));
+      console.log('Massage images data saved to localStorage');
     }
   } catch (error) {
     console.log('Failed to load massage images data:', error);
@@ -789,57 +828,44 @@ async function loadMassageImagesData() {
 function initMassageImageUpload() {
   const uploadConfigs = [
     {
-      buttonId: 'massage-relaxing-upload-btn',
       inputId: 'massage-relaxing-upload',
-      previewId: 'massage-relaxing-preview',
-      pathId: 'massage-relaxing-path',
+      previewImgId: 'preview-massage-relaxing-img',
       imageType: 'massage-relaxing'
     },
     {
-      buttonId: 'massage-deep-tissue-upload-btn',
       inputId: 'massage-deep-tissue-upload',
-      previewId: 'massage-deep-tissue-preview',
-      pathId: 'massage-deep-tissue-path',
+      previewImgId: 'preview-massage-deep-tissue-img',
       imageType: 'massage-deep-tissue'
     },
     {
-      buttonId: 'massage-reiki-upload-btn',
       inputId: 'massage-reiki-upload',
-      previewId: 'massage-reiki-preview',
-      pathId: 'massage-reiki-path',
+      previewImgId: 'preview-massage-reiki-img',
       imageType: 'massage-reiki'
     },
     {
-      buttonId: 'massage-sauna-upload-btn',
       inputId: 'massage-sauna-upload',
-      previewId: 'massage-sauna-preview',
-      pathId: 'massage-sauna-path',
+      previewImgId: 'preview-massage-sauna-img',
       imageType: 'massage-sauna'
     },
     {
-      buttonId: 'massage-room-booking-upload-btn',
       inputId: 'massage-room-booking-upload',
-      previewId: 'massage-room-booking-preview',
-      pathId: 'massage-room-booking-path',
+      previewImgId: 'preview-massage-room-booking-img',
       imageType: 'massage-room-booking'
     }
   ];
 
   uploadConfigs.forEach(config => {
-    const uploadBtn = document.getElementById(config.buttonId);
     const fileInput = document.getElementById(config.inputId);
-    const preview = document.getElementById(config.previewId);
-    const pathDisplay = document.getElementById(config.pathId);
+    const previewImg = document.getElementById(config.previewImgId);
 
-    if (uploadBtn && fileInput) {
-      uploadBtn.addEventListener('click', () => {
-        fileInput.click();
-      });
-
+    if (fileInput) {
       fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
-        if (file) {
-          await uploadImage(file, config.imageType, preview, pathDisplay, {
+        if (file && previewImg) {
+          const previewContainer = previewImg.parentElement;
+          const placeholderSpan = previewContainer.querySelector('span');
+          
+          await uploadImage(file, config.imageType, null, null, {
             localStorageKey: 'btb_massage_images',
             fieldNameMapper: (type) => {
               const typeMap = {
@@ -861,6 +887,17 @@ function initMassageImageUpload() {
                 'massage-room-booking': 'Room Booking'
               };
               return nameMap[type] || type;
+            },
+            onSuccess: (imageUrl) => {
+              if (previewImg) {
+                previewImg.src = imageUrl + '?v=' + Date.now();
+                previewImg.style.display = 'block';
+                if (placeholderSpan) placeholderSpan.style.display = 'none';
+              }
+              // Trigger auto-save for images
+              if (typeof window.scheduleMassageAutoSave === 'function') {
+                window.scheduleMassageAutoSave();
+              }
             }
           });
         }
@@ -869,63 +906,6 @@ function initMassageImageUpload() {
   });
 }
 
-// Initialize save handler for massage images
-function initMassageSaveHandler() {
-  const saveBtn = document.getElementById('save-massage-images');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', async () => {
-      const relaxingPath = document.getElementById('massage-relaxing-path')?.textContent || '';
-      const deepTissuePath = document.getElementById('massage-deep-tissue-path')?.textContent || '';
-      const reikiPath = document.getElementById('massage-reiki-path')?.textContent || '';
-      const saunaPath = document.getElementById('massage-sauna-path')?.textContent || '';
-      const roomBookingPath = document.getElementById('massage-room-booking-path')?.textContent || '';
-      
-      // Get existing content
-      const stored = localStorage.getItem('btb_content') || '{}';
-      let contentData = {};
-      try {
-        contentData = JSON.parse(stored);
-      } catch (e) {
-        console.error('Failed to parse btb_content:', e);
-      }
-      
-      // Update with massage images
-      contentData.massageRelaxingImageUrl = relaxingPath;
-      contentData.massageDeepTissueImageUrl = deepTissuePath;
-      contentData.massageReikiImageUrl = reikiPath;
-      contentData.massageSaunaImageUrl = saunaPath;
-      contentData.massageRoomBookingImageUrl = roomBookingPath;
-      
-      // Save to localStorage
-      localStorage.setItem('btb_content', JSON.stringify(contentData));
-      
-      // Try to save to server
-      try {
-        const formData = new FormData();
-        formData.append('action', 'save_content');
-        formData.append('massage_relaxing_image_url', relaxingPath);
-        formData.append('massage_deep_tissue_image_url', deepTissuePath);
-        formData.append('massage_reiki_image_url', reikiPath);
-        formData.append('massage_sauna_image_url', saunaPath);
-        formData.append('massage_room_booking_image_url', roomBookingPath);
-        
-        const response = await fetch('api.php', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (response.ok) {
-          showStatus('Massage images saved successfully!');
-        } else {
-          showStatus('Massage images saved to localStorage. Server save may have failed.', 'warning');
-        }
-      } catch (error) {
-        console.error('Error saving massage images:', error);
-        showStatus('Massage images saved to localStorage. Server save failed.', 'warning');
-      }
-    });
-  }
-}
 
 function getDefaultMassageServices() {
   return [
@@ -1398,21 +1378,25 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
     const result = await response.json();
     // Some endpoints wrap payload under data; normalize
     const payload = result && result.data ? result.data : result;
-    const filepath = payload && payload.filepath ? payload.filepath : '';
+    const filepath = payload && payload.filepath ? payload.filepath : (payload && payload.imageUrl ? payload.imageUrl : '');
     
     if (result.success) {
       console.log('Image uploaded successfully:', result);
       
-      // Show preview
-      const img = document.createElement('img');
-      img.src = filepath + '?v=' + Date.now();
-      previewElement.innerHTML = '';
-      previewElement.appendChild(img);
-      previewElement.style.display = 'block';
+      // Show preview (only if previewElement is provided)
+      if (previewElement) {
+        const img = document.createElement('img');
+        img.src = filepath + '?v=' + Date.now();
+        previewElement.innerHTML = '';
+        previewElement.appendChild(img);
+        previewElement.style.display = 'block';
+      }
       
-      // Show path
-      pathElement.textContent = filepath;
-      pathElement.style.display = 'block';
+      // Show path (only if pathElement is provided)
+      if (pathElement) {
+        pathElement.textContent = filepath;
+        pathElement.style.display = 'block';
+      }
       
       // Update schematic preview images
       const previewImageMap = {
@@ -1430,12 +1414,21 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
         'massage-deep-tissue': 'preview-massage-deep-tissue-img',
         'massage-reiki': 'preview-massage-reiki-img',
         'massage-sauna': 'preview-massage-sauna-img',
-        'massage-room-booking': 'preview-massage-room-booking-img'
+        'massage-room-booking': 'preview-massage-room-booking-img',
+        'wellness-massage': 'preview-wellness-massage-img',
+        'wellness-yoga': 'preview-wellness-yoga-img',
+        'wellness-sauna': 'preview-wellness-sauna-img'
       };
       
       const previewImgId = previewImageMap[imageType];
       if (previewImgId) {
-        updatePreviewImage(previewImgId, filepath);
+        const previewImg = document.getElementById(previewImgId);
+        if (previewImg) {
+          previewImg.src = filepath + '?v=' + Date.now();
+          previewImg.style.display = 'block';
+          const span = previewImg.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
+        }
       }
       
       // Update localStorage for immediate site update
@@ -1544,6 +1537,11 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
       
       const imageName = imageNameMapper(imageType);
       showStatus(`${imageName} image uploaded successfully!`);
+      
+      // Call onSuccess callback if provided
+      if (config.onSuccess && typeof config.onSuccess === 'function') {
+        config.onSuccess(filepath);
+      }
       
       // Force reload of data to get updated paths
       if (reloadFunction && typeof reloadFunction === 'function') {
@@ -1730,8 +1728,9 @@ async function uploadHomepageImage(file, imageType, previewElement, pathElement)
 // ==========================================
 
 // Load room basement data
+// Load room basement data (text, banner, gallery)
 async function loadRoomBasementData() {
-  console.log('Loading basement room data...');
+  console.log('Loading room basement page data...');
   try {
     const formData = new FormData();
     formData.append('action', 'get_content');
@@ -1744,64 +1743,299 @@ async function loadRoomBasementData() {
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.data) {
-        const bannerImageUrl = result.data.roomBasementBannerImageUrl || '';
+        const data = result.data;
         
-        // Update banner image preview
-        if (bannerImageUrl) {
-          const preview = document.getElementById('basement-banner-preview');
-          const pathDisplay = document.getElementById('basement-banner-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = bannerImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = bannerImageUrl;
-            pathDisplay.style.display = 'block';
-          }
+        // Hero section
+        const titleField = document.getElementById('room-basement-title');
+        const subtitleField = document.getElementById('room-basement-subtitle');
+        const titlePreview = document.getElementById('preview-room-basement-title');
+        const subtitlePreview = document.getElementById('preview-room-basement-subtitle');
+        if (titleField) titleField.value = data.roomBasementTitle || '';
+        if (subtitleField) subtitleField.value = data.roomBasementSubtitle || '';
+        if (titlePreview) titlePreview.textContent = data.roomBasementTitle || 'Basement — Queen bed';
+        if (subtitlePreview) subtitlePreview.textContent = data.roomBasementSubtitle || 'A cozy room next to the home cinema and sauna. Ideal for two.';
+        
+        // Banner image
+        const bannerImg = document.getElementById('preview-room-basement-banner-img');
+        const bannerImageUrlField = document.getElementById('room-basement-banner-image-url');
+        const bannerImageUrl = result.data.roomBasementBannerImageUrl || '';
+        console.log('Loading banner from API:', bannerImageUrl);
+        if (bannerImageUrlField) {
+          bannerImageUrlField.value = bannerImageUrl;
+          console.log('Banner URL field updated:', bannerImageUrl);
+        }
+        if (bannerImg && bannerImageUrl) {
+          bannerImg.src = bannerImageUrl + '?v=' + Date.now();
+          bannerImg.style.display = 'block';
+          const span = bannerImg.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
+          console.log('Banner preview updated from API');
+        } else if (bannerImg && !bannerImageUrl) {
+          console.log('No banner URL in API, keeping default');
         }
         
-        // Save to localStorage
-        const stored = localStorage.getItem('btb_room_basement') || '{}';
-        const storedJson = JSON.parse(stored);
-        const roomData = {
-          ...storedJson,
-          bannerImageUrl: bannerImageUrl || storedJson.bannerImageUrl || ''
-        };
-        localStorage.setItem('btb_room_basement', JSON.stringify(roomData));
+        // Gallery
+        let gallery = [];
+        try {
+          gallery = JSON.parse(data.roomBasementGallery || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        updateRoomBasementGalleryPreview(gallery);
+        const galleryField = document.getElementById('room-basement-gallery');
+        if (galleryField) galleryField.value = JSON.stringify(gallery);
+        
+        // Booking card
+        const priceField = document.getElementById('room-basement-price');
+        const capacityField = document.getElementById('room-basement-capacity');
+        const descField = document.getElementById('room-basement-description');
+        const noteField = document.getElementById('room-basement-note');
+        const pricePreview = document.getElementById('preview-room-basement-price');
+        const capacityPreview = document.getElementById('preview-room-basement-capacity');
+        const descPreview = document.getElementById('preview-room-basement-desc');
+        const notePreview = document.getElementById('preview-room-basement-note');
+        if (priceField) priceField.value = data.roomBasementPrice || '';
+        if (capacityField) capacityField.value = data.roomBasementCapacity || '';
+        if (descField) descField.value = data.roomBasementDescription || '';
+        if (noteField) noteField.value = data.roomBasementNote || '';
+        if (pricePreview) pricePreview.textContent = data.roomBasementPrice || '<strong>Price:</strong> 140 CAD / night';
+        if (capacityPreview) capacityPreview.textContent = data.roomBasementCapacity || '<strong>Capacity:</strong> up to 2 guests';
+        if (descPreview) descPreview.textContent = data.roomBasementDescription || 'Next to this room there is a home theater lounge with a wood-burning stove and a large shower area with a sauna. The floor has a private exit from the house and a passage to the shared lounge on the first floor.';
+        if (notePreview) notePreview.textContent = data.roomBasementNote || 'The home theater and sauna are shared, but no one will make noise on the floor without your consent. You are free to use them — just make sure any loud sounds won\'t disturb other guests.';
       }
     }
   } catch (error) {
-    console.log('Failed to load basement room data:', error);
+    console.log('Failed to load room basement page data:', error);
   }
 }
 
-// Initialize basement room image upload
-function initRoomBasementImageUpload() {
-  const uploadBtn = document.getElementById('basement-banner-upload-btn');
-  const fileInput = document.getElementById('basement-banner-upload');
-  const preview = document.getElementById('basement-banner-preview');
-  const pathDisplay = document.getElementById('basement-banner-path');
+// Update gallery preview
+function updateRoomBasementGalleryPreview(gallery) {
+  const galleryPreview = document.getElementById('room-basement-gallery-preview');
+  if (!galleryPreview) return;
+  
+  galleryPreview.innerHTML = '';
+  
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText = 'position: relative; width: 120px; height: 120px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+    
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Заменить';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceBasementGalleryImage(index);
+    };
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; font-size: 1.2rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteBasementGalleryImage(index);
+    };
+    
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+  
+  // Show add button if less than 10 photos
+  if (gallery.length < 10) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText = 'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
+    addItem.onclick = () => document.getElementById('room-basement-gallery-upload').click();
+    galleryPreview.appendChild(addItem);
+  }
+}
 
-  if (uploadBtn && fileInput) {
-    uploadBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async (e) => {
+// Replace gallery image
+window.replaceBasementGalleryImage = function(index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadBasementGalleryImage(file, index);
+    }
+  };
+  input.click();
+};
+
+// Delete gallery image
+window.deleteBasementGalleryImage = function(index) {
+  const galleryField = document.getElementById('room-basement-gallery');
+  if (!galleryField) return;
+  
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse gallery:', e);
+    return;
+  }
+  
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateRoomBasementGalleryPreview(gallery);
+  
+  if (typeof window.scheduleRoomBasementAutoSave === 'function') {
+    if (typeof roomBasementHasUnsavedChanges !== 'undefined') {
+      roomBasementHasUnsavedChanges = true;
+    }
+    window.scheduleRoomBasementAutoSave();
+  }
+};
+
+// Upload gallery image
+async function uploadBasementGalleryImage(file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', 'room-basement-gallery');
+    formData.append('image', file);
+    
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      // Extract imageUrl from response (can be in result.data or result directly)
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl ? payload.imageUrl : (payload && payload.filepath ? payload.filepath : (result.imageUrl || result.filepath || ''));
+      console.log('Gallery image upload result:', result);
+      console.log('Extracted imageUrl:', imageUrl);
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById('room-basement-gallery');
+        if (!galleryField) return;
+        
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else {
+          if (gallery.length < 10) {
+            gallery.push(imageUrl);
+          } else {
+            alert('Maximum 10 photos allowed in gallery');
+            return;
+          }
+        }
+        
+        galleryField.value = JSON.stringify(gallery);
+        updateRoomBasementGalleryPreview(gallery);
+        
+        if (typeof window.scheduleRoomBasementAutoSave === 'function') {
+          if (typeof roomBasementHasUnsavedChanges !== 'undefined') {
+            roomBasementHasUnsavedChanges = true;
+          }
+          window.scheduleRoomBasementAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading gallery image:', error);
+  }
+}
+
+// Initialize room basement image upload
+function initRoomBasementImageUpload() {
+  // Banner upload
+  const bannerInput = document.getElementById('room-basement-banner-upload');
+  if (bannerInput) {
+    bannerInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (file) {
-        await uploadImage(file, 'basement-banner', preview, pathDisplay, {
+        const bannerImg = document.getElementById('preview-room-basement-banner-img');
+        await uploadImage(file, 'basement-banner', null, null, {
           localStorageKey: 'btb_room_basement',
           fieldNameMapper: () => 'bannerImageUrl',
           reloadFunction: loadRoomBasementData,
-          imageNameMapper: () => 'Basement Banner'
+          imageNameMapper: () => 'Basement Banner',
+          onSuccess: (imageUrl) => {
+            console.log('Banner uploaded successfully, URL:', imageUrl);
+            const bannerImageUrlField = document.getElementById('room-basement-banner-image-url');
+            if (bannerImageUrlField) {
+              bannerImageUrlField.value = imageUrl;
+              console.log('Banner URL saved to hidden field:', imageUrl);
+            }
+            if (bannerImg) {
+              bannerImg.src = imageUrl + '?v=' + Date.now();
+              bannerImg.style.display = 'block';
+              const span = bannerImg.parentElement.querySelector('span');
+              if (span) span.style.display = 'none';
+              console.log('Banner preview updated in admin');
+            }
+            // Banner is saved automatically by upload_image.php to room_basement_banner_image_url
+            // Reload data to ensure consistency
+            setTimeout(() => {
+              console.log('Reloading room basement data after banner upload...');
+              loadRoomBasementData();
+            }, 1000);
+          }
         });
       }
+    });
+  }
+  
+  // Gallery upload
+  const galleryInput = document.getElementById('room-basement-gallery-upload');
+  const addGalleryBtn = document.getElementById('room-basement-add-gallery-photo');
+  
+  if (addGalleryBtn) {
+    addGalleryBtn.addEventListener('click', () => {
+      if (galleryInput) galleryInput.click();
+    });
+  }
+  
+  if (galleryInput) {
+    galleryInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      const galleryField = document.getElementById('room-basement-gallery');
+      if (!galleryField) return;
+      
+      let gallery = [];
+      try {
+        gallery = JSON.parse(galleryField.value || '[]');
+      } catch (e) {
+        console.error('Failed to parse gallery:', e);
+      }
+      
+      const remainingSlots = 10 - gallery.length;
+      if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+        files.splice(remainingSlots);
+      }
+      
+      for (const file of files) {
+        await uploadBasementGalleryImage(file);
+      }
+      
+      e.target.value = ''; // Reset input
     });
   }
 }
 
 // Load room ground queen data
+// Load room ground queen data (text, banner, gallery)
 async function loadRoomGroundQueenData() {
-  console.log('Loading ground queen room data...');
+  console.log('Loading room ground queen page data...');
   try {
     const formData = new FormData();
     formData.append('action', 'get_content');
@@ -1814,54 +2048,291 @@ async function loadRoomGroundQueenData() {
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.data) {
-        const bannerImageUrl = result.data.roomGroundQueenBannerImageUrl || '';
+        const data = result.data;
         
-        if (bannerImageUrl) {
-          const preview = document.getElementById('ground-queen-banner-preview');
-          const pathDisplay = document.getElementById('ground-queen-banner-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = bannerImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = bannerImageUrl;
-            pathDisplay.style.display = 'block';
-          }
+        // Hero section
+        const titleField = document.getElementById('room-ground-queen-title');
+        const subtitleField = document.getElementById('room-ground-queen-subtitle');
+        const titlePreview = document.getElementById('preview-room-ground-queen-title');
+        const subtitlePreview = document.getElementById('preview-room-ground-queen-subtitle');
+        if (titleField) titleField.value = data.roomGroundQueenTitle || '';
+        if (subtitleField) subtitleField.value = data.roomGroundQueenSubtitle || '';
+        if (titlePreview) titlePreview.textContent = data.roomGroundQueenTitle || 'Ground floor — Queen bed';
+        if (subtitlePreview) subtitlePreview.textContent = data.roomGroundQueenSubtitle || 'Bright room near the living room with fireplace. Ideal for two.';
+        
+        // Banner image
+        const bannerImg = document.getElementById('preview-room-ground-queen-banner-img');
+        const bannerImageUrlField = document.getElementById('room-ground-queen-banner-image-url');
+        const bannerImageUrl = result.data.roomGroundQueenBannerImageUrl || '';
+        console.log('Loading banner from API:', bannerImageUrl);
+        if (bannerImageUrlField) {
+          bannerImageUrlField.value = bannerImageUrl;
+          console.log('Banner URL field updated:', bannerImageUrl);
+        }
+        if (bannerImg && bannerImageUrl) {
+          bannerImg.src = bannerImageUrl + '?v=' + Date.now();
+          bannerImg.style.display = 'block';
+          const span = bannerImg.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
+          console.log('Banner preview updated from API');
+        } else if (bannerImg && !bannerImageUrl) {
+          console.log('No banner URL in API, keeping default');
         }
         
-        const stored = localStorage.getItem('btb_room_ground_queen') || '{}';
-        const storedJson = JSON.parse(stored);
-        const roomData = {
-          ...storedJson,
-          bannerImageUrl: bannerImageUrl || storedJson.bannerImageUrl || ''
-        };
-        localStorage.setItem('btb_room_ground_queen', JSON.stringify(roomData));
+        // Gallery
+        let gallery = [];
+        try {
+          gallery = JSON.parse(data.roomGroundQueenGallery || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        updateRoomGroundQueenGalleryPreview(gallery);
+        const galleryField = document.getElementById('room-ground-queen-gallery');
+        if (galleryField) galleryField.value = JSON.stringify(gallery);
+        
+        // Booking card
+        const priceField = document.getElementById('room-ground-queen-price');
+        const capacityField = document.getElementById('room-ground-queen-capacity');
+        const descField = document.getElementById('room-ground-queen-description');
+        const noteField = document.getElementById('room-ground-queen-note');
+        const pricePreview = document.getElementById('preview-room-ground-queen-price');
+        const capacityPreview = document.getElementById('preview-room-ground-queen-capacity');
+        const descPreview = document.getElementById('preview-room-ground-queen-desc');
+        const notePreview = document.getElementById('preview-room-ground-queen-note');
+        if (priceField) priceField.value = data.roomGroundQueenPrice || '';
+        if (capacityField) capacityField.value = data.roomGroundQueenCapacity || '';
+        if (descField) descField.value = data.roomGroundQueenDescription || '';
+        if (noteField) noteField.value = data.roomGroundQueenNote || '';
+        if (pricePreview) pricePreview.textContent = data.roomGroundQueenPrice || '<strong>Price:</strong> 130 CAD / night';
+        if (capacityPreview) capacityPreview.textContent = data.roomGroundQueenCapacity || '<strong>Capacity:</strong> up to 2 guests';
+        if (descPreview) descPreview.textContent = data.roomGroundQueenDescription || 'A small but bright room with a large double bed. A shared bathroom with a spacious bathtub is located nearby. The location of the room makes it a perfect spot for socializing and relaxing in the house\'s common areas. With convenient access to the living room with a fireplace, guests can unwind by the fire and connect with others.';
+        if (notePreview) notePreview.textContent = data.roomGroundQueenNote || '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.';
       }
     }
   } catch (error) {
-    console.log('Failed to load ground queen room data:', error);
+    console.log('Failed to load room ground queen page data:', error);
   }
 }
 
-function initRoomGroundQueenImageUpload() {
-  const uploadBtn = document.getElementById('ground-queen-banner-upload-btn');
-  const fileInput = document.getElementById('ground-queen-banner-upload');
-  const preview = document.getElementById('ground-queen-banner-preview');
-  const pathDisplay = document.getElementById('ground-queen-banner-path');
+// Update gallery preview
+function updateRoomGroundQueenGalleryPreview(gallery) {
+  const galleryPreview = document.getElementById('room-ground-queen-gallery-preview');
+  if (!galleryPreview) return;
+  
+  galleryPreview.innerHTML = '';
+  
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText = 'position: relative; width: 120px; height: 120px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+    
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Заменить';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceGroundQueenGalleryImage(index);
+    };
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; font-size: 1.2rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteGroundQueenGalleryImage(index);
+    };
+    
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+  
+  // Show add button if less than 10 photos
+  if (gallery.length < 10) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText = 'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
+    addItem.onclick = () => document.getElementById('room-ground-queen-gallery-upload').click();
+    galleryPreview.appendChild(addItem);
+  }
+}
 
-  if (uploadBtn && fileInput) {
-    uploadBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async (e) => {
+// Replace gallery image
+window.replaceGroundQueenGalleryImage = function(index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadGroundQueenGalleryImage(file, index);
+    }
+  };
+  input.click();
+};
+
+// Delete gallery image
+window.deleteGroundQueenGalleryImage = function(index) {
+  const galleryField = document.getElementById('room-ground-queen-gallery');
+  if (!galleryField) return;
+  
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse gallery:', e);
+    return;
+  }
+  
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateRoomGroundQueenGalleryPreview(gallery);
+  
+  if (typeof window.scheduleRoomGroundQueenAutoSave === 'function') {
+    if (typeof roomGroundQueenHasUnsavedChanges !== 'undefined') {
+      roomGroundQueenHasUnsavedChanges = true;
+    }
+    window.scheduleRoomGroundQueenAutoSave();
+  }
+};
+
+// Upload gallery image
+async function uploadGroundQueenGalleryImage(file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', 'room-ground-queen-gallery');
+    formData.append('image', file);
+    
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      // Extract imageUrl from response (can be in result.data or result directly)
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl ? payload.imageUrl : (payload && payload.filepath ? payload.filepath : (result.imageUrl || result.filepath || ''));
+      console.log('Gallery image upload result:', result);
+      console.log('Extracted imageUrl:', imageUrl);
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById('room-ground-queen-gallery');
+        if (!galleryField) return;
+        
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else {
+          if (gallery.length < 10) {
+            gallery.push(imageUrl);
+          } else {
+            alert('Maximum 10 photos allowed in gallery');
+            return;
+          }
+        }
+        
+        galleryField.value = JSON.stringify(gallery);
+        updateRoomGroundQueenGalleryPreview(gallery);
+        
+        if (typeof window.scheduleRoomGroundQueenAutoSave === 'function') {
+          if (typeof roomGroundQueenHasUnsavedChanges !== 'undefined') {
+            roomGroundQueenHasUnsavedChanges = true;
+          }
+          window.scheduleRoomGroundQueenAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading gallery image:', error);
+  }
+}
+
+// Initialize room ground queen image upload
+function initRoomGroundQueenImageUpload() {
+  // Banner upload
+  const bannerInput = document.getElementById('room-ground-queen-banner-upload');
+  if (bannerInput) {
+    bannerInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (file) {
-        await uploadImage(file, 'ground-queen-banner', preview, pathDisplay, {
+        const bannerImg = document.getElementById('preview-room-ground-queen-banner-img');
+        await uploadImage(file, 'ground-queen-banner', null, null, {
           localStorageKey: 'btb_room_ground_queen',
           fieldNameMapper: () => 'bannerImageUrl',
           reloadFunction: loadRoomGroundQueenData,
-          imageNameMapper: () => 'Ground Queen Banner'
+          imageNameMapper: () => 'Ground Queen Banner',
+          onSuccess: (imageUrl) => {
+            console.log('Banner uploaded successfully, URL:', imageUrl);
+            const bannerImageUrlField = document.getElementById('room-ground-queen-banner-image-url');
+            if (bannerImageUrlField) {
+              bannerImageUrlField.value = imageUrl;
+              console.log('Banner URL saved to hidden field:', imageUrl);
+            }
+            if (bannerImg) {
+              bannerImg.src = imageUrl + '?v=' + Date.now();
+              bannerImg.style.display = 'block';
+              const span = bannerImg.parentElement.querySelector('span');
+              if (span) span.style.display = 'none';
+              console.log('Banner preview updated in admin');
+            }
+            // Banner is saved automatically by upload_image.php to room_ground_queen_banner_image_url
+            // Reload data to ensure consistency
+            setTimeout(() => {
+              console.log('Reloading room ground queen data after banner upload...');
+              loadRoomGroundQueenData();
+            }, 1000);
+          }
         });
       }
+    });
+  }
+  
+  // Gallery upload
+  const galleryInput = document.getElementById('room-ground-queen-gallery-upload');
+  const addGalleryBtn = document.getElementById('room-ground-queen-add-gallery-photo');
+  
+  if (addGalleryBtn) {
+    addGalleryBtn.addEventListener('click', () => {
+      if (galleryInput) galleryInput.click();
+    });
+  }
+  
+  if (galleryInput) {
+    galleryInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      const galleryField = document.getElementById('room-ground-queen-gallery');
+      if (!galleryField) return;
+      
+      let gallery = [];
+      try {
+        gallery = JSON.parse(galleryField.value || '[]');
+      } catch (e) {
+        console.error('Failed to parse gallery:', e);
+      }
+      
+      const remainingSlots = 10 - gallery.length;
+      if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+        files.splice(remainingSlots);
+      }
+      
+      for (const file of files) {
+        await uploadGroundQueenGalleryImage(file);
+      }
+      
+      e.target.value = ''; // Reset input
     });
   }
 }
@@ -1911,31 +2382,9 @@ async function loadRoomGroundTwinData() {
   }
 }
 
-function initRoomGroundTwinImageUpload() {
-  const uploadBtn = document.getElementById('ground-twin-banner-upload-btn');
-  const fileInput = document.getElementById('ground-twin-banner-upload');
-  const preview = document.getElementById('ground-twin-banner-preview');
-  const pathDisplay = document.getElementById('ground-twin-banner-path');
-
-  if (uploadBtn && fileInput) {
-    uploadBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        await uploadImage(file, 'ground-twin-banner', preview, pathDisplay, {
-          localStorageKey: 'btb_room_ground_twin',
-          fieldNameMapper: () => 'bannerImageUrl',
-          reloadFunction: loadRoomGroundTwinData,
-          imageNameMapper: () => 'Ground Twin Banner'
-        });
-      }
-    });
-  }
-}
-
-// Load room second data
-async function loadRoomSecondData() {
-  console.log('Loading second floor room data...');
+// Load room ground twin data (text, banner, gallery)
+async function loadRoomGroundTwinData() {
+  console.log('Loading room ground twin page data...');
   try {
     const formData = new FormData();
     formData.append('action', 'get_content');
@@ -1948,54 +2397,587 @@ async function loadRoomSecondData() {
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.data) {
-        const bannerImageUrl = result.data.roomSecondBannerImageUrl || '';
+        const data = result.data;
         
-        if (bannerImageUrl) {
-          const preview = document.getElementById('second-banner-preview');
-          const pathDisplay = document.getElementById('second-banner-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = bannerImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = bannerImageUrl;
-            pathDisplay.style.display = 'block';
-          }
+        // Hero section
+        const titleField = document.getElementById('room-ground-twin-title');
+        const subtitleField = document.getElementById('room-ground-twin-subtitle');
+        const titlePreview = document.getElementById('preview-room-ground-twin-title');
+        const subtitlePreview = document.getElementById('preview-room-ground-twin-subtitle');
+        if (titleField) titleField.value = data.roomGroundTwinTitle || '';
+        if (subtitleField) subtitleField.value = data.roomGroundTwinSubtitle || '';
+        if (titlePreview) titlePreview.textContent = data.roomGroundTwinTitle || 'Ground floor — Twin beds';
+        if (subtitlePreview) subtitlePreview.textContent = data.roomGroundTwinSubtitle || 'Great for friends or colleagues. Close to the kitchen and massage hall.';
+        
+        // Banner image
+        const bannerImg = document.getElementById('preview-room-ground-twin-banner-img');
+        const bannerImageUrlField = document.getElementById('room-ground-twin-banner-image-url');
+        const bannerImageUrl = result.data.roomGroundTwinBannerImageUrl || '';
+        console.log('Loading banner from API:', bannerImageUrl);
+        if (bannerImageUrlField) {
+          bannerImageUrlField.value = bannerImageUrl;
+          console.log('Banner URL field updated:', bannerImageUrl);
+        }
+        if (bannerImg && bannerImageUrl) {
+          bannerImg.src = bannerImageUrl + '?v=' + Date.now();
+          bannerImg.style.display = 'block';
+          const span = bannerImg.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
+          console.log('Banner preview updated from API');
+        } else if (bannerImg && !bannerImageUrl) {
+          console.log('No banner URL in API, keeping default');
         }
         
-        const stored = localStorage.getItem('btb_room_second') || '{}';
-        const storedJson = JSON.parse(stored);
-        const roomData = {
-          ...storedJson,
-          bannerImageUrl: bannerImageUrl || storedJson.bannerImageUrl || ''
-        };
-        localStorage.setItem('btb_room_second', JSON.stringify(roomData));
+        // Gallery
+        let gallery = [];
+        try {
+          gallery = JSON.parse(data.roomGroundTwinGallery || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        updateRoomGroundTwinGalleryPreview(gallery);
+        const galleryField = document.getElementById('room-ground-twin-gallery');
+        if (galleryField) galleryField.value = JSON.stringify(gallery);
+        
+        // Booking card
+        const priceField = document.getElementById('room-ground-twin-price');
+        const capacityField = document.getElementById('room-ground-twin-capacity');
+        const descField = document.getElementById('room-ground-twin-description');
+        const noteField = document.getElementById('room-ground-twin-note');
+        const pricePreview = document.getElementById('preview-room-ground-twin-price');
+        const capacityPreview = document.getElementById('preview-room-ground-twin-capacity');
+        const descPreview = document.getElementById('preview-room-ground-twin-desc');
+        const notePreview = document.getElementById('preview-room-ground-twin-note');
+        if (priceField) priceField.value = data.roomGroundTwinPrice || '';
+        if (capacityField) capacityField.value = data.roomGroundTwinCapacity || '';
+        if (descField) descField.value = data.roomGroundTwinDescription || '';
+        if (noteField) noteField.value = data.roomGroundTwinNote || '';
+        if (pricePreview) pricePreview.textContent = data.roomGroundTwinPrice || '<strong>Price:</strong> 125 CAD / night';
+        if (capacityPreview) capacityPreview.textContent = data.roomGroundTwinCapacity || '<strong>Capacity:</strong> up to 2 guests';
+        if (descPreview) descPreview.textContent = data.roomGroundTwinDescription || 'A comfortable room with two twin beds, perfect for friends or colleagues traveling together. The room is located on the ground floor, close to the shared kitchen and massage hall, making it convenient for guests who want to socialize or use the common areas.';
+        if (notePreview) notePreview.textContent = data.roomGroundTwinNote || '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.';
       }
     }
   } catch (error) {
-    console.log('Failed to load second floor room data:', error);
+    console.log('Failed to load room ground twin page data:', error);
   }
 }
 
-function initRoomSecondImageUpload() {
-  const uploadBtn = document.getElementById('second-banner-upload-btn');
-  const fileInput = document.getElementById('second-banner-upload');
-  const preview = document.getElementById('second-banner-preview');
-  const pathDisplay = document.getElementById('second-banner-path');
+// Update gallery preview
+function updateRoomGroundTwinGalleryPreview(gallery) {
+  const galleryPreview = document.getElementById('room-ground-twin-gallery-preview');
+  if (!galleryPreview) return;
+  
+  galleryPreview.innerHTML = '';
+  
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText = 'position: relative; width: 120px; height: 120px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+    
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Заменить';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceGroundTwinGalleryImage(index);
+    };
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; font-size: 1.2rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteGroundTwinGalleryImage(index);
+    };
+    
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+  
+  // Show add button if less than 10 photos
+  if (gallery.length < 10) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText = 'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
+    addItem.onclick = () => document.getElementById('room-ground-twin-gallery-upload').click();
+    galleryPreview.appendChild(addItem);
+  }
+}
 
-  if (uploadBtn && fileInput) {
-    uploadBtn.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', async (e) => {
+// Replace gallery image
+window.replaceGroundTwinGalleryImage = function(index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadGroundTwinGalleryImage(file, index);
+    }
+  };
+  input.click();
+};
+
+// Delete gallery image
+window.deleteGroundTwinGalleryImage = function(index) {
+  const galleryField = document.getElementById('room-ground-twin-gallery');
+  if (!galleryField) return;
+  
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse gallery:', e);
+    return;
+  }
+  
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateRoomGroundTwinGalleryPreview(gallery);
+  
+  if (typeof window.scheduleRoomGroundTwinAutoSave === 'function') {
+    if (typeof roomGroundTwinHasUnsavedChanges !== 'undefined') {
+      roomGroundTwinHasUnsavedChanges = true;
+    }
+    window.scheduleRoomGroundTwinAutoSave();
+  }
+};
+
+// Upload gallery image
+async function uploadGroundTwinGalleryImage(file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', 'room-ground-twin-gallery');
+    formData.append('image', file);
+    
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      // Extract imageUrl from response (can be in result.data or result directly)
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl ? payload.imageUrl : (payload && payload.filepath ? payload.filepath : (result.imageUrl || result.filepath || ''));
+      console.log('Gallery image upload result:', result);
+      console.log('Extracted imageUrl:', imageUrl);
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById('room-ground-twin-gallery');
+        if (!galleryField) return;
+        
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else {
+          if (gallery.length < 10) {
+            gallery.push(imageUrl);
+          } else {
+            alert('Maximum 10 photos allowed in gallery');
+            return;
+          }
+        }
+        
+        galleryField.value = JSON.stringify(gallery);
+        updateRoomGroundTwinGalleryPreview(gallery);
+        
+        if (typeof window.scheduleRoomGroundTwinAutoSave === 'function') {
+          if (typeof roomGroundTwinHasUnsavedChanges !== 'undefined') {
+            roomGroundTwinHasUnsavedChanges = true;
+          }
+          window.scheduleRoomGroundTwinAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading gallery image:', error);
+  }
+}
+
+// Initialize room ground twin image upload
+function initRoomGroundTwinImageUpload() {
+  // Banner upload
+  const bannerInput = document.getElementById('room-ground-twin-banner-upload');
+  if (bannerInput) {
+    bannerInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (file) {
-        await uploadImage(file, 'second-banner', preview, pathDisplay, {
+        const bannerImg = document.getElementById('preview-room-ground-twin-banner-img');
+        await uploadImage(file, 'ground-twin-banner', null, null, {
+          localStorageKey: 'btb_room_ground_twin',
+          fieldNameMapper: () => 'bannerImageUrl',
+          reloadFunction: loadRoomGroundTwinData,
+          imageNameMapper: () => 'Ground Twin Banner',
+          onSuccess: (imageUrl) => {
+            console.log('Banner uploaded successfully, URL:', imageUrl);
+            const bannerImageUrlField = document.getElementById('room-ground-twin-banner-image-url');
+            if (bannerImageUrlField) {
+              bannerImageUrlField.value = imageUrl;
+              console.log('Banner URL saved to hidden field:', imageUrl);
+            }
+            if (bannerImg) {
+              bannerImg.src = imageUrl + '?v=' + Date.now();
+              bannerImg.style.display = 'block';
+              const span = bannerImg.parentElement.querySelector('span');
+              if (span) span.style.display = 'none';
+              console.log('Banner preview updated in admin');
+            }
+            // Banner is saved automatically by upload_image.php to room_ground_twin_banner_image_url
+            // Reload data to ensure consistency
+            setTimeout(() => {
+              console.log('Reloading room ground twin data after banner upload...');
+              loadRoomGroundTwinData();
+            }, 1000);
+          }
+        });
+      }
+    });
+  }
+  
+  // Gallery upload
+  const galleryInput = document.getElementById('room-ground-twin-gallery-upload');
+  const addGalleryBtn = document.getElementById('room-ground-twin-add-gallery-photo');
+  
+  if (addGalleryBtn) {
+    addGalleryBtn.addEventListener('click', () => {
+      if (galleryInput) galleryInput.click();
+    });
+  }
+  
+  if (galleryInput) {
+    galleryInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      const galleryField = document.getElementById('room-ground-twin-gallery');
+      if (!galleryField) return;
+      
+      let gallery = [];
+      try {
+        gallery = JSON.parse(galleryField.value || '[]');
+      } catch (e) {
+        console.error('Failed to parse gallery:', e);
+      }
+      
+      const remainingSlots = 10 - gallery.length;
+      if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+        files.splice(remainingSlots);
+      }
+      
+      for (const file of files) {
+        await uploadGroundTwinGalleryImage(file);
+      }
+      
+      e.target.value = ''; // Reset input
+    });
+  }
+}
+
+// Load room second data (text, banner, gallery)
+async function loadRoomSecondData() {
+  console.log('Loading room second page data...');
+  try {
+    const formData = new FormData();
+    formData.append('action', 'get_content');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        const data = result.data;
+        
+        // Hero section
+        const titleField = document.getElementById('room-second-title');
+        const subtitleField = document.getElementById('room-second-subtitle');
+        const titlePreview = document.getElementById('preview-room-second-title');
+        const subtitlePreview = document.getElementById('preview-room-second-subtitle');
+        if (titleField) titleField.value = data.roomSecondTitle || '';
+        if (subtitleField) subtitleField.value = data.roomSecondSubtitle || '';
+        if (titlePreview) titlePreview.textContent = data.roomSecondTitle || 'Second floor (entire) — Queen bed';
+        if (subtitlePreview) subtitlePreview.textContent = data.roomSecondSubtitle || 'A private loft under the roof: bedroom, kitchenette, shower, study and balcony.';
+        
+        // Banner image
+        const bannerImg = document.getElementById('preview-room-second-banner-img');
+        const bannerImageUrlField = document.getElementById('room-second-banner-image-url');
+        const bannerImageUrl = result.data.roomSecondBannerImageUrl || '';
+        console.log('Loading banner from API:', bannerImageUrl);
+        if (bannerImageUrlField) {
+          bannerImageUrlField.value = bannerImageUrl;
+          console.log('Banner URL field updated:', bannerImageUrl);
+        }
+        if (bannerImg && bannerImageUrl) {
+          bannerImg.src = bannerImageUrl + '?v=' + Date.now();
+          bannerImg.style.display = 'block';
+          const span = bannerImg.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
+          console.log('Banner preview updated from API');
+        } else if (bannerImg && !bannerImageUrl) {
+          console.log('No banner URL in API, keeping default');
+        }
+        
+        // Gallery
+        let gallery = [];
+        try {
+          gallery = JSON.parse(data.roomSecondGallery || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        updateRoomSecondGalleryPreview(gallery);
+        const galleryField = document.getElementById('room-second-gallery');
+        if (galleryField) galleryField.value = JSON.stringify(gallery);
+        
+        // Booking card
+        const priceField = document.getElementById('room-second-price');
+        const capacityField = document.getElementById('room-second-capacity');
+        const descField = document.getElementById('room-second-description');
+        const noteField = document.getElementById('room-second-note');
+        const pricePreview = document.getElementById('preview-room-second-price');
+        const capacityPreview = document.getElementById('preview-room-second-capacity');
+        const descPreview = document.getElementById('preview-room-second-desc');
+        const notePreview = document.getElementById('preview-room-second-note');
+        if (priceField) priceField.value = data.roomSecondPrice || '';
+        if (capacityField) capacityField.value = data.roomSecondCapacity || '';
+        if (descField) descField.value = data.roomSecondDescription || '';
+        if (noteField) noteField.value = data.roomSecondNote || '';
+        if (pricePreview) pricePreview.textContent = data.roomSecondPrice || '<strong>Price:</strong> 210 CAD / night (entire floor)';
+        if (capacityPreview) capacityPreview.textContent = data.roomSecondCapacity || '<strong>Capacity:</strong> up to 2 guests';
+        if (descPreview) descPreview.textContent = data.roomSecondDescription || 'A fully private floor featuring a large living area with a king-size bed, a separate kitchen, a private bathroom with a shower, a bright workspace, and a spacious balcony with stunning views of the lake and mountains.';
+        if (notePreview) notePreview.textContent = data.roomSecondNote || '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.';
+      }
+    }
+  } catch (error) {
+    console.log('Failed to load room second page data:', error);
+  }
+}
+
+// Update gallery preview
+function updateRoomSecondGalleryPreview(gallery) {
+  const galleryPreview = document.getElementById('room-second-gallery-preview');
+  if (!galleryPreview) return;
+  
+  galleryPreview.innerHTML = '';
+  
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText = 'position: relative; width: 120px; height: 120px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+    
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Заменить';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceGalleryImage(index);
+    };
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText = 'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; font-size: 1.2rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteGalleryImage(index);
+    };
+    
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+  
+  // Show add button if less than 10 photos
+  if (gallery.length < 10) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText = 'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
+    addItem.onclick = () => document.getElementById('room-second-gallery-upload').click();
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+// Replace gallery image
+window.replaceGalleryImage = function(index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadGalleryImage(file, index);
+    }
+  };
+  input.click();
+};
+
+// Delete gallery image
+window.deleteGalleryImage = function(index) {
+  const galleryField = document.getElementById('room-second-gallery');
+  if (!galleryField) return;
+  
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse gallery:', e);
+    return;
+  }
+  
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateRoomSecondGalleryPreview(gallery);
+  
+  if (typeof window.scheduleRoomSecondAutoSave === 'function') {
+    if (typeof roomSecondHasUnsavedChanges !== 'undefined') {
+      roomSecondHasUnsavedChanges = true;
+    }
+    window.scheduleRoomSecondAutoSave();
+  }
+};
+
+// Upload gallery image
+async function uploadGalleryImage(file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', 'room-second-gallery');
+    formData.append('image', file);
+    
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      // Extract imageUrl from response (can be in result.data or result directly)
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl ? payload.imageUrl : (payload && payload.filepath ? payload.filepath : (result.imageUrl || result.filepath || ''));
+      console.log('Gallery image upload result:', result);
+      console.log('Extracted imageUrl:', imageUrl);
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById('room-second-gallery');
+        if (!galleryField) return;
+        
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else {
+          if (gallery.length < 10) {
+            gallery.push(imageUrl);
+          } else {
+            alert('Maximum 10 photos allowed in gallery');
+            return;
+          }
+        }
+        
+        galleryField.value = JSON.stringify(gallery);
+        updateRoomSecondGalleryPreview(gallery);
+        
+        if (typeof window.scheduleRoomSecondAutoSave === 'function') {
+          if (typeof roomSecondHasUnsavedChanges !== 'undefined') {
+            roomSecondHasUnsavedChanges = true;
+          }
+          window.scheduleRoomSecondAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading gallery image:', error);
+  }
+}
+
+// Initialize room second image upload
+function initRoomSecondImageUpload() {
+  // Banner upload
+  const bannerInput = document.getElementById('room-second-banner-upload');
+  if (bannerInput) {
+    bannerInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const bannerImg = document.getElementById('preview-room-second-banner-img');
+        await uploadImage(file, 'second-banner', null, null, {
           localStorageKey: 'btb_room_second',
           fieldNameMapper: () => 'bannerImageUrl',
           reloadFunction: loadRoomSecondData,
-          imageNameMapper: () => 'Second Floor Banner'
+          imageNameMapper: () => 'Second Floor Banner',
+          onSuccess: (imageUrl) => {
+            const bannerImageUrlField = document.getElementById('room-second-banner-image-url');
+            if (bannerImageUrlField) bannerImageUrlField.value = imageUrl;
+            if (bannerImg) {
+              bannerImg.src = imageUrl + '?v=' + Date.now();
+              bannerImg.style.display = 'block';
+              bannerImg.parentElement.querySelector('span').style.display = 'none';
+            }
+            // Banner is saved automatically by upload_image.php, but we can trigger a reload to ensure consistency
+            setTimeout(() => {
+              loadRoomSecondData();
+            }, 500);
+          }
         });
       }
+    });
+  }
+  
+  // Gallery upload
+  const galleryInput = document.getElementById('room-second-gallery-upload');
+  const addGalleryBtn = document.getElementById('room-second-add-gallery-photo');
+  
+  if (addGalleryBtn) {
+    addGalleryBtn.addEventListener('click', () => {
+      if (galleryInput) galleryInput.click();
+    });
+  }
+  
+  if (galleryInput) {
+    galleryInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      const galleryField = document.getElementById('room-second-gallery');
+      if (!galleryField) return;
+      
+      let gallery = [];
+      try {
+        gallery = JSON.parse(galleryField.value || '[]');
+      } catch (e) {
+        console.error('Failed to parse gallery:', e);
+      }
+      
+      const remainingSlots = 10 - gallery.length;
+      if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+        files.splice(remainingSlots);
+      }
+      
+      for (const file of files) {
+        await uploadGalleryImage(file);
+      }
+      
+      e.target.value = ''; // Reset input
     });
   }
 }
@@ -2104,6 +3086,12 @@ function initRetreatHelperUI() {
   retreatHelperInitialized = true;
   
   const fillBtn = document.getElementById('retreat-fill-missing');
+  if (!fillBtn) {
+    retreatHelperInitialized = true;
+    updateRetreatContentStatus();
+    return;
+  }
+
   if (fillBtn) {
     fillBtn.addEventListener('click', (event) => {
       const fillAll = event.shiftKey;
@@ -2122,16 +3110,8 @@ function initRetreatHelperUI() {
         }
       }
     });
-  }
-  
-  const previewBtn = document.getElementById('retreat-scroll-preview');
-  if (previewBtn) {
-    previewBtn.addEventListener('click', () => {
-      const preview = document.querySelector('#retreat-workshop-section .schematic-preview');
-      if (preview) {
-        preview.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    });
+  } else {
+    updateRetreatContentStatus();
   }
   
   section.querySelectorAll('input, textarea').forEach(input => {
@@ -2593,6 +3573,14 @@ function syncPreviewToForm(previewElement, fieldId) {
         }
       }
       
+      // Mark contact fields as having unsaved changes
+      if (fieldId.startsWith('contact-')) {
+        if (typeof contactHasUnsavedChanges !== 'undefined') {
+          contactHasUnsavedChanges = true;
+          console.log('Set contactHasUnsavedChanges = true for field:', fieldId);
+        }
+      }
+      
       // Trigger input event to update other previews if needed
       // This might trigger handlers that check retreatHasUnsavedChanges, so we set it first
       formField.dispatchEvent(new Event('input', { bubbles: true }));
@@ -2608,6 +3596,116 @@ function syncPreviewToForm(previewElement, fieldId) {
           scheduleRetreatAutoSave();
         } else {
           console.warn('scheduleRetreatAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for special section
+      if (fieldId.startsWith('special-')) {
+        if (typeof scheduleSpecialAutoSave === 'function') {
+          if (typeof specialHasUnsavedChanges !== 'undefined') {
+            specialHasUnsavedChanges = true;
+          }
+          scheduleSpecialAutoSave();
+        } else {
+          console.warn('scheduleSpecialAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for about section
+      if (fieldId.startsWith('about-')) {
+        if (typeof scheduleAboutAutoSave === 'function') {
+          if (typeof aboutHasUnsavedChanges !== 'undefined') {
+            aboutHasUnsavedChanges = true;
+          }
+          scheduleAboutAutoSave();
+        } else {
+          console.warn('scheduleAboutAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for contact section
+      if (fieldId.startsWith('contact-')) {
+        // Use window.scheduleContactAutoSave to ensure it's accessible
+        if (typeof window.scheduleContactAutoSave === 'function') {
+          console.log('Scheduling contact auto-save for field:', fieldId);
+          window.scheduleContactAutoSave();
+        } else if (typeof scheduleContactAutoSave === 'function') {
+          // Fallback to local function
+          scheduleContactAutoSave();
+        } else {
+          console.warn('scheduleContactAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for massage section
+      if (fieldId.startsWith('massage-')) {
+        if (typeof window.scheduleMassageAutoSave === 'function') {
+          if (typeof massageHasUnsavedChanges !== 'undefined') {
+            massageHasUnsavedChanges = true;
+          }
+          window.scheduleMassageAutoSave();
+        } else {
+          console.warn('scheduleMassageAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for room-second section
+      if (fieldId.startsWith('room-second-')) {
+        if (typeof window.scheduleRoomSecondAutoSave === 'function') {
+          if (typeof roomSecondHasUnsavedChanges !== 'undefined') {
+            roomSecondHasUnsavedChanges = true;
+          }
+          window.scheduleRoomSecondAutoSave();
+        } else {
+          console.warn('scheduleRoomSecondAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for room-ground-twin section
+      if (fieldId.startsWith('room-ground-twin-')) {
+        if (typeof window.scheduleRoomGroundTwinAutoSave === 'function') {
+          if (typeof roomGroundTwinHasUnsavedChanges !== 'undefined') {
+            roomGroundTwinHasUnsavedChanges = true;
+          }
+          window.scheduleRoomGroundTwinAutoSave();
+        } else {
+          console.warn('scheduleRoomGroundTwinAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for room-ground-queen section
+      if (fieldId.startsWith('room-ground-queen-')) {
+        if (typeof window.scheduleRoomGroundQueenAutoSave === 'function') {
+          if (typeof roomGroundQueenHasUnsavedChanges !== 'undefined') {
+            roomGroundQueenHasUnsavedChanges = true;
+          }
+          window.scheduleRoomGroundQueenAutoSave();
+        } else {
+          console.warn('scheduleRoomGroundQueenAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for room-basement section
+      if (fieldId.startsWith('room-basement-')) {
+        if (typeof window.scheduleRoomBasementAutoSave === 'function') {
+          if (typeof roomBasementHasUnsavedChanges !== 'undefined') {
+            roomBasementHasUnsavedChanges = true;
+          }
+          window.scheduleRoomBasementAutoSave();
+        } else {
+          console.warn('scheduleRoomBasementAutoSave is not defined');
+        }
+      }
+      
+      // Schedule auto-save for wellness section
+      if (fieldId.startsWith('wellness-')) {
+        if (typeof window.scheduleWellnessAutoSave === 'function') {
+          if (typeof wellnessHasUnsavedChanges !== 'undefined') {
+            wellnessHasUnsavedChanges = true;
+          }
+          window.scheduleWellnessAutoSave();
+        } else {
+          console.warn('scheduleWellnessAutoSave is not defined');
         }
       }
       
@@ -2786,27 +3884,59 @@ async function loadSpecialData() {
       if (result.success && result.data) {
         const data = result.data;
         
-        // Hero section
-        document.getElementById('special-hero-title').value = data.specialHeroTitle || '';
-        document.getElementById('special-hero-subtitle').value = data.specialHeroSubtitle || '';
+        // Hero section - update hidden fields and preview
+        const heroTitleField = document.getElementById('special-hero-title');
+        const heroSubtitleField = document.getElementById('special-hero-subtitle');
+        const heroTitlePreview = document.getElementById('preview-special-hero-title');
+        const heroSubtitlePreview = document.getElementById('preview-special-hero-subtitle');
+        if (heroTitleField) heroTitleField.value = data.specialHeroTitle || '';
+        if (heroSubtitleField) heroSubtitleField.value = data.specialHeroSubtitle || '';
+        if (heroTitlePreview) heroTitlePreview.textContent = data.specialHeroTitle || 'Soak & Savor at Ainsworth Hot Springs';
+        if (heroSubtitlePreview) heroSubtitlePreview.textContent = data.specialHeroSubtitle || 'Back to Base offers its guests a unique relaxation experience. See the details below.';
         
         // Mineral-Rich Pools & Limestone Cave card
-        document.getElementById('special-pools-title').value = data.specialPoolsTitle || '';
-        document.getElementById('special-pools-description-1').value = data.specialPoolsDescription1 || '';
-        document.getElementById('special-pools-description-2').value = data.specialPoolsDescription2 || '';
+        const poolsTitleField = document.getElementById('special-pools-title');
+        const poolsDesc1Field = document.getElementById('special-pools-description-1');
+        const poolsDesc2Field = document.getElementById('special-pools-description-2');
+        const poolsTitlePreview = document.getElementById('preview-special-pools-title');
+        const poolsDescPreview = document.getElementById('preview-special-pools-desc');
+        if (poolsTitleField) poolsTitleField.value = data.specialPoolsTitle || '';
+        if (poolsDesc1Field) poolsDesc1Field.value = data.specialPoolsDescription1 || '';
+        if (poolsDesc2Field) poolsDesc2Field.value = data.specialPoolsDescription2 || '';
+        if (poolsTitlePreview) poolsTitlePreview.textContent = data.specialPoolsTitle || 'Mineral-Rich Pools & Limestone Cave';
+        if (poolsDescPreview) {
+          const combined = ((data.specialPoolsDescription1 || '') + ' ' + (data.specialPoolsDescription2 || '')).trim();
+          poolsDescPreview.textContent = combined || 'The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge. Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.';
+        }
         
         // Dining & Spa Experience card
-        document.getElementById('special-dining-title').value = data.specialDiningTitle || '';
-        document.getElementById('special-dining-description-1').value = data.specialDiningDescription1 || '';
-        document.getElementById('special-dining-description-2').value = data.specialDiningDescription2 || '';
+        const diningTitleField = document.getElementById('special-dining-title');
+        const diningDesc1Field = document.getElementById('special-dining-description-1');
+        const diningDesc2Field = document.getElementById('special-dining-description-2');
+        const diningTitlePreview = document.getElementById('preview-special-dining-title');
+        const diningDescPreview = document.getElementById('preview-special-dining-desc');
+        if (diningTitleField) diningTitleField.value = data.specialDiningTitle || '';
+        if (diningDesc1Field) diningDesc1Field.value = data.specialDiningDescription1 || '';
+        if (diningDesc2Field) diningDesc2Field.value = data.specialDiningDescription2 || '';
+        if (diningTitlePreview) diningTitlePreview.textContent = data.specialDiningTitle || 'Dining & Spa Experience';
+        if (diningDescPreview) {
+          const combined = ((data.specialDiningDescription1 || '') + ' ' + (data.specialDiningDescription2 || '')).trim();
+          diningDescPreview.textContent = combined || 'After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight. Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.';
+        }
         
         // Exclusive Offer card
-        document.getElementById('special-offer-title').value = data.specialOfferTitle || '';
-        document.getElementById('special-offer-main-text').value = data.specialOfferMainText || '';
-        document.getElementById('special-offer-description').value = data.specialOfferDescription || '';
-        
-        // Update preview
-        updateSpecialPreview(data);
+        const offerTitleField = document.getElementById('special-offer-title');
+        const offerMainField = document.getElementById('special-offer-main-text');
+        const offerDescField = document.getElementById('special-offer-description');
+        const offerTitlePreview = document.getElementById('preview-special-offer-title');
+        const offerMainPreview = document.getElementById('preview-special-offer-main');
+        const offerDescPreview = document.getElementById('preview-special-offer-desc');
+        if (offerTitleField) offerTitleField.value = data.specialOfferTitle || '';
+        if (offerMainField) offerMainField.value = data.specialOfferMainText || '';
+        if (offerDescField) offerDescField.value = data.specialOfferDescription || '';
+        if (offerTitlePreview) offerTitlePreview.textContent = data.specialOfferTitle || 'Free Hot Springs Access';
+        if (offerMainPreview) offerMainPreview.textContent = data.specialOfferMainText || 'Exclusive Offer: Book a minimum 5-night stay at our Erasmus Suite (Second floor — Loft suite) and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!';
+        if (offerDescPreview) offerDescPreview.textContent = data.specialOfferDescription || 'This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.';
         
         console.log('Special page content loaded successfully');
       }
@@ -2931,14 +4061,31 @@ async function loadSpecialImagesData() {
         const poolsImageUrl = result.data.specialPoolsImageUrl || '';
         const diningImageUrl = result.data.specialDiningImageUrl || '';
         
-        updateImagePreview('special-hero', heroImageUrl);
-        updateImagePreview('special-pools', poolsImageUrl);
-        updateImagePreview('special-dining', diningImageUrl);
+        // Update preview images directly
+        const heroImg = document.getElementById('preview-special-hero-img');
+        const poolsImg = document.getElementById('preview-special-pools-img');
+        const diningImg = document.getElementById('preview-special-dining-img');
         
-        // Update preview images
-        updatePreviewImage('preview-special-hero-img', heroImageUrl);
-        updatePreviewImage('preview-special-pools-img', poolsImageUrl);
-        updatePreviewImage('preview-special-dining-img', diningImageUrl);
+        if (heroImg && heroImageUrl) {
+          heroImg.src = heroImageUrl + '?v=' + Date.now();
+          heroImg.style.display = 'block';
+          const placeholder = heroImg.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
+        
+        if (poolsImg && poolsImageUrl) {
+          poolsImg.src = poolsImageUrl + '?v=' + Date.now();
+          poolsImg.style.display = 'block';
+          const placeholder = poolsImg.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
+        
+        if (diningImg && diningImageUrl) {
+          diningImg.src = diningImageUrl + '?v=' + Date.now();
+          diningImg.style.display = 'block';
+          const placeholder = diningImg.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
         
         const stored = localStorage.getItem('btb_special_images') || '{}';
         const storedJson = JSON.parse(stored);
@@ -2960,87 +4107,254 @@ async function loadSpecialImagesData() {
 // Initialize special image upload
 function initSpecialImageUpload() {
   const uploadConfigs = [
-    { buttonId: 'special-hero-upload-btn', inputId: 'special-hero-upload', previewId: 'special-hero-preview', pathId: 'special-hero-path', imageType: 'special-hero' },
-    { buttonId: 'special-pools-upload-btn', inputId: 'special-pools-upload', previewId: 'special-pools-preview', pathId: 'special-pools-path', imageType: 'special-pools' },
-    { buttonId: 'special-dining-upload-btn', inputId: 'special-dining-upload', previewId: 'special-dining-preview', pathId: 'special-dining-path', imageType: 'special-dining' }
+    { inputId: 'special-hero-upload', previewImgId: 'preview-special-hero-img', imageType: 'special-hero' },
+    { inputId: 'special-pools-upload', previewImgId: 'preview-special-pools-img', imageType: 'special-pools' },
+    { inputId: 'special-dining-upload', previewImgId: 'preview-special-dining-img', imageType: 'special-dining' }
   ];
 
   uploadConfigs.forEach(config => {
-    const uploadBtn = document.getElementById(config.buttonId);
     const fileInput = document.getElementById(config.inputId);
-    const preview = document.getElementById(config.previewId);
-    const pathDisplay = document.getElementById(config.pathId);
+    const previewImg = document.getElementById(config.previewImgId);
 
-    if (uploadBtn && fileInput) {
-      uploadBtn.addEventListener('click', () => fileInput.click());
+    if (fileInput) {
       fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
-          await uploadImage(file, config.imageType, preview, pathDisplay, {
-            localStorageKey: 'btb_special_images',
-            fieldNameMapper: (type) => type.replace('special-', ''),
-            reloadFunction: loadSpecialImagesData,
-            imageNameMapper: (type) => {
-              const nameMap = {
-                'special-hero': 'Hero',
-                'special-pools': 'Mineral-Rich Pools',
-                'special-dining': 'Dining & Spa'
-              };
-              return nameMap[type] || type;
+          // Update preview image immediately
+          if (previewImg) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              previewImg.src = event.target.result;
+              previewImg.style.display = 'block';
+              const placeholder = previewImg.nextElementSibling;
+              if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+          }
+          
+          // Upload to server
+          const formData = new FormData();
+          formData.append('action', 'upload_image');
+          formData.append('image_type', config.imageType);
+          formData.append('image', file);
+          
+          try {
+            const response = await fetch('api.php', {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.image_url) {
+                // Update preview with server URL
+                if (previewImg) {
+                  previewImg.src = result.image_url + '?v=' + Date.now();
+                }
+                
+                // Save to localStorage
+                const stored = localStorage.getItem('btb_special_images') || '{}';
+                const storedJson = JSON.parse(stored);
+                storedJson[config.imageType.replace('special-', '')] = result.image_url;
+                localStorage.setItem('btb_special_images', JSON.stringify(storedJson));
+                
+                // Save to server content
+                const contentFormData = new FormData();
+                contentFormData.append('action', 'save_content');
+                const fieldName = config.imageType.replace('special-', '') + '_image_url';
+                contentFormData.append('special_' + fieldName, result.image_url);
+                
+                await fetch('api.php', {
+                  method: 'POST',
+                  body: contentFormData
+                });
+                
+                // Trigger auto-save status update
+                if (typeof scheduleSpecialAutoSave === 'function') {
+                  scheduleSpecialAutoSave();
+                }
+              }
             }
-          });
+          } catch (error) {
+            console.error('Error uploading special image:', error);
+          }
         }
       });
     }
   });
 }
 
-// Initialize save handler for special images
-function initSpecialSaveHandler() {
-  const saveBtn = document.getElementById('save-special-images');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', async () => {
-      const heroPath = document.getElementById('special-hero-path')?.textContent || '';
-      const poolsPath = document.getElementById('special-pools-path')?.textContent || '';
-      const diningPath = document.getElementById('special-dining-path')?.textContent || '';
-      
-      const stored = localStorage.getItem('btb_content') || '{}';
-      let contentData = {};
-      try {
-        contentData = JSON.parse(stored);
-      } catch (e) {
-        console.error('Failed to parse btb_content:', e);
-      }
-      
-      contentData.specialHeroImageUrl = heroPath;
-      contentData.specialPoolsImageUrl = poolsPath;
-      contentData.specialDiningImageUrl = diningPath;
-      
-      localStorage.setItem('btb_content', JSON.stringify(contentData));
-      
-      try {
-        const formData = new FormData();
-        formData.append('action', 'save_content');
-        formData.append('special_hero_image_url', heroPath);
-        formData.append('special_pools_image_url', poolsPath);
-        formData.append('special_dining_image_url', diningPath);
-        
-        const response = await fetch('api.php', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (response.ok) {
-          showStatus('Special images saved successfully!');
-        } else {
-          showStatus('Special images saved to localStorage. Server save may have failed.', 'warning');
-        }
-      } catch (error) {
-        console.error('Error saving special images:', error);
-        showStatus('Special images saved to localStorage. Server save failed.', 'warning');
-      }
-    });
+// Sync special pools description (combines two fields)
+window.syncSpecialPoolsDescription = function(previewElement) {
+  const content = previewElement.textContent || previewElement.innerText || '';
+  const trimmed = content.trim();
+  
+  // Split into two paragraphs (rough heuristic: split at first sentence ending after ~100 chars)
+  let desc1 = '';
+  let desc2 = '';
+  
+  if (trimmed.length > 0) {
+    const sentences = trimmed.match(/[^.!?]+[.!?]+/g) || [];
+    if (sentences.length >= 2) {
+      // Split roughly in the middle
+      const midPoint = Math.floor(sentences.length / 2);
+      desc1 = sentences.slice(0, midPoint).join(' ').trim();
+      desc2 = sentences.slice(midPoint).join(' ').trim();
+    } else {
+      desc1 = trimmed;
+      desc2 = '';
+    }
   }
+  
+  const desc1Field = document.getElementById('special-pools-description-1');
+  const desc2Field = document.getElementById('special-pools-description-2');
+  if (desc1Field) desc1Field.value = desc1;
+  if (desc2Field) desc2Field.value = desc2;
+  
+  // Trigger auto-save
+  if (typeof scheduleSpecialAutoSave === 'function') {
+    if (typeof specialHasUnsavedChanges !== 'undefined') {
+      specialHasUnsavedChanges = true;
+    }
+    scheduleSpecialAutoSave();
+  }
+}
+
+// Sync special dining description (combines two fields)
+window.syncSpecialDiningDescription = function(previewElement) {
+  const content = previewElement.textContent || previewElement.innerText || '';
+  const trimmed = content.trim();
+  
+  // Split into two paragraphs (rough heuristic: split at first sentence ending after ~100 chars)
+  let desc1 = '';
+  let desc2 = '';
+  
+  if (trimmed.length > 0) {
+    const sentences = trimmed.match(/[^.!?]+[.!?]+/g) || [];
+    if (sentences.length >= 2) {
+      // Split roughly in the middle
+      const midPoint = Math.floor(sentences.length / 2);
+      desc1 = sentences.slice(0, midPoint).join(' ').trim();
+      desc2 = sentences.slice(midPoint).join(' ').trim();
+    } else {
+      desc1 = trimmed;
+      desc2 = '';
+    }
+  }
+  
+  const desc1Field = document.getElementById('special-dining-description-1');
+  const desc2Field = document.getElementById('special-dining-description-2');
+  if (desc1Field) desc1Field.value = desc1;
+  if (desc2Field) desc2Field.value = desc2;
+  
+  // Trigger auto-save
+  if (typeof scheduleSpecialAutoSave === 'function') {
+    if (typeof specialHasUnsavedChanges !== 'undefined') {
+      specialHasUnsavedChanges = true;
+    }
+    scheduleSpecialAutoSave();
+  }
+}
+
+// Special auto-save functionality
+let specialAutoSaveTimer = null;
+let specialHasUnsavedChanges = false;
+
+function scheduleSpecialAutoSave() {
+  if (specialAutoSaveTimer) {
+    clearTimeout(specialAutoSaveTimer);
+  }
+  
+  specialAutoSaveTimer = setTimeout(() => {
+    if (specialHasUnsavedChanges) {
+      saveSpecialContent();
+      specialHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateSpecialSaveStatus('saving');
+}
+
+async function saveSpecialContent() {
+  updateSpecialSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('special_hero_title', document.getElementById('special-hero-title')?.value || '');
+    formData.append('special_hero_subtitle', document.getElementById('special-hero-subtitle')?.value || '');
+    formData.append('special_pools_title', document.getElementById('special-pools-title')?.value || '');
+    formData.append('special_pools_description_1', document.getElementById('special-pools-description-1')?.value || '');
+    formData.append('special_pools_description_2', document.getElementById('special-pools-description-2')?.value || '');
+    formData.append('special_dining_title', document.getElementById('special-dining-title')?.value || '');
+    formData.append('special_dining_description_1', document.getElementById('special-dining-description-1')?.value || '');
+    formData.append('special_dining_description_2', document.getElementById('special-dining-description-2')?.value || '');
+    formData.append('special_offer_title', document.getElementById('special-offer-title')?.value || '');
+    formData.append('special_offer_main_text', document.getElementById('special-offer-main-text')?.value || '');
+    formData.append('special_offer_description', document.getElementById('special-offer-description')?.value || '');
+    
+    // Get image URLs from localStorage
+    const imagesStored = localStorage.getItem('btb_special_images') || '{}';
+    const imagesJson = JSON.parse(imagesStored);
+    formData.append('special_hero_image_url', imagesJson.hero || '');
+    formData.append('special_pools_image_url', imagesJson.pools || '');
+    formData.append('special_dining_image_url', imagesJson.dining || '');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateSpecialSaveStatus('saved');
+    } else {
+      updateSpecialSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving special content:', error);
+    updateSpecialSaveStatus('error');
+  }
+}
+
+function updateSpecialSaveStatus(status) {
+  const statusText = document.getElementById('special-save-status-text');
+  const statusIcon = document.getElementById('special-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initSpecialAutoSave() {
+  // syncPreviewToForm already handles triggering auto-save for special fields
+  // This function is here for consistency with retreat pattern
+  console.log('Special auto-save initialized');
 }
 
 // Load about data
@@ -3060,52 +4374,151 @@ async function loadAboutData() {
       if (result.success && result.data) {
         const data = result.data;
         
-        // Hero section
-        document.getElementById('about-hero-title').value = data.aboutHeroTitle || '';
-        document.getElementById('about-hero-subtitle').value = data.aboutHeroSubtitle || '';
+        // Hero section - update hidden fields and preview
+        const heroTitleField = document.getElementById('about-hero-title');
+        const heroSubtitleField = document.getElementById('about-hero-subtitle');
+        const heroTitlePreview = document.getElementById('preview-about-hero-title');
+        const heroSubtitlePreview = document.getElementById('preview-about-hero-subtitle');
+        if (heroTitleField) heroTitleField.value = data.aboutHeroTitle || '';
+        if (heroSubtitleField) heroSubtitleField.value = data.aboutHeroSubtitle || '';
+        if (heroTitlePreview) heroTitlePreview.textContent = data.aboutHeroTitle || 'About Back to Base';
+        if (heroSubtitlePreview) heroSubtitlePreview.textContent = data.aboutHeroSubtitle || 'A personal retreat in the heart of British Columbia';
         
         // Idea and Origins section
-        document.getElementById('about-idea-title').value = data.aboutIdeaTitle || '';
-        document.getElementById('about-idea-intro').value = data.aboutIdeaIntro || '';
-        document.getElementById('about-idea-paragraph-1').value = data.aboutIdeaParagraph1 || '';
-        document.getElementById('about-idea-paragraph-2').value = data.aboutIdeaParagraph2 || '';
-        document.getElementById('about-idea-paragraph-3').value = data.aboutIdeaParagraph3 || '';
-        document.getElementById('about-idea-signature').value = data.aboutIdeaSignature || '';
+        const ideaTitleField = document.getElementById('about-idea-title');
+        const ideaIntroField = document.getElementById('about-idea-intro');
+        const ideaP1Field = document.getElementById('about-idea-paragraph-1');
+        const ideaP2Field = document.getElementById('about-idea-paragraph-2');
+        const ideaP3Field = document.getElementById('about-idea-paragraph-3');
+        const ideaSignatureField = document.getElementById('about-idea-signature');
+        const ideaTitlePreview = document.getElementById('preview-about-idea-title');
+        const ideaIntroPreview = document.getElementById('preview-about-idea-intro');
+        const ideaP1Preview = document.getElementById('preview-about-idea-p1');
+        const ideaP2Preview = document.getElementById('preview-about-idea-p2');
+        const ideaP3Preview = document.getElementById('preview-about-idea-p3');
+        const ideaSignaturePreview = document.getElementById('preview-about-idea-signature');
+        if (ideaTitleField) ideaTitleField.value = data.aboutIdeaTitle || '';
+        if (ideaIntroField) ideaIntroField.value = data.aboutIdeaIntro || '';
+        if (ideaP1Field) ideaP1Field.value = data.aboutIdeaParagraph1 || '';
+        if (ideaP2Field) ideaP2Field.value = data.aboutIdeaParagraph2 || '';
+        if (ideaP3Field) ideaP3Field.value = data.aboutIdeaParagraph3 || '';
+        if (ideaSignatureField) ideaSignatureField.value = data.aboutIdeaSignature || '';
+        if (ideaTitlePreview) ideaTitlePreview.textContent = data.aboutIdeaTitle || 'Idea and Origins';
+        if (ideaIntroPreview) ideaIntroPreview.textContent = data.aboutIdeaIntro || 'Hi! My name is Rob Vuik. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.';
+        if (ideaP1Preview) ideaP1Preview.textContent = data.aboutIdeaParagraph1 || 'Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.';
+        if (ideaP2Preview) ideaP2Preview.textContent = data.aboutIdeaParagraph2 || 'Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I\'m happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.';
+        if (ideaP3Preview) ideaP3Preview.textContent = data.aboutIdeaParagraph3 || 'We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.';
+        if (ideaSignaturePreview) ideaSignaturePreview.textContent = data.aboutIdeaSignature || 'I look forward to welcoming you!';
         
         // How to Find Us section
-        document.getElementById('about-location-title').value = data.aboutLocationTitle || '';
-        document.getElementById('about-location-paragraph-1').value = data.aboutLocationParagraph1 || '';
-        document.getElementById('about-location-paragraph-2').value = data.aboutLocationParagraph2 || '';
-        document.getElementById('about-location-paragraph-3').value = data.aboutLocationParagraph3 || '';
-        document.getElementById('about-location-paragraph-4').value = data.aboutLocationParagraph4 || '';
-        document.getElementById('about-location-coordinates').value = data.aboutLocationCoordinates || '';
-        document.getElementById('about-location-deer-warning').value = data.aboutLocationDeerWarning || '';
+        const locTitleField = document.getElementById('about-location-title');
+        const locP1Field = document.getElementById('about-location-paragraph-1');
+        const locP2Field = document.getElementById('about-location-paragraph-2');
+        const locP3Field = document.getElementById('about-location-paragraph-3');
+        const locP4Field = document.getElementById('about-location-paragraph-4');
+        const locCoordsField = document.getElementById('about-location-coordinates');
+        const locDeerField = document.getElementById('about-location-deer-warning');
+        const locTitlePreview = document.getElementById('preview-about-location-title');
+        const locP1Preview = document.getElementById('preview-about-location-p1');
+        const locP2Preview = document.getElementById('preview-about-location-p2');
+        const locP3Preview = document.getElementById('preview-about-location-p3');
+        const locP4Preview = document.getElementById('preview-about-location-p4');
+        const locCoordsPreview = document.getElementById('preview-about-location-coords');
+        const locDeerPreview = document.getElementById('preview-about-location-deer');
+        if (locTitleField) locTitleField.value = data.aboutLocationTitle || '';
+        if (locP1Field) locP1Field.value = data.aboutLocationParagraph1 || '';
+        if (locP2Field) locP2Field.value = data.aboutLocationParagraph2 || '';
+        if (locP3Field) locP3Field.value = data.aboutLocationParagraph3 || '';
+        if (locP4Field) locP4Field.value = data.aboutLocationParagraph4 || '';
+        if (locCoordsField) locCoordsField.value = data.aboutLocationCoordinates || '';
+        if (locDeerField) locDeerField.value = data.aboutLocationDeerWarning || '';
+        if (locTitlePreview) locTitlePreview.textContent = data.aboutLocationTitle || 'How to Find Us';
+        if (locP1Preview) locP1Preview.textContent = data.aboutLocationParagraph1 || 'Back to Base is located in the village of Procter, 35 km from Nelson, B.C.';
+        if (locP2Preview) locP2Preview.textContent = data.aboutLocationParagraph2 || 'You\'ll need to take the 24/7 Harrop–Procter ferry,';
+        if (locP3Preview) locP3Preview.textContent = data.aboutLocationParagraph3 || 'then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.';
+        if (locP4Preview) locP4Preview.textContent = data.aboutLocationParagraph4 || 'From there, it\'s just a 3-minute drive up the mountain road — and you\'re here!';
+        if (locCoordsPreview) locCoordsPreview.textContent = data.aboutLocationCoordinates || 'Coordinates: 49.6125, -116.9579';
+        if (locDeerPreview) locDeerPreview.textContent = data.aboutLocationDeerWarning || '🦌 Be careful — we have a lot of deer in the area!';
         
         // About the Location section
-        document.getElementById('about-attractions-title').value = data.aboutAttractionsTitle || '';
-        document.getElementById('about-attractions-lead').value = data.aboutAttractionsLead || '';
+        const attrTitleField = document.getElementById('about-attractions-title');
+        const attrLeadField = document.getElementById('about-attractions-lead');
+        const attrTitlePreview = document.getElementById('preview-about-attractions-title');
+        const attrLeadPreview = document.getElementById('preview-about-attractions-lead');
+        if (attrTitleField) attrTitleField.value = data.aboutAttractionsTitle || '';
+        if (attrLeadField) attrLeadField.value = data.aboutAttractionsLead || '';
+        if (attrTitlePreview) attrTitlePreview.textContent = data.aboutAttractionsTitle || 'About the Location';
+        if (attrLeadPreview) attrLeadPreview.textContent = data.aboutAttractionsLead || 'Discover the natural beauty and attractions surrounding Back to Base';
         
         // Attractions cards
-        document.getElementById('about-procter-title').value = data.aboutProcterTitle || '';
-        document.getElementById('about-procter-distance').value = data.aboutProcterDistance || '';
-        document.getElementById('about-procter-description').value = data.aboutProcterDescription || '';
+        const procterTitleField = document.getElementById('about-procter-title');
+        const procterDistField = document.getElementById('about-procter-distance');
+        const procterDescField = document.getElementById('about-procter-description');
+        const procterTitlePreview = document.getElementById('preview-about-procter-title');
+        const procterDistPreview = document.getElementById('preview-about-procter-distance');
+        const procterDescPreview = document.getElementById('preview-about-procter-desc');
+        if (procterTitleField) procterTitleField.value = data.aboutProcterTitle || '';
+        if (procterDistField) procterDistField.value = data.aboutProcterDistance || '';
+        if (procterDescField) procterDescField.value = data.aboutProcterDescription || '';
+        if (procterTitlePreview) procterTitlePreview.textContent = data.aboutProcterTitle || 'Procter Village';
+        if (procterDistPreview) procterDistPreview.textContent = data.aboutProcterDistance || 'In the same village';
+        if (procterDescPreview) procterDescPreview.textContent = data.aboutProcterDescription || 'In the village of Procter, you\'ll find the Procter Café with their famous cinnamon buns, a small grocery store, and a gas station.';
         
-        document.getElementById('about-halcyon-title').value = data.aboutHalcyonTitle || '';
-        document.getElementById('about-halcyon-distance').value = data.aboutHalcyonDistance || '';
-        document.getElementById('about-halcyon-description').value = data.aboutHalcyonDescription || '';
+        const halcyonTitleField = document.getElementById('about-halcyon-title');
+        const halcyonDistField = document.getElementById('about-halcyon-distance');
+        const halcyonDescField = document.getElementById('about-halcyon-description');
+        const halcyonTitlePreview = document.getElementById('preview-about-halcyon-title');
+        const halcyonDistPreview = document.getElementById('preview-about-halcyon-distance');
+        const halcyonDescPreview = document.getElementById('preview-about-halcyon-desc');
+        if (halcyonTitleField) halcyonTitleField.value = data.aboutHalcyonTitle || '';
+        if (halcyonDistField) halcyonDistField.value = data.aboutHalcyonDistance || '';
+        if (halcyonDescField) halcyonDescField.value = data.aboutHalcyonDescription || '';
+        if (halcyonTitlePreview) halcyonTitlePreview.textContent = data.aboutHalcyonTitle || 'Ainsworth Hot Springs Resort';
+        if (halcyonDistPreview) halcyonDistPreview.textContent = data.aboutHalcyonDistance || '30 km from Back to Base';
+        if (halcyonDescPreview) halcyonDescPreview.textContent = data.aboutHalcyonDescription || 'Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!';
         
-        document.getElementById('about-whitewater-title').value = data.aboutWhitewaterTitle || '';
-        document.getElementById('about-whitewater-distance').value = data.aboutWhitewaterDistance || '';
-        document.getElementById('about-whitewater-description').value = data.aboutWhitewaterDescription || '';
+        const whitewaterTitleField = document.getElementById('about-whitewater-title');
+        const whitewaterDistField = document.getElementById('about-whitewater-distance');
+        const whitewaterDescField = document.getElementById('about-whitewater-description');
+        const whitewaterTitlePreview = document.getElementById('preview-about-whitewater-title');
+        const whitewaterDistPreview = document.getElementById('preview-about-whitewater-distance');
+        const whitewaterDescPreview = document.getElementById('preview-about-whitewater-desc');
+        if (whitewaterTitleField) whitewaterTitleField.value = data.aboutWhitewaterTitle || '';
+        if (whitewaterDistField) whitewaterDistField.value = data.aboutWhitewaterDistance || '';
+        if (whitewaterDescField) whitewaterDescField.value = data.aboutWhitewaterDescription || '';
+        if (whitewaterTitlePreview) whitewaterTitlePreview.textContent = data.aboutWhitewaterTitle || 'Whitewater Mountain Resort';
+        if (whitewaterDistPreview) whitewaterDistPreview.textContent = data.aboutWhitewaterDistance || '60 km from Back to Base';
+        if (whitewaterDescPreview) whitewaterDescPreview.textContent = data.aboutWhitewaterDescription || 'Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.';
         
-        document.getElementById('about-nelson-title').value = data.aboutNelsonTitle || '';
-        document.getElementById('about-nelson-distance').value = data.aboutNelsonDistance || '';
-        document.getElementById('about-nelson-description').value = data.aboutNelsonDescription || '';
+        const nelsonTitleField = document.getElementById('about-nelson-title');
+        const nelsonDistField = document.getElementById('about-nelson-distance');
+        const nelsonDescField = document.getElementById('about-nelson-description');
+        const nelsonTitlePreview = document.getElementById('preview-about-nelson-title');
+        const nelsonDistPreview = document.getElementById('preview-about-nelson-distance');
+        const nelsonDescPreview = document.getElementById('preview-about-nelson-desc');
+        if (nelsonTitleField) nelsonTitleField.value = data.aboutNelsonTitle || '';
+        if (nelsonDistField) nelsonDistField.value = data.aboutNelsonDistance || '';
+        if (nelsonDescField) nelsonDescField.value = data.aboutNelsonDescription || '';
+        if (nelsonTitlePreview) nelsonTitlePreview.textContent = data.aboutNelsonTitle || 'Nelson';
+        if (nelsonDistPreview) nelsonDistPreview.textContent = data.aboutNelsonDistance || '35 km from Back to Base';
+        if (nelsonDescPreview) nelsonDescPreview.textContent = data.aboutNelsonDescription || 'A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.';
         
         // Provincial Parks section
-        document.getElementById('about-parks-title').value = data.aboutParksTitle || '';
-        document.getElementById('about-parks-intro').value = data.aboutParksIntro || '';
-        document.getElementById('about-parks-list').value = data.aboutParksList || '';
+        const parksTitleField = document.getElementById('about-parks-title');
+        const parksIntroField = document.getElementById('about-parks-intro');
+        const parksListField = document.getElementById('about-parks-list');
+        const parksTitlePreview = document.getElementById('preview-about-parks-title');
+        const parksIntroPreview = document.getElementById('preview-about-parks-intro');
+        const parksListPreview = document.getElementById('preview-about-parks-list');
+        if (parksTitleField) parksTitleField.value = data.aboutParksTitle || '';
+        if (parksIntroField) parksIntroField.value = data.aboutParksIntro || '';
+        if (parksListField) parksListField.value = data.aboutParksList || '';
+        if (parksTitlePreview) parksTitlePreview.textContent = data.aboutParksTitle || 'Provincial Parks Nearby';
+        if (parksIntroPreview) parksIntroPreview.textContent = data.aboutParksIntro || 'If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base:';
+        if (parksListPreview && data.aboutParksList) {
+          const items = data.aboutParksList.split('\n').filter(item => item.trim());
+          parksListPreview.innerHTML = items.map(item => `<li style="color: #0f172a;">${item.trim()}</li>`).join('');
+        }
         
         console.log('About page content loaded successfully');
       }
@@ -3134,9 +4547,31 @@ async function loadAboutImagesData() {
         const founderImageUrl = result.data.aboutFounderImageUrl || '';
         const procterImageUrl = result.data.aboutProcterImageUrl || '';
         
-        updateImagePreview('about-hero', heroImageUrl);
-        updateImagePreview('about-founder', founderImageUrl);
-        updateImagePreview('about-procter', procterImageUrl);
+        // Update preview images directly
+        const heroImg = document.getElementById('preview-about-hero-img');
+        const founderImg = document.getElementById('preview-about-founder-img');
+        const procterImg = document.getElementById('preview-about-procter-img');
+        
+        if (heroImg && heroImageUrl) {
+          heroImg.src = heroImageUrl + '?v=' + Date.now();
+          heroImg.style.display = 'block';
+          const placeholder = heroImg.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
+        
+        if (founderImg && founderImageUrl) {
+          founderImg.src = founderImageUrl + '?v=' + Date.now();
+          founderImg.style.display = 'block';
+          const placeholder = founderImg.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
+        
+        if (procterImg && procterImageUrl) {
+          procterImg.src = procterImageUrl + '?v=' + Date.now();
+          procterImg.style.display = 'block';
+          const placeholder = procterImg.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
         
         const stored = localStorage.getItem('btb_about_images') || '{}';
         const storedJson = JSON.parse(stored);
@@ -3158,91 +4593,208 @@ async function loadAboutImagesData() {
 // Initialize about image upload
 function initAboutImageUpload() {
   const uploadConfigs = [
-    { buttonId: 'about-hero-upload-btn', inputId: 'about-hero-upload', previewId: 'about-hero-preview', pathId: 'about-hero-path', imageType: 'about-hero' },
-    { buttonId: 'about-founder-upload-btn', inputId: 'about-founder-upload', previewId: 'about-founder-preview', pathId: 'about-founder-path', imageType: 'about-founder' },
-    { buttonId: 'about-procter-upload-btn', inputId: 'about-procter-upload', previewId: 'about-procter-preview', pathId: 'about-procter-path', imageType: 'about-procter' }
+    { inputId: 'about-hero-upload', previewImgId: 'preview-about-hero-img', imageType: 'about-hero' },
+    { inputId: 'about-founder-upload', previewImgId: 'preview-about-founder-img', imageType: 'about-founder' },
+    { inputId: 'about-procter-upload', previewImgId: 'preview-about-procter-img', imageType: 'about-procter' }
   ];
 
   uploadConfigs.forEach(config => {
-    const uploadBtn = document.getElementById(config.buttonId);
     const fileInput = document.getElementById(config.inputId);
-    const preview = document.getElementById(config.previewId);
-    const pathDisplay = document.getElementById(config.pathId);
+    const previewImg = document.getElementById(config.previewImgId);
 
-    if (uploadBtn && fileInput) {
-      uploadBtn.addEventListener('click', () => fileInput.click());
+    if (fileInput) {
       fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
-          await uploadImage(file, config.imageType, preview, pathDisplay, {
-            localStorageKey: 'btb_about_images',
-            fieldNameMapper: (type) => type.replace('about-', ''),
-            reloadFunction: loadAboutImagesData,
-            imageNameMapper: (type) => {
-              const nameMap = {
-                'about-hero': 'Hero',
-                'about-founder': 'Founder Photo',
-                'about-procter': 'Procter Village'
-              };
-              return nameMap[type] || type;
+          // Update preview image immediately
+          if (previewImg) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              previewImg.src = event.target.result;
+              previewImg.style.display = 'block';
+              const placeholder = previewImg.nextElementSibling;
+              if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+          }
+          
+          // Upload to server
+          const formData = new FormData();
+          formData.append('action', 'upload_image');
+          formData.append('image_type', config.imageType);
+          formData.append('image', file);
+          
+          try {
+            const response = await fetch('api.php', {
+              method: 'POST',
+              body: formData
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              if (result.success && result.image_url) {
+                // Update preview with server URL
+                if (previewImg) {
+                  previewImg.src = result.image_url + '?v=' + Date.now();
+                }
+                
+                // Save to localStorage
+                const stored = localStorage.getItem('btb_about_images') || '{}';
+                const storedJson = JSON.parse(stored);
+                storedJson[config.imageType.replace('about-', '')] = result.image_url;
+                localStorage.setItem('btb_about_images', JSON.stringify(storedJson));
+                
+                // Save to server content
+                const contentFormData = new FormData();
+                contentFormData.append('action', 'save_content');
+                const fieldName = config.imageType.replace('about-', '') + '_image_url';
+                contentFormData.append('about_' + fieldName, result.image_url);
+                
+                await fetch('api.php', {
+                  method: 'POST',
+                  body: contentFormData
+                });
+                
+                // Trigger auto-save status update
+                if (typeof scheduleAboutAutoSave === 'function') {
+                  scheduleAboutAutoSave();
+                }
+              }
             }
-          });
+          } catch (error) {
+            console.error('Error uploading about image:', error);
+          }
         }
       });
     }
   });
 }
 
-// Initialize save handler for about images
-function initAboutSaveHandler() {
-  const saveBtn = document.getElementById('save-about-images');
-  if (saveBtn) {
-    saveBtn.addEventListener('click', async () => {
-      const heroPath = document.getElementById('about-hero-path')?.textContent || '';
-      const founderPath = document.getElementById('about-founder-path')?.textContent || '';
-      const procterPath = document.getElementById('about-procter-path')?.textContent || '';
-      
-      const stored = localStorage.getItem('btb_content') || '{}';
-      let contentData = {};
-      try {
-        contentData = JSON.parse(stored);
-      } catch (e) {
-        console.error('Failed to parse btb_content:', e);
-      }
-      
-      contentData.aboutHeroImageUrl = heroPath;
-      contentData.aboutFounderImageUrl = founderPath;
-      contentData.aboutProcterImageUrl = procterPath;
-      
-      localStorage.setItem('btb_content', JSON.stringify(contentData));
-      
-      try {
-        const formData = new FormData();
-        formData.append('action', 'save_content');
-        formData.append('about_hero_image_url', heroPath);
-        formData.append('about_founder_image_url', founderPath);
-        formData.append('about_procter_image_url', procterPath);
-        
-        const response = await fetch('api.php', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (response.ok) {
-          showStatus('About images saved successfully!');
-        } else {
-          showStatus('About images saved to localStorage. Server save may have failed.', 'warning');
-        }
-      } catch (error) {
-        console.error('Error saving about images:', error);
-        showStatus('About images saved to localStorage. Server save failed.', 'warning');
-      }
-    });
+// About auto-save functionality
+let aboutAutoSaveTimer = null;
+let aboutHasUnsavedChanges = false;
+
+function scheduleAboutAutoSave() {
+  if (aboutAutoSaveTimer) {
+    clearTimeout(aboutAutoSaveTimer);
   }
+  
+  aboutAutoSaveTimer = setTimeout(() => {
+    if (aboutHasUnsavedChanges) {
+      saveAboutContent();
+      aboutHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateAboutSaveStatus('saving');
+}
+
+async function saveAboutContent() {
+  updateAboutSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('about_hero_title', document.getElementById('about-hero-title')?.value || '');
+    formData.append('about_hero_subtitle', document.getElementById('about-hero-subtitle')?.value || '');
+    formData.append('about_idea_title', document.getElementById('about-idea-title')?.value || '');
+    formData.append('about_idea_intro', document.getElementById('about-idea-intro')?.value || '');
+    formData.append('about_idea_paragraph_1', document.getElementById('about-idea-paragraph-1')?.value || '');
+    formData.append('about_idea_paragraph_2', document.getElementById('about-idea-paragraph-2')?.value || '');
+    formData.append('about_idea_paragraph_3', document.getElementById('about-idea-paragraph-3')?.value || '');
+    formData.append('about_idea_signature', document.getElementById('about-idea-signature')?.value || '');
+    formData.append('about_location_title', document.getElementById('about-location-title')?.value || '');
+    formData.append('about_location_paragraph_1', document.getElementById('about-location-paragraph-1')?.value || '');
+    formData.append('about_location_paragraph_2', document.getElementById('about-location-paragraph-2')?.value || '');
+    formData.append('about_location_paragraph_3', document.getElementById('about-location-paragraph-3')?.value || '');
+    formData.append('about_location_paragraph_4', document.getElementById('about-location-paragraph-4')?.value || '');
+    formData.append('about_location_coordinates', document.getElementById('about-location-coordinates')?.value || '');
+    formData.append('about_location_deer_warning', document.getElementById('about-location-deer-warning')?.value || '');
+    formData.append('about_attractions_title', document.getElementById('about-attractions-title')?.value || '');
+    formData.append('about_attractions_lead', document.getElementById('about-attractions-lead')?.value || '');
+    formData.append('about_procter_title', document.getElementById('about-procter-title')?.value || '');
+    formData.append('about_procter_distance', document.getElementById('about-procter-distance')?.value || '');
+    formData.append('about_procter_description', document.getElementById('about-procter-description')?.value || '');
+    formData.append('about_halcyon_title', document.getElementById('about-halcyon-title')?.value || '');
+    formData.append('about_halcyon_distance', document.getElementById('about-halcyon-distance')?.value || '');
+    formData.append('about_halcyon_description', document.getElementById('about-halcyon-description')?.value || '');
+    formData.append('about_whitewater_title', document.getElementById('about-whitewater-title')?.value || '');
+    formData.append('about_whitewater_distance', document.getElementById('about-whitewater-distance')?.value || '');
+    formData.append('about_whitewater_description', document.getElementById('about-whitewater-description')?.value || '');
+    formData.append('about_nelson_title', document.getElementById('about-nelson-title')?.value || '');
+    formData.append('about_nelson_distance', document.getElementById('about-nelson-distance')?.value || '');
+    formData.append('about_nelson_description', document.getElementById('about-nelson-description')?.value || '');
+    formData.append('about_parks_title', document.getElementById('about-parks-title')?.value || '');
+    formData.append('about_parks_intro', document.getElementById('about-parks-intro')?.value || '');
+    formData.append('about_parks_list', document.getElementById('about-parks-list')?.value || '');
+    
+    // Get image URLs from localStorage
+    const imagesStored = localStorage.getItem('btb_about_images') || '{}';
+    const imagesJson = JSON.parse(imagesStored);
+    formData.append('about_hero_image_url', imagesJson.hero || '');
+    formData.append('about_founder_image_url', imagesJson.founder || '');
+    formData.append('about_procter_image_url', imagesJson.procter || '');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateAboutSaveStatus('saved');
+    } else {
+      updateAboutSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving about content:', error);
+    updateAboutSaveStatus('error');
+  }
+}
+
+function updateAboutSaveStatus(status) {
+  const statusText = document.getElementById('about-save-status-text');
+  const statusIcon = document.getElementById('about-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initAboutAutoSave() {
+  // syncPreviewToForm already handles triggering auto-save for about fields
+  // This function is here for consistency with retreat/special pattern
+  console.log('About auto-save initialized');
 }
 
 // Load contact data
 async function loadContactData() {
+  console.log('Loading contact data...');
   try {
     const formData = new FormData();
     formData.append('action', 'get_content');
@@ -3255,14 +4807,647 @@ async function loadContactData() {
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.data) {
-        document.getElementById('contact-phone').value = result.data.contactPhone || '';
-        document.getElementById('contact-email').value = result.data.contactEmail || '';
-        document.getElementById('contact-address').value = result.data.contactAddress || '';
+        const data = result.data;
+        
+        // Update hidden fields and preview
+        const phoneField = document.getElementById('contact-phone');
+        const emailField = document.getElementById('contact-email');
+        const addressField = document.getElementById('contact-address');
+        const phonePreview = document.getElementById('preview-contact-phone');
+        const emailPreview = document.getElementById('preview-contact-email');
+        const addressPreview = document.getElementById('preview-contact-address');
+        
+        if (phoneField) phoneField.value = data.contactPhone || '';
+        if (emailField) emailField.value = data.contactEmail || '';
+        if (addressField) addressField.value = data.contactAddress || '';
+        
+        if (phonePreview) phonePreview.textContent = data.contactPhone || '+1 (555) 123‑4567';
+        if (emailPreview) emailPreview.textContent = data.contactEmail || 'hello@backtobase.example';
+        if (addressPreview) addressPreview.textContent = data.contactAddress || 'British Columbia, Canada';
+        
+        console.log('Contact data loaded successfully');
       }
     }
   } catch (error) {
-    console.log('Failed to load contact data');
+    console.log('Failed to load contact data:', error);
   }
+}
+
+// Contact auto-save functionality
+let contactAutoSaveTimer = null;
+let contactHasUnsavedChanges = false;
+
+window.scheduleContactAutoSave = function() {
+  if (contactAutoSaveTimer) {
+    clearTimeout(contactAutoSaveTimer);
+  }
+  
+  contactAutoSaveTimer = setTimeout(() => {
+    if (contactHasUnsavedChanges) {
+      saveContactContent();
+      contactHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateContactSaveStatus('saving');
+}
+
+async function saveContactContent() {
+  updateContactSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('contact_phone', document.getElementById('contact-phone')?.value || '');
+    formData.append('contact_email', document.getElementById('contact-email')?.value || '');
+    formData.append('contact_address', document.getElementById('contact-address')?.value || '');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateContactSaveStatus('saved');
+    } else {
+      updateContactSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving contact content:', error);
+    updateContactSaveStatus('error');
+  }
+}
+
+function updateContactSaveStatus(status) {
+  const statusText = document.getElementById('contact-save-status-text');
+  const statusIcon = document.getElementById('contact-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initContactAutoSave() {
+  console.log('Contact auto-save initialized');
+}
+
+// Room Second auto-save functionality
+let roomSecondAutoSaveTimer = null;
+let roomSecondHasUnsavedChanges = false;
+
+window.scheduleRoomSecondAutoSave = function() {
+  if (roomSecondAutoSaveTimer) {
+    clearTimeout(roomSecondAutoSaveTimer);
+  }
+  
+  roomSecondAutoSaveTimer = setTimeout(() => {
+    if (roomSecondHasUnsavedChanges) {
+      saveRoomSecondContent();
+      roomSecondHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateRoomSecondSaveStatus('saving');
+}
+
+async function saveRoomSecondContent() {
+  updateRoomSecondSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('room_second_title', document.getElementById('room-second-title')?.value || '');
+    formData.append('room_second_subtitle', document.getElementById('room-second-subtitle')?.value || '');
+    formData.append('room_second_description', document.getElementById('room-second-description')?.value || '');
+    formData.append('room_second_price', document.getElementById('room-second-price')?.value || '');
+    formData.append('room_second_capacity', document.getElementById('room-second-capacity')?.value || '');
+    formData.append('room_second_note', document.getElementById('room-second-note')?.value || '');
+    formData.append('room_second_gallery', document.getElementById('room-second-gallery')?.value || '[]');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateRoomSecondSaveStatus('saved');
+    } else {
+      updateRoomSecondSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving room second content:', error);
+    updateRoomSecondSaveStatus('error');
+  }
+}
+
+function updateRoomSecondSaveStatus(status) {
+  const statusText = document.getElementById('room-second-save-status-text');
+  const statusIcon = document.getElementById('room-second-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initRoomSecondAutoSave() {
+  console.log('Room Second auto-save initialized');
+}
+
+// Room Ground Twin auto-save functionality
+let roomGroundTwinAutoSaveTimer = null;
+let roomGroundTwinHasUnsavedChanges = false;
+
+window.scheduleRoomGroundTwinAutoSave = function() {
+  if (roomGroundTwinAutoSaveTimer) {
+    clearTimeout(roomGroundTwinAutoSaveTimer);
+  }
+  
+  roomGroundTwinAutoSaveTimer = setTimeout(() => {
+    if (roomGroundTwinHasUnsavedChanges) {
+      saveRoomGroundTwinContent();
+      roomGroundTwinHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateRoomGroundTwinSaveStatus('saving');
+}
+
+async function saveRoomGroundTwinContent() {
+  updateRoomGroundTwinSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('room_ground_twin_title', document.getElementById('room-ground-twin-title')?.value || '');
+    formData.append('room_ground_twin_subtitle', document.getElementById('room-ground-twin-subtitle')?.value || '');
+    formData.append('room_ground_twin_description', document.getElementById('room-ground-twin-description')?.value || '');
+    formData.append('room_ground_twin_price', document.getElementById('room-ground-twin-price')?.value || '');
+    formData.append('room_ground_twin_capacity', document.getElementById('room-ground-twin-capacity')?.value || '');
+    formData.append('room_ground_twin_note', document.getElementById('room-ground-twin-note')?.value || '');
+    formData.append('room_ground_twin_gallery', document.getElementById('room-ground-twin-gallery')?.value || '[]');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateRoomGroundTwinSaveStatus('saved');
+    } else {
+      updateRoomGroundTwinSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving room ground twin content:', error);
+    updateRoomGroundTwinSaveStatus('error');
+  }
+}
+
+function updateRoomGroundTwinSaveStatus(status) {
+  const statusText = document.getElementById('room-ground-twin-save-status-text');
+  const statusIcon = document.getElementById('room-ground-twin-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initRoomGroundTwinAutoSave() {
+  console.log('Room Ground Twin auto-save initialized');
+}
+
+// Room Ground Queen auto-save functionality
+let roomGroundQueenAutoSaveTimer = null;
+let roomGroundQueenHasUnsavedChanges = false;
+
+window.scheduleRoomGroundQueenAutoSave = function() {
+  if (roomGroundQueenAutoSaveTimer) {
+    clearTimeout(roomGroundQueenAutoSaveTimer);
+  }
+  
+  roomGroundQueenAutoSaveTimer = setTimeout(() => {
+    if (roomGroundQueenHasUnsavedChanges) {
+      saveRoomGroundQueenContent();
+      roomGroundQueenHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateRoomGroundQueenSaveStatus('saving');
+}
+
+async function saveRoomGroundQueenContent() {
+  updateRoomGroundQueenSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('room_ground_queen_title', document.getElementById('room-ground-queen-title')?.value || '');
+    formData.append('room_ground_queen_subtitle', document.getElementById('room-ground-queen-subtitle')?.value || '');
+    formData.append('room_ground_queen_description', document.getElementById('room-ground-queen-description')?.value || '');
+    formData.append('room_ground_queen_price', document.getElementById('room-ground-queen-price')?.value || '');
+    formData.append('room_ground_queen_capacity', document.getElementById('room-ground-queen-capacity')?.value || '');
+    formData.append('room_ground_queen_note', document.getElementById('room-ground-queen-note')?.value || '');
+    formData.append('room_ground_queen_gallery', document.getElementById('room-ground-queen-gallery')?.value || '[]');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateRoomGroundQueenSaveStatus('saved');
+    } else {
+      updateRoomGroundQueenSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving room ground queen content:', error);
+    updateRoomGroundQueenSaveStatus('error');
+  }
+}
+
+function updateRoomGroundQueenSaveStatus(status) {
+  const statusText = document.getElementById('room-ground-queen-save-status-text');
+  const statusIcon = document.getElementById('room-ground-queen-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initRoomGroundQueenAutoSave() {
+  console.log('Room Ground Queen auto-save initialized');
+}
+
+// Room Basement auto-save functionality
+let roomBasementAutoSaveTimer = null;
+let roomBasementHasUnsavedChanges = false;
+
+window.scheduleRoomBasementAutoSave = function() {
+  if (roomBasementAutoSaveTimer) {
+    clearTimeout(roomBasementAutoSaveTimer);
+  }
+  
+  roomBasementAutoSaveTimer = setTimeout(() => {
+    if (roomBasementHasUnsavedChanges) {
+      saveRoomBasementContent();
+      roomBasementHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateRoomBasementSaveStatus('saving');
+}
+
+async function saveRoomBasementContent() {
+  updateRoomBasementSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('room_basement_title', document.getElementById('room-basement-title')?.value || '');
+    formData.append('room_basement_subtitle', document.getElementById('room-basement-subtitle')?.value || '');
+    formData.append('room_basement_description', document.getElementById('room-basement-description')?.value || '');
+    formData.append('room_basement_price', document.getElementById('room-basement-price')?.value || '');
+    formData.append('room_basement_capacity', document.getElementById('room-basement-capacity')?.value || '');
+    formData.append('room_basement_note', document.getElementById('room-basement-note')?.value || '');
+    formData.append('room_basement_gallery', document.getElementById('room-basement-gallery')?.value || '[]');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateRoomBasementSaveStatus('saved');
+    } else {
+      updateRoomBasementSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving room basement content:', error);
+    updateRoomBasementSaveStatus('error');
+  }
+}
+
+function updateRoomBasementSaveStatus(status) {
+  const statusText = document.getElementById('room-basement-save-status-text');
+  const statusIcon = document.getElementById('room-basement-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initRoomBasementAutoSave() {
+  console.log('Room Basement auto-save initialized');
+}
+
+// Wellness Experiences auto-save functionality
+let wellnessAutoSaveTimer = null;
+let wellnessHasUnsavedChanges = false;
+
+window.scheduleWellnessAutoSave = function() {
+  if (wellnessAutoSaveTimer) {
+    clearTimeout(wellnessAutoSaveTimer);
+  }
+  
+  wellnessAutoSaveTimer = setTimeout(() => {
+    if (wellnessHasUnsavedChanges) {
+      saveWellnessContent();
+      wellnessHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateWellnessSaveStatus('saving');
+}
+
+async function saveWellnessContent() {
+  updateWellnessSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('wellness_title', document.getElementById('wellness-title')?.value || '');
+    formData.append('wellness_description', document.getElementById('wellness-description')?.value || '');
+    formData.append('wellness_massage_title', document.getElementById('wellness-massage-title')?.value || '');
+    formData.append('wellness_massage_description', document.getElementById('wellness-massage-description')?.value || '');
+    formData.append('wellness_yoga_title', document.getElementById('wellness-yoga-title')?.value || '');
+    formData.append('wellness_yoga_description', document.getElementById('wellness-yoga-description')?.value || '');
+    formData.append('wellness_sauna_title', document.getElementById('wellness-sauna-title')?.value || '');
+    formData.append('wellness_sauna_description', document.getElementById('wellness-sauna-description')?.value || '');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateWellnessSaveStatus('saved');
+    } else {
+      updateWellnessSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving wellness content:', error);
+    updateWellnessSaveStatus('error');
+  }
+}
+
+function updateWellnessSaveStatus(status) {
+  const statusText = document.getElementById('wellness-save-status-text');
+  const statusIcon = document.getElementById('wellness-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initWellnessAutoSave() {
+  console.log('Wellness Experiences auto-save initialized');
+}
+
+// Massage auto-save functionality
+let massageAutoSaveTimer = null;
+let massageHasUnsavedChanges = false;
+
+window.scheduleMassageAutoSave = function() {
+  if (massageAutoSaveTimer) {
+    clearTimeout(massageAutoSaveTimer);
+  }
+  
+  massageAutoSaveTimer = setTimeout(() => {
+    if (massageHasUnsavedChanges) {
+      saveMassageContent();
+      massageHasUnsavedChanges = false;
+    }
+  }, 2000); // 2 second delay
+  
+  updateMassageSaveStatus('saving');
+}
+
+async function saveMassageContent() {
+  updateMassageSaveStatus('saving');
+  
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+    
+    // Get all field values
+    formData.append('massage_hero_title', document.getElementById('massage-hero-title')?.value || '');
+    formData.append('massage_intro', document.getElementById('massage-intro')?.value || '');
+    formData.append('massage_relaxing_title', document.getElementById('massage-relaxing-title')?.value || '');
+    formData.append('massage_relaxing_description', document.getElementById('massage-relaxing-description')?.value || '');
+    formData.append('massage_deep_tissue_title', document.getElementById('massage-deep-tissue-title')?.value || '');
+    formData.append('massage_deep_tissue_description', document.getElementById('massage-deep-tissue-description')?.value || '');
+    formData.append('massage_reiki_title', document.getElementById('massage-reiki-title')?.value || '');
+    formData.append('massage_reiki_description', document.getElementById('massage-reiki-description')?.value || '');
+    formData.append('massage_sauna_title', document.getElementById('massage-sauna-title')?.value || '');
+    formData.append('massage_sauna_description', document.getElementById('massage-sauna-description')?.value || '');
+    formData.append('massage_booking_title', document.getElementById('massage-booking-title')?.value || '');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      updateMassageSaveStatus('saved');
+    } else {
+      updateMassageSaveStatus('error');
+    }
+  } catch (error) {
+    console.error('Error saving massage content:', error);
+    updateMassageSaveStatus('error');
+  }
+}
+
+function updateMassageSaveStatus(status) {
+  const statusText = document.getElementById('massage-save-status-text');
+  const statusIcon = document.getElementById('massage-save-status-icon');
+  
+  if (!statusText || !statusIcon) return;
+  
+  switch(status) {
+    case 'saving':
+      statusText.textContent = 'Saving...';
+      statusIcon.textContent = '⏳';
+      statusIcon.style.color = '#6b7280';
+      break;
+    case 'saved':
+      statusText.textContent = 'Saved';
+      statusIcon.textContent = '✓';
+      statusIcon.style.color = '#10b981';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 2000);
+      break;
+    case 'error':
+      statusText.textContent = 'Error saving';
+      statusIcon.textContent = '✗';
+      statusIcon.style.color = '#ef4444';
+      setTimeout(() => {
+        statusText.textContent = '';
+        statusIcon.textContent = '';
+      }, 3000);
+      break;
+  }
+}
+
+function initMassageAutoSave() {
+  console.log('Massage auto-save initialized');
 }
 
 // ==========================================
@@ -3476,76 +5661,71 @@ async function loadWellnessExperiencesData() {
     if (response.ok) {
       const result = await response.json();
       if (result.success && result.data) {
-        // Load wellness images with preview
+        const data = result.data;
+        
+        // Section header
+        const titleField = document.getElementById('wellness-title');
+        const descField = document.getElementById('wellness-description');
+        const titlePreview = document.getElementById('preview-wellness-title');
+        const descPreview = document.getElementById('preview-wellness-desc');
+        if (titleField) titleField.value = data.wellnessTitle || '';
+        if (descField) descField.value = data.wellnessDescription || '';
+        if (titlePreview) titlePreview.textContent = data.wellnessTitle || 'Wellness Experiences';
+        if (descPreview) descPreview.textContent = data.wellnessDescription || 'Enhance your stay with our additional wellness services. Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.';
+        
+        // Massage card
+        const massageTitleField = document.getElementById('wellness-massage-title');
+        const massageDescField = document.getElementById('wellness-massage-description');
+        const massageTitlePreview = document.getElementById('preview-wellness-massage-title');
+        const massageDescPreview = document.getElementById('preview-wellness-massage-desc');
+        const massageImg = document.getElementById('preview-wellness-massage-img');
         const massageImageUrl = result.data.wellnessMassageImageUrl || '';
+        if (massageTitleField) massageTitleField.value = data.wellnessMassageTitle || '';
+        if (massageDescField) massageDescField.value = data.wellnessMassageDescription || '';
+        if (massageTitlePreview) massageTitlePreview.textContent = data.wellnessMassageTitle || 'Massage';
+        if (massageDescPreview) massageDescPreview.textContent = data.wellnessMassageDescription || 'Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.';
+        if (massageImg && massageImageUrl) {
+          massageImg.src = massageImageUrl + '?v=' + Date.now();
+          massageImg.style.display = 'block';
+          const span = massageImg.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
+        }
+        
+        // Yoga card
+        const yogaTitleField = document.getElementById('wellness-yoga-title');
+        const yogaDescField = document.getElementById('wellness-yoga-description');
+        const yogaTitlePreview = document.getElementById('preview-wellness-yoga-title');
+        const yogaDescPreview = document.getElementById('preview-wellness-yoga-desc');
+        const yogaImg = document.getElementById('preview-wellness-yoga-img');
         const yogaImageUrl = result.data.wellnessYogaImageUrl || '';
+        if (yogaTitleField) yogaTitleField.value = data.wellnessYogaTitle || '';
+        if (yogaDescField) yogaDescField.value = data.wellnessYogaDescription || '';
+        if (yogaTitlePreview) yogaTitlePreview.textContent = data.wellnessYogaTitle || 'Yoga';
+        if (yogaDescPreview) yogaDescPreview.textContent = data.wellnessYogaDescription || 'On the property, surrounded by a cozy forest, you\'ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.';
+        if (yogaImg && yogaImageUrl) {
+          yogaImg.src = yogaImageUrl + '?v=' + Date.now();
+          yogaImg.style.display = 'block';
+          const span = yogaImg.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
+        }
+        
+        // Sauna card
+        const saunaTitleField = document.getElementById('wellness-sauna-title');
+        const saunaDescField = document.getElementById('wellness-sauna-description');
+        const saunaTitlePreview = document.getElementById('preview-wellness-sauna-title');
+        const saunaDescPreview = document.getElementById('preview-wellness-sauna-desc');
+        const saunaImg = document.getElementById('preview-wellness-sauna-img');
         const saunaImageUrl = result.data.wellnessSaunaImageUrl || '';
-        
-        // Update massage image preview
-        if (massageImageUrl) {
-          const preview = document.getElementById('wellness-massage-preview');
-          const pathDisplay = document.getElementById('wellness-massage-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = massageImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = massageImageUrl;
-            pathDisplay.style.display = 'block';
-          }
+        if (saunaTitleField) saunaTitleField.value = data.wellnessSaunaTitle || '';
+        if (saunaDescField) saunaDescField.value = data.wellnessSaunaDescription || '';
+        if (saunaTitlePreview) saunaTitlePreview.textContent = data.wellnessSaunaTitle || 'Sauna';
+        if (saunaDescPreview) saunaDescPreview.textContent = data.wellnessSaunaDescription || 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.';
+        if (saunaImg && saunaImageUrl) {
+          saunaImg.src = saunaImageUrl + '?v=' + Date.now();
+          saunaImg.style.display = 'block';
+          const span = saunaImg.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
         }
-        
-        // Update yoga image preview
-        if (yogaImageUrl) {
-          const preview = document.getElementById('wellness-yoga-preview');
-          const pathDisplay = document.getElementById('wellness-yoga-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = yogaImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = yogaImageUrl;
-            pathDisplay.style.display = 'block';
-          }
-        }
-        
-        // Update sauna image preview
-        if (saunaImageUrl) {
-          const preview = document.getElementById('wellness-sauna-preview');
-          const pathDisplay = document.getElementById('wellness-sauna-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = saunaImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = saunaImageUrl;
-            pathDisplay.style.display = 'block';
-          }
-        }
-        
-        // Save to localStorage
-        const stored = localStorage.getItem('btb_wellness_experiences') || '{}';
-        const storedJson = JSON.parse(stored);
-        const wellnessData = {
-          ...storedJson,
-          massage: {
-            ...storedJson.massage,
-            imageUrl: massageImageUrl || storedJson.massage?.imageUrl || ''
-          },
-          yoga: {
-            ...storedJson.yoga,
-            imageUrl: yogaImageUrl || storedJson.yoga?.imageUrl || ''
-          },
-          sauna: {
-            ...storedJson.sauna,
-            imageUrl: saunaImageUrl || storedJson.sauna?.imageUrl || ''
-          }
-        };
-        localStorage.setItem('btb_wellness_experiences', JSON.stringify(wellnessData));
-        console.log('Wellness experiences data saved to localStorage');
       }
     }
   } catch (error) {
@@ -3555,51 +5735,89 @@ async function loadWellnessExperiencesData() {
 
 // Initialize wellness experiences image upload
 function initWellnessExperiencesImageUpload() {
-  const uploadConfigs = [
-    {
-      buttonId: 'wellness-massage-upload-btn',
-      inputId: 'wellness-massage-upload',
-      previewId: 'wellness-massage-preview',
-      pathId: 'wellness-massage-path',
-      imageType: 'wellness-massage'
-    },
-    {
-      buttonId: 'wellness-yoga-upload-btn',
-      inputId: 'wellness-yoga-upload',
-      previewId: 'wellness-yoga-preview',
-      pathId: 'wellness-yoga-path',
-      imageType: 'wellness-yoga'
-    },
-    {
-      buttonId: 'wellness-sauna-upload-btn',
-      inputId: 'wellness-sauna-upload',
-      previewId: 'wellness-sauna-preview',
-      pathId: 'wellness-sauna-path',
-      imageType: 'wellness-sauna'
-    }
-  ];
-
-  uploadConfigs.forEach(config => {
-    const uploadBtn = document.getElementById(config.buttonId);
-    const fileInput = document.getElementById(config.inputId);
-    const preview = document.getElementById(config.previewId);
-    const pathDisplay = document.getElementById(config.pathId);
-
-    if (uploadBtn && fileInput) {
-      uploadBtn.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', async (e) => {
-        const file = e.target.files[0];
-        if (file) {
-          await uploadImage(file, config.imageType, preview, pathDisplay, {
-            localStorageKey: 'btb_wellness_experiences',
-            fieldNameMapper: (type) => type.replace('wellness-', '') + 'ImageUrl',
-            reloadFunction: loadWellnessExperiencesData,
-            imageNameMapper: (type) => type.replace('wellness-', '').charAt(0).toUpperCase() + type.replace('wellness-', '').slice(1)
-          });
-        }
-      });
-    }
-  });
+  // Massage image upload
+  const massageInput = document.getElementById('wellness-massage-upload');
+  if (massageInput) {
+    massageInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const massageImg = document.getElementById('preview-wellness-massage-img');
+        await uploadImage(file, 'wellness-massage', null, null, {
+          localStorageKey: 'btb_wellness_experiences',
+          fieldNameMapper: () => 'massage.imageUrl',
+          reloadFunction: loadWellnessExperiencesData,
+          imageNameMapper: () => 'Wellness Massage',
+          onSuccess: (imageUrl) => {
+            if (massageImg) {
+              massageImg.src = imageUrl + '?v=' + Date.now();
+              massageImg.style.display = 'block';
+              const span = massageImg.parentElement.querySelector('span');
+              if (span) span.style.display = 'none';
+            }
+            setTimeout(() => {
+              loadWellnessExperiencesData();
+            }, 1000);
+          }
+        });
+      }
+    });
+  }
+  
+  // Yoga image upload
+  const yogaInput = document.getElementById('wellness-yoga-upload');
+  if (yogaInput) {
+    yogaInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const yogaImg = document.getElementById('preview-wellness-yoga-img');
+        await uploadImage(file, 'wellness-yoga', null, null, {
+          localStorageKey: 'btb_wellness_experiences',
+          fieldNameMapper: () => 'yoga.imageUrl',
+          reloadFunction: loadWellnessExperiencesData,
+          imageNameMapper: () => 'Wellness Yoga',
+          onSuccess: (imageUrl) => {
+            if (yogaImg) {
+              yogaImg.src = imageUrl + '?v=' + Date.now();
+              yogaImg.style.display = 'block';
+              const span = yogaImg.parentElement.querySelector('span');
+              if (span) span.style.display = 'none';
+            }
+            setTimeout(() => {
+              loadWellnessExperiencesData();
+            }, 1000);
+          }
+        });
+      }
+    });
+  }
+  
+  // Sauna image upload
+  const saunaInput = document.getElementById('wellness-sauna-upload');
+  if (saunaInput) {
+    saunaInput.addEventListener('change', async (e) => {
+      const file = e.target.files[0];
+      if (file) {
+        const saunaImg = document.getElementById('preview-wellness-sauna-img');
+        await uploadImage(file, 'wellness-sauna', null, null, {
+          localStorageKey: 'btb_wellness_experiences',
+          fieldNameMapper: () => 'sauna.imageUrl',
+          reloadFunction: loadWellnessExperiencesData,
+          imageNameMapper: () => 'Wellness Sauna',
+          onSuccess: (imageUrl) => {
+            if (saunaImg) {
+              saunaImg.src = imageUrl + '?v=' + Date.now();
+              saunaImg.style.display = 'block';
+              const span = saunaImg.parentElement.querySelector('span');
+              if (span) span.style.display = 'none';
+            }
+            setTimeout(() => {
+              loadWellnessExperiencesData();
+            }, 1000);
+          }
+        });
+      }
+    });
+  }
 }
 
 // Initialize save handlers for room pages
@@ -4345,41 +6563,77 @@ function initHomepageRoomsSaveHandler() {
   }
 }
 
-// Initialize save handler for wellness experiences
-function initWellnessExperiencesSaveHandler() {
-  const saveWellnessBtn = document.getElementById('save-wellness-experiences');
-  if (saveWellnessBtn) {
-    saveWellnessBtn.addEventListener('click', async () => {
-      const stored = localStorage.getItem('btb_wellness_experiences') || '{}';
-      const storedJson = JSON.parse(stored);
-      
-      const data = {
-        title: document.getElementById('wellness-title').value,
-        description: document.getElementById('wellness-description').value,
-        massage: {
-          imageUrl: (document.getElementById('wellness-massage-path')?.textContent) || storedJson.massage?.imageUrl || '',
-          title: document.getElementById('wellness-massage-title').value,
-          description: document.getElementById('wellness-massage-description').value
-        },
-        yoga: {
-          imageUrl: (document.getElementById('wellness-yoga-path')?.textContent) || storedJson.yoga?.imageUrl || '',
-          title: document.getElementById('wellness-yoga-title').value,
-          description: document.getElementById('wellness-yoga-description').value
-        },
-        sauna: {
-          imageUrl: (document.getElementById('wellness-sauna-path')?.textContent) || storedJson.sauna?.imageUrl || '',
-          title: document.getElementById('wellness-sauna-title').value,
-          description: document.getElementById('wellness-sauna-description').value
-        }
-      };
-      
-      localStorage.setItem('btb_wellness_experiences', JSON.stringify(data));
-      showStatus('Wellness Experiences saved successfully!');
-    });
-  }
-}
 
 // Initialize admin panel
+registerContentEditor('retreat-workshop', () => {
+  loadRetreatWorkshopData();
+  loadRetreatImagesData();
+  initRetreatImageUpload();
+  initRetreatSaveHandler();
+  initRetreatHelperUI();
+  setTimeout(() => {
+    if (typeof initRetreatAutoSave === 'function') {
+      initRetreatAutoSave();
+    }
+  }, 100);
+});
+
+registerContentEditor('special', () => {
+  loadSpecialData();
+  loadSpecialImagesData();
+  initSpecialImageUpload();
+  initSpecialAutoSave();
+});
+
+registerContentEditor('about', () => {
+  loadAboutData();
+  loadAboutImagesData();
+  initAboutImageUpload();
+  initAboutAutoSave();
+});
+
+registerContentEditor('contact', () => {
+  loadContactData();
+  initContactAutoSave();
+});
+
+registerContentEditor('massage', () => {
+  loadMassageData();
+  loadMassageImagesData();
+  initMassageImageUpload();
+  initMassageAutoSave();
+});
+
+registerContentEditor('room-second', () => {
+  loadRoomSecondData();
+  initRoomSecondImageUpload();
+  initRoomSecondAutoSave();
+});
+
+registerContentEditor('room-ground-twin', () => {
+  loadRoomGroundTwinData();
+  initRoomGroundTwinImageUpload();
+  initRoomGroundTwinAutoSave();
+});
+
+registerContentEditor('room-ground-queen', () => {
+  loadRoomGroundQueenData();
+  initRoomGroundQueenImageUpload();
+  initRoomGroundQueenAutoSave();
+});
+
+registerContentEditor('room-basement', () => {
+  loadRoomBasementData();
+  initRoomBasementImageUpload();
+  initRoomBasementAutoSave();
+});
+
+registerContentEditor('wellness-experiences', () => {
+  loadWellnessExperiencesData();
+  initWellnessExperiencesImageUpload();
+  initWellnessAutoSave();
+});
+
 document.addEventListener('DOMContentLoaded', () => {
   // Check authentication
   checkAdminAuth();
@@ -4679,7 +6933,6 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Initialize save buttons for homepage rooms and wellness
   initHomepageRoomsSaveHandler();
-  initWellnessExperiencesSaveHandler();
   
   // Initialize forms
   initAdminForms();

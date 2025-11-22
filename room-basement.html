@@ -89,34 +89,30 @@
 
   <div class="page-header">
     <div class="container">
-      <h1>Basement — Queen bed</h1>
-      <p class="section-lead">A cozy room next to the home cinema and sauna. Ideal for two.</p>
+      <h1 id="room-basement-title">Basement — Queen bed</h1>
+      <p class="section-lead" id="room-basement-subtitle">A cozy room next to the home cinema and sauna. Ideal for two.</p>
     </div>
   </div>
 
   <section class="hero-contained" aria-label="Basement banner">
     <div class="container">
-      <img class="hero-contained-img basement-banner-cropped" data-src-base="assets/deer" alt="Deer in forest" />
+      <img id="room-basement-banner" class="hero-contained-img basement-banner-cropped" data-src-base="assets/deer" alt="Deer in forest" />
     </div>
   </section>
 
   <main class="section">
     <div class="container room-hero">
       <section>
-        <div class="gallery">
-          <img data-src-base="assets/basement1" alt="Basement bedroom - king bed">
-          <img data-src-base="assets/basement3" alt="Basement additional view">
-          <img data-src-base="assets/basement4" alt="Basement detail">
-          <img data-src-base="assets/basement5" alt="Basement detail">
-          <img data-src-base="assets/basement6" alt="Basement bathroom or area">
+        <div class="gallery" id="room-basement-gallery">
+          <!-- Gallery images will be dynamically inserted here -->
         </div>
       </section>
       <aside class="card">
         <h2>Book this room</h2>
-        <p><strong>Price:</strong> 140 CAD / night</p>
-        <p><strong>Capacity:</strong> up to 2 guests</p>
-        <p style="margin-top: 32px;">Next to this room there is a home theater lounge with a wood-burning stove and a large shower area with a sauna. The floor has a private exit from the house and a passage to the shared lounge on the first floor.</p>
-        <p>The home theater and sauna are shared, but no one will make noise on the floor without your consent. You are free to use them — just make sure any loud sounds won't disturb other guests.</p>
+        <p id="room-basement-price"><strong>Price:</strong> 140 CAD / night</p>
+        <p id="room-basement-capacity"><strong>Capacity:</strong> up to 2 guests</p>
+        <p id="room-basement-description" style="margin-top: 32px;">Next to this room there is a home theater lounge with a wood-burning stove and a large shower area with a sauna. The floor has a private exit from the house and a passage to the shared lounge on the first floor.</p>
+        <p id="room-basement-note">The home theater and sauna are shared, but no one will make noise on the floor without your consent. You are free to use them — just make sure any loud sounds won't disturb other guests.</p>
         <p style="margin-top: 16px;">*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.</p>
         <form class="booking-form" data-room="Basement — Queen" data-custom-handler novalidate style="margin-top: 40px;">
           <div class="form-row">
@@ -176,16 +172,16 @@
 
   <section id="wellness-section" class="section alt" style="display:none;">
     <div class="container">
-      <h2>Wellness Experiences</h2>
-      <p class="section-lead">Enhance your stay with our additional wellness services.<br>Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.</p>
+      <h2 id="wellness-title">Wellness Experiences</h2>
+      <p class="section-lead" id="wellness-description">Enhance your stay with our additional wellness services.<br>Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.</p>
 
       <section class="card card-massage">
         <div class="card-img">
-          <img class="floor-photo media-43" src="assets/massage.jpg" alt="Massage at Back to Base" />
+          <img id="wellness-massage-img" class="floor-photo media-43" src="assets/massage.jpg" alt="Massage at Back to Base" />
         </div>
         <div class="card-body">
-          <h2>Massage</h2>
-          <p>Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.</p>
+          <h2 id="wellness-massage-title">Massage</h2>
+          <p id="wellness-massage-description">Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.</p>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <a class="btn primary" href="massage.html">Book massage</a>
           </div>
@@ -194,11 +190,11 @@
 
       <section class="card card-massage card-massage--alt">
         <div class="card-img">
-          <img class="floor-photo media-43" src="assets/yoga.jpg" alt="Yoga at Back to Base" />
+          <img id="wellness-yoga-img" class="floor-photo media-43" src="assets/yoga.jpg" alt="Yoga at Back to Base" />
         </div>
         <div class="card-body">
-          <h2>Yoga</h2>
-          <p>On the property, surrounded by a cozy forest, you’ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.</p>
+          <h2 id="wellness-yoga-title">Yoga</h2>
+          <p id="wellness-yoga-description">On the property, surrounded by a cozy forest, you'll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.</p>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <a class="btn primary" href="retreat-and-workshop.html">Book retreat</a>
           </div>
@@ -207,11 +203,11 @@
 
       <section class="card card-massage">
         <div class="card-img">
-          <img class="floor-photo media-43" src="assets/plan-basement-bedroom.jpg" alt="Sauna at Back to Base" />
+          <img id="wellness-sauna-img" class="floor-photo media-43" src="assets/plan-basement-bedroom.jpg" alt="Sauna at Back to Base" />
         </div>
         <div class="card-body">
-          <h2>Sauna</h2>
-          <p>After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.</p>
+          <h2 id="wellness-sauna-title">Sauna</h2>
+          <p id="wellness-sauna-description">After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.</p>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
             <a class="btn primary" href="massage.html">Book sauna session</a>
           </div>
@@ -224,9 +220,9 @@
     <div class="container footer-grid">
       <div>
         <h4>Contact</h4>
-        <p>British Columbia, Canada</p>
-        <p>Phone: +1 (555) 123‑4567</p>
-        <p>Email: hello@backtobase.example</p>
+        <p id="footer-contact-address">British Columbia, Canada</p>
+        <p id="footer-contact-phone">Phone: +1 (555) 123‑4567</p>
+        <p id="footer-contact-email">Email: hello@backtobase.example</p>
       </div>
       <div>
         <h4>Navigation</h4>
@@ -306,89 +302,130 @@
   </script>
   <script src="auth.js?v=26"></script>
   <script>
-    // Gallery functionality for Basement — Queen bed
-    const galleryImages = [
-      'assets/basement1',
-      'assets/basement3',
-      'assets/basement4',
-      'assets/basement5',
-      'assets/basement6'
-    ];
-    
-    let currentImageIndex = 0;
-    
-    // Функция для получения правильного пути к изображению
-    function getImagePath(baseName) {
-      const extensions = ['.jpg', '.jpeg', '.png'];
-      for (let ext of extensions) {
-        try {
-          // Проверяем, существует ли файл
-          const testImg = new Image();
-          testImg.src = baseName + ext;
-          if (testImg.complete) {
-            return baseName + ext;
+    // Load room basement content from API
+    async function loadRoomBasementContentFromAPI() {
+      try {
+        const formData = new FormData();
+        formData.append('action', 'get_content');
+        
+        const response = await fetch('api.php', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            const data = result.data;
+            
+            // Update text content
+            const title = document.getElementById('room-basement-title');
+            const subtitle = document.getElementById('room-basement-subtitle');
+            const price = document.getElementById('room-basement-price');
+            const capacity = document.getElementById('room-basement-capacity');
+            const description = document.getElementById('room-basement-description');
+            const note = document.getElementById('room-basement-note');
+            
+            if (title && data.roomBasementTitle) title.textContent = data.roomBasementTitle;
+            if (subtitle && data.roomBasementSubtitle) subtitle.textContent = data.roomBasementSubtitle;
+            if (price && data.roomBasementPrice) price.innerHTML = data.roomBasementPrice;
+            if (capacity && data.roomBasementCapacity) capacity.innerHTML = data.roomBasementCapacity;
+            if (description && data.roomBasementDescription) description.textContent = data.roomBasementDescription;
+            if (note && data.roomBasementNote) note.textContent = data.roomBasementNote;
+            
+            // Update banner image
+            const banner = document.getElementById('room-basement-banner');
+            if (banner) {
+              if (data.roomBasementBannerImageUrl) {
+                console.log('Updating banner image:', data.roomBasementBannerImageUrl);
+                banner.src = data.roomBasementBannerImageUrl + '?v=' + Date.now();
+                banner.removeAttribute('data-src-base');
+                // Force image reload
+                banner.onload = () => {
+                  console.log('Banner image loaded successfully');
+                };
+                banner.onerror = () => {
+                  console.error('Failed to load banner image:', data.roomBasementBannerImageUrl);
+                };
+              } else {
+                console.log('No banner URL in API response');
+              }
+            } else {
+              console.error('Banner element not found');
+            }
+            
+            // Update gallery
+            let gallery = [];
+            try {
+              gallery = JSON.parse(data.roomBasementGallery || '[]');
+            } catch (e) {
+              console.error('Failed to parse gallery:', e);
+            }
+            
+            if (gallery.length > 0) {
+              updateGallery(gallery);
+            }
           }
-        } catch (e) {
-          continue;
         }
+      } catch (error) {
+        console.log('Failed to load room basement content from API:', error);
       }
-      return baseName + '.jpg'; // fallback
     }
     
-    // Предзагрузка изображений для плавной работы галереи
-    galleryImages.forEach(src => {
-      const img = new Image();
-      img.src = getImagePath(src);
-    });
+    // Gallery functionality for Basement — Queen bed
+    let galleryImages = [];
+    let currentImageIndex = 0;
     
-    // Open modal when clicking on gallery images
-    document.querySelectorAll('.gallery img').forEach((img, index) => {
-      img.addEventListener('click', () => {
-        openGalleryModal(index);
+    function updateGallery(gallery) {
+      galleryImages = gallery;
+      const galleryContainer = document.getElementById('room-basement-gallery');
+      if (!galleryContainer) return;
+      
+      galleryContainer.innerHTML = '';
+      gallery.forEach((imageUrl, index) => {
+        const img = document.createElement('img');
+        img.src = imageUrl + '?v=' + Date.now();
+        img.alt = `Basement Queen bed ${index + 1}`;
+        img.style.cursor = 'pointer';
+        img.onclick = () => openGalleryModal(index);
+        galleryContainer.appendChild(img);
       });
-    });
-    
-    // Close modal
-    document.getElementById('gallery-close').addEventListener('click', closeGalleryModal);
-    
-    // Close modal when clicking outside the gallery content
-    document.getElementById('gallery-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'gallery-modal') {
-        closeGalleryModal();
-      }
-    });
-    
-    // Navigation
-    document.getElementById('gallery-prev').addEventListener('click', showPreviousImage);
-    document.getElementById('gallery-next').addEventListener('click', showNextImage);
-    
-    // Keyboard navigation
-    document.addEventListener('keydown', (e) => {
-      if (document.getElementById('gallery-modal').classList.contains('active')) {
-        if (e.key === 'Escape') closeGalleryModal();
-        if (e.key === 'ArrowLeft') showPreviousImage();
-        if (e.key === 'ArrowRight') showNextImage();
-      }
-    });
+      
+      // Reinitialize gallery click handlers
+      document.querySelectorAll('#room-basement-gallery img').forEach((img, index) => {
+        img.addEventListener('click', () => {
+          openGalleryModal(index);
+        });
+      });
+    }
     
     function openGalleryModal(index) {
+      if (galleryImages.length === 0) return;
       currentImageIndex = index;
       updateGalleryModal();
-      document.getElementById('gallery-modal').classList.add('active');
-      document.body.style.overflow = 'hidden';
+      const modal = document.getElementById('gallery-modal');
+      if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+      }
     }
     
     function closeGalleryModal() {
-      document.getElementById('gallery-modal').classList.remove('active');
-      document.body.style.overflow = '';
+      const modal = document.getElementById('gallery-modal');
+      if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = '';
+      }
     }
     
     function showPreviousImage() {
+      if (galleryImages.length === 0) return;
       currentImageIndex = (currentImageIndex - 1 + galleryImages.length) % galleryImages.length;
       updateGalleryModal();
     }
     
     function showNextImage() {
+      if (galleryImages.length === 0) return;
       currentImageIndex = (currentImageIndex + 1) % galleryImages.length;
       updateGalleryModal();
     }
@@ -397,23 +434,134 @@
       const modalImage = document.getElementById('gallery-modal-image');
       const counter = document.getElementById('gallery-counter');
       
+      if (!modalImage || galleryImages.length === 0) return;
+      
       // Добавляем плавный переход
       modalImage.style.opacity = '0';
       
       setTimeout(() => {
-        modalImage.src = getImagePath(galleryImages[currentImageIndex]);
+        modalImage.src = galleryImages[currentImageIndex] + '?v=' + Date.now();
         modalImage.alt = `Image ${currentImageIndex + 1} of ${galleryImages.length}`;
-        counter.textContent = `${currentImageIndex + 1} / ${galleryImages.length}`;
+        if (counter) counter.textContent = `${currentImageIndex + 1} / ${galleryImages.length}`;
         
         // Показываем изображение с плавным появлением
         modalImage.style.opacity = '1';
       }, 150);
     }
+    
+    // Initialize gallery handlers
+    document.addEventListener('DOMContentLoaded', () => {
+      const galleryClose = document.getElementById('gallery-close');
+      const galleryModal = document.getElementById('gallery-modal');
+      const galleryPrev = document.getElementById('gallery-prev');
+      const galleryNext = document.getElementById('gallery-next');
+      
+      if (galleryClose) {
+        galleryClose.addEventListener('click', closeGalleryModal);
+      }
+      
+      if (galleryModal) {
+        galleryModal.addEventListener('click', (e) => {
+          if (e.target.id === 'gallery-modal') {
+            closeGalleryModal();
+          }
+        });
+      }
+      
+      if (galleryPrev) {
+        galleryPrev.addEventListener('click', showPreviousImage);
+      }
+      
+      if (galleryNext) {
+        galleryNext.addEventListener('click', showNextImage);
+      }
+      
+      // Keyboard navigation
+      document.addEventListener('keydown', (e) => {
+        if (galleryModal && galleryModal.classList.contains('active')) {
+          if (e.key === 'Escape') closeGalleryModal();
+          if (e.key === 'ArrowLeft') showPreviousImage();
+          if (e.key === 'ArrowRight') showNextImage();
+        }
+      });
+      
+      // Load content from API
+      loadRoomBasementContentFromAPI();
+    });
   </script>
   <!-- Flatpickr для визуальной блокировки занятых дат в календаре -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
   <script src="auth-menu.js"></script>
   <script src="booking.js"></script>
+  <script>
+    // Load wellness experiences content from API
+    async function loadWellnessContentFromAPI() {
+      try {
+        const formData = new FormData();
+        formData.append('action', 'get_content');
+        
+        const response = await fetch('api.php', {
+          method: 'POST',
+          body: formData
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            const data = result.data;
+            
+            // Update section header
+            const title = document.getElementById('wellness-title');
+            const description = document.getElementById('wellness-description');
+            if (title && data.wellnessTitle) title.textContent = data.wellnessTitle;
+            if (description && data.wellnessDescription) description.innerHTML = data.wellnessDescription.replace(/\n/g, '<br>');
+            
+            // Update massage card
+            const massageTitle = document.getElementById('wellness-massage-title');
+            const massageDesc = document.getElementById('wellness-massage-description');
+            const massageImg = document.getElementById('wellness-massage-img');
+            if (massageTitle && data.wellnessMassageTitle) massageTitle.textContent = data.wellnessMassageTitle;
+            if (massageDesc && data.wellnessMassageDescription) massageDesc.textContent = data.wellnessMassageDescription;
+            if (massageImg && data.wellnessMassageImageUrl) {
+              massageImg.src = data.wellnessMassageImageUrl + '?v=' + Date.now();
+              massageImg.srcset = data.wellnessMassageImageUrl + '?v=' + Date.now();
+            }
+            
+            // Update yoga card
+            const yogaTitle = document.getElementById('wellness-yoga-title');
+            const yogaDesc = document.getElementById('wellness-yoga-description');
+            const yogaImg = document.getElementById('wellness-yoga-img');
+            if (yogaTitle && data.wellnessYogaTitle) yogaTitle.textContent = data.wellnessYogaTitle;
+            if (yogaDesc && data.wellnessYogaDescription) yogaDesc.textContent = data.wellnessYogaDescription;
+            if (yogaImg && data.wellnessYogaImageUrl) {
+              yogaImg.src = data.wellnessYogaImageUrl + '?v=' + Date.now();
+              yogaImg.srcset = data.wellnessYogaImageUrl + '?v=' + Date.now();
+            }
+            
+            // Update sauna card
+            const saunaTitle = document.getElementById('wellness-sauna-title');
+            const saunaDesc = document.getElementById('wellness-sauna-description');
+            const saunaImg = document.getElementById('wellness-sauna-img');
+            if (saunaTitle && data.wellnessSaunaTitle) saunaTitle.textContent = data.wellnessSaunaTitle;
+            if (saunaDesc && data.wellnessSaunaDescription) saunaDesc.textContent = data.wellnessSaunaDescription;
+            if (saunaImg && data.wellnessSaunaImageUrl) {
+              saunaImg.src = data.wellnessSaunaImageUrl + '?v=' + Date.now();
+              saunaImg.srcset = data.wellnessSaunaImageUrl + '?v=' + Date.now();
+            }
+          }
+        }
+      } catch (error) {
+        console.log('Failed to load wellness content from API:', error);
+      }
+    }
+    
+    // Load wellness content on page load
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', loadWellnessContentFromAPI);
+    } else {
+      loadWellnessContentFromAPI();
+    }
+  </script>
 </body>
 </html>

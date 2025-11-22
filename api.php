@@ -179,7 +179,64 @@ if ($action === 'get_content') {
                     'aboutNelsonDescription' => $data['about_nelson_description'] ?? '',
                     'aboutParksTitle' => $data['about_parks_title'] ?? '',
                     'aboutParksIntro' => $data['about_parks_intro'] ?? '',
-                    'aboutParksList' => $data['about_parks_list'] ?? ''
+                    'aboutParksList' => $data['about_parks_list'] ?? '',
+                    // Massage page content
+                    'massageHeroTitle' => $data['massage_hero_title'] ?? '',
+                    'massageIntro' => $data['massage_intro'] ?? '',
+                    'massageRelaxingTitle' => $data['massage_relaxing_title'] ?? '',
+                    'massageRelaxingDescription' => $data['massage_relaxing_description'] ?? '',
+                    'massageDeepTissueTitle' => $data['massage_deep_tissue_title'] ?? '',
+                    'massageDeepTissueDescription' => $data['massage_deep_tissue_description'] ?? '',
+                    'massageReikiTitle' => $data['massage_reiki_title'] ?? '',
+                    'massageReikiDescription' => $data['massage_reiki_description'] ?? '',
+                    'massageSaunaTitle' => $data['massage_sauna_title'] ?? '',
+                    'massageSaunaDescription' => $data['massage_sauna_description'] ?? '',
+                    'massageBookingTitle' => $data['massage_booking_title'] ?? '',
+                    // Room Second floor page content
+                    'roomSecondTitle' => $data['room_second_title'] ?? '',
+                    'roomSecondSubtitle' => $data['room_second_subtitle'] ?? '',
+                    'roomSecondDescription' => $data['room_second_description'] ?? '',
+                    'roomSecondPrice' => $data['room_second_price'] ?? '',
+                    'roomSecondCapacity' => $data['room_second_capacity'] ?? '',
+                    'roomSecondNote' => $data['room_second_note'] ?? '',
+                    'roomSecondGallery' => $data['room_second_gallery'] ?? '[]',
+                    'roomSecondBannerImageUrl' => $data['room_second_banner_image_url'] ?? '',
+                    // Room Ground Twin beds page content
+                    'roomGroundTwinTitle' => $data['room_ground_twin_title'] ?? '',
+                    'roomGroundTwinSubtitle' => $data['room_ground_twin_subtitle'] ?? '',
+                    'roomGroundTwinDescription' => $data['room_ground_twin_description'] ?? '',
+                    'roomGroundTwinPrice' => $data['room_ground_twin_price'] ?? '',
+                    'roomGroundTwinCapacity' => $data['room_ground_twin_capacity'] ?? '',
+                    'roomGroundTwinNote' => $data['room_ground_twin_note'] ?? '',
+                    'roomGroundTwinGallery' => $data['room_ground_twin_gallery'] ?? '[]',
+                    'roomGroundTwinBannerImageUrl' => $data['room_ground_twin_banner_image_url'] ?? '',
+                    // Room Ground Queen bed page content
+                    'roomGroundQueenTitle' => $data['room_ground_queen_title'] ?? '',
+                    'roomGroundQueenSubtitle' => $data['room_ground_queen_subtitle'] ?? '',
+                    'roomGroundQueenDescription' => $data['room_ground_queen_description'] ?? '',
+                    'roomGroundQueenPrice' => $data['room_ground_queen_price'] ?? '',
+                    'roomGroundQueenCapacity' => $data['room_ground_queen_capacity'] ?? '',
+                    'roomGroundQueenNote' => $data['room_ground_queen_note'] ?? '',
+                    'roomGroundQueenGallery' => $data['room_ground_queen_gallery'] ?? '[]',
+                    'roomGroundQueenBannerImageUrl' => $data['room_ground_queen_banner_image_url'] ?? '',
+                    // Room Basement Queen bed page content
+                    'roomBasementTitle' => $data['room_basement_title'] ?? '',
+                    'roomBasementSubtitle' => $data['room_basement_subtitle'] ?? '',
+                    'roomBasementDescription' => $data['room_basement_description'] ?? '',
+                    'roomBasementPrice' => $data['room_basement_price'] ?? '',
+                    'roomBasementCapacity' => $data['room_basement_capacity'] ?? '',
+                    'roomBasementNote' => $data['room_basement_note'] ?? '',
+                    'roomBasementGallery' => $data['room_basement_gallery'] ?? '[]',
+                    'roomBasementBannerImageUrl' => $data['room_basement_banner_image_url'] ?? '',
+                    // Wellness Experiences page content
+                    'wellnessTitle' => $data['wellness_title'] ?? '',
+                    'wellnessDescription' => $data['wellness_description'] ?? '',
+                    'wellnessMassageTitle' => $data['wellness_massage_title'] ?? '',
+                    'wellnessMassageDescription' => $data['wellness_massage_description'] ?? '',
+                    'wellnessYogaTitle' => $data['wellness_yoga_title'] ?? '',
+                    'wellnessYogaDescription' => $data['wellness_yoga_description'] ?? '',
+                    'wellnessSaunaTitle' => $data['wellness_sauna_title'] ?? '',
+                    'wellnessSaunaDescription' => $data['wellness_sauna_description'] ?? ''
                 ]
             ]);
         } else {
@@ -257,6 +314,52 @@ if ($action === 'save_content') {
         'special_offer_title', 'special_offer_main_text', 'special_offer_description'
     ];
     
+    // Massage page content fields
+    $massageFields = [
+        'massage_hero_title', 'massage_intro',
+        'massage_relaxing_title', 'massage_relaxing_description',
+        'massage_deep_tissue_title', 'massage_deep_tissue_description',
+        'massage_reiki_title', 'massage_reiki_description',
+        'massage_sauna_title', 'massage_sauna_description',
+        'massage_booking_title'
+    ];
+    
+    // Room Second floor page content fields
+    $roomSecondFields = [
+        'room_second_title', 'room_second_subtitle', 'room_second_description',
+        'room_second_price', 'room_second_capacity', 'room_second_note',
+        'room_second_gallery' // JSON array of image URLs
+    ];
+    
+    // Room Ground Twin beds page content fields
+    $roomGroundTwinFields = [
+        'room_ground_twin_title', 'room_ground_twin_subtitle', 'room_ground_twin_description',
+        'room_ground_twin_price', 'room_ground_twin_capacity', 'room_ground_twin_note',
+        'room_ground_twin_gallery' // JSON array of image URLs
+    ];
+    
+    // Room Ground Queen bed page content fields
+    $roomGroundQueenFields = [
+        'room_ground_queen_title', 'room_ground_queen_subtitle', 'room_ground_queen_description',
+        'room_ground_queen_price', 'room_ground_queen_capacity', 'room_ground_queen_note',
+        'room_ground_queen_gallery' // JSON array of image URLs
+    ];
+    
+    // Room Basement Queen bed page content fields
+    $roomBasementFields = [
+        'room_basement_title', 'room_basement_subtitle', 'room_basement_description',
+        'room_basement_price', 'room_basement_capacity', 'room_basement_note',
+        'room_basement_gallery' // JSON array of image URLs
+    ];
+    
+    // Wellness Experiences page content fields
+    $wellnessFields = [
+        'wellness_title', 'wellness_description',
+        'wellness_massage_title', 'wellness_massage_description',
+        'wellness_yoga_title', 'wellness_yoga_description',
+        'wellness_sauna_title', 'wellness_sauna_description'
+    ];
+    
     // About us page content fields
     $aboutFields = [
         'about_hero_title', 'about_hero_subtitle',
@@ -318,6 +421,108 @@ if ($action === 'save_content') {
     }
     
     foreach ($specialFields as $field) {
+        if (isset($_POST[$field])) {
+            // Check if column exists, if not, add it
+            $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
+            if ($columnCheck->num_rows === 0) {
+                $alterTableSql = "ALTER TABLE content_settings ADD COLUMN $field TEXT NULL";
+                if (!$conn->query($alterTableSql)) {
+                    error_log('Failed to add column: ' . $conn->error);
+                }
+            }
+            
+            $fields[] = "$field = ?";
+            $values[] = $_POST[$field];
+            $types .= 's';
+        }
+    }
+    
+    foreach ($massageFields as $field) {
+        if (isset($_POST[$field])) {
+            // Check if column exists, if not, add it
+            $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
+            if ($columnCheck->num_rows === 0) {
+                $alterTableSql = "ALTER TABLE content_settings ADD COLUMN $field TEXT NULL";
+                if (!$conn->query($alterTableSql)) {
+                    error_log('Failed to add column: ' . $conn->error);
+                }
+            }
+            
+            $fields[] = "$field = ?";
+            $values[] = $_POST[$field];
+            $types .= 's';
+        }
+    }
+    
+    foreach ($roomSecondFields as $field) {
+        if (isset($_POST[$field])) {
+            // Check if column exists, if not, add it
+            $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
+            if ($columnCheck->num_rows === 0) {
+                $alterTableSql = "ALTER TABLE content_settings ADD COLUMN $field TEXT NULL";
+                if (!$conn->query($alterTableSql)) {
+                    error_log('Failed to add column: ' . $conn->error);
+                }
+            }
+            
+            $fields[] = "$field = ?";
+            $values[] = $_POST[$field];
+            $types .= 's';
+        }
+    }
+    
+    foreach ($roomGroundTwinFields as $field) {
+        if (isset($_POST[$field])) {
+            // Check if column exists, if not, add it
+            $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
+            if ($columnCheck->num_rows === 0) {
+                $alterTableSql = "ALTER TABLE content_settings ADD COLUMN $field TEXT NULL";
+                if (!$conn->query($alterTableSql)) {
+                    error_log('Failed to add column: ' . $conn->error);
+                }
+            }
+            
+            $fields[] = "$field = ?";
+            $values[] = $_POST[$field];
+            $types .= 's';
+        }
+    }
+    
+    foreach ($roomGroundQueenFields as $field) {
+        if (isset($_POST[$field])) {
+            // Check if column exists, if not, add it
+            $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
+            if ($columnCheck->num_rows === 0) {
+                $alterTableSql = "ALTER TABLE content_settings ADD COLUMN $field TEXT NULL";
+                if (!$conn->query($alterTableSql)) {
+                    error_log('Failed to add column: ' . $conn->error);
+                }
+            }
+            
+            $fields[] = "$field = ?";
+            $values[] = $_POST[$field];
+            $types .= 's';
+        }
+    }
+    
+    foreach ($roomBasementFields as $field) {
+        if (isset($_POST[$field])) {
+            // Check if column exists, if not, add it
+            $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
+            if ($columnCheck->num_rows === 0) {
+                $alterTableSql = "ALTER TABLE content_settings ADD COLUMN $field TEXT NULL";
+                if (!$conn->query($alterTableSql)) {
+                    error_log('Failed to add column: ' . $conn->error);
+                }
+            }
+            
+            $fields[] = "$field = ?";
+            $values[] = $_POST[$field];
+            $types .= 's';
+        }
+    }
+    
+    foreach ($wellnessFields as $field) {
         if (isset($_POST[$field])) {
             // Check if column exists, if not, add it
             $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");

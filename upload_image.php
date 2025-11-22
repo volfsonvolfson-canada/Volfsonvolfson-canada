@@ -125,6 +125,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                 $fieldName = 'room_' . str_replace('-', '_', $bannerType) . '_banner_image_url';
                 $tableName = 'content_settings';
                 $isHomepage = true;
+            } elseif ($imageType === 'room-second-gallery') {
+                // Room second gallery images - just upload, don't save to DB (gallery is stored as JSON array)
+                $fieldName = null; // No direct DB field
+                $tableName = null;
+                $isHomepage = false;
+            } elseif ($imageType === 'room-ground-twin-gallery') {
+                // Room ground twin gallery images - just upload, don't save to DB (gallery is stored as JSON array)
+                $fieldName = null; // No direct DB field
+                $tableName = null;
+                $isHomepage = false;
+            } elseif ($imageType === 'room-ground-queen-gallery') {
+                // Room ground queen gallery images - just upload, don't save to DB (gallery is stored as JSON array)
+                $fieldName = null; // No direct DB field
+                $tableName = null;
+                $isHomepage = false;
+            } elseif ($imageType === 'room-basement-gallery') {
+                // Room basement gallery images - just upload, don't save to DB (gallery is stored as JSON array)
+                $fieldName = null; // No direct DB field
+                $tableName = null;
+                $isHomepage = false;
             } elseif (in_array($imageType, ['massage-relaxing', 'massage-deep-tissue', 'massage-reiki', 'massage-sauna', 'massage-room-booking'])) {
                 // Massage page images - store in content_settings
                 $massageType = str_replace('massage-', '', $imageType);
@@ -156,88 +176,109 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
             
             error_log("Field name determined: $fieldName, table: $tableName");
             
-            // Check if table exists
-            $tableCheck = $conn->query("SHOW TABLES LIKE '$tableName'");
-            if ($tableCheck->num_rows === 0) {
-                error_log("Table $tableName does not exist");
-                sendError('Database table does not exist');
-                exit;
-            }
-            
-            error_log("Table $tableName exists");
-            
-            // Check if record exists
-            $recordCheck = $conn->query("SELECT id FROM $tableName WHERE id = 1");
-            if ($recordCheck->num_rows === 0) {
-                error_log('No record with id=1, creating one');
-                $insertStmt = $conn->prepare("INSERT INTO $tableName (id) VALUES (1)");
-                if (!$insertStmt->execute()) {
-                    error_log('Failed to create record: ' . $conn->error);
-                    sendError('Failed to create database record');
-                    exit;
-                }
-                $insertStmt->close();
-            }
-            
-            error_log('Record with id=1 exists');
-            
-            // Check if column exists (for dynamic columns like wellness images)
-            $columnExists = false;
-            if ($isHomepage && in_array($imageType, ['wellness-massage', 'wellness-yoga', 'wellness-sauna', 'room-basement-card', 'room-ground-queen-card', 'room-ground-twin-card', 'room-second-card', 'basement-banner', 'ground-queen-banner', 'ground-twin-banner', 'second-banner', 'massage-relaxing', 'massage-deep-tissue', 'massage-reiki', 'massage-sauna', 'massage-room-booking', 'retreat-hero', 'retreat-forest', 'retreat-indoor', 'retreat-theatre', 'special-hero', 'special-pools', 'special-dining', 'about-hero', 'about-founder', 'about-procter'])) {
-                $columnCheck = $conn->query("SHOW COLUMNS FROM $tableName LIKE '$fieldName'");
-                $columnExists = $columnCheck->num_rows > 0;
-                
-                if (!$columnExists) {
-                    error_log("Column $fieldName does not exist, creating it");
-                    $alterStmt = $conn->prepare("ALTER TABLE $tableName ADD COLUMN $fieldName VARCHAR(255) DEFAULT NULL");
-                    if (!$alterStmt->execute()) {
-                        error_log('Failed to create column: ' . $conn->error);
-                        sendError('Database error: Failed to create column ' . $fieldName . ': ' . $conn->error);
-                        exit;
-                    }
-                    $alterStmt->close();
-                    error_log("Column $fieldName created successfully");
-                }
-            } else {
-                // For existing columns, assume they exist
-                $columnExists = true;
-            }
-            
-            // Update database
-            // Universal: for ground, also update ground_queen_image for compatibility
-            if ($imageType === 'ground') {
-                $stmt = $conn->prepare("UPDATE floorplan_settings SET ground_image_url = ?, ground_queen_image = ? WHERE id = 1");
-                $stmt->bind_param("ss", $filepath, $filepath);
-            } else {
-                $stmt = $conn->prepare("UPDATE $tableName SET $fieldName = ? WHERE id = 1");
-                $stmt->bind_param("s", $filepath);
-            }
-            
-            error_log("Updating database: table=$tableName, field=$fieldName, path=$filepath");
-            
-            if ($stmt->execute()) {
-                error_log('Database updated successfully');
-                
-                // Verify the update
-                $verifyStmt = $conn->prepare("SELECT $fieldName FROM $tableName WHERE id = 1");
-                $verifyStmt->execute();
-                $result = $verifyStmt->get_result();
-                $row = $result->fetch_assoc();
-                error_log("Verification: field value = " . ($row[$fieldName] ?? 'NULL'));
-                
+            // Update database (skip for gallery images - they're stored as JSON array)
+            if ($imageType === 'room-second-gallery' || $imageType === 'room-ground-twin-gallery' || $imageType === 'room-ground-queen-gallery' || $imageType === 'room-basement-gallery') {
+                // Gallery images are stored as JSON array in room_second_gallery field
+                // Don't update DB here - it will be updated when content is saved
                 sendSuccess([
                     'message' => 'Image uploaded successfully',
                     'filepath' => $filepath,
-                    'image_type' => $imageType,
-                    'field_updated' => $fieldName,
-                    'verified_value' => $row[$fieldName] ?? 'NULL'
+                    'imageUrl' => $filepath,
+                    'image_type' => $imageType
                 ]);
             } else {
-                error_log('Database update failed: ' . $conn->error);
-                sendError('Database update failed: ' . $conn->error);
+                // Check if table exists
+                if (!$tableName) {
+                    sendError('Invalid image type: table name is missing');
+                    exit;
+                }
+                
+                $tableCheck = $conn->query("SHOW TABLES LIKE '$tableName'");
+                if ($tableCheck->num_rows === 0) {
+                    error_log("Table $tableName does not exist");
+                    sendError('Database table does not exist');
+                    exit;
+                }
+                
+                error_log("Table $tableName exists");
+                
+                // Check if record exists
+                $recordCheck = $conn->query("SELECT id FROM $tableName WHERE id = 1");
+                if ($recordCheck->num_rows === 0) {
+                    error_log('No record with id=1, creating one');
+                    $insertStmt = $conn->prepare("INSERT INTO $tableName (id) VALUES (1)");
+                    if (!$insertStmt->execute()) {
+                        error_log('Failed to create record: ' . $conn->error);
+                        sendError('Failed to create database record');
+                        exit;
+                    }
+                    $insertStmt->close();
+                }
+                
+                error_log('Record with id=1 exists');
+                // Check if column exists (for dynamic columns like wellness images)
+                $columnExists = false;
+                if ($fieldName && $tableName && $isHomepage && in_array($imageType, ['wellness-massage', 'wellness-yoga', 'wellness-sauna', 'room-basement-card', 'room-ground-queen-card', 'room-ground-twin-card', 'room-second-card', 'basement-banner', 'ground-queen-banner', 'ground-twin-banner', 'second-banner', 'massage-relaxing', 'massage-deep-tissue', 'massage-reiki', 'massage-sauna', 'massage-room-booking', 'retreat-hero', 'retreat-forest', 'retreat-indoor', 'retreat-theatre', 'special-hero', 'special-pools', 'special-dining', 'about-hero', 'about-founder', 'about-procter'])) {
+                    $columnCheck = $conn->query("SHOW COLUMNS FROM $tableName LIKE '$fieldName'");
+                    $columnExists = $columnCheck->num_rows > 0;
+                    
+                    if (!$columnExists) {
+                        error_log("Column $fieldName does not exist, creating it");
+                        $alterStmt = $conn->prepare("ALTER TABLE $tableName ADD COLUMN $fieldName VARCHAR(255) DEFAULT NULL");
+                        if (!$alterStmt->execute()) {
+                            error_log('Failed to create column: ' . $conn->error);
+                            sendError('Database error: Failed to create column ' . $fieldName . ': ' . $conn->error);
+                            exit;
+                        }
+                        $alterStmt->close();
+                        error_log("Column $fieldName created successfully");
+                    }
+                } else {
+                    // For existing columns, assume they exist
+                    $columnExists = true;
+                }
+                
+                // Update database
+                // Universal: for ground, also update ground_queen_image for compatibility
+                if ($imageType === 'ground') {
+                    $stmt = $conn->prepare("UPDATE floorplan_settings SET ground_image_url = ?, ground_queen_image = ? WHERE id = 1");
+                    $stmt->bind_param("ss", $filepath, $filepath);
+                } else {
+                    if (!$fieldName || !$tableName) {
+                        sendError('Invalid image type: field name or table name is missing');
+                        exit;
+                    }
+                    $stmt = $conn->prepare("UPDATE $tableName SET $fieldName = ? WHERE id = 1");
+                    $stmt->bind_param("s", $filepath);
+                }
+                
+                error_log("Updating database: table=$tableName, field=$fieldName, path=$filepath");
+                
+                if ($stmt->execute()) {
+                    error_log('Database updated successfully');
+                    
+                    // Verify the update
+                    $verifyStmt = $conn->prepare("SELECT $fieldName FROM $tableName WHERE id = 1");
+                    $verifyStmt->execute();
+                    $result = $verifyStmt->get_result();
+                    $row = $result->fetch_assoc();
+                    error_log("Verification: field value = " . ($row[$fieldName] ?? 'NULL'));
+                    
+                    sendSuccess([
+                        'message' => 'Image uploaded successfully',
+                        'filepath' => $filepath,
+                        'imageUrl' => $filepath,
+                        'image_type' => $imageType,
+                        'field_updated' => $fieldName,
+                        'verified_value' => $row[$fieldName] ?? 'NULL'
+                    ]);
+                } else {
+                    error_log('Database update failed: ' . $conn->error);
+                    sendError('Database update failed: ' . $conn->error);
+                }
+                
+                $stmt->close();
             }
-            
-            $stmt->close();
             
         } catch (Exception $e) {
             sendError('Database error: ' . $e->getMessage());

@@ -2745,12 +2745,52 @@ class ThemeManager {
 let themeManager;
 
 // Initialize when DOM is ready
+// Load contact information from API
+async function loadContactInfo() {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'get_content');
+    
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        const data = result.data;
+        
+        // Update footer contact information
+        const addressEl = document.getElementById('footer-contact-address');
+        const phoneEl = document.getElementById('footer-contact-phone');
+        const emailEl = document.getElementById('footer-contact-email');
+        
+        if (addressEl) {
+          addressEl.textContent = data.contactAddress || 'British Columbia, Canada';
+        }
+        if (phoneEl) {
+          phoneEl.textContent = 'Phone: ' + (data.contactPhone || '+1 (555) 123‑4567');
+        }
+        if (emailEl) {
+          emailEl.textContent = 'Email: ' + (data.contactEmail || 'hello@backtobase.example');
+        }
+      }
+    }
+  } catch (error) {
+    console.log('Failed to load contact info:', error);
+  }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Initialize theme manager
   themeManager = new ThemeManager();
   
   // Set year in footer
   setYear();
+  
+  // Load contact information
+  loadContactInfo();
   
   // Initialize booking forms
   initBookingForms();

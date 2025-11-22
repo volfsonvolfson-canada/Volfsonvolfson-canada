@@ -1612,85 +1612,137 @@
     <!-- Massage Section -->
     <section id="massage-section" class="admin-section" style="display: none;">
       <h2>Massage Page</h2>
+      <div class="retreat-status-bar">
+        <div class="massage-live-status" id="massage-auto-save-status" aria-live="polite">
+          <span id="massage-save-status-text"></span>
+          <span id="massage-save-status-icon"></span>
+        </div>
+      </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="massage-hero-title">
+        <textarea id="massage-intro"></textarea>
+        <input type="hidden" id="massage-relaxing-title">
+        <textarea id="massage-relaxing-description"></textarea>
+        <input type="hidden" id="massage-deep-tissue-title">
+        <textarea id="massage-deep-tissue-description"></textarea>
+        <input type="hidden" id="massage-reiki-title">
+        <textarea id="massage-reiki-description"></textarea>
+        <input type="hidden" id="massage-sauna-title">
+        <textarea id="massage-sauna-description"></textarea>
+        <input type="hidden" id="massage-booking-title">
+        <input type="file" id="massage-relaxing-upload" accept="image/*" style="display: none;">
+        <input type="file" id="massage-deep-tissue-upload" accept="image/*" style="display: none;">
+        <input type="file" id="massage-reiki-upload" accept="image/*" style="display: none;">
+        <input type="file" id="massage-sauna-upload" accept="image/*" style="display: none;">
+        <input type="file" id="massage-room-booking-upload" accept="image/*" style="display: none;">
+      </div>
       
-      <!-- Relaxing Massage Card: Image -->
-      <div class="admin-form" style="margin-top: 24px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Relaxing Massage Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="massage-relaxing-upload" accept="image/*" style="display: none;">
-            <button type="button" id="massage-relaxing-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="massage-relaxing-preview" class="image-preview"></div>
-            <div id="massage-relaxing-path" class="image-path-display"></div>
+      <!-- Schematic Preview -->
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Page Preview</h3>
+        
+        <!-- Hero Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Hero Section</span>
           </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Relaxing Massage card</small>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="massage-hero-title" style="font-weight: 600; color: #0f172a; font-size: 1rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-hero-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-hero-title">Massage services</div>
+            <div contenteditable="true" class="editable-preview" data-field="massage-intro" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-intro')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-intro">Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.</div>
+          </div>
+        </div>
+        
+        <!-- Relaxing Massage Card -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Relaxing Massage Card</span>
+          </div>
+          <div class="preview-block-content" style="display: grid; grid-template-columns: 150px 1fr; gap: 16px;">
+            <div class="preview-image" style="width: 150px; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('massage-relaxing-upload')">
+              <img id="preview-massage-relaxing-img" src="" alt="Relaxing Massage" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+              <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Relaxing Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+            </div>
+            <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+              <div contenteditable="true" class="editable-preview" data-field="massage-relaxing-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-relaxing-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-relaxing-title">Relaxing Massage</div>
+              <div contenteditable="true" class="editable-preview" data-field="massage-relaxing-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-relaxing-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-relaxing-desc">This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Deep Tissue Massage Card -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Deep Tissue Massage Card</span>
+          </div>
+          <div class="preview-block-content" style="display: grid; grid-template-columns: 150px 1fr; gap: 16px;">
+            <div class="preview-image" style="width: 150px; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('massage-deep-tissue-upload')">
+              <img id="preview-massage-deep-tissue-img" src="" alt="Deep Tissue Massage" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+              <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Deep Tissue Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+            </div>
+            <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+              <div contenteditable="true" class="editable-preview" data-field="massage-deep-tissue-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-deep-tissue-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-deep-tissue-title">Deep Tissue Massage</div>
+              <div contenteditable="true" class="editable-preview" data-field="massage-deep-tissue-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-deep-tissue-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-deep-tissue-desc">For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Reiki Energy Healing Card -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Reiki Energy Healing Card</span>
+          </div>
+          <div class="preview-block-content" style="display: grid; grid-template-columns: 150px 1fr; gap: 16px;">
+            <div class="preview-image" style="width: 150px; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('massage-reiki-upload')">
+              <img id="preview-massage-reiki-img" src="" alt="Reiki Energy Healing" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+              <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Reiki Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+            </div>
+            <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+              <div contenteditable="true" class="editable-preview" data-field="massage-reiki-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-reiki-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-reiki-title">Reiki Energy Healing</div>
+              <div contenteditable="true" class="editable-preview" data-field="massage-reiki-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-reiki-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-reiki-desc">Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body's energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Sauna Card -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Sauna Card</span>
+          </div>
+          <div class="preview-block-content" style="display: grid; grid-template-columns: 150px 1fr; gap: 16px;">
+            <div class="preview-image" style="width: 150px; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('massage-sauna-upload')">
+              <img id="preview-massage-sauna-img" src="" alt="Sauna" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+              <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Sauna Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+            </div>
+            <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+              <div contenteditable="true" class="editable-preview" data-field="massage-sauna-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-sauna-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-sauna-title">Sauna</div>
+              <div contenteditable="true" class="editable-preview" data-field="massage-sauna-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-sauna-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-sauna-desc">After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Book a Massage Section -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Book a Massage Section</span>
+          </div>
+          <div class="preview-block-content" style="display: grid; grid-template-columns: 150px 1fr; gap: 16px;">
+            <div class="preview-image" style="width: 150px; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('massage-room-booking-upload')">
+              <img id="preview-massage-room-booking-img" src="" alt="Room Booking" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+              <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Room Booking Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+            </div>
+            <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+              <div contenteditable="true" class="editable-preview" data-field="massage-booking-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'massage-booking-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-massage-booking-title">Book a massage or sauna</div>
+            </div>
+          </div>
         </div>
       </div>
-
-      <!-- Deep Tissue Massage Card: Image -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Deep Tissue Massage Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="massage-deep-tissue-upload" accept="image/*" style="display: none;">
-            <button type="button" id="massage-deep-tissue-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="massage-deep-tissue-preview" class="image-preview"></div>
-            <div id="massage-deep-tissue-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Deep Tissue Massage card</small>
-        </div>
-      </div>
-
-      <!-- Reiki Energy Healing Card: Image -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Reiki Energy Healing Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="massage-reiki-upload" accept="image/*" style="display: none;">
-            <button type="button" id="massage-reiki-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="massage-reiki-preview" class="image-preview"></div>
-            <div id="massage-reiki-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Reiki Energy Healing card</small>
-        </div>
-      </div>
-
-      <!-- Sauna Card: Image -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Sauna Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="massage-sauna-upload" accept="image/*" style="display: none;">
-            <button type="button" id="massage-sauna-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="massage-sauna-preview" class="image-preview"></div>
-            <div id="massage-sauna-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Sauna card</small>
-        </div>
-      </div>
-
-      <!-- Book a Room Section: Image -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Book a Room Section</h3>
-        <div class="admin-form-group full-width">
-          <label>Room Booking Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="massage-room-booking-upload" accept="image/*" style="display: none;">
-            <button type="button" id="massage-room-booking-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="massage-room-booking-preview" class="image-preview"></div>
-            <div id="massage-room-booking-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for "Book a room" section</small>
-        </div>
-      </div>
-
-      <div class="admin-form-actions" style="margin-top: 32px;">
-        <button id="save-massage-images" class="admin-btn admin-btn-primary">Save Images</button>
-      </div>
+      
+      <div class="admin-form-actions" style="margin-top: 32px; justify-content: flex-start;"></div>
 
       <div style="margin-top: 48px; border-top: 2px solid #e2e8f0; padding-top: 24px;">
       <h2>Massage Services Management</h2>
@@ -1782,144 +1834,23 @@
     <!-- Room Pages Sections -->
     <!-- Basement Queen bed Section -->
     <section id="room-basement-section" class="admin-section" style="display: none;">
-      <h2>Basement Queen bed - Page Content</h2>
-      <div class="admin-form">
-        <div class="admin-form-group full-width">
-          <label for="basement-page-title">Page Title</label>
-          <input type="text" id="basement-page-title" placeholder="Basement — Queen bed">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="basement-page-subtitle">Subtitle</label>
-          <input type="text" id="basement-page-subtitle" placeholder="A cozy room next to the home cinema and sauna. Ideal for two.">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="basement-page-description">Description</label>
-          <textarea id="basement-page-description" class="admin-content-editor" rows="6"></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label>Banner Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="basement-banner-upload" accept="image/*" style="display: none;">
-            <button type="button" id="basement-banner-upload-btn" class="admin-btn admin-btn-secondary">Upload Banner Image</button>
-            <div id="basement-banner-preview" class="image-preview"></div>
-            <div id="basement-banner-path" class="image-path-display"></div>
-          </div>
-        </div>
-        <div class="admin-form-actions">
-          <button id="save-room-basement" class="admin-btn admin-btn-primary">Save Basement Page</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Ground floor Queen bed Section -->
-    <section id="room-ground-queen-section" class="admin-section" style="display: none;">
-      <h2>Ground floor Queen bed - Page Content</h2>
-      <div class="admin-form">
-        <div class="admin-form-group full-width">
-          <label for="ground-queen-page-title">Page Title</label>
-          <input type="text" id="ground-queen-page-title" placeholder="Ground floor — Queen bed">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="ground-queen-page-subtitle">Subtitle</label>
-          <input type="text" id="ground-queen-page-subtitle" placeholder="Compact, bright room with access to the fireplace lounge.">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="ground-queen-page-description">Description</label>
-          <textarea id="ground-queen-page-description" class="admin-content-editor" rows="6"></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label>Banner Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="ground-queen-banner-upload" accept="image/*" style="display: none;">
-            <button type="button" id="ground-queen-banner-upload-btn" class="admin-btn admin-btn-secondary">Upload Banner Image</button>
-            <div id="ground-queen-banner-preview" class="image-preview"></div>
-            <div id="ground-queen-banner-path" class="image-path-display"></div>
-          </div>
-        </div>
-        <div class="admin-form-actions">
-          <button id="save-room-ground-queen" class="admin-btn admin-btn-primary">Save Ground Queen Page</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Ground floor Twin beds Section -->
-    <section id="room-ground-twin-section" class="admin-section" style="display: none;">
-      <h2>Ground floor Twin beds - Page Content</h2>
-      <div class="admin-form">
-        <div class="admin-form-group full-width">
-          <label for="ground-twin-page-title">Page Title</label>
-          <input type="text" id="ground-twin-page-title" placeholder="Ground floor — Twin beds">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="ground-twin-page-subtitle">Subtitle</label>
-          <input type="text" id="ground-twin-page-subtitle" placeholder="Great for friends or colleagues. Close to the kitchen and massage hall.">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="ground-twin-page-description">Description</label>
-          <textarea id="ground-twin-page-description" class="admin-content-editor" rows="6"></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label>Banner Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="ground-twin-banner-upload" accept="image/*" style="display: none;">
-            <button type="button" id="ground-twin-banner-upload-btn" class="admin-btn admin-btn-secondary">Upload Banner Image</button>
-            <div id="ground-twin-banner-preview" class="image-preview"></div>
-            <div id="ground-twin-banner-path" class="image-path-display"></div>
-          </div>
-        </div>
-        <div class="admin-form-actions">
-          <button id="save-room-ground-twin" class="admin-btn admin-btn-primary">Save Ground Twin Page</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Second floor (entire) Queen bed Section -->
-    <section id="room-second-section" class="admin-section" style="display: none;">
-      <h2>Second floor (entire) Queen bed - Page Content</h2>
-      <div class="admin-form">
-        <div class="admin-form-group full-width">
-          <label for="second-page-title">Page Title</label>
-          <input type="text" id="second-page-title" placeholder="Second floor (entire) — Queen bed">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="second-page-subtitle">Subtitle</label>
-          <input type="text" id="second-page-subtitle" placeholder="Separate kitchen and shower, study, and a balcony with lake view.">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="second-page-description">Description</label>
-          <textarea id="second-page-description" class="admin-content-editor" rows="6"></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label>Banner Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="second-banner-upload" accept="image/*" style="display: none;">
-            <button type="button" id="second-banner-upload-btn" class="admin-btn admin-btn-secondary">Upload Banner Image</button>
-            <div id="second-banner-preview" class="image-preview"></div>
-            <div id="second-banner-path" class="image-path-display"></div>
-          </div>
-        </div>
-        <div class="admin-form-actions">
-          <button id="save-room-second" class="admin-btn admin-btn-primary">Save Second Floor Page</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- Retreats and Workshops Section -->
-    <section id="retreat-workshop-section" class="admin-section" style="display: none;">
-      <h2>Retreats and Workshops Page</h2>
-      <div class="retreat-helper-panel">
-        <div class="retreat-helper-copy">
-          <p class="retreat-helper-heading">Need a quick refresher?</p>
-          <p>Use the live preview to sanity-check copy as you type. The panel mirrors the public page, so you can keep edits confident and consistent.</p>
-          <p class="retreat-helper-tip">Tip: hold <span class="retreat-helper-kbd">Shift</span> while clicking “Fill empty text blocks” to reset every field to the default story.</p>
-        </div>
-        <div class="retreat-helper-actions">
-          <button type="button" id="retreat-fill-missing" class="admin-btn admin-btn-secondary">Fill empty text blocks</button>
-          <button type="button" id="retreat-scroll-preview" class="admin-btn admin-btn-secondary">Scroll to live preview</button>
-        </div>
-      </div>
+      <h2>Basement Queen bed</h2>
       <div class="retreat-status-bar">
-        <span id="retreat-content-status" class="status-badge neutral">Checking content…</span>
+        <div class="retreat-live-status" id="room-basement-auto-save-status" aria-live="polite">
+          <span id="room-basement-save-status-text"></span>
+          <span id="room-basement-save-status-icon"></span>
+        </div>
+      </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="room-basement-title">
+        <input type="hidden" id="room-basement-subtitle">
+        <textarea id="room-basement-description"></textarea>
+        <input type="hidden" id="room-basement-price">
+        <input type="hidden" id="room-basement-capacity">
+        <textarea id="room-basement-note"></textarea>
+        <input type="hidden" id="room-basement-gallery" value="[]">
+        <input type="hidden" id="room-basement-banner-image-url">
+        <input type="file" id="room-basement-banner-upload" accept="image/*" style="display: none;">
       </div>
       
       <!-- Schematic Preview -->
@@ -1929,7 +1860,302 @@
         <!-- Hero Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #3b82f6; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">H</div>
+            <span style="font-weight: 600; color: #374151;">Hero Section</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="room-basement-title" style="font-weight: 600; color: #0f172a; font-size: 1rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-basement-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-basement-title">Basement — Queen bed</div>
+            <div contenteditable="true" class="editable-preview" data-field="room-basement-subtitle" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-basement-subtitle')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-basement-subtitle">A cozy room next to the home cinema and sauna. Ideal for two.</div>
+          </div>
+          <div class="preview-image" style="width: 100%; height: 200px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; margin-top: 12px;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('room-basement-banner-upload')">
+            <img id="preview-room-basement-banner-img" src="" alt="Banner" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+            <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Banner Image</span>
+            <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+          </div>
+        </div>
+        
+        <!-- Gallery Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Gallery (max 10 photos)</span>
+            <button type="button" id="room-basement-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
+          </div>
+          <div id="room-basement-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+            <!-- Gallery images will be dynamically inserted here -->
+          </div>
+          <input type="file" id="room-basement-gallery-upload" accept="image/*" multiple style="display: none;">
+        </div>
+        
+        <!-- Booking Card Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Booking Card</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <div contenteditable="true" class="editable-preview" data-field="room-basement-price" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1; min-width: 150px;" onblur="syncPreviewToForm(this, 'room-basement-price')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-basement-price"><strong>Price:</strong> 140 CAD / night</div>
+              <div contenteditable="true" class="editable-preview" data-field="room-basement-capacity" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1; min-width: 150px;" onblur="syncPreviewToForm(this, 'room-basement-capacity')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-basement-capacity"><strong>Capacity:</strong> up to 2 guests</div>
+            </div>
+            <div contenteditable="true" class="editable-preview" data-field="room-basement-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-basement-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-basement-desc">Next to this room there is a home theater lounge with a wood-burning stove and a large shower area with a sauna. The floor has a private exit from the house and a passage to the shared lounge on the first floor.</div>
+            <div contenteditable="true" class="editable-preview" data-field="room-basement-note" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-basement-note')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-basement-note">The home theater and sauna are shared, but no one will make noise on the floor without your consent. You are free to use them — just make sure any loud sounds won't disturb other guests.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ground floor Queen bed Section -->
+    <section id="room-ground-queen-section" class="admin-section" style="display: none;">
+      <h2>Ground floor Queen bed</h2>
+      <div class="retreat-status-bar">
+        <div class="retreat-live-status" id="room-ground-queen-auto-save-status" aria-live="polite">
+          <span id="room-ground-queen-save-status-text"></span>
+          <span id="room-ground-queen-save-status-icon"></span>
+        </div>
+      </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="room-ground-queen-title">
+        <input type="hidden" id="room-ground-queen-subtitle">
+        <textarea id="room-ground-queen-description"></textarea>
+        <input type="hidden" id="room-ground-queen-price">
+        <input type="hidden" id="room-ground-queen-capacity">
+        <textarea id="room-ground-queen-note"></textarea>
+        <input type="hidden" id="room-ground-queen-gallery" value="[]">
+        <input type="hidden" id="room-ground-queen-banner-image-url">
+        <input type="file" id="room-ground-queen-banner-upload" accept="image/*" style="display: none;">
+      </div>
+      
+      <!-- Schematic Preview -->
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Page Preview</h3>
+        
+        <!-- Hero Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Hero Section</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="room-ground-queen-title" style="font-weight: 600; color: #0f172a; font-size: 1rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-ground-queen-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-queen-title">Ground floor — Queen bed</div>
+            <div contenteditable="true" class="editable-preview" data-field="room-ground-queen-subtitle" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-ground-queen-subtitle')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-queen-subtitle">Bright room near the living room with fireplace. Ideal for two.</div>
+          </div>
+          <div class="preview-image" style="width: 100%; height: 200px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; margin-top: 12px;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('room-ground-queen-banner-upload')">
+            <img id="preview-room-ground-queen-banner-img" src="" alt="Banner" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+            <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Banner Image</span>
+            <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+          </div>
+        </div>
+        
+        <!-- Gallery Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Gallery (max 10 photos)</span>
+            <button type="button" id="room-ground-queen-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
+          </div>
+          <div id="room-ground-queen-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+            <!-- Gallery images will be dynamically inserted here -->
+          </div>
+          <input type="file" id="room-ground-queen-gallery-upload" accept="image/*" multiple style="display: none;">
+        </div>
+        
+        <!-- Booking Card Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Booking Card</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <div contenteditable="true" class="editable-preview" data-field="room-ground-queen-price" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1; min-width: 150px;" onblur="syncPreviewToForm(this, 'room-ground-queen-price')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-queen-price"><strong>Price:</strong> 130 CAD / night</div>
+              <div contenteditable="true" class="editable-preview" data-field="room-ground-queen-capacity" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1; min-width: 150px;" onblur="syncPreviewToForm(this, 'room-ground-queen-capacity')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-queen-capacity"><strong>Capacity:</strong> up to 2 guests</div>
+            </div>
+            <div contenteditable="true" class="editable-preview" data-field="room-ground-queen-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-ground-queen-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-queen-desc">A small but bright room with a large double bed. A shared bathroom with a spacious bathtub is located nearby. The location of the room makes it a perfect spot for socializing and relaxing in the house's common areas. With convenient access to the living room with a fireplace, guests can unwind by the fire and connect with others.</div>
+            <div contenteditable="true" class="editable-preview" data-field="room-ground-queen-note" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-ground-queen-note')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-queen-note">*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Ground floor Twin beds Section -->
+    <section id="room-ground-twin-section" class="admin-section" style="display: none;">
+      <h2>Ground floor Twin beds</h2>
+      <div class="retreat-status-bar">
+        <div class="retreat-live-status" id="room-ground-twin-auto-save-status" aria-live="polite">
+          <span id="room-ground-twin-save-status-text"></span>
+          <span id="room-ground-twin-save-status-icon"></span>
+        </div>
+      </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="room-ground-twin-title">
+        <input type="hidden" id="room-ground-twin-subtitle">
+        <textarea id="room-ground-twin-description"></textarea>
+        <input type="hidden" id="room-ground-twin-price">
+        <input type="hidden" id="room-ground-twin-capacity">
+        <textarea id="room-ground-twin-note"></textarea>
+        <input type="hidden" id="room-ground-twin-gallery" value="[]">
+        <input type="hidden" id="room-ground-twin-banner-image-url">
+        <input type="file" id="room-ground-twin-banner-upload" accept="image/*" style="display: none;">
+      </div>
+      
+      <!-- Schematic Preview -->
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Page Preview</h3>
+        
+        <!-- Hero Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Hero Section</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="room-ground-twin-title" style="font-weight: 600; color: #0f172a; font-size: 1rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-ground-twin-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-twin-title">Ground floor — Twin beds</div>
+            <div contenteditable="true" class="editable-preview" data-field="room-ground-twin-subtitle" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-ground-twin-subtitle')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-twin-subtitle">Great for friends or colleagues. Close to the kitchen and massage hall.</div>
+          </div>
+          <div class="preview-image" style="width: 100%; height: 200px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; margin-top: 12px;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('room-ground-twin-banner-upload')">
+            <img id="preview-room-ground-twin-banner-img" src="" alt="Banner" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+            <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Banner Image</span>
+            <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+          </div>
+        </div>
+        
+        <!-- Gallery Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Gallery (max 10 photos)</span>
+            <button type="button" id="room-ground-twin-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
+          </div>
+          <div id="room-ground-twin-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+            <!-- Gallery images will be dynamically inserted here -->
+          </div>
+          <input type="file" id="room-ground-twin-gallery-upload" accept="image/*" multiple style="display: none;">
+        </div>
+        
+        <!-- Booking Card Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Booking Card</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <div contenteditable="true" class="editable-preview" data-field="room-ground-twin-price" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1; min-width: 150px;" onblur="syncPreviewToForm(this, 'room-ground-twin-price')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-twin-price"><strong>Price:</strong> 125 CAD / night</div>
+              <div contenteditable="true" class="editable-preview" data-field="room-ground-twin-capacity" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1; min-width: 150px;" onblur="syncPreviewToForm(this, 'room-ground-twin-capacity')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-twin-capacity"><strong>Capacity:</strong> up to 2 guests</div>
+            </div>
+            <div contenteditable="true" class="editable-preview" data-field="room-ground-twin-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-ground-twin-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-twin-desc">A comfortable room with two twin beds, perfect for friends or colleagues traveling together. The room is located on the ground floor, close to the shared kitchen and massage hall, making it convenient for guests who want to socialize or use the common areas.</div>
+            <div contenteditable="true" class="editable-preview" data-field="room-ground-twin-note" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-ground-twin-note')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-ground-twin-note">*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Second floor (entire) Queen bed Section -->
+    <section id="room-second-section" class="admin-section" style="display: none;">
+      <h2>Second floor (entire) Queen bed</h2>
+      <div class="retreat-status-bar">
+        <div class="retreat-live-status" id="room-second-auto-save-status" aria-live="polite">
+          <span id="room-second-save-status-text"></span>
+          <span id="room-second-save-status-icon"></span>
+        </div>
+      </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="room-second-title">
+        <input type="hidden" id="room-second-subtitle">
+        <textarea id="room-second-description"></textarea>
+        <input type="hidden" id="room-second-price">
+        <input type="hidden" id="room-second-capacity">
+        <textarea id="room-second-note"></textarea>
+        <input type="hidden" id="room-second-gallery" value="[]">
+        <input type="hidden" id="room-second-banner-image-url">
+        <input type="file" id="room-second-banner-upload" accept="image/*" style="display: none;">
+      </div>
+      
+      <!-- Schematic Preview -->
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Page Preview</h3>
+        
+        <!-- Hero Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Hero Section</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="room-second-title" style="font-weight: 600; color: #0f172a; font-size: 1rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-second-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-second-title">Second floor (entire) — Queen bed</div>
+            <div contenteditable="true" class="editable-preview" data-field="room-second-subtitle" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-second-subtitle')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-second-subtitle">A private loft under the roof: bedroom, kitchenette, shower, study and balcony.</div>
+          </div>
+          <div class="preview-image" style="width: 100%; height: 200px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; margin-top: 12px;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('room-second-banner-upload')">
+            <img id="preview-room-second-banner-img" src="" alt="Banner" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+            <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Banner Image</span>
+            <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+          </div>
+        </div>
+        
+        <!-- Gallery Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Gallery (max 10 photos)</span>
+            <button type="button" id="room-second-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
+          </div>
+          <div id="room-second-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+            <!-- Gallery images will be dynamically inserted here -->
+          </div>
+          <input type="file" id="room-second-gallery-upload" accept="image/*" multiple style="display: none;">
+        </div>
+        
+        <!-- Booking Card Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Booking Card</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+              <div contenteditable="true" class="editable-preview" data-field="room-second-price" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1; min-width: 150px;" onblur="syncPreviewToForm(this, 'room-second-price')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-second-price"><strong>Price:</strong> 210 CAD / night (entire floor)</div>
+              <div contenteditable="true" class="editable-preview" data-field="room-second-capacity" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1; min-width: 150px;" onblur="syncPreviewToForm(this, 'room-second-capacity')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-second-capacity"><strong>Capacity:</strong> up to 2 guests</div>
+            </div>
+            <div contenteditable="true" class="editable-preview" data-field="room-second-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-second-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-second-desc">A fully private floor featuring a large living area with a king-size bed, a separate kitchen, a private bathroom with a shower, a bright workspace, and a spacious balcony with stunning views of the lake and mountains.</div>
+            <div contenteditable="true" class="editable-preview" data-field="room-second-note" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'room-second-note')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-room-second-note">*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Retreats and Workshops Section -->
+    <section id="retreat-workshop-section" class="admin-section" style="display: none;">
+      <h2>Retreats and Workshops Page</h2>
+      <div class="retreat-status-bar">
+        <span id="retreat-content-status" class="status-badge neutral">Checking content…</span>
+        <div class="retreat-live-status" id="retreat-auto-save-status" aria-live="polite">
+          <span id="retreat-save-status-text"></span>
+          <span id="retreat-save-status-icon"></span>
+        </div>
+      </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="retreat-hero-title">
+        <input type="hidden" id="retreat-hero-subtitle">
+        <textarea id="retreat-intro-text"></textarea>
+        <input type="hidden" id="retreat-locations-title">
+        <input type="hidden" id="retreat-forest-title">
+        <textarea id="retreat-forest-description"></textarea>
+        <input type="hidden" id="retreat-forest-list-label">
+        <textarea id="retreat-forest-list-items"></textarea>
+        <input type="hidden" id="retreat-indoor-title">
+        <textarea id="retreat-indoor-description"></textarea>
+        <textarea id="retreat-indoor-additional"></textarea>
+        <input type="hidden" id="retreat-theatre-title">
+        <textarea id="retreat-theatre-description"></textarea>
+        <input type="hidden" id="retreat-contact-title">
+        <textarea id="retreat-contact-text"></textarea>
+        <input type="hidden" id="retreat-organizer-title">
+        <input type="hidden" id="retreat-workshops-title">
+        <textarea id="retreat-workshops-intro"></textarea>
+        <textarea id="retreat-workshops-list"></textarea>
+        <textarea id="retreat-workshops-conclusion"></textarea>
+        <input type="hidden" id="retreat-collaboration-title">
+        <textarea id="retreat-collaboration-intro"></textarea>
+        <textarea id="retreat-collaboration-list"></textarea>
+        <textarea id="retreat-collaboration-conclusion"></textarea>
+      </div>
+      
+      <!-- Schematic Preview -->
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Page Preview</h3>
+        
+        <!-- Hero Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
             <span style="font-weight: 600; color: #374151;">Hero Section</span>
           </div>
           <div class="preview-block-content" style="display: grid; grid-template-columns: 200px 1fr; gap: 16px;">
@@ -1948,7 +2174,6 @@
         <!-- Introduction Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #10b981; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">I</div>
             <span style="font-weight: 600; color: #374151;">Introduction</span>
           </div>
           <div contenteditable="true" class="editable-preview" data-field="retreat-intro-text" style="color: #4b5563; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none;" onblur="syncPreviewToForm(this, 'retreat-intro-text')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-intro">
@@ -1959,7 +2184,6 @@
         <!-- Locations Title Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #8b5cf6; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">L</div>
             <span contenteditable="true" class="editable-preview" data-field="retreat-locations-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'retreat-locations-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-locations-title">Our locations for your workshops</span>
           </div>
         </div>
@@ -1967,7 +2191,6 @@
         <!-- Forest Platforms Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #f59e0b; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">1</div>
             <span contenteditable="true" class="editable-preview" data-field="retreat-forest-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'retreat-forest-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-forest-title">Forest platforms by the creek</span>
           </div>
           <div class="preview-block-content" style="display: grid; grid-template-columns: 200px 1fr; gap: 16px;">
@@ -1991,7 +2214,6 @@
         <!-- Indoor Space Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #f59e0b; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">2</div>
             <span contenteditable="true" class="editable-preview" data-field="retreat-indoor-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'retreat-indoor-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-indoor-title">Warm, bright indoor space at Back to Base</span>
           </div>
           <div class="preview-block-content" style="display: grid; grid-template-columns: 1fr 200px; gap: 16px;">
@@ -2010,7 +2232,6 @@
         <!-- Home Theatre Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #f59e0b; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">3</div>
             <span contenteditable="true" class="editable-preview" data-field="retreat-theatre-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'retreat-theatre-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-theatre-title">Cozy mini home theatre</span>
           </div>
           <div class="preview-block-content" style="display: grid; grid-template-columns: 200px 1fr; gap: 16px;">
@@ -2030,7 +2251,6 @@
         <!-- Contact Form Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #ef4444; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">C</div>
             <span contenteditable="true" class="editable-preview" data-field="retreat-contact-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'retreat-contact-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-contact-title">Are you looking for a place to retreat...</span>
           </div>
           <div class="preview-text" style="color: #4b5563; font-size: 0.9rem; line-height: 1.6;">
@@ -2043,7 +2263,6 @@
         <!-- Organizer Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #06b6d4; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">O</div>
             <span contenteditable="true" class="editable-preview" data-field="retreat-organizer-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'retreat-organizer-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-organizer-title">Are you a yoga instructor...</span>
           </div>
         </div>
@@ -2051,7 +2270,6 @@
         <!-- Workshops Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #ec4899; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">W</div>
             <span contenteditable="true" class="editable-preview" data-field="retreat-workshops-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'retreat-workshops-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-workshops-title">What workshops are our spaces suitable for?</span>
           </div>
           <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
@@ -2068,7 +2286,6 @@
         <!-- Collaboration Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #14b8a6; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">Co</div>
             <span contenteditable="true" class="editable-preview" data-field="retreat-collaboration-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'retreat-collaboration-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-retreat-collaboration-title">Invitation to Collaborate</span>
           </div>
           <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
@@ -2083,205 +2300,96 @@
         </div>
       </div>
       
-      <!-- Hero Section: Image + Text -->
-      <div class="admin-form" style="margin-top: 24px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Hero Section</h3>
-        <div class="admin-form-group full-width">
-          <label>Hero Background Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="retreat-hero-upload" accept="image/*" style="display: none;">
-            <button type="button" id="retreat-hero-upload-btn" class="admin-btn admin-btn-secondary">Upload Hero Image</button>
-            <div id="retreat-hero-preview" class="image-preview"></div>
-            <div id="retreat-hero-path" class="image-path-display"></div>
+      <div class="retreat-media-panel" aria-hidden="true" style="display:none;">
+        <button type="button" id="retreat-toggle-images" class="admin-btn admin-btn-secondary" aria-expanded="false">
+          Manage retreat images
+        </button>
+        <div id="retreat-image-forms" class="retreat-image-forms" hidden>
+          <div class="admin-form">
+            <h3 style="margin-top: 0; color: #4a5568;">Hero Section</h3>
+            <div class="admin-form-group full-width">
+              <label>Hero Background Image</label>
+              <div class="image-upload-container">
+                <input type="file" id="retreat-hero-upload" accept="image/*" style="display: none;">
+                <button type="button" id="retreat-hero-upload-btn" class="admin-btn admin-btn-secondary">Upload Hero Image</button>
+                <div id="retreat-hero-preview" class="image-preview"></div>
+                <div id="retreat-hero-path" class="image-path-display"></div>
+              </div>
+              <small style="color: #718096; font-size: 0.875rem;">Upload hero section background image</small>
+            </div>
           </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload hero section background image</small>
-        </div>
-        <div class="admin-form-group full-width" style="margin-top: 20px;">
-          <label for="retreat-hero-title">Hero Title</label>
-          <input type="text" id="retreat-hero-title" placeholder="Activities and Practices at Back to Base" oninput="updateRetreatPreviewField('hero-title', this.value)">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="retreat-hero-subtitle">Hero Subtitle</label>
-          <input type="text" id="retreat-hero-subtitle" placeholder="Where nature and quiet become part of your practice" oninput="updateRetreatPreviewField('hero-subtitle', this.value)">
+          <div class="admin-form" style="padding: 20px; background: #f7fafc; border-radius: 8px;">
+            <h3 style="margin-top: 0; color: #4a5568;">Forest Platforms Card</h3>
+            <div class="admin-form-group full-width">
+              <label>Forest Platforms Card Image</label>
+              <div class="image-upload-container">
+                <input type="file" id="retreat-forest-upload" accept="image/*" style="display: none;">
+                <button type="button" id="retreat-forest-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
+                <div id="retreat-forest-preview" class="image-preview"></div>
+                <div id="retreat-forest-path" class="image-path-display"></div>
+              </div>
+              <small style="color: #718096; font-size: 0.875rem;">Upload image for Forest platforms card</small>
+            </div>
+          </div>
+          <div class="admin-form" style="padding: 20px; background: #f7fafc; border-radius: 8px;">
+            <h3 style="margin-top: 0; color: #4a5568;">Indoor Space Card</h3>
+            <div class="admin-form-group full-width">
+              <label>Indoor Space Card Image</label>
+              <div class="image-upload-container">
+                <input type="file" id="retreat-indoor-upload" accept="image/*" style="display: none;">
+                <button type="button" id="retreat-indoor-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
+                <div id="retreat-indoor-preview" class="image-preview"></div>
+                <div id="retreat-indoor-path" class="image-path-display"></div>
+              </div>
+              <small style="color: #718096; font-size: 0.875rem;">Upload image for Indoor space card</small>
+            </div>
+          </div>
+          <div class="admin-form" style="padding: 20px; background: #f7fafc; border-radius: 8px;">
+            <h3 style="margin-top: 0; color: #4a5568;">Home Theatre Card</h3>
+            <div class="admin-form-group full-width">
+              <label>Home Theatre Card Image</label>
+              <div class="image-upload-container">
+                <input type="file" id="retreat-theatre-upload" accept="image/*" style="display: none;">
+                <button type="button" id="retreat-theatre-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
+                <div id="retreat-theatre-preview" class="image-preview"></div>
+                <div id="retreat-theatre-path" class="image-path-display"></div>
+              </div>
+              <small style="color: #718096; font-size: 0.875rem;">Upload image for Home theatre card</small>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Introduction Section: Text only -->
-      <div class="admin-form" style="margin-top: 32px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Introduction Section</h3>
-        <div class="admin-form-group full-width">
-          <label for="retreat-intro-text">Introduction Text</label>
-          <textarea id="retreat-intro-text" class="admin-content-editor" rows="4" placeholder="Back to Base is a place where nature and quiet become part of your practice. Everything here is designed so that any activity — from yoga to a small creative workshop — takes place in an atmosphere of calm, depth, and inspiration."></textarea>
-        </div>
-      </div>
+      <!-- Text content is edited directly via the live preview above -->
 
-      <!-- Locations Section: Text only -->
-      <div class="admin-form" style="margin-top: 32px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Locations Section</h3>
-          <div class="admin-form-group full-width">
-            <label for="retreat-locations-title">Section Title</label>
-            <input type="text" id="retreat-locations-title" placeholder="Our locations for your workshops" oninput="updateRetreatPreviewField('locations-title', this.value)">
-          </div>
-      </div>
-
-      <!-- Forest Platforms: Image + Text -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Forest Platforms Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Forest Platforms Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="retreat-forest-upload" accept="image/*" style="display: none;">
-            <button type="button" id="retreat-forest-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="retreat-forest-preview" class="image-preview"></div>
-            <div id="retreat-forest-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Forest platforms card</small>
-        </div>
-          <div class="admin-form-group full-width" style="margin-top: 20px;">
-            <label for="retreat-forest-title">Card Title</label>
-            <input type="text" id="retreat-forest-title" placeholder="Forest platforms by the creek" oninput="updateRetreatPreviewField('forest-title', this.value)">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-forest-description">Card Description</label>
-            <textarea id="retreat-forest-description" class="admin-content-editor" rows="4" placeholder="Just a few steps from the house, a winding path leads into the forest, where wooden platforms are hidden among tall trees. The air feels lighter here, the sound of the creek creates a natural meditation, and the soft light filtering through the canopy makes every practice deeper." oninput="updateRetreatPreviewField('forest-desc', this.value)"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-forest-list-label">List Label</label>
-            <input type="text" id="retreat-forest-list-label" placeholder="It's an ideal spot for:" oninput="updateRetreatPreviewField('forest-label', this.value)">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-forest-list-items">List Items (one per line)</label>
-            <textarea id="retreat-forest-list-items" class="admin-content-editor" rows="4" placeholder="Sunrise yoga&#10;Evening meditations&#10;Breathwork&#10;Any activity that benefits from a strong connection to nature" oninput="updateRetreatPreviewField('forest-list-items', this.value)"></textarea>
-          </div>
-      </div>
-
-      <!-- Indoor Space: Image + Text -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Indoor Space Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Indoor Space Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="retreat-indoor-upload" accept="image/*" style="display: none;">
-            <button type="button" id="retreat-indoor-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="retreat-indoor-preview" class="image-preview"></div>
-            <div id="retreat-indoor-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Indoor space card</small>
-        </div>
-          <div class="admin-form-group full-width" style="margin-top: 20px;">
-            <label for="retreat-indoor-title">Card Title</label>
-            <input type="text" id="retreat-indoor-title" placeholder="Warm, bright indoor space at Back to Base" oninput="updateRetreatPreviewField('indoor-title', this.value)">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-indoor-description">Card Description</label>
-            <textarea id="retreat-indoor-description" class="admin-content-editor" rows="4" placeholder="Inside the house, there is a spacious room with large windows filled with light, warmth, and a sense of comfort — perfect for group gatherings, mini-lectures, workshops, breathwork sessions, or yoga during cooler weather." oninput="updateRetreatPreviewField('indoor-desc', this.value)"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-indoor-additional">Additional Text</label>
-            <textarea id="retreat-indoor-additional" class="admin-content-editor" rows="2" placeholder="And if you need a more intimate atmosphere or plan to use visual materials, the room can easily be darkened with blackout curtains." oninput="updateRetreatPreviewField('indoor-add', this.value)"></textarea>
-          </div>
-      </div>
-
-      <!-- Home Theatre: Image + Text -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Home Theatre Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Home Theatre Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="retreat-theatre-upload" accept="image/*" style="display: none;">
-            <button type="button" id="retreat-theatre-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="retreat-theatre-preview" class="image-preview"></div>
-            <div id="retreat-theatre-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Home theatre card</small>
-        </div>
-          <div class="admin-form-group full-width" style="margin-top: 20px;">
-            <label for="retreat-theatre-title">Card Title</label>
-            <input type="text" id="retreat-theatre-title" placeholder="Cozy mini home theatre" oninput="updateRetreatPreviewField('theatre-title', this.value)">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-theatre-description">Card Description</label>
-            <textarea id="retreat-theatre-description" class="admin-content-editor" rows="4" placeholder="For presentations, educational films, documentaries, or shared viewing sessions, we offer a small but very cozy home theatre. Soft lighting, quality sound, and a calm environment help create a fully immersive experience." oninput="updateRetreatPreviewField('theatre-desc', this.value)"></textarea>
-          </div>
-      </div>
-
-      <!-- Contact Form Section: Text only -->
-      <div class="admin-form" style="margin-top: 32px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Contact Form Section</h3>
-          <div class="admin-form-group full-width">
-            <label for="retreat-contact-title">Section Title</label>
-            <input type="text" id="retreat-contact-title" placeholder="Are you looking for a place to retreat or interested in joining a workshop?" oninput="updateRetreatPreviewField('contact-title', this.value)">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-contact-text">Section Text</label>
-            <textarea id="retreat-contact-text" class="admin-content-editor" rows="2" placeholder="Just send us a message with your preferences, and we will create a program tailored specifically for you!" oninput="updateRetreatPreviewField('contact-text', this.value)"></textarea>
-          </div>
-        </div>
-
-        <!-- Organizer Section: Text only -->
-        <div class="admin-form" style="margin-top: 32px;">
-          <h3 style="margin-top: 0; color: #4a5568;">Organizer Section</h3>
-          <div class="admin-form-group full-width">
-            <label for="retreat-organizer-title">Section Title</label>
-            <input type="text" id="retreat-organizer-title" placeholder="Are you a yoga instructor or an event organizer looking for a place to host your sessions?" oninput="updateRetreatPreviewField('organizer-title', this.value)">
-          </div>
-        </div>
-
-      <!-- Workshops Section: Text only -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Workshops Section (Expandable)</h3>
-          <div class="admin-form-group full-width">
-            <label for="retreat-workshops-title">Section Title</label>
-            <input type="text" id="retreat-workshops-title" placeholder="What workshops are our spaces suitable for?" oninput="updateRetreatPreviewField('workshops-title', this.value)">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-workshops-intro">Introduction Text</label>
-            <textarea id="retreat-workshops-intro" class="admin-content-editor" rows="2" placeholder="The indoor spaces, forest platforms, and the forest itself are ideal for the following practices:" oninput="updateRetreatPreviewField('workshops-intro', this.value)"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-workshops-list">Workshops List (one per line)</label>
-            <textarea id="retreat-workshops-list" class="admin-content-editor" rows="5" placeholder="Group and private yoga sessions&#10;Meditations and mindfulness practices&#10;Sound healing and breathwork&#10;Creative and educational workshops&#10;Mini-lectures and intimate gatherings" oninput="updateRetreatPreviewField('workshops-list', this.value)"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-workshops-conclusion">Conclusion Text</label>
-            <textarea id="retreat-workshops-conclusion" class="admin-content-editor" rows="3" placeholder="Create memorable retreat experiences for your community. Nature here is not just a backdrop — it becomes a full participant. People open up more easily, rest more deeply, and return to themselves more naturally." oninput="updateRetreatPreviewField('workshops-conclusion', this.value)"></textarea>
-          </div>
-      </div>
-
-      <!-- Collaboration Section: Text only -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Invitation to Collaborate Section</h3>
-          <div class="admin-form-group full-width">
-            <label for="retreat-collaboration-title">Section Title</label>
-            <input type="text" id="retreat-collaboration-title" placeholder="Invitation to Collaborate" oninput="updateRetreatPreviewField('collaboration-title', this.value)">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-collaboration-intro">Introduction Text</label>
-            <textarea id="retreat-collaboration-intro" class="admin-content-editor" rows="2" placeholder="Back to Base welcomes those who create transformative practices and help people heal and restore. We are looking for:" oninput="updateRetreatPreviewField('collaboration-intro', this.value)"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-collaboration-list">Collaboration List (one per line)</label>
-            <textarea id="retreat-collaboration-list" class="admin-content-editor" rows="7" placeholder="Program creators&#10;Yoga instructors&#10;Meditation teachers&#10;Massage therapists&#10;Reiki practitioners&#10;Acupuncturists&#10;Body-oriented specialists" oninput="updateRetreatPreviewField('collaboration-list', this.value)"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="retreat-collaboration-conclusion">Conclusion Text</label>
-            <textarea id="retreat-collaboration-conclusion" class="admin-content-editor" rows="3" placeholder="If you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you. Just call or message us!" oninput="updateRetreatPreviewField('collaboration-conclusion', this.value)"></textarea>
-          </div>
-      </div>
-
-      <div class="admin-form-actions" style="margin-top: 32px;">
-        <button id="save-retreat-images" class="admin-btn admin-btn-primary" style="margin-right: 12px;">Save Images</button>
-        <button id="save-retreat-workshop" class="admin-btn admin-btn-primary">Save Content</button>
-        <div id="retreat-auto-save-status" style="margin-left: 16px; display: inline-flex; align-items: center; gap: 8px; font-size: 0.875rem; color: #6b7280;">
-          <span id="retreat-save-status-text"></span>
-          <span id="retreat-save-status-icon"></span>
-        </div>
-      </div>
+      <div class="admin-form-actions" style="margin-top: 32px; justify-content: flex-start;"></div>
     </section>
 
     <!-- Special Section -->
     <section id="special-section" class="admin-section" style="display: none;">
       <h2>Special Page</h2>
+      <div class="retreat-status-bar">
+        <div class="retreat-live-status" id="special-auto-save-status" aria-live="polite">
+          <span id="special-save-status-text"></span>
+          <span id="special-save-status-icon"></span>
+        </div>
+      </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="special-hero-title">
+        <input type="hidden" id="special-hero-subtitle">
+        <input type="hidden" id="special-pools-title">
+        <textarea id="special-pools-description-1"></textarea>
+        <textarea id="special-pools-description-2"></textarea>
+        <input type="hidden" id="special-dining-title">
+        <textarea id="special-dining-description-1"></textarea>
+        <textarea id="special-dining-description-2"></textarea>
+        <input type="hidden" id="special-offer-title">
+        <textarea id="special-offer-main-text"></textarea>
+        <textarea id="special-offer-description"></textarea>
+        <input type="file" id="special-hero-upload" accept="image/*" style="display: none;">
+        <input type="file" id="special-pools-upload" accept="image/*" style="display: none;">
+        <input type="file" id="special-dining-upload" accept="image/*" style="display: none;">
+      </div>
       
       <!-- Schematic Preview -->
       <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
@@ -2290,17 +2398,17 @@
         <!-- Hero Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #3b82f6; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">H</div>
             <span style="font-weight: 600; color: #374151;">Hero Section</span>
           </div>
           <div class="preview-block-content" style="display: grid; grid-template-columns: 200px 1fr; gap: 16px;">
-            <div class="preview-image" style="width: 200px; height: 120px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <div class="preview-image" style="width: 200px; height: 120px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('special-hero-upload')">
               <img id="preview-special-hero-img" src="" alt="Hero" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
               <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Hero Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
             </div>
             <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
-              <div style="font-weight: 600; color: #111827; font-size: 1rem;" id="preview-special-hero-title">Soak & Savor at Ainsworth Hot Springs</div>
-              <div style="color: #6b7280; font-size: 0.875rem;" id="preview-special-hero-subtitle">Back to Base offers its guests a unique relaxation experience...</div>
+              <div contenteditable="true" class="editable-preview" data-field="special-hero-title" style="font-weight: 600; color: #0f172a; font-size: 1rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'special-hero-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-special-hero-title">Soak & Savor at Ainsworth Hot Springs</div>
+              <div contenteditable="true" class="editable-preview" data-field="special-hero-subtitle" style="color: #0f172a; font-size: 0.875rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'special-hero-subtitle')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-special-hero-subtitle">Back to Base offers its guests a unique relaxation experience. See the details below.</div>
             </div>
           </div>
         </div>
@@ -2308,16 +2416,16 @@
         <!-- Mineral-Rich Pools Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #10b981; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">1</div>
-            <span style="font-weight: 600; color: #374151;" id="preview-special-pools-title">Mineral-Rich Pools & Limestone Cave</span>
+            <span contenteditable="true" class="editable-preview" data-field="special-pools-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'special-pools-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-special-pools-title">Mineral-Rich Pools & Limestone Cave</span>
           </div>
           <div class="preview-block-content" style="display: grid; grid-template-columns: 200px 1fr; gap: 16px;">
-            <div class="preview-image" style="width: 200px; height: 150px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <div class="preview-image" style="width: 200px; height: 150px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('special-pools-upload')">
               <img id="preview-special-pools-img" src="" alt="Pools" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
               <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
             </div>
             <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
-              <div style="color: #4b5563; font-size: 0.9rem; line-height: 1.6;" id="preview-special-pools-desc">The Ainsworth Hot Springs are located just a thirty-minute scenic drive...</div>
+              <div contenteditable="true" class="editable-preview" data-field="special-pools-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncSpecialPoolsDescription(this)" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-special-pools-desc">The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge. Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.</div>
             </div>
           </div>
         </div>
@@ -2325,16 +2433,16 @@
         <!-- Dining & Spa Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #f59e0b; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">2</div>
-            <span style="font-weight: 600; color: #374151;" id="preview-special-dining-title">Dining & Spa Experience</span>
+            <span contenteditable="true" class="editable-preview" data-field="special-dining-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'special-dining-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-special-dining-title">Dining & Spa Experience</span>
           </div>
           <div class="preview-block-content" style="display: grid; grid-template-columns: 1fr 200px; gap: 16px;">
             <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
-              <div style="color: #4b5563; font-size: 0.9rem; line-height: 1.6;" id="preview-special-dining-desc">After your soak, enjoy a meal at the Ktunaxa Grill restaurant...</div>
+              <div contenteditable="true" class="editable-preview" data-field="special-dining-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncSpecialDiningDescription(this)" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-special-dining-desc">After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight. Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.</div>
             </div>
-            <div class="preview-image" style="width: 200px; height: 150px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden;">
+            <div class="preview-image" style="width: 200px; height: 150px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('special-dining-upload')">
               <img id="preview-special-dining-img" src="" alt="Dining" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
               <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
             </div>
           </div>
         </div>
@@ -2342,348 +2450,251 @@
         <!-- Exclusive Offer Block -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
           <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <div class="preview-block-icon" style="width: 24px; height: 24px; background: #ef4444; border-radius: 4px; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 0.75rem;">O</div>
-            <span style="font-weight: 600; color: #374151;" id="preview-special-offer-title">Free Hot Springs Access</span>
+            <span contenteditable="true" class="editable-preview" data-field="special-offer-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'special-offer-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-special-offer-title">Free Hot Springs Access</span>
           </div>
           <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
-            <div style="font-weight: 600; color: #111827; font-size: 1rem; margin-bottom: 8px;" id="preview-special-offer-main">Exclusive Offer: Book a minimum 5-night stay...</div>
-            <div style="color: #4b5563; font-size: 0.9rem; line-height: 1.6;" id="preview-special-offer-desc">Book a minimum 5-night stay at our Erasmus Suite...</div>
+            <div contenteditable="true" class="editable-preview" data-field="special-offer-main-text" style="font-weight: 600; color: #0f172a; font-size: 1rem; margin-bottom: 8px; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'special-offer-main-text')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-special-offer-main">Exclusive Offer: Book a minimum 5-night stay at our Erasmus Suite (Second floor — Loft suite) and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!</div>
+            <div contenteditable="true" class="editable-preview" data-field="special-offer-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'special-offer-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-special-offer-desc">This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.</div>
           </div>
         </div>
       </div>
       
-      <!-- Hero Section: Image + Text -->
-      <div class="admin-form" style="margin-top: 24px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Hero Section</h3>
-        <div class="admin-form-group full-width">
-          <label>Hero Background Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="special-hero-upload" accept="image/*" style="display: none;">
-            <button type="button" id="special-hero-upload-btn" class="admin-btn admin-btn-secondary">Upload Hero Image</button>
-            <div id="special-hero-preview" class="image-preview"></div>
-            <div id="special-hero-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload hero section background image</small>
-        </div>
-        <div class="admin-form-group full-width" style="margin-top: 20px;">
-          <label for="special-hero-title">Hero Title</label>
-          <input type="text" id="special-hero-title" placeholder="Soak & Savor at Ainsworth Hot Springs" oninput="updateSpecialPreviewField('hero-title', this.value)">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="special-hero-subtitle">Hero Subtitle</label>
-          <input type="text" id="special-hero-subtitle" placeholder="Back to Base offers its guests a unique relaxation experience. See the details below." oninput="updateSpecialPreviewField('hero-subtitle', this.value)">
-        </div>
-      </div>
-
-      <!-- Mineral-Rich Pools & Limestone Cave Card: Image + Text -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Mineral-Rich Pools & Limestone Cave Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="special-pools-upload" accept="image/*" style="display: none;">
-            <button type="button" id="special-pools-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="special-pools-preview" class="image-preview"></div>
-            <div id="special-pools-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Mineral-Rich Pools & Limestone Cave card</small>
-        </div>
-        <div class="admin-form-group full-width" style="margin-top: 20px;">
-          <label for="special-pools-title">Card Title</label>
-          <input type="text" id="special-pools-title" placeholder="Mineral-Rich Pools & Limestone Cave" oninput="updateSpecialPreviewField('pools-title', this.value)">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="special-pools-description-1">First Paragraph</label>
-          <textarea id="special-pools-description-1" class="admin-content-editor" rows="2" placeholder="The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge." oninput="updateSpecialPreviewField('pools-desc-1', this.value)"></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="special-pools-description-2">Second Paragraph</label>
-          <textarea id="special-pools-description-2" class="admin-content-editor" rows="3" placeholder="Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation." oninput="updateSpecialPreviewField('pools-desc-2', this.value)"></textarea>
-        </div>
-      </div>
-
-      <!-- Dining & Spa Experience Card: Image + Text -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Dining & Spa Experience Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Card Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="special-dining-upload" accept="image/*" style="display: none;">
-            <button type="button" id="special-dining-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-            <div id="special-dining-preview" class="image-preview"></div>
-            <div id="special-dining-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload image for Dining & Spa Experience card</small>
-        </div>
-        <div class="admin-form-group full-width" style="margin-top: 20px;">
-          <label for="special-dining-title">Card Title</label>
-          <input type="text" id="special-dining-title" placeholder="Dining & Spa Experience">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="special-dining-description-1">First Paragraph</label>
-          <textarea id="special-dining-description-1" class="admin-content-editor" rows="2" placeholder="After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight."></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="special-dining-description-2">Second Paragraph</label>
-          <textarea id="special-dining-description-2" class="admin-content-editor" rows="2" placeholder="Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments."></textarea>
-        </div>
-      </div>
-
-      <!-- Exclusive Offer Card: Text only -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Exclusive Offer Card</h3>
-        <div class="admin-form-group full-width">
-          <label for="special-offer-title">Card Title</label>
-          <input type="text" id="special-offer-title" placeholder="Free Hot Springs Access">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="special-offer-main-text">Main Text (Bold)</label>
-          <textarea id="special-offer-main-text" class="admin-content-editor" rows="2" placeholder="Book a minimum 5-night stay at our Erasmus Suite (Second floor — Loft suite) and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!"></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="special-offer-description">Description Text</label>
-          <textarea id="special-offer-description" class="admin-content-editor" rows="3" placeholder="This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience."></textarea>
-        </div>
-      </div>
-
-      <div class="admin-form-actions" style="margin-top: 32px;">
-        <button id="save-special-images" class="admin-btn admin-btn-primary" style="margin-right: 12px;">Save Images</button>
-        <button id="save-special" class="admin-btn admin-btn-primary">Save Content</button>
-      </div>
+      <!-- Text content is edited directly via the live preview above -->
+      
+      <div class="admin-form-actions" style="margin-top: 32px; justify-content: flex-start;"></div>
     </section>
 
     <!-- About us Section -->
     <section id="about-section" class="admin-section" style="display: none;">
       <h2>About us Page</h2>
+      <div class="retreat-status-bar">
+        <div class="retreat-live-status" id="about-auto-save-status" aria-live="polite">
+          <span id="about-save-status-text"></span>
+          <span id="about-save-status-icon"></span>
+        </div>
+      </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="about-hero-title">
+        <input type="hidden" id="about-hero-subtitle">
+        <input type="hidden" id="about-idea-title">
+        <textarea id="about-idea-intro"></textarea>
+        <textarea id="about-idea-paragraph-1"></textarea>
+        <textarea id="about-idea-paragraph-2"></textarea>
+        <textarea id="about-idea-paragraph-3"></textarea>
+        <input type="hidden" id="about-idea-signature">
+        <input type="hidden" id="about-location-title">
+        <textarea id="about-location-paragraph-1"></textarea>
+        <textarea id="about-location-paragraph-2"></textarea>
+        <textarea id="about-location-paragraph-3"></textarea>
+        <textarea id="about-location-paragraph-4"></textarea>
+        <input type="hidden" id="about-location-coordinates">
+        <input type="hidden" id="about-location-deer-warning">
+        <input type="hidden" id="about-attractions-title">
+        <textarea id="about-attractions-lead"></textarea>
+        <input type="hidden" id="about-procter-title">
+        <input type="hidden" id="about-procter-distance">
+        <textarea id="about-procter-description"></textarea>
+        <input type="hidden" id="about-halcyon-title">
+        <input type="hidden" id="about-halcyon-distance">
+        <textarea id="about-halcyon-description"></textarea>
+        <input type="hidden" id="about-whitewater-title">
+        <input type="hidden" id="about-whitewater-distance">
+        <textarea id="about-whitewater-description"></textarea>
+        <input type="hidden" id="about-nelson-title">
+        <input type="hidden" id="about-nelson-distance">
+        <textarea id="about-nelson-description"></textarea>
+        <input type="hidden" id="about-parks-title">
+        <textarea id="about-parks-intro"></textarea>
+        <textarea id="about-parks-list"></textarea>
+        <input type="file" id="about-hero-upload" accept="image/*" style="display: none;">
+        <input type="file" id="about-founder-upload" accept="image/*" style="display: none;">
+        <input type="file" id="about-procter-upload" accept="image/*" style="display: none;">
+      </div>
       
-      <!-- Hero Section: Image + Text -->
-      <div class="admin-form" style="margin-top: 24px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Hero Section</h3>
-        <div class="admin-form-group full-width">
-          <label>Hero Background Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="about-hero-upload" accept="image/*" style="display: none;">
-            <button type="button" id="about-hero-upload-btn" class="admin-btn admin-btn-secondary">Upload Hero Image</button>
-            <div id="about-hero-preview" class="image-preview"></div>
-            <div id="about-hero-path" class="image-path-display"></div>
+      <!-- Schematic Preview -->
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Page Preview</h3>
+        
+        <!-- Hero Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Hero Section</span>
           </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload hero section background image</small>
-        </div>
-        <div class="admin-form-group full-width" style="margin-top: 20px;">
-          <label for="about-hero-title">Hero Title</label>
-          <input type="text" id="about-hero-title" placeholder="About Back to Base">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="about-hero-subtitle">Hero Subtitle</label>
-          <input type="text" id="about-hero-subtitle" placeholder="A personal retreat in the heart of British Columbia">
-        </div>
-      </div>
-
-      <!-- Idea and Origins Section: Image + Text -->
-      <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-        <h3 style="margin-top: 0; color: #4a5568;">Idea and Origins Section</h3>
-        <div class="admin-form-group full-width">
-          <label>Founder Photo</label>
-          <div class="image-upload-container">
-            <input type="file" id="about-founder-upload" accept="image/*" style="display: none;">
-            <button type="button" id="about-founder-upload-btn" class="admin-btn admin-btn-secondary">Upload Photo</button>
-            <div id="about-founder-preview" class="image-preview"></div>
-            <div id="about-founder-path" class="image-path-display"></div>
-          </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload founder photo (Rob Vuik)</small>
-        </div>
-        <div class="admin-form-group full-width" style="margin-top: 20px;">
-          <label for="about-idea-title">Section Title</label>
-          <input type="text" id="about-idea-title" placeholder="Idea and Origins">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="about-idea-intro">Introduction Paragraph</label>
-          <textarea id="about-idea-intro" class="admin-content-editor" rows="3" placeholder="Hi! My name is Rob Vuik. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better."></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="about-idea-paragraph-1">First Expandable Paragraph</label>
-          <textarea id="about-idea-paragraph-1" class="admin-content-editor" rows="2" placeholder="Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature."></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="about-idea-paragraph-2">Second Expandable Paragraph</label>
-          <textarea id="about-idea-paragraph-2" class="admin-content-editor" rows="3" placeholder="Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I'm happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort."></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="about-idea-paragraph-3">Third Expandable Paragraph</label>
-          <textarea id="about-idea-paragraph-3" class="admin-content-editor" rows="2" placeholder="We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy."></textarea>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="about-idea-signature">Signature Text</label>
-          <input type="text" id="about-idea-signature" placeholder="I look forward to welcoming you!">
-        </div>
-      </div>
-
-        <!-- How to Find Us Section -->
-        <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #4a5568;">How to Find Us Section</h3>
-          <div class="admin-form-group full-width">
-            <label for="about-location-title">Section Title</label>
-            <input type="text" id="about-location-title" placeholder="How to Find Us">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-location-paragraph-1">First Paragraph</label>
-            <textarea id="about-location-paragraph-1" class="admin-content-editor" rows="1" placeholder="Back to Base is located in the village of Procter, 35 km from Nelson, B.C."></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-location-paragraph-2">Second Paragraph</label>
-            <textarea id="about-location-paragraph-2" class="admin-content-editor" rows="1" placeholder="You'll need to take the 24/7 Harrop–Procter ferry,"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-location-paragraph-3">Third Paragraph</label>
-            <textarea id="about-location-paragraph-3" class="admin-content-editor" rows="1" placeholder="then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road."></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-location-paragraph-4">Fourth Paragraph</label>
-            <textarea id="about-location-paragraph-4" class="admin-content-editor" rows="1" placeholder="From there, it's just a 3-minute drive up the mountain road — and you're here!"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-location-coordinates">Coordinates</label>
-            <input type="text" id="about-location-coordinates" placeholder="49.6125, -116.9579">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-location-deer-warning">Deer Warning Text</label>
-            <input type="text" id="about-location-deer-warning" placeholder="🦌 Be careful — we have a lot of deer in the area!">
-          </div>
-        </div>
-
-        <!-- About the Location Section -->
-        <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #4a5568;">About the Location Section</h3>
-          <div class="admin-form-group full-width">
-            <label for="about-attractions-title">Section Title</label>
-            <input type="text" id="about-attractions-title" placeholder="About the Location">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-attractions-lead">Section Lead Text</label>
-            <textarea id="about-attractions-lead" class="admin-content-editor" rows="1" placeholder="Discover the natural beauty and attractions surrounding Back to Base"></textarea>
-          </div>
-        </div>
-
-        <!-- Procter Village Card: Image + Text -->
-        <div class="admin-form" style="margin-top: 24px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-          <h4 style="margin-top: 0; color: #2d3748;">Procter Village Card</h4>
-          <div class="admin-form-group full-width">
-            <label>Card Image</label>
-            <div class="image-upload-container">
-              <input type="file" id="about-procter-upload" accept="image/*" style="display: none;">
-              <button type="button" id="about-procter-upload-btn" class="admin-btn admin-btn-secondary">Upload Image</button>
-              <div id="about-procter-preview" class="image-preview"></div>
-              <div id="about-procter-path" class="image-path-display"></div>
+          <div class="preview-block-content" style="display: grid; grid-template-columns: 200px 1fr; gap: 16px;">
+            <div class="preview-image" style="width: 200px; height: 120px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('about-hero-upload')">
+              <img id="preview-about-hero-img" src="" alt="Hero" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+              <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Hero Image</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
             </div>
-            <small style="color: #718096; font-size: 0.875rem;">Upload image for Procter Village attraction card</small>
-          </div>
-          <div class="admin-form-group full-width" style="margin-top: 20px;">
-            <label for="about-procter-title">Card Title</label>
-            <input type="text" id="about-procter-title" placeholder="Procter Village">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-procter-distance">Distance</label>
-            <input type="text" id="about-procter-distance" placeholder="In the same village">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-procter-description">Description</label>
-            <textarea id="about-procter-description" class="admin-content-editor" rows="2" placeholder="In the village of Procter, you'll find the Procter Café with their famous cinnamon buns, a small grocery store, and a gas station."></textarea>
+            <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+              <div contenteditable="true" class="editable-preview" data-field="about-hero-title" style="font-weight: 600; color: #0f172a; font-size: 1rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-hero-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-hero-title">About Back to Base</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-hero-subtitle" style="color: #0f172a; font-size: 0.875rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-hero-subtitle')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-hero-subtitle">A personal retreat in the heart of British Columbia</div>
+            </div>
           </div>
         </div>
-
-        <div class="admin-form" style="margin-top: 24px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-          <h4 style="margin-top: 0; color: #2d3748;">Ainsworth Hot Springs Resort Card</h4>
-          <div class="admin-form-group full-width">
-            <label for="about-halcyon-title">Card Title</label>
-            <input type="text" id="about-halcyon-title" placeholder="Ainsworth Hot Springs Resort">
+        
+        <!-- Idea and Origins Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span contenteditable="true" class="editable-preview" data-field="about-idea-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'about-idea-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-about-idea-title">Idea and Origins</span>
           </div>
-          <div class="admin-form-group full-width">
-            <label for="about-halcyon-distance">Distance</label>
-            <input type="text" id="about-halcyon-distance" placeholder="30 km from Back to Base">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-halcyon-description">Description</label>
-            <textarea id="about-halcyon-description" class="admin-content-editor" rows="2" placeholder="Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!"></textarea>
-          </div>
-        </div>
-
-        <div class="admin-form" style="margin-top: 24px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-          <h4 style="margin-top: 0; color: #2d3748;">Whitewater Mountain Resort Card</h4>
-          <div class="admin-form-group full-width">
-            <label for="about-whitewater-title">Card Title</label>
-            <input type="text" id="about-whitewater-title" placeholder="Whitewater Mountain Resort">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-whitewater-distance">Distance</label>
-            <input type="text" id="about-whitewater-distance" placeholder="60 km from Back to Base">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-whitewater-description">Description</label>
-            <textarea id="about-whitewater-description" class="admin-content-editor" rows="2" placeholder="Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding."></textarea>
+          <div class="preview-block-content" style="display: grid; grid-template-columns: 150px 1fr; gap: 16px;">
+            <div class="preview-image" style="width: 150px; height: 150px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('about-founder-upload')">
+              <img id="preview-about-founder-img" src="" alt="Founder" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+              <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Founder Photo</span>
+              <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+            </div>
+            <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+              <div contenteditable="true" class="editable-preview" data-field="about-idea-intro" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-idea-intro')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-idea-intro">Hi! My name is Rob Vuik. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-idea-paragraph-1" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-idea-paragraph-1')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-idea-p1">Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-idea-paragraph-2" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-idea-paragraph-2')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-idea-p2">Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I'm happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-idea-paragraph-3" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-idea-paragraph-3')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-idea-p3">We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-idea-signature" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-idea-signature')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-idea-signature">I look forward to welcoming you!</div>
+            </div>
           </div>
         </div>
-
-        <div class="admin-form" style="margin-top: 24px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-          <h4 style="margin-top: 0; color: #2d3748;">Nelson Card</h4>
-          <div class="admin-form-group full-width">
-            <label for="about-nelson-title">Card Title</label>
-            <input type="text" id="about-nelson-title" placeholder="Nelson">
+        
+        <!-- How to Find Us Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span contenteditable="true" class="editable-preview" data-field="about-location-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'about-location-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-about-location-title">How to Find Us</span>
           </div>
-          <div class="admin-form-group full-width">
-            <label for="about-nelson-distance">Distance</label>
-            <input type="text" id="about-nelson-distance" placeholder="35 km from Back to Base">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-nelson-description">Description</label>
-            <textarea id="about-nelson-description" class="admin-content-editor" rows="2" placeholder="A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists."></textarea>
-          </div>
-        </div>
-
-        <!-- Provincial Parks Section -->
-        <div class="admin-form" style="margin-top: 32px; padding: 20px; background: #f7fafc; border-radius: 8px;">
-          <h3 style="margin-top: 0; color: #4a5568;">Provincial Parks Section</h3>
-          <div class="admin-form-group full-width">
-            <label for="about-parks-title">Section Title</label>
-            <input type="text" id="about-parks-title" placeholder="Provincial Parks Nearby">
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-parks-intro">Introduction Text</label>
-            <textarea id="about-parks-intro" class="admin-content-editor" rows="2" placeholder="If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base:"></textarea>
-          </div>
-          <div class="admin-form-group full-width">
-            <label for="about-parks-list">Parks List (one per line)</label>
-            <textarea id="about-parks-list" class="admin-content-editor" rows="4" placeholder="Kokanee Creek Provincial Park&#10;Kokanee Glacier Provincial Park&#10;Lockhart Beach Provincial Park&#10;Kianuko Provincial Park"></textarea>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="about-location-paragraph-1" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-location-paragraph-1')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-location-p1">Back to Base is located in the village of Procter, 35 km from Nelson, B.C.</div>
+            <div contenteditable="true" class="editable-preview" data-field="about-location-paragraph-2" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-location-paragraph-2')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-location-p2">You'll need to take the 24/7 Harrop–Procter ferry,</div>
+            <div contenteditable="true" class="editable-preview" data-field="about-location-paragraph-3" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-location-paragraph-3')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-location-p3">then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.</div>
+            <div contenteditable="true" class="editable-preview" data-field="about-location-paragraph-4" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-location-paragraph-4')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-location-p4">From there, it's just a 3-minute drive up the mountain road — and you're here!</div>
+            <div style="display: flex; gap: 16px; margin-top: 8px;">
+              <div contenteditable="true" class="editable-preview" data-field="about-location-coordinates" style="color: #0f172a; font-size: 0.85rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-location-coordinates')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-location-coords">Coordinates: 49.6125, -116.9579</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-location-deer-warning" style="color: #0f172a; font-size: 0.85rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-location-deer-warning')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-location-deer">🦌 Be careful — we have a lot of deer in the area!</div>
+            </div>
           </div>
         </div>
-
-      <div class="admin-form-actions" style="margin-top: 32px;">
-        <button id="save-about-images" class="admin-btn admin-btn-primary" style="margin-right: 12px;">Save Images</button>
-        <button id="save-about" class="admin-btn admin-btn-primary">Save Content</button>
+        
+        <!-- About the Location Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span contenteditable="true" class="editable-preview" data-field="about-attractions-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'about-attractions-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-about-attractions-title">About the Location</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="about-attractions-lead" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-attractions-lead')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-attractions-lead">Discover the natural beauty and attractions surrounding Back to Base</div>
+          </div>
+        </div>
+        
+        <!-- Attractions Cards (simplified grid view) -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Attractions</span>
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px;">
+            <!-- Procter Card -->
+            <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <div class="preview-image" style="width: 100%; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; margin-bottom: 8px;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('about-procter-upload')">
+                <img id="preview-about-procter-img" src="" alt="Procter" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+                <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Procter Image</span>
+                <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+              </div>
+              <div contenteditable="true" class="editable-preview" data-field="about-procter-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-procter-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-procter-title">Procter Village</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-procter-distance" style="color: #6b7280; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-procter-distance')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-procter-distance">In the same village</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-procter-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-procter-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-procter-desc">In the village of Procter, you'll find the Procter Café with their famous cinnamon buns, a small grocery store, and a gas station.</div>
+            </div>
+            
+            <!-- Halcyon Card -->
+            <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <div style="width: 100%; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                <span style="color: #9ca3af; font-size: 0.75rem;">Halcyon Image</span>
+              </div>
+              <div contenteditable="true" class="editable-preview" data-field="about-halcyon-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-halcyon-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-halcyon-title">Ainsworth Hot Springs Resort</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-halcyon-distance" style="color: #6b7280; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-halcyon-distance')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-halcyon-distance">30 km from Back to Base</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-halcyon-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-halcyon-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-halcyon-desc">Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!</div>
+            </div>
+            
+            <!-- Whitewater Card -->
+            <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <div style="width: 100%; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                <span style="color: #9ca3af; font-size: 0.75rem;">Whitewater Image</span>
+              </div>
+              <div contenteditable="true" class="editable-preview" data-field="about-whitewater-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-whitewater-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-whitewater-title">Whitewater Mountain Resort</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-whitewater-distance" style="color: #6b7280; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-whitewater-distance')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-whitewater-distance">60 km from Back to Base</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-whitewater-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-whitewater-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-whitewater-desc">Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.</div>
+            </div>
+            
+            <!-- Nelson Card -->
+            <div style="padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px;">
+              <div style="width: 100%; height: 100px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; margin-bottom: 8px;">
+                <span style="color: #9ca3af; font-size: 0.75rem;">Nelson Image</span>
+              </div>
+              <div contenteditable="true" class="editable-preview" data-field="about-nelson-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-nelson-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-nelson-title">Nelson</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-nelson-distance" style="color: #6b7280; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-nelson-distance')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-nelson-distance">35 km from Back to Base</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-nelson-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-nelson-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-nelson-desc">A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Provincial Parks Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span contenteditable="true" class="editable-preview" data-field="about-parks-title" style="font-weight: 600; color: #374151; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; display: inline-block;" onblur="syncPreviewToForm(this, 'about-parks-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='transparent'; this.style.border='none';" id="preview-about-parks-title">Provincial Parks Nearby</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="about-parks-intro" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-parks-intro')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-parks-intro">If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base:</div>
+            <ul contenteditable="true" class="editable-preview" data-field="about-parks-list" style="margin: 8px 0 0 20px; padding: 4px 8px; border-radius: 4px; cursor: text; outline: none; min-height: 1.5em; background: #f8fafc; border: 1px solid #e2e8f0; list-style-type: disc; color: #0f172a;" onblur="syncPreviewToForm(this, 'about-parks-list')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-parks-list">
+              <li>Kokanee Creek Provincial Park</li>
+              <li>Kokanee Glacier Provincial Park</li>
+              <li>Lockhart Beach Provincial Park</li>
+              <li>Kianuko Provincial Park</li>
+            </ul>
+          </div>
+        </div>
       </div>
+      
+      <!-- Text content is edited directly via the live preview above -->
+      
+      <div class="admin-form-actions" style="margin-top: 32px; justify-content: flex-start;"></div>
     </section>
 
     <!-- Contact Section -->
     <section id="contact-section" class="admin-section" style="display: none;">
       <h2>Contact Information</h2>
-      <div class="admin-form">
-        <div class="admin-form-row">
-          <div class="admin-form-group">
-            <label for="contact-phone">Phone</label>
-            <input type="text" id="contact-phone">
-          </div>
-          <div class="admin-form-group">
-            <label for="contact-email">Email</label>
-            <input type="email" id="contact-email">
-          </div>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="contact-address">Address</label>
-          <input type="text" id="contact-address">
-        </div>
-        <div class="admin-form-actions">
-          <button id="save-contact" class="admin-btn admin-btn-primary">Save Contact Info</button>
+      <div class="retreat-status-bar">
+        <div class="retreat-live-status" id="contact-auto-save-status" aria-live="polite">
+          <span id="contact-save-status-text"></span>
+          <span id="contact-save-status-icon"></span>
         </div>
       </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="contact-phone">
+        <input type="hidden" id="contact-email">
+        <input type="hidden" id="contact-address">
+      </div>
+      
+      <!-- Schematic Preview -->
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Contact Information Preview</h3>
+        
+        <!-- Contact Info Block -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Contact Details</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; color: #6b7280; min-width: 80px;">Phone:</span>
+              <div contenteditable="true" class="editable-preview" data-field="contact-phone" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1;" onblur="syncPreviewToForm(this, 'contact-phone')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-contact-phone">+1 (555) 123‑4567</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; color: #6b7280; min-width: 80px;">Email:</span>
+              <div contenteditable="true" class="editable-preview" data-field="contact-email" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1;" onblur="syncPreviewToForm(this, 'contact-email')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-contact-email">hello@backtobase.example</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 8px;">
+              <span style="font-weight: 600; color: #6b7280; min-width: 80px;">Address:</span>
+              <div contenteditable="true" class="editable-preview" data-field="contact-address" style="color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; flex: 1;" onblur="syncPreviewToForm(this, 'contact-address')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-contact-address">British Columbia, Canada</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="admin-form-actions" style="margin-top: 32px; justify-content: flex-start;"></div>
     </section>
 
     <!-- Rooms (Home Page) Section -->
@@ -2796,80 +2807,87 @@
     <!-- Wellness Experiences Section -->
     <section id="wellness-experiences-section" class="admin-section" style="display: none;">
       <h2>Wellness Experiences</h2>
-      <div class="admin-form">
-        <div class="admin-form-group full-width">
-          <label for="wellness-title">Section Title</label>
-          <input type="text" id="wellness-title" placeholder="Wellness Experiences">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="wellness-description">Section Description</label>
-          <textarea id="wellness-description" class="admin-content-editor" rows="3" placeholder="Enhance your stay with our additional wellness services. Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative."></textarea>
+      <div class="retreat-status-bar">
+        <div class="retreat-live-status" id="wellness-auto-save-status" aria-live="polite">
+          <span id="wellness-save-status-text"></span>
+          <span id="wellness-save-status-icon"></span>
         </div>
       </div>
-
-      <div class="admin-form" style="margin-top: 32px;">
-        <h3>Massage Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Massage Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="wellness-massage-upload" accept="image/*" style="display: none;">
-            <button type="button" id="wellness-massage-upload-btn" class="admin-btn admin-btn-secondary">Upload Massage Image</button>
-            <div id="wellness-massage-preview" class="image-preview"></div>
-            <div id="wellness-massage-path" class="image-path-display"></div>
-          </div>
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="wellness-massage-title">Card Title</label>
-          <input type="text" id="wellness-massage-title" placeholder="Massage">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="wellness-massage-description">Card Description</label>
-          <textarea id="wellness-massage-description" class="admin-content-editor" rows="3" placeholder="Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours."></textarea>
-        </div>
+      <div class="retreat-hidden-fields" aria-hidden="true" style="display:none;">
+        <input type="hidden" id="wellness-title">
+        <textarea id="wellness-description"></textarea>
+        <input type="hidden" id="wellness-massage-title">
+        <textarea id="wellness-massage-description"></textarea>
+        <input type="hidden" id="wellness-yoga-title">
+        <textarea id="wellness-yoga-description"></textarea>
+        <input type="hidden" id="wellness-sauna-title">
+        <textarea id="wellness-sauna-description"></textarea>
+        <input type="file" id="wellness-massage-upload" accept="image/*" style="display: none;">
+        <input type="file" id="wellness-yoga-upload" accept="image/*" style="display: none;">
+        <input type="file" id="wellness-sauna-upload" accept="image/*" style="display: none;">
       </div>
-
-      <div class="admin-form" style="margin-top: 32px;">
-        <h3>Yoga Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Yoga Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="wellness-yoga-upload" accept="image/*" style="display: none;">
-            <button type="button" id="wellness-yoga-upload-btn" class="admin-btn admin-btn-secondary">Upload Yoga Image</button>
-            <div id="wellness-yoga-preview" class="image-preview"></div>
-            <div id="wellness-yoga-path" class="image-path-display"></div>
+      
+      <!-- Schematic Preview -->
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Page Preview</h3>
+        
+        <!-- Section Header -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Section Header</span>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="wellness-title" style="font-weight: 600; color: #0f172a; font-size: 1rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'wellness-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-wellness-title">Wellness Experiences</div>
+            <div contenteditable="true" class="editable-preview" data-field="wellness-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'wellness-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-wellness-desc">Enhance your stay with our additional wellness services. Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.</div>
           </div>
         </div>
-        <div class="admin-form-group full-width">
-          <label for="wellness-yoga-title">Card Title</label>
-          <input type="text" id="wellness-yoga-title" placeholder="Yoga">
-        </div>
-        <div class="admin-form-group full-width">
-          <label for="wellness-yoga-description">Card Description</label>
-          <textarea id="wellness-yoga-description" class="admin-content-editor" rows="3" placeholder="On the property, surrounded by a cozy forest, you'll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way."></textarea>
-        </div>
-      </div>
-
-      <div class="admin-form" style="margin-top: 32px;">
-        <h3>Sauna Card</h3>
-        <div class="admin-form-group full-width">
-          <label>Sauna Image</label>
-          <div class="image-upload-container">
-            <input type="file" id="wellness-sauna-upload" accept="image/*" style="display: none;">
-            <button type="button" id="wellness-sauna-upload-btn" class="admin-btn admin-btn-secondary">Upload Sauna Image</button>
-            <div id="wellness-sauna-preview" class="image-preview"></div>
-            <div id="wellness-sauna-path" class="image-path-display"></div>
+        
+        <!-- Massage Card -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Massage Card</span>
+          </div>
+          <div class="preview-image" style="width: 100%; height: 150px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; margin-bottom: 12px;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('wellness-massage-upload')">
+            <img id="preview-wellness-massage-img" src="" alt="Massage" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+            <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Massage Image</span>
+            <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="wellness-massage-title" style="font-weight: 600; color: #0f172a; font-size: 0.95rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'wellness-massage-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-wellness-massage-title">Massage</div>
+            <div contenteditable="true" class="editable-preview" data-field="wellness-massage-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'wellness-massage-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-wellness-massage-desc">Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.</div>
           </div>
         </div>
-        <div class="admin-form-group full-width">
-          <label for="wellness-sauna-title">Card Title</label>
-          <input type="text" id="wellness-sauna-title" placeholder="Sauna">
+        
+        <!-- Yoga Card -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Yoga Card</span>
+          </div>
+          <div class="preview-image" style="width: 100%; height: 150px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; margin-bottom: 12px;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('wellness-yoga-upload')">
+            <img id="preview-wellness-yoga-img" src="" alt="Yoga" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+            <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Yoga Image</span>
+            <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="wellness-yoga-title" style="font-weight: 600; color: #0f172a; font-size: 0.95rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'wellness-yoga-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-wellness-yoga-title">Yoga</div>
+            <div contenteditable="true" class="editable-preview" data-field="wellness-yoga-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'wellness-yoga-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-wellness-yoga-desc">On the property, surrounded by a cozy forest, you'll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.</div>
+          </div>
         </div>
-        <div class="admin-form-group full-width">
-          <label for="wellness-sauna-description">Card Description</label>
-          <textarea id="wellness-sauna-description" class="admin-content-editor" rows="3" placeholder="Relax and unwind in our private sauna. Perfect for rejuvenation after a day of activities."></textarea>
-        </div>
-        <div class="admin-form-actions" style="margin-top: 24px;">
-          <button id="save-wellness-experiences" class="admin-btn admin-btn-primary">Save Wellness Experiences</button>
+        
+        <!-- Sauna Card -->
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-block-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Sauna Card</span>
+          </div>
+          <div class="preview-image" style="width: 100%; height: 150px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer; margin-bottom: 12px;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('wellness-sauna-upload')">
+            <img id="preview-wellness-sauna-img" src="" alt="Sauna" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+            <span style="color: #9ca3af; font-size: 0.75rem; text-align: center; padding: 8px;">Sauna Image</span>
+            <button class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500; box-shadow: 0 2px 8px rgba(0,0,0,0.2); z-index: 10;">Изменить</button>
+          </div>
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px;">
+            <div contenteditable="true" class="editable-preview" data-field="wellness-sauna-title" style="font-weight: 600; color: #0f172a; font-size: 0.95rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'wellness-sauna-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-wellness-sauna-title">Sauna</div>
+            <div contenteditable="true" class="editable-preview" data-field="wellness-sauna-description" style="color: #0f172a; font-size: 0.9rem; line-height: 1.6; padding: 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'wellness-sauna-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-wellness-sauna-desc">After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.</div>
+          </div>
         </div>
       </div>
     </section>

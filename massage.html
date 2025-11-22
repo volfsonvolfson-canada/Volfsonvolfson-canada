@@ -90,8 +90,8 @@
   <div class="page-header">
     <div class="container">
       <div class="breadcrumbs"><a href="index.html">Home</a> / Massage</div>
-      <h1>Massage services</h1>
-      <p class="section-lead">Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.</p>
+      <h1 id="massage-hero-title">Massage services</h1>
+      <p class="section-lead" id="massage-intro">Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.</p>
     </div>
   </div>
 
@@ -102,8 +102,8 @@
           <img class="floor-photo media-43" data-src-base="assets/Relaxation Massage|assets/relaxation|assets/relaxation-massage|assets/Relaxation_Massage|assets/Relaxing Massage|assets/Relaxing_Massage|assets/RelaxationMassage|assets/RelaxingMassage|assets/relax" alt="Relaxation massage" />
         </div>
         <div class="card-body">
-          <h2>Relaxing Massage</h2>
-          <p>This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.</p>
+          <h2 id="massage-relaxing-title">Relaxing Massage</h2>
+          <p id="massage-relaxing-description">This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.</p>
           <ul class="massage-list">
             <li>60 minutes — 110 CAD</li>
             <li>90 minutes — 160 CAD</li>
@@ -116,8 +116,8 @@
           <img class="floor-photo media-43" data-src-base="assets/Deep Tissue Massage|assets/deep|assets/deep-tissue-massage|assets/Deep_Tissue_Massage" alt="Deep tissue massage" />
         </div>
         <div class="card-body">
-          <h2>Deep Tissue Massage</h2>
-          <p>For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.</p>
+          <h2 id="massage-deep-tissue-title">Deep Tissue Massage</h2>
+          <p id="massage-deep-tissue-description">For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.</p>
           <ul class="massage-list">
             <li>60 minutes — 120 CAD</li>
             <li>90 minutes — 170 CAD</li>
@@ -130,8 +130,8 @@
           <img class="floor-photo media-43" data-src-base="assets/Reiki Energy Healing|assets/reiki|assets/reiki-energy-healing|assets/Reiki_Energy_Healing" alt="Reiki energy healing" />
         </div>
         <div class="card-body">
-          <h2>Reiki Energy Healing</h2>
-          <p>Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body's energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.</p>
+          <h2 id="massage-reiki-title">Reiki Energy Healing</h2>
+          <p id="massage-reiki-description">Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body's energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.</p>
           <ul class="massage-list">
             <li>15 minutes on the go — 25 CAD</li>
             <li>30 minutes as an add-on — 50 CAD</li>
@@ -144,8 +144,8 @@
           <img class="floor-photo media-43" data-src-base="assets/plan-basement-bedroom|assets/sauna|assets/Sauna" alt="Sauna at Back to Base" />
         </div>
         <div class="card-body">
-          <h2>Sauna</h2>
-          <p>After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.</p>
+          <h2 id="massage-sauna-title">Sauna</h2>
+          <p id="massage-sauna-description">After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.</p>
           <ul class="massage-list">
             <li>1 hour — 25 CAD</li>
           </ul>
@@ -153,7 +153,7 @@
       </section>
 
       <section class="card" id="book">
-        <h2>Book a massage or sauna</h2>
+        <h2 id="massage-booking-title">Book a massage or sauna</h2>
         <form id="massage-form" novalidate>
           <div class="form-row">
             <div>
@@ -241,9 +241,9 @@
     <div class="container footer-grid">
       <div>
         <h4>Contact</h4>
-        <p>British Columbia, Canada</p>
-        <p>Phone: +1 (555) 123‑4567</p>
-        <p>Email: hello@backtobase.example</p>
+        <p id="footer-contact-address">British Columbia, Canada</p>
+        <p id="footer-contact-phone">Phone: +1 (555) 123‑4567</p>
+        <p id="footer-contact-email">Email: hello@backtobase.example</p>
       </div>
       <div>
         <h4>Navigation</h4>
@@ -484,8 +484,8 @@
         updateMassageImages();
       }
       
-      // Also try to load from API
-      async function loadMassageImagesFromAPI() {
+      // Load massage content (text and images) from API
+      async function loadMassageContentFromAPI() {
         try {
           const formData = new FormData();
           formData.append('action', 'get_content');
@@ -498,13 +498,40 @@
           if (response.ok) {
             const result = await response.json();
             if (result.success && result.data) {
-              // Save to localStorage
+              const data = result.data;
+              
+              // Update text content
+              const heroTitle = document.getElementById('massage-hero-title');
+              const intro = document.getElementById('massage-intro');
+              const relaxingTitle = document.getElementById('massage-relaxing-title');
+              const relaxingDesc = document.getElementById('massage-relaxing-description');
+              const deepTissueTitle = document.getElementById('massage-deep-tissue-title');
+              const deepTissueDesc = document.getElementById('massage-deep-tissue-description');
+              const reikiTitle = document.getElementById('massage-reiki-title');
+              const reikiDesc = document.getElementById('massage-reiki-description');
+              const saunaTitle = document.getElementById('massage-sauna-title');
+              const saunaDesc = document.getElementById('massage-sauna-description');
+              const bookingTitle = document.getElementById('massage-booking-title');
+              
+              if (heroTitle && data.massageHeroTitle) heroTitle.textContent = data.massageHeroTitle;
+              if (intro && data.massageIntro) intro.textContent = data.massageIntro;
+              if (relaxingTitle && data.massageRelaxingTitle) relaxingTitle.textContent = data.massageRelaxingTitle;
+              if (relaxingDesc && data.massageRelaxingDescription) relaxingDesc.textContent = data.massageRelaxingDescription;
+              if (deepTissueTitle && data.massageDeepTissueTitle) deepTissueTitle.textContent = data.massageDeepTissueTitle;
+              if (deepTissueDesc && data.massageDeepTissueDescription) deepTissueDesc.textContent = data.massageDeepTissueDescription;
+              if (reikiTitle && data.massageReikiTitle) reikiTitle.textContent = data.massageReikiTitle;
+              if (reikiDesc && data.massageReikiDescription) reikiDesc.textContent = data.massageReikiDescription;
+              if (saunaTitle && data.massageSaunaTitle) saunaTitle.textContent = data.massageSaunaTitle;
+              if (saunaDesc && data.massageSaunaDescription) saunaDesc.textContent = data.massageSaunaDescription;
+              if (bookingTitle && data.massageBookingTitle) bookingTitle.textContent = data.massageBookingTitle;
+              
+              // Save images to localStorage
               const contentData = {
-                massageRelaxingImageUrl: result.data.massageRelaxingImageUrl || '',
-                massageDeepTissueImageUrl: result.data.massageDeepTissueImageUrl || '',
-                massageReikiImageUrl: result.data.massageReikiImageUrl || '',
-                massageSaunaImageUrl: result.data.massageSaunaImageUrl || '',
-                massageRoomBookingImageUrl: result.data.massageRoomBookingImageUrl || ''
+                massageRelaxingImageUrl: data.massageRelaxingImageUrl || '',
+                massageDeepTissueImageUrl: data.massageDeepTissueImageUrl || '',
+                massageReikiImageUrl: data.massageReikiImageUrl || '',
+                massageSaunaImageUrl: data.massageSaunaImageUrl || '',
+                massageRoomBookingImageUrl: data.massageRoomBookingImageUrl || ''
               };
               
               // Merge with existing localStorage data
@@ -531,7 +558,7 @@
       }
       
       // Load from API after a short delay
-      setTimeout(loadMassageImagesFromAPI, 100);
+      setTimeout(loadMassageContentFromAPI, 100);
     })();
     
     // Room Gallery

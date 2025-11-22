@@ -257,8 +257,8 @@
 
   <div class="special-hero">
     <div class="special-hero-content">
-      <h1>Soak & Savor at Ainsworth Hot Springs</h1>
-      <p>Back to Base offers its guests a unique relaxation experience. See the details below.</p>
+      <h1 id="special-hero-title">Soak & Savor at Ainsworth Hot Springs</h1>
+      <p id="special-hero-subtitle">Back to Base offers its guests a unique relaxation experience. See the details below.</p>
     </div>
   </div>
 
@@ -267,9 +267,9 @@
       <div class="container">
         <div class="hot-springs-card">
           <div class="hot-springs-content">
-            <h3>Mineral-Rich Pools & Limestone Cave</h3>
-            <p>The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge.</p>
-            <p>Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.</p>
+            <h3 id="special-pools-title">Mineral-Rich Pools & Limestone Cave</h3>
+            <p id="special-pools-description-1">The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge.</p>
+            <p id="special-pools-description-2">Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.</p>
           </div>
           <div>
             <img class="hot-springs-image" src="https://images.unsplash.com/photo-1519824145371-296894a0daa9?q=80&w=1600&auto=format&fit=crop" alt="Ainsworth Hot Springs pools" />
@@ -278,9 +278,9 @@
 
         <div class="hot-springs-card reverse">
           <div class="hot-springs-content">
-            <h3>Dining & Spa Experience</h3>
-            <p>After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight.</p>
-            <p>Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.</p>
+            <h3 id="special-dining-title">Dining & Spa Experience</h3>
+            <p id="special-dining-description-1">After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight.</p>
+            <p id="special-dining-description-2">Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.</p>
           </div>
           <div>
             <img class="hot-springs-image" src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1600&auto=format&fit=crop" alt="Ktunaxa Grill restaurant and spa" />
@@ -294,9 +294,9 @@
       <div class="container">
         <div class="exclusive-offer-card">
           <div class="exclusive-offer-card-content">
-            <h2>Free Hot Springs Access</h2>
-            <p><strong>Book a minimum 5-night stay at our Erasmus Suite (Second floor — Loft suite) and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!</strong></p>
-            <p>This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.</p>
+            <h2 id="special-offer-title">Free Hot Springs Access</h2>
+            <p><strong id="special-offer-main-text">Book a minimum 5-night stay at our Erasmus Suite (Second floor — Loft suite) and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!</strong></p>
+            <p id="special-offer-description">This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.</p>
           </div>
         </div>
       </div>
@@ -308,9 +308,9 @@
     <div class="container footer-grid">
       <div>
         <h4>Contact</h4>
-        <p>British Columbia, Canada</p>
-        <p>Phone: +1 (555) 123‑4567</p>
-        <p>Email: hello@backtobase.example</p>
+        <p id="footer-contact-address">British Columbia, Canada</p>
+        <p id="footer-contact-phone">Phone: +1 (555) 123‑4567</p>
+        <p id="footer-contact-email">Email: hello@backtobase.example</p>
       </div>
       <div>
         <h4>Navigation</h4>
@@ -383,7 +383,7 @@
       }
       
       // Also try to load from API
-      async function loadSpecialImagesFromAPI() {
+      async function loadSpecialContentFromAPI() {
         try {
           const formData = new FormData();
           formData.append('action', 'get_content');
@@ -396,10 +396,13 @@
           if (response.ok) {
             const result = await response.json();
             if (result.success && result.data) {
+              const data = result.data;
+              
+              // Update images
               const contentData = {
-                specialHeroImageUrl: result.data.specialHeroImageUrl || '',
-                specialPoolsImageUrl: result.data.specialPoolsImageUrl || '',
-                specialDiningImageUrl: result.data.specialDiningImageUrl || ''
+                specialHeroImageUrl: data.specialHeroImageUrl || '',
+                specialPoolsImageUrl: data.specialPoolsImageUrl || '',
+                specialDiningImageUrl: data.specialDiningImageUrl || ''
               };
               
               const existing = localStorage.getItem('btb_content');
@@ -416,14 +419,41 @@
               localStorage.setItem('btb_content', JSON.stringify(mergedData));
               
               updateSpecialImages();
+              
+              // Update text content
+              const heroTitle = document.getElementById('special-hero-title');
+              const heroSubtitle = document.getElementById('special-hero-subtitle');
+              if (heroTitle && data.specialHeroTitle) heroTitle.textContent = data.specialHeroTitle;
+              if (heroSubtitle && data.specialHeroSubtitle) heroSubtitle.textContent = data.specialHeroSubtitle;
+              
+              const poolsTitle = document.getElementById('special-pools-title');
+              const poolsDesc1 = document.getElementById('special-pools-description-1');
+              const poolsDesc2 = document.getElementById('special-pools-description-2');
+              if (poolsTitle && data.specialPoolsTitle) poolsTitle.textContent = data.specialPoolsTitle;
+              if (poolsDesc1 && data.specialPoolsDescription1) poolsDesc1.textContent = data.specialPoolsDescription1;
+              if (poolsDesc2 && data.specialPoolsDescription2) poolsDesc2.textContent = data.specialPoolsDescription2;
+              
+              const diningTitle = document.getElementById('special-dining-title');
+              const diningDesc1 = document.getElementById('special-dining-description-1');
+              const diningDesc2 = document.getElementById('special-dining-description-2');
+              if (diningTitle && data.specialDiningTitle) diningTitle.textContent = data.specialDiningTitle;
+              if (diningDesc1 && data.specialDiningDescription1) diningDesc1.textContent = data.specialDiningDescription1;
+              if (diningDesc2 && data.specialDiningDescription2) diningDesc2.textContent = data.specialDiningDescription2;
+              
+              const offerTitle = document.getElementById('special-offer-title');
+              const offerMain = document.getElementById('special-offer-main-text');
+              const offerDesc = document.getElementById('special-offer-description');
+              if (offerTitle && data.specialOfferTitle) offerTitle.textContent = data.specialOfferTitle;
+              if (offerMain && data.specialOfferMainText) offerMain.textContent = data.specialOfferMainText;
+              if (offerDesc && data.specialOfferDescription) offerDesc.textContent = data.specialOfferDescription;
             }
           }
         } catch (error) {
-          console.log('Failed to load special images from API:', error);
+          console.log('Failed to load special content from API:', error);
         }
       }
       
-      setTimeout(loadSpecialImagesFromAPI, 100);
+      setTimeout(loadSpecialContentFromAPI, 100);
     })();
   </script>
 </body>

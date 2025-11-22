@@ -26,6 +26,11 @@ html body.admin-body,
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   word-wrap: break-word;
+  background: #f8fafc;
+  border: 1px solid #e5e7eb;
+  color: #0f172a;
+  padding: 8px 10px;
+  border-radius: 6px;
 }
 
 /* For longer text fields, allow more lines */
@@ -44,60 +49,51 @@ html body.admin-body,
   overflow: visible;
 }
 
-.retreat-helper-panel {
-  display: flex;
-  gap: 20px;
-  padding: 16px 20px;
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #f8fafc;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 16px;
-}
-
-.retreat-helper-copy {
-  flex: 1 1 260px;
-  min-width: 220px;
-  color: #4b5563;
-}
-
-.retreat-helper-heading {
-  font-weight: 600;
-  color: #1f2937;
-  margin: 0 0 6px 0;
-}
-
-.retreat-helper-tip {
-  margin: 8px 0 0;
-  font-size: 0.85rem;
-  color: #1f2937;
-}
-
-.retreat-helper-kbd {
-  display: inline-flex;
-  padding: 2px 6px;
-  border-radius: 4px;
-  border: 1px solid #cbd5f5;
-  background: #eef2ff;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #3730a3;
-}
-
-.retreat-helper-actions {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
-}
-
-.retreat-helper-actions .admin-btn {
-  white-space: nowrap;
-}
-
-.retreat-status-bar {
+.retreat-status-bar,
+.special-status-bar,
+.about-status-bar,
+.contact-status-bar,
+.massage-status-bar {
   margin: 12px 0 0;
+  padding: 8px 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.retreat-hidden-fields {
+  display: none;
+}
+
+.retreat-live-status,
+.special-live-status,
+.about-live-status,
+.contact-live-status,
+.massage-live-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: #1f2937;
+  font-weight: 600;
+}
+
+.retreat-media-panel {
+  margin-top: 32px;
+}
+
+.retreat-image-forms {
+  margin-top: 16px;
+  display: grid;
+  gap: 24px;
+}
+
+.retreat-image-forms[hidden] {
+  display: none;
 }
 
 .status-badge {
@@ -123,16 +119,6 @@ html body.admin-body,
 .status-badge.warning {
   background: #fef3c7;
   color: #b45309;
-}
-
-@media (max-width: 768px) {
-  .retreat-helper-panel {
-    flex-direction: column;
-  }
-  .retreat-helper-actions {
-    width: 100%;
-    justify-content: flex-start;
-  }
 }
 
 /* Login Page */
