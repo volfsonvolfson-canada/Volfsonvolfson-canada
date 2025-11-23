@@ -169,6 +169,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                 $fieldName = 'about_' . str_replace('-', '_', $aboutType) . '_image_url';
                 $tableName = 'content_settings';
                 $isHomepage = true;
+            } elseif (in_array($imageType, ['about-procter-gallery', 'about-halcyon-gallery', 'about-whitewater-gallery', 'about-nelson-gallery'])) {
+                // About us page gallery images - just upload, don't update database (handled by api.php)
+                $tableName = null;
+                $isHomepage = false;
+                // Return immediately - gallery images are managed via JSON arrays in api.php
+                sendSuccess([
+                    'message' => 'Gallery image uploaded successfully',
+                    'filepath' => $filepath,
+                    'imageUrl' => $filepath
+                ]);
+                exit;
             } else {
                 sendError('Invalid image type: ' . $imageType);
                 exit;

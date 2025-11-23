@@ -110,6 +110,10 @@ if ($action === 'get_content') {
                     'aboutHeroImageUrl' => $data['about_hero_image_url'] ?? '',
                     'aboutFounderImageUrl' => $data['about_founder_image_url'] ?? '',
                     'aboutProcterImageUrl' => $data['about_procter_image_url'] ?? '',
+                    'aboutProcterGallery' => $data['about_procter_gallery'] ?? '[]',
+                    'aboutHalcyonGallery' => $data['about_halcyon_gallery'] ?? '[]',
+                    'aboutWhitewaterGallery' => $data['about_whitewater_gallery'] ?? '[]',
+                    'aboutNelsonGallery' => $data['about_nelson_gallery'] ?? '[]',
                     // Retreat and Workshop page content
                     'retreatHeroTitle' => $data['retreat_hero_title'] ?? '',
                     'retreatHeroSubtitle' => $data['retreat_hero_subtitle'] ?? '',
@@ -349,7 +353,11 @@ if ($action === 'save_content') {
     $roomBasementFields = [
         'room_basement_title', 'room_basement_subtitle', 'room_basement_description',
         'room_basement_price', 'room_basement_capacity', 'room_basement_note',
-        'room_basement_gallery' // JSON array of image URLs
+        'room_basement_gallery', // JSON array of image URLs
+        'about_procter_gallery', // JSON array of image URLs
+        'about_halcyon_gallery', // JSON array of image URLs
+        'about_whitewater_gallery', // JSON array of image URLs
+        'about_nelson_gallery' // JSON array of image URLs
     ];
     
     // Wellness Experiences page content fields

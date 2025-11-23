@@ -1,3 +1,144 @@
+<?php
+// Server-Side Rendering for About us page
+require_once 'common.php';
+
+// Prevent caching for this page to ensure fresh data
+header('Cache-Control: no-cache, no-store, must-revalidate');
+header('Pragma: no-cache');
+header('Expires: 0');
+
+// Load content from database
+$content = fetchOne($conn, "SELECT * FROM content_settings WHERE id = 1");
+if (!$content) {
+    $content = []; // Ensure $content is always an array
+}
+
+// Helper function for safe output with fallback
+function safeOutput($value, $fallback = '') {
+    return htmlspecialchars($value ?? $fallback, ENT_QUOTES, 'UTF-8');
+}
+
+// Helper function for safe HTML output (allows certain tags)
+function safeHtmlOutput($value, $fallback = '') {
+    $html = $value ?? $fallback;
+    // Allow only safe HTML tags
+    $allowedTags = '<strong><em><b><i><br><p><a>';
+    return strip_tags($html, $allowedTags);
+}
+
+// Extract content with fallback values
+$heroTitle = safeOutput($content['about_hero_title'] ?? '', 'About Back to Base');
+$heroSubtitle = safeOutput($content['about_hero_subtitle'] ?? '', 'A personal retreat in the heart of British Columbia');
+$heroImageUrl = isset($content['about_hero_image_url']) && !empty(trim($content['about_hero_image_url'])) ? safeOutput($content['about_hero_image_url'], '') : '';
+
+$ideaTitle = safeOutput($content['about_idea_title'] ?? '', 'Idea and Origins');
+$ideaIntro = safeHtmlOutput($content['about_idea_intro'] ?? '', 'Hi! My name is <strong>Rob Vuik</strong>. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.');
+$ideaP1 = safeOutput($content['about_idea_paragraph_1'] ?? '', 'Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.');
+$ideaP2 = safeOutput($content['about_idea_paragraph_2'] ?? '', 'Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I\'m happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.');
+$ideaP3 = safeOutput($content['about_idea_paragraph_3'] ?? '', 'We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.');
+$ideaSignature = safeOutput($content['about_idea_signature'] ?? '', 'I look forward to welcoming you!');
+$founderImageUrl = isset($content['about_founder_image_url']) && !empty(trim($content['about_founder_image_url'])) ? safeOutput($content['about_founder_image_url'], '') : 'assets/Rob Vuik.jpg';
+
+$locTitle = safeOutput($content['about_location_title'] ?? '', 'How to Find Us');
+$locP1 = safeOutput($content['about_location_paragraph_1'] ?? '', 'Back to Base is located in the village of Procter, 35 km from Nelson, B.C.');
+$locP2 = safeOutput($content['about_location_paragraph_2'] ?? '', 'You\'ll need to take the 24/7 Harrop–Procter ferry,');
+$locP3 = safeOutput($content['about_location_paragraph_3'] ?? '', 'then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.');
+$locP4 = safeOutput($content['about_location_paragraph_4'] ?? '', 'From there, it\'s just a 3-minute drive up the mountain road — and you\'re here!');
+$locCoords = safeOutput($content['about_location_coordinates'] ?? '', 'Coordinates: 49.6125, -116.9579');
+$locDeerWarning = safeHtmlOutput($content['about_location_deer_warning'] ?? '', '🦌 <strong>Be careful</strong> — we have a lot of deer in the area!');
+
+$attrTitle = safeOutput($content['about_attractions_title'] ?? '', 'About the Location');
+$attrLead = safeOutput($content['about_attractions_lead'] ?? '', 'Discover the natural beauty and attractions surrounding Back to Base');
+
+$procterTitle = safeOutput($content['about_procter_title'] ?? '', 'Procter Village');
+$procterDistance = safeOutput($content['about_procter_distance'] ?? '', 'In the same village');
+$procterDescription = safeHtmlOutput($content['about_procter_description'] ?? '', 'In the village of Procter, you\'ll find the <strong>Procter Café</strong> with their famous cinnamon buns, a small grocery store, and a gas station.');
+$procterImageUrl = isset($content['about_procter_image_url']) && !empty(trim($content['about_procter_image_url'])) ? safeOutput($content['about_procter_image_url'], '') : 'assets/procter_1.jpg';
+$procterGallery = [];
+if (isset($content['about_procter_gallery']) && !empty(trim($content['about_procter_gallery']))) {
+    $procterGalleryJson = trim($content['about_procter_gallery']);
+    if ($procterGalleryJson !== '' && $procterGalleryJson !== '[]') {
+        $decoded = json_decode($procterGalleryJson, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $procterGallery = $decoded;
+        } else {
+            error_log('Failed to decode procter gallery JSON: ' . json_last_error_msg() . ' | JSON: ' . $procterGalleryJson);
+        }
+    }
+}
+// Debug: log gallery data
+error_log('Procter gallery from DB: ' . print_r($procterGallery, true));
+
+$halcyonTitle = safeOutput($content['about_halcyon_title'] ?? '', 'Ainsworth Hot Springs Resort');
+$halcyonDistance = safeOutput($content['about_halcyon_distance'] ?? '', '30 km from Back to Base');
+$halcyonDescription = safeOutput($content['about_halcyon_description'] ?? '', 'Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!');
+$halcyonGallery = [];
+if (isset($content['about_halcyon_gallery']) && !empty(trim($content['about_halcyon_gallery']))) {
+    $halcyonGalleryJson = trim($content['about_halcyon_gallery']);
+    if ($halcyonGalleryJson !== '' && $halcyonGalleryJson !== '[]') {
+        $decoded = json_decode($halcyonGalleryJson, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $halcyonGallery = $decoded;
+        }
+    }
+}
+
+$whitewaterTitle = safeOutput($content['about_whitewater_title'] ?? '', 'Whitewater Mountain Resort');
+$whitewaterDistance = safeOutput($content['about_whitewater_distance'] ?? '', '60 km from Back to Base');
+$whitewaterDescription = safeOutput($content['about_whitewater_description'] ?? '', 'Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.');
+$whitewaterGallery = [];
+if (isset($content['about_whitewater_gallery']) && !empty(trim($content['about_whitewater_gallery']))) {
+    $whitewaterGalleryJson = trim($content['about_whitewater_gallery']);
+    if ($whitewaterGalleryJson !== '' && $whitewaterGalleryJson !== '[]') {
+        $decoded = json_decode($whitewaterGalleryJson, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $whitewaterGallery = $decoded;
+        }
+    }
+}
+
+$nelsonTitle = safeOutput($content['about_nelson_title'] ?? '', 'Nelson');
+$nelsonDistance = safeOutput($content['about_nelson_distance'] ?? '', '35 km from Back to Base');
+$nelsonDescription = safeOutput($content['about_nelson_description'] ?? '', 'A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.');
+$nelsonGallery = [];
+if (isset($content['about_nelson_gallery']) && !empty(trim($content['about_nelson_gallery']))) {
+    $nelsonGalleryJson = trim($content['about_nelson_gallery']);
+    if ($nelsonGalleryJson !== '' && $nelsonGalleryJson !== '[]') {
+        $decoded = json_decode($nelsonGalleryJson, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $nelsonGallery = $decoded;
+        }
+    }
+}
+
+$parksTitle = safeOutput($content['about_parks_title'] ?? '', 'Provincial Parks Nearby');
+$parksIntro = safeOutput($content['about_parks_intro'] ?? '', 'If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base:');
+$parksList = isset($content['about_parks_list']) && !empty(trim($content['about_parks_list'])) ? $content['about_parks_list'] : "Kokanee Creek Provincial Park\nKokanee Glacier Provincial Park\nLockhart Beach Provincial Park\nKianuko Provincial Park";
+
+// Process parks list
+$parksItems = [];
+if (!empty($parksList)) {
+    $parksLines = explode("\n", $parksList);
+    foreach ($parksLines as $line) {
+        $line = trim($line);
+        if (!empty($line)) {
+            $parksItems[] = safeOutput($line);
+        }
+    }
+}
+if (empty($parksItems)) {
+    $parksItems = ['Kokanee Creek Provincial Park', 'Kokanee Glacier Provincial Park', 'Lockhart Beach Provincial Park', 'Kianuko Provincial Park'];
+}
+
+// Build hero background image style
+$heroBackgroundStyle = '';
+if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
+    $heroBackgroundStyle = "background-image: url('" . htmlspecialchars($heroImageUrl, ENT_QUOTES, 'UTF-8') . "');";
+} else {
+    // Fallback to default images
+    $heroBackgroundStyle = "background-image: url('assets/about_procter.jpg'), url('assets/about_procter.jpeg'), url('assets/about_procter.JPG'), url('assets/about_procter.png');";
+}
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,10 +176,6 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      background: url('assets/about_procter.jpg') center/cover,
-                  url('assets/about_procter.jpeg') center/cover,
-                  url('assets/about_procter.JPG') center/cover,
-                  url('assets/about_procter.png') center/cover;
       background-size: cover;
       background-position: center;
       color: white;
@@ -113,7 +250,7 @@
     }
     .founder-content-expandable {
       position: relative;
-      max-height: 3em; /* Показываем примерно одну строку второго абзаца */
+      max-height: 3em;
       overflow: hidden;
       transition: max-height 0.4s ease-out;
     }
@@ -670,6 +807,7 @@
       display: flex;
       align-items: center;
       gap: 15px;
+      color: #0f172a;
     }
     .park-item::before {
       content: "🌲";
@@ -719,7 +857,7 @@
         <a href="massage.html">Massage</a>
         <a href="retreat-and-workshop.html">Retreats and Workshops</a>
         <a href="special.php">Special</a>
-        <a href="about.html">About us</a>
+        <a href="about.php">About us</a>
       </nav>
       <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
         ☰
@@ -745,7 +883,7 @@
     <a href="massage.html">Massage</a>
     <a href="retreat-and-workshop.html">Retreats and Workshops</a>
     <a href="special.php">Special</a>
-    <a href="about.html">About us</a>
+    <a href="about.php">About us</a>
     <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
     <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
       <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -756,10 +894,10 @@
   </nav>
 
   <!-- Hero Section -->
-  <section class="about-hero">
+  <section class="about-hero" style="<?php echo $heroBackgroundStyle; ?>">
     <div class="about-hero-content reveal">
-      <h1>About Back to Base</h1>
-      <p>A personal retreat in the heart of British Columbia</p>
+      <h1><?php echo $heroTitle; ?></h1>
+      <p><?php echo $heroSubtitle; ?></p>
     </div>
   </section>
 
@@ -769,19 +907,19 @@
       <div class="container">
         <div class="founder-card reveal">
           <div class="founder-photo-wrap">
-            <img src="assets/Rob Vuik.jpg" 
+            <img src="<?php echo $founderImageUrl; ?>" 
                  alt="Rob Vuik, founder of Back to Base" 
                  class="founder-photo reveal"
                  onerror="this.onerror=null; this.src='assets/Rob Vuik.jpeg'; this.onerror=function(){this.onerror=null; this.src='assets/Rob Vuik.png'; this.onerror=function(){this.onerror=null; this.src='assets/Rob%20Vuik.jpg'; this.onerror=function(){this.onerror=null; this.src='assets/rob-vuik.jpg'; this.onerror=function(){this.src='https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=800&auto=format&fit=crop';};};};};">
           </div>
           <div class="founder-content reveal">
-            <h2>Idea and Origins</h2>
-            <p>Hi! My name is <strong>Rob Vuik</strong>. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.</p>
+            <h2><?php echo $ideaTitle; ?></h2>
+            <p><?php echo $ideaIntro; ?></p>
             <div class="founder-content-expandable" id="founder-expandable">
-              <p style="margin-top: 0;">Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.</p>
-              <p>Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I'm happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.</p>
-              <p>We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.</p>
-              <p class="founder-signature">I look forward to welcoming you!</p>
+              <p style="margin-top: 0;"><?php echo $ideaP1; ?></p>
+              <p><?php echo $ideaP2; ?></p>
+              <p><?php echo $ideaP3; ?></p>
+              <p class="founder-signature"><?php echo $ideaSignature; ?></p>
             </div>
             <button class="read-more-btn" id="read-more-btn" onclick="toggleFounderText()">Read more</button>
           </div>
@@ -792,21 +930,21 @@
     <!-- How to Find Us Section -->
     <section class="about-section alt">
       <div class="container">
-        <h2 class="reveal">How to Find Us</h2>
+        <h2 class="reveal"><?php echo $locTitle; ?></h2>
         
         <div class="location-section-grid reveal">
           <div class="location-text-content">
             <div class="directions-box">
-              <p>Back to Base is located in the village of Procter, 35 km from Nelson, B.C.</p>
-              <p>You'll need to take the 24/7 Harrop–Procter ferry,</p>
-              <p>then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.</p>
-              <p>From there, it's just a 3-minute drive up the mountain road — and you're here!</p>
+              <p><?php echo $locP1; ?></p>
+              <p><?php echo $locP2; ?></p>
+              <p><?php echo $locP3; ?></p>
+              <p><?php echo $locP4; ?></p>
               <div class="coordinates">
-                <strong>Coordinates:</strong> 49.6125, -116.9579
+                <strong><?php echo $locCoords; ?></strong>
               </div>
             </div>
             <div class="deer-warning">
-              🦌 <strong>Be careful</strong> — we have a lot of deer in the area!
+              <?php echo $locDeerWarning; ?>
             </div>
           </div>
           
@@ -840,21 +978,21 @@
     <!-- About the Location Section -->
     <section class="about-section">
       <div class="container">
-        <h2 class="reveal">About the Location</h2>
-        <p class="section-lead reveal">Discover the natural beauty and attractions surrounding Back to Base</p>
+        <h2 class="reveal"><?php echo $attrTitle; ?></h2>
+        <p class="section-lead reveal"><?php echo $attrLead; ?></p>
 
         <!-- Attractions Grid -->
         <div class="attractions-grid reveal">
           <div class="attraction-card" data-gallery="procter">
-            <img src="assets/procter_1.jpg" 
+            <img src="<?php echo $procterImageUrl; ?>" 
                  alt="Procter Village" 
                  class="attraction-card-image"
                  onclick="openGallery('procter', 0)"
                  onerror="this.onerror=null; this.src='assets/procter_1.jpeg'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.JPG'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.png'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.PNG';};};};">
             <div class="attraction-card-content">
-              <h4>Procter Village</h4>
-              <div class="distance">In the same village</div>
-              <p>In the village of Procter, you'll find the <strong>Procter Café</strong> with their famous cinnamon buns, a small grocery store, and a gas station.</p>
+              <h4><?php echo $procterTitle; ?></h4>
+              <div class="distance"><?php echo $procterDistance; ?></div>
+              <p><?php echo $procterDescription; ?></p>
             </div>
           </div>
           <div class="attraction-card" data-gallery="halcyon">
@@ -863,9 +1001,9 @@
                  class="attraction-card-image"
                  onclick="openGallery('halcyon', 0)">
             <div class="attraction-card-content">
-              <h4>Ainsworth Hot Springs Resort</h4>
-              <div class="distance">30 km from Back to Base</div>
-              <p>Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!</p>
+              <h4><?php echo $halcyonTitle; ?></h4>
+              <div class="distance"><?php echo $halcyonDistance; ?></div>
+              <p><?php echo $halcyonDescription; ?></p>
             </div>
           </div>
           <div class="attraction-card" data-gallery="whitewater">
@@ -874,9 +1012,9 @@
                  class="attraction-card-image"
                  onclick="openGallery('whitewater', 0)">
             <div class="attraction-card-content">
-              <h4>Whitewater Mountain Resort</h4>
-              <div class="distance">60 km from Back to Base</div>
-              <p>Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.</p>
+              <h4><?php echo $whitewaterTitle; ?></h4>
+              <div class="distance"><?php echo $whitewaterDistance; ?></div>
+              <p><?php echo $whitewaterDescription; ?></p>
             </div>
           </div>
           <div class="attraction-card" data-gallery="nelson">
@@ -885,22 +1023,21 @@
                  class="attraction-card-image"
                  onclick="openGallery('nelson', 0)">
             <div class="attraction-card-content">
-              <h4>Nelson</h4>
-              <div class="distance">35 km from Back to Base</div>
-              <p>A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.</p>
+              <h4><?php echo $nelsonTitle; ?></h4>
+              <div class="distance"><?php echo $nelsonDistance; ?></div>
+              <p><?php echo $nelsonDescription; ?></p>
             </div>
           </div>
         </div>
 
         <div class="reveal" style="margin-top: 50px;">
-          <h3 style="margin-bottom: 20px;">Provincial Parks Nearby</h3>
-          <p>If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base:</p>
+          <h3 style="margin-bottom: 20px;"><?php echo $parksTitle; ?></h3>
+          <p><?php echo $parksIntro; ?></p>
           
           <div class="parks-list">
-            <div class="park-item">Kokanee Creek Provincial Park</div>
-            <div class="park-item">Kokanee Glacier Provincial Park</div>
-            <div class="park-item">Lockhart Beach Provincial Park</div>
-            <div class="park-item">Kianuko Provincial Park</div>
+            <?php foreach ($parksItems as $park): ?>
+            <div class="park-item"><?php echo $park; ?></div>
+            <?php endforeach; ?>
           </div>
         </div>
       </div>
@@ -917,9 +1054,9 @@
                 <strong>We'll be happy to help you plan your stay and answer any questions!</strong>
               </p>
               <div class="contact-info" style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--border);">
-                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Procter, British Columbia, Canada</p>
-                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Phone: +1 (555) 123‑4567</p>
-                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 0;">Email: hello@backtobase.example</p>
+                <p id="footer-contact-address" style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Procter, British Columbia, Canada</p>
+                <p id="footer-contact-phone" style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Phone: +1 (555) 123‑4567</p>
+                <p id="footer-contact-email" style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 0;">Email: hello@backtobase.example</p>
               </div>
             </div>
             <div class="contact-form-wrapper">
@@ -979,7 +1116,7 @@
           <li><a href="massage.html">Massage</a></li>
           <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
           <li><a href="special.php">Special</a></li>
-          <li><a href="about.html">About us</a></li>
+          <li><a href="about.php">About us</a></li>
         </ul>
       </div>
       <div>
@@ -1009,322 +1146,37 @@
   <script src="script.js?v=26"></script>
   <script src="auth.js"></script>
   <script>
-    // Load about images from admin
-    (function() {
-      function updateAboutImages() {
-        try {
-          const contentData = localStorage.getItem('btb_content');
-          if (contentData) {
-            const data = JSON.parse(contentData);
-            
-            // Update hero background
-            if (data.aboutHeroImageUrl) {
-              const heroSection = document.querySelector('.about-hero');
-              if (heroSection) {
-                heroSection.style.backgroundImage = `url('${data.aboutHeroImageUrl}?v=${Date.now()}')`;
-              }
-            }
-            
-            // Update founder photo
-            if (data.aboutFounderImageUrl) {
-              const founderPhoto = document.querySelector('.founder-photo');
-              if (founderPhoto) {
-                founderPhoto.src = data.aboutFounderImageUrl + '?v=' + Date.now();
-              }
-            }
-            
-            // Update Procter Village image
-            if (data.aboutProcterImageUrl) {
-              const procterCard = document.querySelectorAll('.attraction-card')[0];
-              if (procterCard) {
-                const img = procterCard.querySelector('.attraction-card-image');
-                if (img) {
-                  img.src = data.aboutProcterImageUrl + '?v=' + Date.now();
-                }
-              }
-            }
-          }
-        } catch(e) {
-          console.error('Error updating about images:', e);
-        }
-      }
-      
-      if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', updateAboutImages);
-      } else {
-        updateAboutImages();
-      }
-      
-      // Also try to load from API
-      async function loadAboutContentFromAPI() {
-        try {
-          const formData = new FormData();
-          formData.append('action', 'get_content');
-          
-          const response = await fetch('api.php', {
-            method: 'POST',
-            body: formData
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            if (result.success && result.data) {
-              const data = result.data;
-              
-              // Update images
-              const contentData = {
-                aboutHeroImageUrl: data.aboutHeroImageUrl || '',
-                aboutFounderImageUrl: data.aboutFounderImageUrl || '',
-                aboutProcterImageUrl: data.aboutProcterImageUrl || ''
-              };
-              
-              const existing = localStorage.getItem('btb_content');
-              let existingData = {};
-              if (existing) {
-                try {
-                  existingData = JSON.parse(existing);
-                } catch(e) {
-                  console.error('Failed to parse existing localStorage:', e);
-                }
-              }
-              
-              const mergedData = { ...existingData, ...contentData };
-              localStorage.setItem('btb_content', JSON.stringify(mergedData));
-              
-              updateAboutImages();
-              
-              // Update text content
-              const heroTitle = document.querySelector('.about-hero h1');
-              const heroSubtitle = document.querySelector('.about-hero p');
-              if (heroTitle && data.aboutHeroTitle) heroTitle.textContent = data.aboutHeroTitle;
-              if (heroSubtitle && data.aboutHeroSubtitle) heroSubtitle.textContent = data.aboutHeroSubtitle;
-              
-              const ideaTitle = document.querySelector('.founder-content h2');
-              const ideaIntro = document.querySelector('.founder-content p');
-              if (ideaTitle && data.aboutIdeaTitle) ideaTitle.textContent = data.aboutIdeaTitle;
-              if (ideaIntro && data.aboutIdeaIntro) {
-                const introText = data.aboutIdeaIntro;
-                ideaIntro.innerHTML = introText.replace(/<strong>Rob Vuik<\/strong>/g, '<strong>Rob Vuik</strong>');
-              }
-              
-              const ideaP1 = document.querySelector('.founder-content-expandable p:nth-of-type(1)');
-              const ideaP2 = document.querySelector('.founder-content-expandable p:nth-of-type(2)');
-              const ideaP3 = document.querySelector('.founder-content-expandable p:nth-of-type(3)');
-              const ideaSignature = document.querySelector('.founder-content p:last-of-type');
-              if (ideaP1 && data.aboutIdeaParagraph1) ideaP1.textContent = data.aboutIdeaParagraph1;
-              if (ideaP2 && data.aboutIdeaParagraph2) ideaP2.textContent = data.aboutIdeaParagraph2;
-              if (ideaP3 && data.aboutIdeaParagraph3) ideaP3.textContent = data.aboutIdeaParagraph3;
-              if (ideaSignature && data.aboutIdeaSignature) ideaSignature.textContent = data.aboutIdeaSignature;
-              
-              const locTitle = document.querySelector('.about-section.alt h2');
-              if (locTitle && data.aboutLocationTitle) locTitle.textContent = data.aboutLocationTitle;
-              
-              const locParagraphs = document.querySelectorAll('.directions-box p');
-              if (locParagraphs.length >= 4) {
-                if (data.aboutLocationParagraph1) locParagraphs[0].textContent = data.aboutLocationParagraph1;
-                if (data.aboutLocationParagraph2) locParagraphs[1].textContent = data.aboutLocationParagraph2;
-                if (data.aboutLocationParagraph3) locParagraphs[2].textContent = data.aboutLocationParagraph3;
-                if (data.aboutLocationParagraph4) locParagraphs[3].textContent = data.aboutLocationParagraph4;
-              }
-              
-              const coords = document.querySelector('.coordinates');
-              if (coords && data.aboutLocationCoordinates) coords.textContent = data.aboutLocationCoordinates;
-              
-              const deerWarning = document.querySelector('.deer-warning');
-              if (deerWarning && data.aboutLocationDeerWarning) deerWarning.textContent = data.aboutLocationDeerWarning;
-              
-              const attrTitle = document.querySelector('.about-section:not(.alt) h2');
-              if (attrTitle && data.aboutAttractionsTitle) attrTitle.textContent = data.aboutAttractionsTitle;
-              
-              const attrLead = document.querySelector('.about-section:not(.alt) p');
-              if (attrLead && data.aboutAttractionsLead) attrLead.textContent = data.aboutAttractionsLead;
-              
-              // Update attraction cards
-              const procterCard = document.querySelector('[data-gallery="procter"]');
-              if (procterCard) {
-                const procterTitle = procterCard.querySelector('h4');
-                const procterDist = procterCard.querySelector('.distance');
-                const procterDesc = procterCard.querySelector('p');
-                if (procterTitle && data.aboutProcterTitle) procterTitle.textContent = data.aboutProcterTitle;
-                if (procterDist && data.aboutProcterDistance) procterDist.textContent = data.aboutProcterDistance;
-                if (procterDesc && data.aboutProcterDescription) procterDesc.textContent = data.aboutProcterDescription;
-              }
-              
-              const halcyonCard = document.querySelector('[data-gallery="halcyon"]');
-              if (halcyonCard) {
-                const halcyonTitle = halcyonCard.querySelector('h4');
-                const halcyonDist = halcyonCard.querySelector('.distance');
-                const halcyonDesc = halcyonCard.querySelector('p');
-                if (halcyonTitle && data.aboutHalcyonTitle) halcyonTitle.textContent = data.aboutHalcyonTitle;
-                if (halcyonDist && data.aboutHalcyonDistance) halcyonDist.textContent = data.aboutHalcyonDistance;
-                if (halcyonDesc && data.aboutHalcyonDescription) halcyonDesc.textContent = data.aboutHalcyonDescription;
-              }
-              
-              const whitewaterCard = document.querySelector('[data-gallery="whitewater"]');
-              if (whitewaterCard) {
-                const whitewaterTitle = whitewaterCard.querySelector('h4');
-                const whitewaterDist = whitewaterCard.querySelector('.distance');
-                const whitewaterDesc = whitewaterCard.querySelector('p');
-                if (whitewaterTitle && data.aboutWhitewaterTitle) whitewaterTitle.textContent = data.aboutWhitewaterTitle;
-                if (whitewaterDist && data.aboutWhitewaterDistance) whitewaterDist.textContent = data.aboutWhitewaterDistance;
-                if (whitewaterDesc && data.aboutWhitewaterDescription) whitewaterDesc.textContent = data.aboutWhitewaterDescription;
-              }
-              
-              const nelsonCard = document.querySelector('[data-gallery="nelson"]');
-              if (nelsonCard) {
-                const nelsonTitle = nelsonCard.querySelector('h4');
-                const nelsonDist = nelsonCard.querySelector('.distance');
-                const nelsonDesc = nelsonCard.querySelector('p');
-                if (nelsonTitle && data.aboutNelsonTitle) nelsonTitle.textContent = data.aboutNelsonTitle;
-                if (nelsonDist && data.aboutNelsonDistance) nelsonDist.textContent = data.aboutNelsonDistance;
-                if (nelsonDesc && data.aboutNelsonDescription) nelsonDesc.textContent = data.aboutNelsonDescription;
-              }
-              
-              // Update parks section
-              const parksTitle = document.querySelector('.about-section:last-of-type h2');
-              if (parksTitle && data.aboutParksTitle) parksTitle.textContent = data.aboutParksTitle;
-              
-              const parksIntro = document.querySelector('.about-section:last-of-type p');
-              if (parksIntro && data.aboutParksIntro) parksIntro.textContent = data.aboutParksIntro;
-              
-              if (data.aboutParksList) {
-                const parksList = document.querySelector('.parks-list');
-                if (parksList) {
-                  const items = data.aboutParksList.split('\n').filter(item => item.trim());
-                  parksList.innerHTML = items.map(item => `<div class="park-item">${item.trim()}</div>`).join('');
-                }
-              }
-              
-              // Update galleries from API
-              // Function to update galleries
-              function updateGalleriesFromAPI() {
-                if (window.galleries) {
-                  // Update procter gallery
-                  if (data.aboutProcterImageUrl || data.aboutProcterGallery) {
-                    try {
-                      const procterMainImage = data.aboutProcterImageUrl || window.galleries.procter[0] || 'assets/procter_1.jpg';
-                      const procterGallery = data.aboutProcterGallery ? JSON.parse(data.aboutProcterGallery || '[]') : [];
-                      window.galleries.procter = [procterMainImage].concat(procterGallery.filter(url => url && url.trim()));
-                      console.log('✓ Updated procter gallery from API:', window.galleries.procter);
-                    } catch (e) {
-                      console.error('✗ Failed to parse procter gallery:', e, 'Data:', data.aboutProcterGallery);
-                    }
-                  }
-                  
-                  // Update halcyon gallery
-                  if (data.aboutHalcyonGallery) {
-                    try {
-                      const halcyonGallery = JSON.parse(data.aboutHalcyonGallery || '[]');
-                      const halcyonMainImage = 'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=800&auto=format&fit=crop';
-                      window.galleries.halcyon = [halcyonMainImage].concat(halcyonGallery.filter(url => url && url.trim()));
-                      console.log('✓ Updated halcyon gallery from API:', window.galleries.halcyon);
-                    } catch (e) {
-                      console.error('✗ Failed to parse halcyon gallery:', e, 'Data:', data.aboutHalcyonGallery);
-                    }
-                  }
-                  
-                  // Update whitewater gallery
-                  if (data.aboutWhitewaterGallery) {
-                    try {
-                      const whitewaterGallery = JSON.parse(data.aboutWhitewaterGallery || '[]');
-                      const whitewaterMainImage = 'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop';
-                      window.galleries.whitewater = [whitewaterMainImage].concat(whitewaterGallery.filter(url => url && url.trim()));
-                      console.log('✓ Updated whitewater gallery from API:', window.galleries.whitewater);
-                    } catch (e) {
-                      console.error('✗ Failed to parse whitewater gallery:', e, 'Data:', data.aboutWhitewaterGallery);
-                    }
-                  }
-                  
-                  // Update nelson gallery
-                  if (data.aboutNelsonGallery) {
-                    try {
-                      const nelsonGallery = JSON.parse(data.aboutNelsonGallery || '[]');
-                      const nelsonMainImage = 'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop';
-                      window.galleries.nelson = [nelsonMainImage].concat(nelsonGallery.filter(url => url && url.trim()));
-                      console.log('✓ Updated nelson gallery from API:', window.galleries.nelson);
-                    } catch (e) {
-                      console.error('✗ Failed to parse nelson gallery:', e, 'Data:', data.aboutNelsonGallery);
-                    }
-                  }
-                } else {
-                  console.warn('window.galleries not initialized yet, retrying...');
-                  // Retry after a short delay
-                  setTimeout(updateGalleriesFromAPI, 200);
-                }
-              }
-              
-              // Wait for galleries to be initialized, then update
-              setTimeout(updateGalleriesFromAPI, 100);
-            }
-          }
-        } catch (error) {
-          console.log('Failed to load about content from API:', error);
-        }
-      }
-      
-      setTimeout(loadAboutContentFromAPI, 100);
-    })();
-    
     // Wait for DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function() {
-    // Gallery data for each attraction (will be updated from API)
-    window.galleries = {
-      procter: [
-        'assets/procter_1.jpg',
-        'assets/procter_2.jpg',
-        'assets/procter_3.jpg',
-        'assets/procter_4.jpg',
-        'assets/procter_5.jpg',
-        'assets/procter_6.jpg',
-        'assets/procter_7.jpg',
-        'assets/procter_8.jpg'
-      ],
-      halcyon: [
-        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop'
-      ],
-      whitewater: [
-        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop'
-      ],
-      nelson: [
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?q=80&w=1200&auto=format&fit=crop',
-        'https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop'
-      ]
-    };
-    
-    // Update galleries with admin images from localStorage (fallback)
-    try {
-      const contentData = localStorage.getItem('btb_content');
-      if (contentData) {
-        const data = JSON.parse(contentData);
-        if (data.aboutProcterImageUrl && window.galleries.procter.length > 0) {
-          window.galleries.procter[0] = data.aboutProcterImageUrl;
-        }
-      }
-    } catch(e) {
-      console.error('Error updating galleries from localStorage:', e);
+    // Gallery data for each attraction (from database)
+    // Combine main image with gallery images, filtering out empty values
+    <?php
+    // Helper function to filter empty URLs
+    function filterGalleryUrls($gallery) {
+        return array_filter($gallery, function($url) {
+            return !empty(trim($url));
+        });
     }
     
-    console.log('Initial galleries loaded:', window.galleries);
+    // Build gallery arrays
+    $procterGalleryFull = array_merge([$procterImageUrl], filterGalleryUrls($procterGallery));
+    $halcyonGalleryFull = array_merge([$halcyonImageUrl], filterGalleryUrls($halcyonGallery));
+    $whitewaterGalleryFull = array_merge([$whitewaterImageUrl], filterGalleryUrls($whitewaterGallery));
+    $nelsonGalleryFull = array_merge([$nelsonImageUrl], filterGalleryUrls($nelsonGallery));
+    ?>
+    const galleries = {
+      procter: <?php echo json_encode(array_values($procterGalleryFull)); ?>,
+      halcyon: <?php echo json_encode(array_values($halcyonGalleryFull)); ?>,
+      whitewater: <?php echo json_encode(array_values($whitewaterGalleryFull)); ?>,
+      nelson: <?php echo json_encode(array_values($nelsonGalleryFull)); ?>
+    };
+    
+    // Debug: log galleries to console
+    console.log('Loaded galleries from database:', galleries);
+    console.log('Procter gallery count:', galleries.procter ? galleries.procter.length : 0, 'images:', galleries.procter);
+    console.log('Halcyon gallery count:', galleries.halcyon ? galleries.halcyon.length : 0, 'images:', galleries.halcyon);
+    console.log('Whitewater gallery count:', galleries.whitewater ? galleries.whitewater.length : 0, 'images:', galleries.whitewater);
+    console.log('Nelson gallery count:', galleries.nelson ? galleries.nelson.length : 0, 'images:', galleries.nelson);
 
     let currentGallery = null;
     let currentImageIndex = 0;
@@ -1333,7 +1185,7 @@
     window.openGallery = function(galleryName, imageIndex) {
       currentGallery = galleryName;
       currentImageIndex = imageIndex || 0;
-      const gallery = window.galleries[galleryName];
+      const gallery = galleries[galleryName];
       
       if (!gallery || gallery.length === 0) return;
       
@@ -1358,7 +1210,7 @@
     window.changeGalleryImage = function(direction) {
       if (!currentGallery) return;
       
-      const gallery = window.galleries[currentGallery];
+      const gallery = galleries[currentGallery];
       if (!gallery || gallery.length === 0) return;
       
       currentImageIndex += direction;
@@ -1814,3 +1666,4 @@
   </div>
 </body>
 </html>
+

@@ -2494,15 +2494,19 @@
         <input type="hidden" id="about-procter-title">
         <input type="hidden" id="about-procter-distance">
         <textarea id="about-procter-description"></textarea>
+        <input type="hidden" id="about-procter-gallery" value="[]">
         <input type="hidden" id="about-halcyon-title">
         <input type="hidden" id="about-halcyon-distance">
         <textarea id="about-halcyon-description"></textarea>
+        <input type="hidden" id="about-halcyon-gallery" value="[]">
         <input type="hidden" id="about-whitewater-title">
         <input type="hidden" id="about-whitewater-distance">
         <textarea id="about-whitewater-description"></textarea>
+        <input type="hidden" id="about-whitewater-gallery" value="[]">
         <input type="hidden" id="about-nelson-title">
         <input type="hidden" id="about-nelson-distance">
         <textarea id="about-nelson-description"></textarea>
+        <input type="hidden" id="about-nelson-gallery" value="[]">
         <input type="hidden" id="about-parks-title">
         <textarea id="about-parks-intro"></textarea>
         <textarea id="about-parks-list"></textarea>
@@ -2596,7 +2600,18 @@
               </div>
               <div contenteditable="true" class="editable-preview" data-field="about-procter-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-procter-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-procter-title">Procter Village</div>
               <div contenteditable="true" class="editable-preview" data-field="about-procter-distance" style="color: #6b7280; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-procter-distance')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-procter-distance">In the same village</div>
-              <div contenteditable="true" class="editable-preview" data-field="about-procter-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-procter-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-procter-desc">In the village of Procter, you'll find the Procter Café with their famous cinnamon buns, a small grocery store, and a gas station.</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-procter-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 8px;" onblur="syncPreviewToForm(this, 'about-procter-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-procter-desc">In the village of Procter, you'll find the Procter Café with their famous cinnamon buns, a small grocery store, and a gas station.</div>
+              <!-- Gallery Block -->
+              <div style="margin-top: 12px; padding: 12px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+                  <span style="font-weight: 600; color: #374151; font-size: 0.875rem;">Gallery (max 10 photos)</span>
+                  <button type="button" id="about-procter-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;">+ Add</button>
+                </div>
+                <div id="about-procter-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;">
+                  <!-- Gallery images will be dynamically inserted here -->
+                </div>
+                <input type="file" id="about-procter-gallery-upload" accept="image/*" multiple style="display: none;">
+              </div>
             </div>
             
             <!-- Halcyon Card -->
@@ -2606,7 +2621,18 @@
               </div>
               <div contenteditable="true" class="editable-preview" data-field="about-halcyon-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-halcyon-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-halcyon-title">Ainsworth Hot Springs Resort</div>
               <div contenteditable="true" class="editable-preview" data-field="about-halcyon-distance" style="color: #6b7280; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-halcyon-distance')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-halcyon-distance">30 km from Back to Base</div>
-              <div contenteditable="true" class="editable-preview" data-field="about-halcyon-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-halcyon-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-halcyon-desc">Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-halcyon-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 8px;" onblur="syncPreviewToForm(this, 'about-halcyon-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-halcyon-desc">Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!</div>
+              <!-- Gallery Block -->
+              <div style="margin-top: 12px; padding: 12px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+                  <span style="font-weight: 600; color: #374151; font-size: 0.875rem;">Gallery (max 10 photos)</span>
+                  <button type="button" id="about-halcyon-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;">+ Add</button>
+                </div>
+                <div id="about-halcyon-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;">
+                  <!-- Gallery images will be dynamically inserted here -->
+                </div>
+                <input type="file" id="about-halcyon-gallery-upload" accept="image/*" multiple style="display: none;">
+              </div>
             </div>
             
             <!-- Whitewater Card -->
@@ -2616,7 +2642,18 @@
               </div>
               <div contenteditable="true" class="editable-preview" data-field="about-whitewater-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-whitewater-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-whitewater-title">Whitewater Mountain Resort</div>
               <div contenteditable="true" class="editable-preview" data-field="about-whitewater-distance" style="color: #6b7280; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-whitewater-distance')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-whitewater-distance">60 km from Back to Base</div>
-              <div contenteditable="true" class="editable-preview" data-field="about-whitewater-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-whitewater-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-whitewater-desc">Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-whitewater-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 8px;" onblur="syncPreviewToForm(this, 'about-whitewater-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-whitewater-desc">Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.</div>
+              <!-- Gallery Block -->
+              <div style="margin-top: 12px; padding: 12px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+                  <span style="font-weight: 600; color: #374151; font-size: 0.875rem;">Gallery (max 10 photos)</span>
+                  <button type="button" id="about-whitewater-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;">+ Add</button>
+                </div>
+                <div id="about-whitewater-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;">
+                  <!-- Gallery images will be dynamically inserted here -->
+                </div>
+                <input type="file" id="about-whitewater-gallery-upload" accept="image/*" multiple style="display: none;">
+              </div>
             </div>
             
             <!-- Nelson Card -->
@@ -2626,7 +2663,18 @@
               </div>
               <div contenteditable="true" class="editable-preview" data-field="about-nelson-title" style="font-weight: 600; color: #0f172a; font-size: 0.9rem; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-nelson-title')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-nelson-title">Nelson</div>
               <div contenteditable="true" class="editable-preview" data-field="about-nelson-distance" style="color: #6b7280; font-size: 0.8rem; padding: 2px 8px; border-radius: 4px; cursor: text; min-height: 1.2em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 4px;" onblur="syncPreviewToForm(this, 'about-nelson-distance')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-nelson-distance">35 km from Back to Base</div>
-              <div contenteditable="true" class="editable-preview" data-field="about-nelson-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0;" onblur="syncPreviewToForm(this, 'about-nelson-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-nelson-desc">A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.</div>
+              <div contenteditable="true" class="editable-preview" data-field="about-nelson-description" style="color: #0f172a; font-size: 0.85rem; line-height: 1.5; padding: 4px 8px; border-radius: 4px; cursor: text; min-height: 1.5em; outline: none; background: #f8fafc; border: 1px solid #e2e8f0; margin-bottom: 8px;" onblur="syncPreviewToForm(this, 'about-nelson-description')" onfocus="this.style.background='#f0f9ff'; this.style.border='1px solid #3b82f6';" onfocusout="this.style.background='#f8fafc'; this.style.border='1px solid #e2e8f0';" id="preview-about-nelson-desc">A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.</div>
+              <!-- Gallery Block -->
+              <div style="margin-top: 12px; padding: 12px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">
+                  <span style="font-weight: 600; color: #374151; font-size: 0.875rem;">Gallery (max 10 photos)</span>
+                  <button type="button" id="about-nelson-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.75rem; padding: 4px 8px;">+ Add</button>
+                </div>
+                <div id="about-nelson-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); gap: 8px;">
+                  <!-- Gallery images will be dynamically inserted here -->
+                </div>
+                <input type="file" id="about-nelson-gallery-upload" accept="image/*" multiple style="display: none;">
+              </div>
             </div>
           </div>
         </div>

@@ -4132,52 +4132,65 @@ function initSpecialImageUpload() {
             reader.readAsDataURL(file);
           }
           
-          // Upload to server
-          const formData = new FormData();
-          formData.append('action', 'upload_image');
-          formData.append('image_type', config.imageType);
-          formData.append('image', file);
-          
-          try {
-            const response = await fetch('api.php', {
-              method: 'POST',
-              body: formData
-            });
-            
-            if (response.ok) {
-              const result = await response.json();
-              if (result.success && result.image_url) {
-                // Update preview with server URL
-                if (previewImg) {
-                  previewImg.src = result.image_url + '?v=' + Date.now();
+          // Use universal uploadImage function
+          await uploadImage(file, config.imageType, null, null, {
+            localStorageKey: 'btb_special_images',
+            fieldNameMapper: (type) => {
+              // Convert 'special-hero' to 'hero', 'special-pools' to 'pools', etc.
+              return type.replace('special-', '');
+            },
+            reloadFunction: loadSpecialImagesData,
+            imageNameMapper: (type) => {
+              const name = type.replace('special-', '');
+              return name.charAt(0).toUpperCase() + name.slice(1);
+            },
+            onSuccess: (filepath) => {
+              console.log('Special image upload success, filepath:', filepath, 'imageType:', config.imageType);
+              
+              // Save to localStorage for immediate site update
+              const stored = localStorage.getItem('btb_special_images') || '{}';
+              const storedJson = JSON.parse(stored);
+              const imageKey = config.imageType.replace('special-', '');
+              storedJson[imageKey] = filepath;
+              localStorage.setItem('btb_special_images', JSON.stringify(storedJson));
+              console.log('Saved to btb_special_images:', imageKey, '=', filepath);
+              
+              // Also save to btb_content for site display
+              let contentData = {};
+              const contentStored = localStorage.getItem('btb_content');
+              if (contentStored) {
+                try {
+                  contentData = JSON.parse(contentStored);
+                } catch (e) {
+                  console.error('Failed to parse btb_content:', e);
                 }
-                
-                // Save to localStorage
-                const stored = localStorage.getItem('btb_special_images') || '{}';
-                const storedJson = JSON.parse(stored);
-                storedJson[config.imageType.replace('special-', '')] = result.image_url;
-                localStorage.setItem('btb_special_images', JSON.stringify(storedJson));
-                
-                // Save to server content
-                const contentFormData = new FormData();
-                contentFormData.append('action', 'save_content');
-                const fieldName = config.imageType.replace('special-', '') + '_image_url';
-                contentFormData.append('special_' + fieldName, result.image_url);
-                
-                await fetch('api.php', {
-                  method: 'POST',
-                  body: contentFormData
-                });
-                
+              }
+              const fieldName = 'special' + (imageKey.charAt(0).toUpperCase() + imageKey.slice(1)) + 'ImageUrl';
+              contentData[fieldName] = filepath;
+              localStorage.setItem('btb_content', JSON.stringify(contentData));
+              console.log('Saved to btb_content:', fieldName, '=', filepath);
+              
+              // Save to server via save_content (upload_image.php already saves, but this ensures consistency)
+              const contentFormData = new FormData();
+              contentFormData.append('action', 'save_content');
+              const dbFieldName = 'special_' + imageKey.replace('-', '_') + '_image_url';
+              contentFormData.append(dbFieldName, filepath);
+              console.log('Saving to server with field name:', dbFieldName, '=', filepath);
+              
+              fetch('api.php', {
+                method: 'POST',
+                body: contentFormData
+              }).then(response => response.json()).then(result => {
+                console.log('Save content response:', result);
                 // Trigger auto-save status update
                 if (typeof scheduleSpecialAutoSave === 'function') {
                   scheduleSpecialAutoSave();
                 }
-              }
+              }).catch(error => {
+                console.error('Error saving special image to content:', error);
+              });
             }
-          } catch (error) {
-            console.error('Error uploading special image:', error);
-          }
+          });
         }
       });
     }
@@ -4503,6 +4516,22 @@ async function loadAboutData() {
         if (nelsonDistPreview) nelsonDistPreview.textContent = data.aboutNelsonDistance || '35 km from Back to Base';
         if (nelsonDescPreview) nelsonDescPreview.textContent = data.aboutNelsonDescription || 'A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.';
         
+        // Load galleries for attractions
+        attractionGalleries.forEach(attractionName => {
+          const galleryField = document.getElementById(`about-${attractionName}-gallery`);
+          let gallery = [];
+          try {
+            const galleryData = data[`about${attractionName.charAt(0).toUpperCase() + attractionName.slice(1)}Gallery`] || '[]';
+            gallery = JSON.parse(galleryData);
+          } catch (e) {
+            console.error(`Failed to parse gallery for ${attractionName}:`, e);
+          }
+          if (galleryField) {
+            galleryField.value = JSON.stringify(gallery);
+            updateAboutAttractionGalleryPreview(attractionName, gallery);
+          }
+        });
+        
         // Provincial Parks section
         const parksTitleField = document.getElementById('about-parks-title');
         const parksIntroField = document.getElementById('about-parks-intro');
@@ -4618,53 +4647,288 @@ function initAboutImageUpload() {
             reader.readAsDataURL(file);
           }
           
-          // Upload to server
-          const formData = new FormData();
-          formData.append('action', 'upload_image');
-          formData.append('image_type', config.imageType);
-          formData.append('image', file);
-          
-          try {
-            const response = await fetch('api.php', {
-              method: 'POST',
-              body: formData
-            });
-            
-            if (response.ok) {
-              const result = await response.json();
-              if (result.success && result.image_url) {
-                // Update preview with server URL
-                if (previewImg) {
-                  previewImg.src = result.image_url + '?v=' + Date.now();
+          // Use universal uploadImage function
+          await uploadImage(file, config.imageType, null, null, {
+            localStorageKey: 'btb_about_images',
+            fieldNameMapper: (type) => {
+              // Convert 'about-hero' to 'hero', 'about-founder' to 'founder', etc.
+              return type.replace('about-', '');
+            },
+            reloadFunction: loadAboutImagesData,
+            imageNameMapper: (type) => {
+              const name = type.replace('about-', '');
+              return name.charAt(0).toUpperCase() + name.slice(1);
+            },
+            onSuccess: (filepath) => {
+              console.log('About image upload success, filepath:', filepath, 'imageType:', config.imageType);
+              
+              // Save to localStorage for immediate site update
+              const stored = localStorage.getItem('btb_about_images') || '{}';
+              const storedJson = JSON.parse(stored);
+              const imageKey = config.imageType.replace('about-', '');
+              storedJson[imageKey] = filepath;
+              localStorage.setItem('btb_about_images', JSON.stringify(storedJson));
+              console.log('Saved to btb_about_images:', imageKey, '=', filepath);
+              
+              // Also save to btb_content for site display
+              let contentData = {};
+              const contentStored = localStorage.getItem('btb_content');
+              if (contentStored) {
+                try {
+                  contentData = JSON.parse(contentStored);
+                } catch (e) {
+                  console.error('Failed to parse btb_content:', e);
                 }
-                
-                // Save to localStorage
-                const stored = localStorage.getItem('btb_about_images') || '{}';
-                const storedJson = JSON.parse(stored);
-                storedJson[config.imageType.replace('about-', '')] = result.image_url;
-                localStorage.setItem('btb_about_images', JSON.stringify(storedJson));
-                
-                // Save to server content
-                const contentFormData = new FormData();
-                contentFormData.append('action', 'save_content');
-                const fieldName = config.imageType.replace('about-', '') + '_image_url';
-                contentFormData.append('about_' + fieldName, result.image_url);
-                
-                await fetch('api.php', {
-                  method: 'POST',
-                  body: contentFormData
-                });
-                
+              }
+              const fieldName = 'about' + (imageKey.charAt(0).toUpperCase() + imageKey.slice(1)) + 'ImageUrl';
+              contentData[fieldName] = filepath;
+              localStorage.setItem('btb_content', JSON.stringify(contentData));
+              console.log('Saved to btb_content:', fieldName, '=', filepath);
+              
+              // Save to server via save_content (upload_image.php already saves, but this ensures consistency)
+              const contentFormData = new FormData();
+              contentFormData.append('action', 'save_content');
+              // Map imageKey to correct database field name
+              const fieldMap = {
+                'hero': 'about_hero_image_url',
+                'founder': 'about_founder_image_url',
+                'procter': 'about_procter_image_url'
+              };
+              const dbFieldName = fieldMap[imageKey] || ('about_' + imageKey.replace('-', '_') + '_image_url');
+              contentFormData.append(dbFieldName, filepath);
+              console.log('Saving to server with field name:', dbFieldName, '=', filepath);
+              
+              fetch('api.php', {
+                method: 'POST',
+                body: contentFormData
+              }).then(response => response.json()).then(result => {
+                console.log('Save content response:', result);
                 // Trigger auto-save status update
                 if (typeof scheduleAboutAutoSave === 'function') {
                   scheduleAboutAutoSave();
                 }
-              }
+              }).catch(error => {
+                console.error('Error saving about image to content:', error);
+              });
             }
-          } catch (error) {
-            console.error('Error uploading about image:', error);
+          });
+        }
+      });
+    }
+  });
+}
+
+// Gallery management functions for attractions
+const attractionGalleries = ['procter', 'halcyon', 'whitewater', 'nelson'];
+
+// Update gallery preview for an attraction
+function updateAboutAttractionGalleryPreview(attractionName, gallery) {
+  const galleryPreview = document.getElementById(`about-${attractionName}-gallery-preview`);
+  if (!galleryPreview) return;
+  
+  galleryPreview.innerHTML = '';
+  
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText = 'position: relative; width: 80px; height: 80px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+    
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Заменить';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText = 'position: absolute; top: 2px; left: 2px; padding: 2px 6px; font-size: 0.7rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceAboutAttractionGalleryImage(attractionName, index);
+    };
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText = 'position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; padding: 0; font-size: 1rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteAboutAttractionGalleryImage(attractionName, index);
+    };
+    
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+  
+  // Show add button if less than 10 photos
+  if (gallery.length < 10) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText = 'width: 80px; height: 80px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 1.5rem;">+</span>';
+    addItem.onclick = () => document.getElementById(`about-${attractionName}-gallery-upload`).click();
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+// Replace gallery image
+window.replaceAboutAttractionGalleryImage = function(attractionName, index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadAboutAttractionGalleryImage(attractionName, file, index);
+    }
+  };
+  input.click();
+};
+
+// Delete gallery image
+window.deleteAboutAttractionGalleryImage = function(attractionName, index) {
+  const galleryField = document.getElementById(`about-${attractionName}-gallery`);
+  if (!galleryField) return;
+  
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse gallery:', e);
+    return;
+  }
+  
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateAboutAttractionGalleryPreview(attractionName, gallery);
+  
+  if (typeof scheduleAboutAutoSave === 'function') {
+    if (typeof aboutHasUnsavedChanges !== 'undefined') {
+      aboutHasUnsavedChanges = true;
+    }
+    scheduleAboutAutoSave();
+  }
+};
+
+// Upload gallery image
+async function uploadAboutAttractionGalleryImage(attractionName, file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', `about-${attractionName}-gallery`);
+    formData.append('image', file);
+    
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      // Extract imageUrl from response
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl ? payload.imageUrl : (payload && payload.filepath ? payload.filepath : (result.imageUrl || result.filepath || ''));
+      console.log(`Gallery image upload result for ${attractionName}:`, result);
+      console.log('Extracted imageUrl:', imageUrl);
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById(`about-${attractionName}-gallery`);
+        if (!galleryField) return;
+        
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else {
+          if (gallery.length < 10) {
+            gallery.push(imageUrl);
+          } else {
+            alert('Maximum 10 photos allowed in gallery');
+            return;
           }
         }
+        
+        galleryField.value = JSON.stringify(gallery);
+        updateAboutAttractionGalleryPreview(attractionName, gallery);
+        
+        console.log(`Gallery updated for ${attractionName}:`, gallery);
+        console.log(`Gallery field value:`, galleryField.value);
+        
+        // Immediately save gallery to server
+        const galleryFormData = new FormData();
+        galleryFormData.append('action', 'save_content');
+        galleryFormData.append(`about_${attractionName}_gallery`, galleryField.value);
+        
+        fetch('api.php', {
+          method: 'POST',
+          body: galleryFormData
+        }).then(response => response.json()).then(result => {
+          console.log(`Gallery saved to server for ${attractionName}:`, result);
+          if (result.success) {
+            console.log(`✓ Gallery for ${attractionName} successfully saved to database`);
+          } else {
+            console.error(`✗ Failed to save gallery for ${attractionName}:`, result.error);
+          }
+        }).catch(error => {
+          console.error(`Error saving gallery for ${attractionName}:`, error);
+        });
+        
+        // Also trigger auto-save for other fields
+        if (typeof scheduleAboutAutoSave === 'function') {
+          if (typeof aboutHasUnsavedChanges !== 'undefined') {
+            aboutHasUnsavedChanges = true;
+          }
+          scheduleAboutAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error(`Error uploading gallery image for ${attractionName}:`, error);
+  }
+}
+
+// Initialize attraction gallery uploads
+function initAboutAttractionGalleries() {
+  attractionGalleries.forEach(attractionName => {
+    // Add photo button
+    const addBtn = document.getElementById(`about-${attractionName}-add-gallery-photo`);
+    if (addBtn) {
+      addBtn.addEventListener('click', () => {
+        document.getElementById(`about-${attractionName}-gallery-upload`).click();
+      });
+    }
+    
+    // Gallery upload input
+    const galleryInput = document.getElementById(`about-${attractionName}-gallery-upload`);
+    if (galleryInput) {
+      galleryInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        
+        const galleryField = document.getElementById(`about-${attractionName}-gallery`);
+        if (!galleryField) return;
+        
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        
+        const remainingSlots = 10 - gallery.length;
+        if (files.length > remainingSlots) {
+          alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+          files.splice(remainingSlots);
+        }
+        
+        for (const file of files) {
+          await uploadAboutAttractionGalleryImage(attractionName, file);
+        }
+        
+        // Reset input
+        galleryInput.value = '';
       });
     }
   });
@@ -4736,6 +5000,14 @@ async function saveAboutContent() {
     formData.append('about_hero_image_url', imagesJson.hero || '');
     formData.append('about_founder_image_url', imagesJson.founder || '');
     formData.append('about_procter_image_url', imagesJson.procter || '');
+    
+    // Get gallery data
+    attractionGalleries.forEach(attractionName => {
+      const galleryField = document.getElementById(`about-${attractionName}-gallery`);
+      if (galleryField) {
+        formData.append(`about_${attractionName}_gallery`, galleryField.value || '[]');
+      }
+    });
     
     const response = await fetch('api.php', {
       method: 'POST',
@@ -6589,6 +6861,7 @@ registerContentEditor('about', () => {
   loadAboutData();
   loadAboutImagesData();
   initAboutImageUpload();
+  initAboutAttractionGalleries();
   initAboutAutoSave();
 });
 
