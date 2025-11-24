@@ -56,7 +56,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
         sendError('Invalid file extension. Only JPG, PNG, and GIF are allowed.');
         exit;
     }
-    $filename = $imageType . '_' . time() . '.' . $extension;
+    // Normalize image type for filename (remove 'homepage-' prefix for hero images)
+    $normalizedType = $imageType;
+    if ($imageType === 'homepage-hero') {
+        $normalizedType = 'hero';
+    } elseif ($imageType === 'homepage-hero2') {
+        $normalizedType = 'hero2';
+    }
+    $filename = $normalizedType . '_' . time() . '.' . $extension;
     $filepath = $uploadDir . $filename;
     
     // Move uploaded file
@@ -97,9 +104,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
             if (in_array($imageType, ['basement', 'ground', 'loft'])) {
                 $fieldName = $imageType . '_image_url';
                 $tableName = 'floorplan_settings';
-            } elseif (in_array($imageType, ['hero', 'hero2'])) {
+            } elseif (in_array($imageType, ['hero', 'hero2', 'homepage-hero', 'homepage-hero2'])) {
                 // Map hero types to database field names
-                if ($imageType === 'hero') {
+                if ($imageType === 'hero' || $imageType === 'homepage-hero') {
                     $fieldName = 'hero_image_url';
                 } else {
                     $fieldName = 'hero2_image_url';
@@ -169,8 +176,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                 $fieldName = 'about_' . str_replace('-', '_', $aboutType) . '_image_url';
                 $tableName = 'content_settings';
                 $isHomepage = true;
+            } elseif (in_array($imageType, ['basement', 'ground', 'loft'])) {
+                // Floor plan images - store in floorplan_settings table
+                $fieldName = $imageType . '_image_url';
+                $tableName = 'floorplan_settings';
+                $isHomepage = false;
             } elseif (in_array($imageType, ['about-procter-gallery', 'about-halcyon-gallery', 'about-whitewater-gallery', 'about-nelson-gallery'])) {
                 // About us page gallery images - just upload, don't update database (handled by api.php)
+                $tableName = null;
+                $isHomepage = false;
+                // Return immediately - gallery images are managed via JSON arrays in api.php
+                sendSuccess([
+                    'message' => 'Gallery image uploaded successfully',
+                    'filepath' => $filepath,
+                    'imageUrl' => $filepath
+                ]);
+                exit;
+            } elseif (in_array($imageType, ['retreat-forest-gallery', 'retreat-indoor-gallery', 'retreat-theatre-gallery'])) {
+                // Retreat and Workshop page gallery images - just upload, don't update database (handled by api.php)
                 $tableName = null;
                 $isHomepage = false;
                 // Return immediately - gallery images are managed via JSON arrays in api.php
@@ -229,7 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                 error_log('Record with id=1 exists');
                 // Check if column exists (for dynamic columns like wellness images)
                 $columnExists = false;
-                if ($fieldName && $tableName && $isHomepage && in_array($imageType, ['wellness-massage', 'wellness-yoga', 'wellness-sauna', 'room-basement-card', 'room-ground-queen-card', 'room-ground-twin-card', 'room-second-card', 'basement-banner', 'ground-queen-banner', 'ground-twin-banner', 'second-banner', 'massage-relaxing', 'massage-deep-tissue', 'massage-reiki', 'massage-sauna', 'massage-room-booking', 'retreat-hero', 'retreat-forest', 'retreat-indoor', 'retreat-theatre', 'special-hero', 'special-pools', 'special-dining', 'about-hero', 'about-founder', 'about-procter'])) {
+                if ($fieldName && $tableName && $isHomepage && in_array($imageType, ['hero', 'hero2', 'homepage-hero', 'homepage-hero2', 'wellness-massage', 'wellness-yoga', 'wellness-sauna', 'room-basement-card', 'room-ground-queen-card', 'room-ground-twin-card', 'room-second-card', 'basement-banner', 'ground-queen-banner', 'ground-twin-banner', 'second-banner', 'massage-relaxing', 'massage-deep-tissue', 'massage-reiki', 'massage-sauna', 'massage-room-booking', 'retreat-hero', 'retreat-forest', 'retreat-indoor', 'retreat-theatre', 'special-hero', 'special-pools', 'special-dining', 'about-hero', 'about-founder', 'about-procter'])) {
                     $columnCheck = $conn->query("SHOW COLUMNS FROM $tableName LIKE '$fieldName'");
                     $columnExists = $columnCheck->num_rows > 0;
                     
