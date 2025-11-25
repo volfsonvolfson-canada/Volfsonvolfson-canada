@@ -621,6 +621,8 @@ async function saveFloorplanContent() {
     formData.append('action', 'save_floorplan');
     
     // Get all field values - API expects camelCase
+    const floorplanTitle = document.getElementById('floorplan-title')?.value || '';
+    const floorplanSubtitle = document.getElementById('floorplan-subtitle')?.value || '';
     const basementSubtitle = document.getElementById('basement-subtitle')?.value || '';
     const basementDescription = document.getElementById('basement-description')?.value || '';
     const groundSubtitle = document.getElementById('ground-subtitle')?.value || '';
@@ -628,7 +630,19 @@ async function saveFloorplanContent() {
     const loftSubtitle = document.getElementById('loft-subtitle')?.value || '';
     const loftDescription = document.getElementById('loft-description')?.value || '';
     
+    // Get image URLs from path elements or localStorage
+    const stored = localStorage.getItem('btb_floorplan_settings');
+    const storedJson = stored ? JSON.parse(stored) : {};
+    const basementPathEl = document.getElementById('basement-image-path');
+    const groundPathEl = document.getElementById('ground-image-path');
+    const loftPathEl = document.getElementById('loft-image-path');
+    const basementImageUrl = (basementPathEl && basementPathEl.textContent) || storedJson.basement_image_url || '';
+    const groundQueenImage = (groundPathEl && groundPathEl.textContent) || storedJson.ground_image_url || storedJson.ground_queen_image || '';
+    const loftImageUrl = (loftPathEl && loftPathEl.textContent) || storedJson.loft_image_url || '';
+    
     console.log('Saving floorplan data:', {
+      floorplanTitle: floorplanTitle.substring(0, 50),
+      floorplanSubtitle: floorplanSubtitle.substring(0, 50),
       basementSubtitle: basementSubtitle.substring(0, 50),
       basementDescription: basementDescription.substring(0, 50),
       groundSubtitle: groundSubtitle.substring(0, 50),
@@ -637,12 +651,18 @@ async function saveFloorplanContent() {
       loftDescription: loftDescription.substring(0, 50)
     });
     
+    formData.append('floorplanTitle', floorplanTitle);
+    formData.append('floorplanSubtitle', floorplanSubtitle);
     formData.append('basementSubtitle', basementSubtitle);
     formData.append('basementDescription', basementDescription);
+    formData.append('basementImageUrl', basementImageUrl);
     formData.append('groundSubtitle', groundSubtitle);
     formData.append('groundDescription', groundDescription);
+    formData.append('groundQueenImage', groundQueenImage);
+    formData.append('groundTwinImage', '');
     formData.append('loftSubtitle', loftSubtitle);
     formData.append('loftDescription', loftDescription);
+    formData.append('loftImageUrl', loftImageUrl);
     
     const response = await fetch('api.php', {
       method: 'POST',
@@ -650,6 +670,17 @@ async function saveFloorplanContent() {
     });
     
     console.log('Floorplan save response status:', response.status);
+    
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      const text = await response.text();
+      console.error('Floorplan save failed: Server returned non-JSON response:', text.substring(0, 200));
+      updateFloorplanSaveStatus('error');
+      alert('Ошибка сохранения: Сервер вернул неверный формат ответа. Возможно, в базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php');
+      return;
+    }
+    
     const result = await response.json();
     console.log('Floorplan save response:', result);
     
@@ -660,12 +691,19 @@ async function saveFloorplanContent() {
         loadFloorplanData();
       }, 500);
     } else {
-      console.error('Floorplan save failed:', result.error || 'Unknown error');
+      const errorMsg = result.error || 'Unknown error';
+      console.error('Floorplan save failed:', errorMsg);
       updateFloorplanSaveStatus('error');
+      if (errorMsg.includes('columns missing') || errorMsg.includes('floorplan_title') || errorMsg.includes('floorplan_subtitle')) {
+        alert('Ошибка: В базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php на сервере.');
+      }
     }
   } catch (error) {
     console.error('Error saving floorplan content:', error);
     updateFloorplanSaveStatus('error');
+    if (error.message && error.message.includes('JSON')) {
+      alert('Ошибка сохранения: Сервер вернул неверный формат ответа. Возможно, в базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php');
+    }
   }
 }
 
@@ -843,6 +881,27 @@ async function loadFloorplanData() {
         console.log('Full data object:', JSON.stringify(result.data, null, 2));
         const data = result.data;
         
+        // Floor Plan Title and Subtitle
+        const floorplanTitleField = document.getElementById('floorplan-title');
+        const floorplanSubtitleField = document.getElementById('floorplan-subtitle');
+        const floorplanTitlePreview = document.getElementById('preview-floorplan-title');
+        const floorplanSubtitlePreview = document.getElementById('preview-floorplan-subtitle');
+        
+        if (floorplanTitleField) {
+          const title = data.floorplan_title || 'Floor plan';
+          floorplanTitleField.value = title;
+          if (floorplanTitlePreview) {
+            floorplanTitlePreview.textContent = title;
+          }
+        }
+        if (floorplanSubtitleField) {
+          const subtitle = data.floorplan_subtitle || 'Three levels of comfort: basement, ground floor and a cozy loft under the roof.';
+          floorplanSubtitleField.value = subtitle;
+          if (floorplanSubtitlePreview) {
+            floorplanSubtitlePreview.textContent = subtitle;
+          }
+        }
+        
         // Basement
         const basementSubtitleField = document.getElementById('basement-subtitle');
         const basementDescField = document.getElementById('basement-description');
@@ -958,7 +1017,7 @@ async function loadFloorplanData() {
           }
         }
         if (loftDescField) {
-          const desc = data.loft_description || '';
+          const desc = data.loft_description || 'A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.';
           console.log('Setting loft-description to:', desc);
           loftDescField.value = desc;
           if (loftDescPreview) {
@@ -1112,7 +1171,10 @@ async function loadMassageData() {
         if (heroTitleField) heroTitleField.value = data.massageHeroTitle || '';
         if (introField) introField.value = data.massageIntro || '';
         if (heroTitlePreview) heroTitlePreview.textContent = data.massageHeroTitle || 'Massage services';
-        if (introPreview) introPreview.textContent = data.massageIntro || 'Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.';
+        if (introPreview) {
+          const introText = data.massageIntro || 'Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.';
+          introPreview.textContent = introText;
+        }
         
         // Relaxing Massage
         const relaxingTitleField = document.getElementById('massage-relaxing-title');
@@ -1122,7 +1184,10 @@ async function loadMassageData() {
         if (relaxingTitleField) relaxingTitleField.value = data.massageRelaxingTitle || '';
         if (relaxingDescField) relaxingDescField.value = data.massageRelaxingDescription || '';
         if (relaxingTitlePreview) relaxingTitlePreview.textContent = data.massageRelaxingTitle || 'Relaxing Massage';
-        if (relaxingDescPreview) relaxingDescPreview.textContent = data.massageRelaxingDescription || 'This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.';
+        if (relaxingDescPreview) {
+          const relaxingText = data.massageRelaxingDescription || 'This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.';
+          relaxingDescPreview.textContent = relaxingText;
+        }
         
         // Deep Tissue Massage
         const deepTissueTitleField = document.getElementById('massage-deep-tissue-title');
@@ -1132,7 +1197,10 @@ async function loadMassageData() {
         if (deepTissueTitleField) deepTissueTitleField.value = data.massageDeepTissueTitle || '';
         if (deepTissueDescField) deepTissueDescField.value = data.massageDeepTissueDescription || '';
         if (deepTissueTitlePreview) deepTissueTitlePreview.textContent = data.massageDeepTissueTitle || 'Deep Tissue Massage';
-        if (deepTissueDescPreview) deepTissueDescPreview.textContent = data.massageDeepTissueDescription || 'For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.';
+        if (deepTissueDescPreview) {
+          const deepText = data.massageDeepTissueDescription || 'For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort в deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.';
+          deepTissueDescPreview.textContent = deepText;
+        }
         
         // Reiki Energy Healing
         const reikiTitleField = document.getElementById('massage-reiki-title');
@@ -1142,7 +1210,10 @@ async function loadMassageData() {
         if (reikiTitleField) reikiTitleField.value = data.massageReikiTitle || '';
         if (reikiDescField) reikiDescField.value = data.massageReikiDescription || '';
         if (reikiTitlePreview) reikiTitlePreview.textContent = data.massageReikiTitle || 'Reiki Energy Healing';
-        if (reikiDescPreview) reikiDescPreview.textContent = data.massageReikiDescription || 'Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body\'s energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.';
+        if (reikiDescPreview) {
+          const reikiText = data.massageReikiDescription || 'Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body\'s energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.';
+          reikiDescPreview.textContent = reikiText;
+        }
         
         // Sauna
         const saunaTitleField = document.getElementById('massage-sauna-title');
@@ -1152,13 +1223,34 @@ async function loadMassageData() {
         if (saunaTitleField) saunaTitleField.value = data.massageSaunaTitle || '';
         if (saunaDescField) saunaDescField.value = data.massageSaunaDescription || '';
         if (saunaTitlePreview) saunaTitlePreview.textContent = data.massageSaunaTitle || 'Sauna';
-        if (saunaDescPreview) saunaDescPreview.textContent = data.massageSaunaDescription || 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.';
+        if (saunaDescPreview) {
+          const saunaText = data.massageSaunaDescription || 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.';
+          saunaDescPreview.textContent = saunaText;
+        }
         
-        // Booking title
-        const bookingTitleField = document.getElementById('massage-booking-title');
-        const bookingTitlePreview = document.getElementById('preview-massage-booking-title');
-        if (bookingTitleField) bookingTitleField.value = data.massageBookingTitle || '';
-        if (bookingTitlePreview) bookingTitlePreview.textContent = data.massageBookingTitle || 'Book a massage or sauna';
+        // Mini-hotel section - use same simple approach as Sauna Card
+        const miniHotelTitleField = document.getElementById('mini-hotel-title');
+        const miniHotelTitlePreview = document.getElementById('preview-mini-hotel-title');
+        const miniHotelDesc1Field = document.getElementById('mini-hotel-description-1');
+        const miniHotelDesc1Preview = document.getElementById('preview-mini-hotel-desc-1');
+        const miniHotelDesc2Field = document.getElementById('mini-hotel-description-2');
+        const miniHotelDesc2Preview = document.getElementById('preview-mini-hotel-desc-2');
+        
+        // Log what we received from API (same as Sauna for comparison)
+        console.log('Loading mini-hotel data from API:', {
+          miniHotelTitle: data.miniHotelTitle,
+          miniHotelDescription1: data.miniHotelDescription1,
+          miniHotelDescription2: data.miniHotelDescription2,
+          massageSaunaTitle: data.massageSaunaTitle, // For comparison
+          massageSaunaDescription: data.massageSaunaDescription // For comparison
+        });
+        
+        if (miniHotelTitleField) miniHotelTitleField.value = data.miniHotelTitle || '';
+        if (miniHotelTitlePreview) miniHotelTitlePreview.textContent = data.miniHotelTitle || 'Book a room in our mini-hotel';
+        if (miniHotelDesc1Field) miniHotelDesc1Field.value = data.miniHotelDescription1 || '';
+        if (miniHotelDesc1Preview) miniHotelDesc1Preview.textContent = data.miniHotelDescription1 || 'After your relaxing massage session, why not extend your stay? Our cozy mini-hotel offers comfortable rooms and apartments where you can fully unwind and enjoy the peaceful atmosphere of Back to Base.';
+        if (miniHotelDesc2Field) miniHotelDesc2Field.value = data.miniHotelDescription2 || '';
+        if (miniHotelDesc2Preview) miniHotelDesc2Preview.textContent = data.miniHotelDescription2 || 'Located just 35 km from Nelson, BC, surrounded by forest near Kootenay Lake with beautiful views of Mount Loki. Easy online booking — perfect for a peaceful vacation and retreat in nature.';
         
         // Load images
         await loadMassageImagesData(data);
@@ -1195,7 +1287,7 @@ async function loadMassageImagesData(data = null) {
       const deepTissueImageUrl = data.massageDeepTissueImageUrl || '';
       const reikiImageUrl = data.massageReikiImageUrl || '';
       const saunaImageUrl = data.massageSaunaImageUrl || '';
-      const roomBookingImageUrl = data.massageRoomBookingImageUrl || '';
+      const miniHotelImageUrl = data.miniHotelImageUrl || '';
       
       // Update image previews in schematic preview
       const relaxingImg = document.getElementById('preview-massage-relaxing-img');
@@ -1226,11 +1318,11 @@ async function loadMassageImagesData(data = null) {
         saunaImg.parentElement.querySelector('span').style.display = 'none';
       }
       
-      const roomBookingImg = document.getElementById('preview-massage-room-booking-img');
-      if (roomBookingImg && roomBookingImageUrl) {
-        roomBookingImg.src = roomBookingImageUrl + '?v=' + Date.now();
-        roomBookingImg.style.display = 'block';
-        roomBookingImg.parentElement.querySelector('span').style.display = 'none';
+      const miniHotelImg = document.getElementById('preview-mini-hotel-img');
+      if (miniHotelImg && miniHotelImageUrl) {
+        miniHotelImg.src = miniHotelImageUrl + '?v=' + Date.now();
+        miniHotelImg.style.display = 'block';
+        miniHotelImg.parentElement.querySelector('span').style.display = 'none';
       }
       
       // Save to localStorage
@@ -1242,7 +1334,7 @@ async function loadMassageImagesData(data = null) {
         deepTissue: deepTissueImageUrl || storedJson.deepTissue || '',
         reiki: reikiImageUrl || storedJson.reiki || '',
         sauna: saunaImageUrl || storedJson.sauna || '',
-        roomBooking: roomBookingImageUrl || storedJson.roomBooking || ''
+        miniHotel: miniHotelImageUrl || storedJson.miniHotel || ''
       };
       localStorage.setItem('btb_massage_images', JSON.stringify(massageImagesData));
       console.log('Massage images data saved to localStorage');
@@ -1276,9 +1368,9 @@ function initMassageImageUpload() {
       imageType: 'massage-sauna'
     },
     {
-      inputId: 'massage-room-booking-upload',
-      previewImgId: 'preview-massage-room-booking-img',
-      imageType: 'massage-room-booking'
+      inputId: 'mini-hotel-image-upload',
+      previewImgId: 'preview-mini-hotel-img',
+      imageType: 'mini-hotel'
     }
   ];
 
@@ -1286,13 +1378,22 @@ function initMassageImageUpload() {
     const fileInput = document.getElementById(config.inputId);
     const previewImg = document.getElementById(config.previewImgId);
 
+    console.log(`Initializing image upload for ${config.imageType}:`, {
+      inputId: config.inputId,
+      previewImgId: config.previewImgId,
+      fileInputExists: !!fileInput,
+      previewImgExists: !!previewImg
+    });
+
     if (fileInput) {
       fileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
+        console.log(`File selected for ${config.imageType}:`, file?.name);
         if (file && previewImg) {
           const previewContainer = previewImg.parentElement;
           const placeholderSpan = previewContainer.querySelector('span');
           
+          console.log(`Starting upload for ${config.imageType}...`);
           await uploadImage(file, config.imageType, null, null, {
             localStorageKey: 'btb_massage_images',
             fieldNameMapper: (type) => {
@@ -1301,7 +1402,7 @@ function initMassageImageUpload() {
                 'massage-deep-tissue': 'deepTissue',
                 'massage-reiki': 'reiki',
                 'massage-sauna': 'sauna',
-                'massage-room-booking': 'roomBooking'
+                'mini-hotel': 'miniHotel'
               };
               return typeMap[type] || type;
             },
@@ -1312,11 +1413,12 @@ function initMassageImageUpload() {
                 'massage-deep-tissue': 'Deep Tissue Massage',
                 'massage-reiki': 'Reiki Energy Healing',
                 'massage-sauna': 'Sauna',
-                'massage-room-booking': 'Room Booking'
+                'mini-hotel': 'Mini-hotel'
               };
               return nameMap[type] || type;
             },
             onSuccess: (imageUrl) => {
+              console.log(`Upload success for ${config.imageType}:`, imageUrl);
               if (previewImg) {
                 previewImg.src = imageUrl + '?v=' + Date.now();
                 previewImg.style.display = 'block';
@@ -1326,10 +1428,18 @@ function initMassageImageUpload() {
               if (typeof window.scheduleMassageAutoSave === 'function') {
                 window.scheduleMassageAutoSave();
               }
+            },
+            onError: (error) => {
+              console.error(`Upload error for ${config.imageType}:`, error);
+              alert(`Ошибка загрузки изображения для ${config.imageType}: ${error}`);
             }
           });
+        } else {
+          console.warn(`No file selected or previewImg not found for ${config.imageType}`);
         }
       });
+    } else {
+      console.error(`File input not found: ${config.inputId}`);
     }
   });
 }
@@ -1553,30 +1663,6 @@ function initAdminForms() {
       showStatus('Room added successfully!');
       loadRoomsData();
       addRoomForm.reset();
-    });
-  }
-  
-  // Add massage form
-  const addMassageForm = document.getElementById('add-massage-form');
-  if (addMassageForm) {
-    addMassageForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      
-      const service = {
-        name: document.getElementById('massage-name').value,
-        duration: parseInt(document.getElementById('massage-duration').value),
-        price: parseInt(document.getElementById('massage-price').value),
-        type: document.getElementById('massage-type').value,
-        description: document.getElementById('massage-description').value
-      };
-      
-      const services = getStoredData('btb_massage_services') || getDefaultMassageServices();
-      services.push(service);
-      setStoredData('btb_massage_services', services);
-      
-      showStatus('Massage service added successfully!');
-      loadMassageData();
-      addMassageForm.reset();
     });
   }
   
@@ -1806,10 +1892,44 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
       body: formData
     });
 
-    const result = await response.json();
+    // Check if response is OK
+    if (!response.ok) {
+      const text = await response.text();
+      console.error(`Upload failed: HTTP ${response.status}`, text);
+      const errorMsg = `Upload failed: ${response.status} ${response.statusText}\n${text.substring(0, 200)}`;
+      alert(errorMsg);
+      if (config.onError && typeof config.onError === 'function') {
+        config.onError(errorMsg);
+      }
+      return;
+    }
+
+    let result;
+    try {
+      result = await response.json();
+    } catch (e) {
+      const text = await response.text();
+      console.error('Failed to parse JSON response:', text);
+      const errorMsg = `Upload failed: Invalid server response\n${text.substring(0, 200)}`;
+      alert(errorMsg);
+      if (config.onError && typeof config.onError === 'function') {
+        config.onError(errorMsg);
+      }
+      return;
+    }
     // Some endpoints wrap payload under data; normalize
     const payload = result && result.data ? result.data : result;
     const filepath = payload && payload.filepath ? payload.filepath : (payload && payload.imageUrl ? payload.imageUrl : '');
+    
+    if (!result.success) {
+      const errorMsg = result.error || result.message || 'Upload failed';
+      console.error('Upload failed:', errorMsg);
+      alert(`Upload failed: ${errorMsg}`);
+      if (config.onError && typeof config.onError === 'function') {
+        config.onError(errorMsg);
+      }
+      return;
+    }
     
     if (result.success) {
       console.log('Image uploaded successfully:', result);
@@ -1854,7 +1974,7 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
         'massage-deep-tissue': 'preview-massage-deep-tissue-img',
         'massage-reiki': 'preview-massage-reiki-img',
         'massage-sauna': 'preview-massage-sauna-img',
-        'massage-room-booking': 'preview-massage-room-booking-img',
+        'mini-hotel': 'preview-mini-hotel-img',
         'wellness-massage': 'preview-wellness-massage-img',
         'wellness-yoga': 'preview-wellness-yoga-img',
         'wellness-sauna': 'preview-wellness-sauna-img'
@@ -1935,6 +2055,48 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
         contentData[roomFieldName] = filepath;
         localStorage.setItem('btb_content', JSON.stringify(contentData));
         console.log(`Also saved to btb_content: ${roomFieldName} = ${filepath}`);
+        
+        // Save to database (room_cards_settings table)
+        // Map roomType to database field name
+        const dbFieldMap = {
+          'basement': 'room_basement_card_image_url',
+          'ground-queen': 'room_ground_queen_card_image_url',
+          'ground-twin': 'room_ground_twin_card_image_url',
+          'second': 'room_second_card_image_url'
+        };
+        const dbFieldName = dbFieldMap[roomType] || ('room_' + roomType.replace(/-/g, '_') + '_card_image_url');
+        console.log(`Saving room card image to database: ${dbFieldName} = ${filepath}`);
+        try {
+          const saveFormData = new FormData();
+          saveFormData.append('action', 'save_content');
+          saveFormData.append(dbFieldName, filepath);
+          
+          const saveResponse = await fetch('api.php', {
+            method: 'POST',
+            body: saveFormData
+          });
+          
+          if (saveResponse.ok) {
+            const saveResult = await saveResponse.json();
+            if (saveResult.success) {
+              console.log(`✓ Saved room card image to database: ${dbFieldName} = ${filepath}`);
+              // Reload data to get updated image from database
+              if (reloadFunction && typeof reloadFunction === 'function') {
+                setTimeout(() => {
+                  console.log('Reloading homepage rooms data after image save...');
+                  reloadFunction();
+                }, 500);
+              }
+            } else {
+              console.error('Failed to save room card image to database:', saveResult.error);
+            }
+          } else {
+            const errorText = await saveResponse.text();
+            console.error('Failed to save room card image to database: HTTP error', errorText);
+          }
+        } catch (error) {
+          console.error('Error saving room card image to database:', error);
+        }
       } else if (localStorageKey === 'btb_massage_images' && imageType.startsWith('massage-')) {
         // Special handling for massage images - save in flat structure
         const massageType = imageType.replace('massage-', '');
@@ -2003,11 +2165,19 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
       
     } else {
       console.error('Upload failed:', result.error);
-      showStatus(`Upload failed: ${result.error}`, 'error');
+      const errorMsg = result.error || result.message || 'Upload failed';
+      showStatus(`Upload failed: ${errorMsg}`, 'error');
+      if (config.onError && typeof config.onError === 'function') {
+        config.onError(errorMsg);
+      }
     }
   } catch (error) {
     console.error('Upload error:', error);
-    showStatus('Upload failed: ' + error.message, 'error');
+    const errorMsg = error.message || 'Upload failed';
+    showStatus('Upload failed: ' + errorMsg, 'error');
+    if (config.onError && typeof config.onError === 'function') {
+      config.onError(errorMsg);
+    }
   }
 }
 
@@ -4023,6 +4193,20 @@ function updateImagePreview(prefix, imageUrl) {
   }
 }
 
+const PREVIEW_PRESERVE_WHITESPACE_FIELDS = new Set([
+  'wellness-description',
+  'wellness-massage-description',
+  'wellness-yoga-description',
+  'wellness-sauna-description',
+  'massage-intro',
+  'massage-relaxing-description',
+  'massage-deep-tissue-description',
+  'massage-reiki-description',
+  'massage-sauna-description',
+  'mini-hotel-description-1',
+  'mini-hotel-description-2'
+]);
+
 // Sync preview content to form field
 function syncPreviewToForm(previewElement, fieldId) {
   const formField = document.getElementById(fieldId);
@@ -4052,8 +4236,10 @@ function syncPreviewToForm(previewElement, fieldId) {
       content = clone.textContent || clone.innerText || '';
       // Clean up: normalize multiple newlines to single newline, but preserve intentional line breaks
       content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-      // Remove leading/trailing whitespace but preserve internal line breaks
-      content = content.trim();
+      // Remove leading/trailing whitespace unless field needs to preserve it
+      if (!PREVIEW_PRESERVE_WHITESPACE_FIELDS.has(fieldId)) {
+        content = content.trim();
+      }
     }
     
     const oldValue = formField.value;
@@ -4136,10 +4322,12 @@ function syncPreviewToForm(previewElement, fieldId) {
       }
       
       // Schedule auto-save for massage section
-      if (fieldId.startsWith('massage-')) {
+      if (fieldId.startsWith('massage-') || fieldId.startsWith('mini-hotel-')) {
+        console.log('Triggering massage auto-save for field:', fieldId);
         if (typeof window.scheduleMassageAutoSave === 'function') {
           if (typeof massageHasUnsavedChanges !== 'undefined') {
             massageHasUnsavedChanges = true;
+            console.log('Set massageHasUnsavedChanges = true for field:', fieldId);
           }
           window.scheduleMassageAutoSave();
         } else {
@@ -4175,7 +4363,7 @@ function syncPreviewToForm(previewElement, fieldId) {
       }
       
       // Schedule auto-save for floorplan section
-      if (fieldId.startsWith('basement-') || fieldId.startsWith('ground-') || fieldId.startsWith('loft-')) {
+      if (fieldId.startsWith('floorplan-') || fieldId.startsWith('basement-') || fieldId.startsWith('ground-') || fieldId.startsWith('loft-')) {
         console.log('Floorplan field changed:', fieldId, 'Scheduling auto-save...');
         if (typeof window.scheduleFloorplanAutoSave === 'function') {
           if (typeof floorplanHasUnsavedChanges !== 'undefined') {
@@ -4193,14 +4381,17 @@ function syncPreviewToForm(previewElement, fieldId) {
       }
       
       // Schedule auto-save for homepage-rooms section
-      if (fieldId.startsWith('room-basement-card-') || fieldId.startsWith('room-ground-queen-card-') || fieldId.startsWith('room-ground-twin-card-') || fieldId.startsWith('room-second-card-')) {
+      if (fieldId.startsWith('rooms-') || fieldId.startsWith('room-basement-card-') || fieldId.startsWith('room-ground-queen-card-') || fieldId.startsWith('room-ground-twin-card-') || fieldId.startsWith('room-second-card-')) {
+        console.log('Rooms field changed:', fieldId, 'Scheduling auto-save...');
         if (typeof window.scheduleHomepageRoomsAutoSave === 'function') {
           if (typeof homepageRoomsHasUnsavedChanges !== 'undefined') {
             homepageRoomsHasUnsavedChanges = true;
           }
+          console.log('Calling window.scheduleHomepageRoomsAutoSave');
           window.scheduleHomepageRoomsAutoSave();
         } else if (typeof scheduleHomepageRoomsAutoSave === 'function') {
           homepageRoomsHasUnsavedChanges = true;
+          console.log('Calling scheduleHomepageRoomsAutoSave');
           scheduleHomepageRoomsAutoSave();
         } else {
           console.warn('scheduleHomepageRoomsAutoSave is not defined');
@@ -6421,14 +6612,18 @@ let massageAutoSaveTimer = null;
 let massageHasUnsavedChanges = false;
 
 window.scheduleMassageAutoSave = function() {
+  console.log('scheduleMassageAutoSave: Called, massageHasUnsavedChanges =', massageHasUnsavedChanges);
   if (massageAutoSaveTimer) {
     clearTimeout(massageAutoSaveTimer);
   }
   
   massageAutoSaveTimer = setTimeout(() => {
+    console.log('scheduleMassageAutoSave: Timer fired, massageHasUnsavedChanges =', massageHasUnsavedChanges);
     if (massageHasUnsavedChanges) {
       saveMassageContent();
       massageHasUnsavedChanges = false;
+    } else {
+      console.log('scheduleMassageAutoSave: No unsaved changes, skipping save');
     }
   }, 2000); // 2 second delay
   
@@ -6437,8 +6632,24 @@ window.scheduleMassageAutoSave = function() {
 
 async function saveMassageContent() {
   updateMassageSaveStatus('saving');
+  console.log('saveMassageContent: Starting save...');
   
   try {
+    // Sync all preview fields to form before saving to ensure latest changes are included
+    const miniHotelTitlePreview = document.getElementById('preview-mini-hotel-title');
+    const miniHotelDesc1Preview = document.getElementById('preview-mini-hotel-desc-1');
+    const miniHotelDesc2Preview = document.getElementById('preview-mini-hotel-desc-2');
+    
+    if (miniHotelTitlePreview) {
+      syncPreviewToForm(miniHotelTitlePreview, 'mini-hotel-title');
+    }
+    if (miniHotelDesc1Preview) {
+      syncPreviewToForm(miniHotelDesc1Preview, 'mini-hotel-description-1');
+    }
+    if (miniHotelDesc2Preview) {
+      syncPreviewToForm(miniHotelDesc2Preview, 'mini-hotel-description-2');
+    }
+    
     const formData = new FormData();
     formData.append('action', 'save_content');
     
@@ -6453,7 +6664,34 @@ async function saveMassageContent() {
     formData.append('massage_reiki_description', document.getElementById('massage-reiki-description')?.value || '');
     formData.append('massage_sauna_title', document.getElementById('massage-sauna-title')?.value || '');
     formData.append('massage_sauna_description', document.getElementById('massage-sauna-description')?.value || '');
-    formData.append('massage_booking_title', document.getElementById('massage-booking-title')?.value || '');
+    
+    const miniHotelTitleField = document.getElementById('mini-hotel-title');
+    const miniHotelDesc1Field = document.getElementById('mini-hotel-description-1');
+    const miniHotelDesc2Field = document.getElementById('mini-hotel-description-2');
+    
+    const miniHotelTitle = miniHotelTitleField?.value || '';
+    const miniHotelDesc1 = miniHotelDesc1Field?.value || '';
+    const miniHotelDesc2 = miniHotelDesc2Field?.value || '';
+    
+    console.log('saveMassageContent: Mini-hotel fields:', {
+      titleFieldExists: !!miniHotelTitleField,
+      titleFieldValue: miniHotelTitle,
+      desc1FieldExists: !!miniHotelDesc1Field,
+      desc1FieldValue: miniHotelDesc1.substring(0, 50),
+      desc2FieldExists: !!miniHotelDesc2Field,
+      desc2FieldValue: miniHotelDesc2.substring(0, 50)
+    });
+    
+    formData.append('mini_hotel_title', miniHotelTitle);
+    formData.append('mini_hotel_description_1', miniHotelDesc1);
+    formData.append('mini_hotel_description_2', miniHotelDesc2);
+    
+    // Log what we're sending
+    console.log('saveMassageContent: Sending data:', {
+      mini_hotel_title: miniHotelTitle.substring(0, 50),
+      mini_hotel_description_1: miniHotelDesc1.substring(0, 50),
+      mini_hotel_description_2: miniHotelDesc2.substring(0, 50)
+    });
     
     const response = await fetch('api.php', {
       method: 'POST',
@@ -6461,9 +6699,19 @@ async function saveMassageContent() {
     });
     
     if (response.ok) {
-      updateMassageSaveStatus('saved');
+      const result = await response.json();
+      console.log('saveMassageContent: Save response:', result);
+      if (result.success) {
+        updateMassageSaveStatus('saved');
+        console.log('saveMassageContent: Content saved successfully');
+      } else {
+        updateMassageSaveStatus('error');
+        console.error('saveMassageContent: Save failed:', result.error || result.message);
+      }
     } else {
+      const errorText = await response.text();
       updateMassageSaveStatus('error');
+      console.error('saveMassageContent: HTTP error:', response.status, errorText);
     }
   } catch (error) {
     console.error('Error saving massage content:', error);
@@ -6529,6 +6777,48 @@ async function loadHomepageRoomsData() {
       if (result.success && result.data) {
         const data = result.data;
         
+        // Try to get from localStorage first (for immediate display)
+        const stored = localStorage.getItem('btb_content') || '{}';
+        const storedJson = JSON.parse(stored);
+        
+        // Rooms Section Title and Subtitle
+        const roomsTitleField = document.getElementById('rooms-title');
+        const roomsSubtitleField = document.getElementById('rooms-subtitle');
+        const roomsTitlePreview = document.getElementById('preview-rooms-title');
+        const roomsSubtitlePreview = document.getElementById('preview-rooms-subtitle');
+        
+        // Use stored value if available, otherwise use data from server
+        const title = storedJson.roomsTitle || data.roomsTitle || 'Choose your room';
+        const subtitle = storedJson.roomsSubtitle !== undefined ? storedJson.roomsSubtitle : (data.roomsSubtitle || '');
+        
+        console.log('Loading rooms title/subtitle:', {
+          fromServer: { roomsTitle: data.roomsTitle, roomsSubtitle: data.roomsSubtitle },
+          fromLocalStorage: { roomsTitle: storedJson.roomsTitle, roomsSubtitle: storedJson.roomsSubtitle },
+          final: { title, subtitle }
+        });
+        
+        if (roomsTitleField) {
+          roomsTitleField.value = title;
+          console.log('Set rooms-title field value:', title);
+          if (roomsTitlePreview) {
+            roomsTitlePreview.textContent = title;
+            console.log('Set preview-rooms-title textContent:', title);
+          }
+        }
+        if (roomsSubtitleField) {
+          roomsSubtitleField.value = subtitle;
+          console.log('Set rooms-subtitle field value:', subtitle);
+          if (roomsSubtitlePreview) {
+            roomsSubtitlePreview.textContent = subtitle;
+            console.log('Set preview-rooms-subtitle textContent:', subtitle);
+          }
+        }
+        
+        // Update localStorage with server data
+        storedJson.roomsTitle = title;
+        storedJson.roomsSubtitle = subtitle;
+        localStorage.setItem('btb_content', JSON.stringify(storedJson));
+        
         // Basement card
         const basementTitleField = document.getElementById('room-basement-card-title');
         const basementDescField = document.getElementById('room-basement-card-description');
@@ -6537,9 +6827,16 @@ async function loadHomepageRoomsData() {
         const basementDescPreview = document.getElementById('preview-room-basement-card-description');
         const basementPricePreview = document.getElementById('preview-room-basement-card-price');
         
+        console.log('Loading basement card data:', {
+          roomBasementCardTitle: data.roomBasementCardTitle,
+          roomBasementCardDescription: data.roomBasementCardDescription,
+          roomBasementCardPrice: data.roomBasementCardPrice
+        });
+        
         if (basementTitleField) {
           const title = data.roomBasementCardTitle || 'Basement<br/>Queen bed';
           basementTitleField.value = title;
+          console.log('Set room-basement-card-title:', title);
           if (basementTitlePreview) {
             basementTitlePreview.textContent = title.replace(/<br\s*\/?>/gi, '\n');
             basementTitlePreview.innerHTML = title.replace(/<br\s*\/?>/gi, '<br>');
@@ -6548,6 +6845,7 @@ async function loadHomepageRoomsData() {
         if (basementDescField) {
           const desc = data.roomBasementCardDescription || '';
           basementDescField.value = desc;
+          console.log('Set room-basement-card-description:', desc);
           if (basementDescPreview) {
             basementDescPreview.textContent = desc.replace(/\n/g, '\n');
             basementDescPreview.innerHTML = desc.replace(/\n/g, '<br>');
@@ -6556,6 +6854,7 @@ async function loadHomepageRoomsData() {
         if (basementPriceField) {
           const price = data.roomBasementCardPrice || 'From 140 CAD/night';
           basementPriceField.value = price;
+          console.log('Set room-basement-card-price:', price);
           if (basementPricePreview) {
             basementPricePreview.textContent = price;
           }
@@ -6717,54 +7016,48 @@ async function loadHomepageRoomsData() {
 function initHomepageRoomsImageUpload() {
   const uploadConfigs = [
     {
-      buttonId: 'room-basement-card-upload-btn',
       inputId: 'room-basement-card-upload',
-      previewId: 'room-basement-card-preview',
-      pathId: 'room-basement-card-path',
       imageType: 'room-basement-card'
     },
     {
-      buttonId: 'room-ground-queen-card-upload-btn',
       inputId: 'room-ground-queen-card-upload',
-      previewId: 'room-ground-queen-card-preview',
-      pathId: 'room-ground-queen-card-path',
       imageType: 'room-ground-queen-card'
     },
     {
-      buttonId: 'room-ground-twin-card-upload-btn',
       inputId: 'room-ground-twin-card-upload',
-      previewId: 'room-ground-twin-card-preview',
-      pathId: 'room-ground-twin-card-path',
       imageType: 'room-ground-twin-card'
     },
     {
-      buttonId: 'room-second-card-upload-btn',
       inputId: 'room-second-card-upload',
-      previewId: 'room-second-card-preview',
-      pathId: 'room-second-card-path',
       imageType: 'room-second-card'
     }
   ];
 
   uploadConfigs.forEach(config => {
-    const uploadBtn = document.getElementById(config.buttonId);
     const fileInput = document.getElementById(config.inputId);
-    const preview = document.getElementById(config.previewId);
-    const pathDisplay = document.getElementById(config.pathId);
 
-    if (uploadBtn && fileInput) {
-      uploadBtn.addEventListener('click', () => fileInput.click());
-      fileInput.addEventListener('change', async (e) => {
+    if (fileInput) {
+      // Remove existing event listeners by cloning the element
+      const newFileInput = fileInput.cloneNode(true);
+      fileInput.parentNode.replaceChild(newFileInput, fileInput);
+      
+      // Add change event listener
+      newFileInput.addEventListener('change', async (e) => {
         const file = e.target.files[0];
         if (file) {
-          await uploadImage(file, config.imageType, preview, pathDisplay, {
+          console.log(`Uploading ${config.imageType} image:`, file.name);
+          await uploadImage(file, config.imageType, null, null, {
             localStorageKey: 'btb_homepage_rooms',
             fieldNameMapper: (type) => type.replace('room-', '').replace('-card', '') + 'CardImageUrl',
             reloadFunction: loadHomepageRoomsData,
             imageNameMapper: (type) => type.replace('room-', '').replace('-card', '').charAt(0).toUpperCase() + type.replace('room-', '').replace('-card', '').slice(1) + ' Card'
           });
+          // Reset input to allow selecting the same file again
+          e.target.value = '';
         }
       });
+    } else {
+      console.warn(`File input not found: ${config.inputId}`);
     }
   });
 }
@@ -6798,7 +7091,10 @@ async function loadWellnessExperiencesData() {
         if (titleField) titleField.value = data.wellnessTitle || '';
         if (descField) descField.value = data.wellnessDescription || '';
         if (titlePreview) titlePreview.textContent = data.wellnessTitle || 'Wellness Experiences';
-        if (descPreview) descPreview.textContent = data.wellnessDescription || 'Enhance your stay with our additional wellness services. Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.';
+        if (descPreview) {
+          const previewText = data.wellnessDescription || 'Enhance your stay with our additional wellness services. Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.';
+          descPreview.textContent = previewText;
+        }
         
         // Massage card
         const massageTitleField = document.getElementById('wellness-massage-title');
@@ -6810,7 +7106,10 @@ async function loadWellnessExperiencesData() {
         if (massageTitleField) massageTitleField.value = data.wellnessMassageTitle || '';
         if (massageDescField) massageDescField.value = data.wellnessMassageDescription || '';
         if (massageTitlePreview) massageTitlePreview.textContent = data.wellnessMassageTitle || 'Massage';
-        if (massageDescPreview) massageDescPreview.textContent = data.wellnessMassageDescription || 'Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.';
+        if (massageDescPreview) {
+          const massageText = data.wellnessMassageDescription || 'Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.';
+          massageDescPreview.textContent = massageText;
+        }
         if (massageImg && massageImageUrl) {
           massageImg.src = massageImageUrl + '?v=' + Date.now();
           massageImg.style.display = 'block';
@@ -6828,7 +7127,10 @@ async function loadWellnessExperiencesData() {
         if (yogaTitleField) yogaTitleField.value = data.wellnessYogaTitle || '';
         if (yogaDescField) yogaDescField.value = data.wellnessYogaDescription || '';
         if (yogaTitlePreview) yogaTitlePreview.textContent = data.wellnessYogaTitle || 'Yoga';
-        if (yogaDescPreview) yogaDescPreview.textContent = data.wellnessYogaDescription || 'On the property, surrounded by a cozy forest, you\'ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.';
+        if (yogaDescPreview) {
+          const yogaText = data.wellnessYogaDescription || 'On the property, surrounded by a cozy forest, you\'ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.';
+          yogaDescPreview.textContent = yogaText;
+        }
         if (yogaImg && yogaImageUrl) {
           yogaImg.src = yogaImageUrl + '?v=' + Date.now();
           yogaImg.style.display = 'block';
@@ -6846,7 +7148,10 @@ async function loadWellnessExperiencesData() {
         if (saunaTitleField) saunaTitleField.value = data.wellnessSaunaTitle || '';
         if (saunaDescField) saunaDescField.value = data.wellnessSaunaDescription || '';
         if (saunaTitlePreview) saunaTitlePreview.textContent = data.wellnessSaunaTitle || 'Sauna';
-        if (saunaDescPreview) saunaDescPreview.textContent = data.wellnessSaunaDescription || 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.';
+        if (saunaDescPreview) {
+          const saunaText = data.wellnessSaunaDescription || 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.';
+          saunaDescPreview.textContent = saunaText;
+        }
         if (saunaImg && saunaImageUrl) {
           saunaImg.src = saunaImageUrl + '?v=' + Date.now();
           saunaImg.style.display = 'block';
@@ -7715,25 +8020,79 @@ async function saveHomepageRoomsContent() {
   updateHomepageRoomsSaveStatus('saving');
   
   try {
+    // Sync all preview fields to hidden form fields before saving
+    const previewFields = [
+      'rooms-title', 'rooms-subtitle',
+      'room-basement-card-title', 'room-basement-card-description', 'room-basement-card-price',
+      'room-ground-queen-card-title', 'room-ground-queen-card-description', 'room-ground-queen-card-price',
+      'room-ground-twin-card-title', 'room-ground-twin-card-description', 'room-ground-twin-card-price',
+      'room-second-card-title', 'room-second-card-description', 'room-second-card-price'
+    ];
+    
+    previewFields.forEach(fieldName => {
+      const previewElement = document.getElementById('preview-' + fieldName);
+      if (previewElement) {
+        syncPreviewToForm(previewElement, fieldName);
+      }
+    });
+    
     const formData = new FormData();
     formData.append('action', 'save_content');
     
     // Get all field values
-    formData.append('room_basement_card_title', document.getElementById('room-basement-card-title')?.value || '');
-    formData.append('room_basement_card_description', document.getElementById('room-basement-card-description')?.value || '');
-    formData.append('room_basement_card_price', document.getElementById('room-basement-card-price')?.value || '');
+    const roomsTitle = document.getElementById('rooms-title')?.value || 'Choose your room';
+    const roomsSubtitle = document.getElementById('rooms-subtitle')?.value || '';
     
-    formData.append('room_ground_queen_card_title', document.getElementById('room-ground-queen-card-title')?.value || '');
-    formData.append('room_ground_queen_card_description', document.getElementById('room-ground-queen-card-description')?.value || '');
-    formData.append('room_ground_queen_card_price', document.getElementById('room-ground-queen-card-price')?.value || '');
+    const basementCardTitle = document.getElementById('room-basement-card-title')?.value || '';
+    const basementCardDescription = document.getElementById('room-basement-card-description')?.value || '';
+    const basementCardPrice = document.getElementById('room-basement-card-price')?.value || '';
     
-    formData.append('room_ground_twin_card_title', document.getElementById('room-ground-twin-card-title')?.value || '');
-    formData.append('room_ground_twin_card_description', document.getElementById('room-ground-twin-card-description')?.value || '');
-    formData.append('room_ground_twin_card_price', document.getElementById('room-ground-twin-card-price')?.value || '');
+    const groundQueenCardTitle = document.getElementById('room-ground-queen-card-title')?.value || '';
+    const groundQueenCardDescription = document.getElementById('room-ground-queen-card-description')?.value || '';
+    const groundQueenCardPrice = document.getElementById('room-ground-queen-card-price')?.value || '';
     
-    formData.append('room_second_card_title', document.getElementById('room-second-card-title')?.value || '');
-    formData.append('room_second_card_description', document.getElementById('room-second-card-description')?.value || '');
-    formData.append('room_second_card_price', document.getElementById('room-second-card-price')?.value || '');
+    const groundTwinCardTitle = document.getElementById('room-ground-twin-card-title')?.value || '';
+    const groundTwinCardDescription = document.getElementById('room-ground-twin-card-description')?.value || '';
+    const groundTwinCardPrice = document.getElementById('room-ground-twin-card-price')?.value || '';
+    
+    const secondCardTitle = document.getElementById('room-second-card-title')?.value || '';
+    const secondCardDescription = document.getElementById('room-second-card-description')?.value || '';
+    const secondCardPrice = document.getElementById('room-second-card-price')?.value || '';
+    
+    console.log('Saving homepage rooms content:', {
+      rooms_title: roomsTitle,
+      rooms_subtitle: roomsSubtitle,
+      room_basement_card_title: basementCardTitle,
+      room_basement_card_description: basementCardDescription,
+      room_basement_card_price: basementCardPrice,
+      room_ground_queen_card_title: groundQueenCardTitle,
+      room_ground_queen_card_description: groundQueenCardDescription,
+      room_ground_queen_card_price: groundQueenCardPrice,
+      room_ground_twin_card_title: groundTwinCardTitle,
+      room_ground_twin_card_description: groundTwinCardDescription,
+      room_ground_twin_card_price: groundTwinCardPrice,
+      room_second_card_title: secondCardTitle,
+      room_second_card_description: secondCardDescription,
+      room_second_card_price: secondCardPrice
+    });
+    
+    formData.append('rooms_title', roomsTitle);
+    formData.append('rooms_subtitle', roomsSubtitle);
+    formData.append('room_basement_card_title', basementCardTitle);
+    formData.append('room_basement_card_description', basementCardDescription);
+    formData.append('room_basement_card_price', basementCardPrice);
+    
+    formData.append('room_ground_queen_card_title', groundQueenCardTitle);
+    formData.append('room_ground_queen_card_description', groundQueenCardDescription);
+    formData.append('room_ground_queen_card_price', groundQueenCardPrice);
+    
+    formData.append('room_ground_twin_card_title', groundTwinCardTitle);
+    formData.append('room_ground_twin_card_description', groundTwinCardDescription);
+    formData.append('room_ground_twin_card_price', groundTwinCardPrice);
+    
+    formData.append('room_second_card_title', secondCardTitle);
+    formData.append('room_second_card_description', secondCardDescription);
+    formData.append('room_second_card_price', secondCardPrice);
     
     // Get image URLs from localStorage (they're saved there by upload_image.php)
     const stored = localStorage.getItem('btb_homepage_rooms') || '{}';
@@ -7749,14 +8108,52 @@ async function saveHomepageRoomsContent() {
       body: formData
     });
     
-    if (response.ok) {
+    const responseText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Error parsing JSON response:', parseError);
+      console.error('Response text:', responseText);
+      updateHomepageRoomsSaveStatus('error');
+      alert('Ошибка при сохранении: сервер вернул неверный ответ. Проверьте консоль для деталей.');
+      return;
+    }
+    
+    if (response.ok && result.success) {
+      console.log('Homepage rooms content saved successfully:', result);
+      
+      // Check for warnings about missing columns
+      if (result.warning) {
+        console.warn('Warning:', result.warning);
+        alert('Внимание: ' + result.warning + '\n\nПожалуйста, запустите скрипт add_rooms_title_fields.php на сервере для добавления необходимых колонок в базу данных.');
+      }
+      
       updateHomepageRoomsSaveStatus('saved');
+      
+      // Save to localStorage for persistence
+      const stored = localStorage.getItem('btb_content') || '{}';
+      const storedJson = JSON.parse(stored);
+      storedJson.roomsTitle = roomsTitle;
+      storedJson.roomsSubtitle = roomsSubtitle;
+      localStorage.setItem('btb_content', JSON.stringify(storedJson));
     } else {
+      console.error('Error saving homepage rooms content:', result);
+      const errorMessage = result.error || 'Неизвестная ошибка при сохранении';
+      
+      // Check if it's a database column missing error
+      if (errorMessage.includes('Database columns missing') || errorMessage.includes('rooms_title') || errorMessage.includes('rooms_subtitle')) {
+        alert('Ошибка: отсутствуют необходимые колонки в базе данных. Пожалуйста, запустите add_rooms_title_fields.php для их создания.');
+      } else {
+        alert('Ошибка при сохранении: ' + errorMessage);
+      }
+      
       updateHomepageRoomsSaveStatus('error');
     }
   } catch (error) {
     console.error('Error saving homepage rooms content:', error);
     updateHomepageRoomsSaveStatus('error');
+    alert('Ошибка при сохранении: ' + error.message);
   }
 }
 
@@ -7951,6 +8348,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const currentLoftImage = (loftPathEl && loftPathEl.textContent) || storedJson.loft_image_url || '';
 
       const floorplanData = {
+        floorplanTitle: document.getElementById('floorplan-title')?.value || 'Floor plan',
+        floorplanSubtitle: document.getElementById('floorplan-subtitle')?.value || 'Three levels of comfort: basement, ground floor and a cozy loft under the roof.',
         basementSubtitle: document.getElementById('basement-subtitle').value,
         basementDescription: document.getElementById('basement-description').value,
         basementImageUrl: currentBasementImage,
@@ -7987,6 +8386,8 @@ document.addEventListener('DOMContentLoaded', () => {
           // Convert camelCase to underscore format for consistency with API
           // Universal: use consistent field names for all sections
           const localStorageData = {
+            floorplan_title: floorplanData.floorplanTitle,
+            floorplan_subtitle: floorplanData.floorplanSubtitle,
             basement_subtitle: floorplanData.basementSubtitle,
             basement_description: floorplanData.basementDescription,
             basement_image_url: floorplanData.basementImageUrl,
@@ -8012,6 +8413,8 @@ document.addEventListener('DOMContentLoaded', () => {
         // Convert camelCase to underscore format for consistency with API
         // Universal: use consistent field names for all sections
         const localStorageData = {
+          floorplan_title: floorplanData.floorplanTitle,
+          floorplan_subtitle: floorplanData.floorplanSubtitle,
           basement_subtitle: floorplanData.basementSubtitle,
           basement_description: floorplanData.basementDescription,
           basement_image_url: floorplanData.basementImageUrl,
