@@ -112,9 +112,9 @@
     <nav class="admin-nav-tabs">
       <button class="admin-nav-tab active" data-section="dashboard">Dashboard</button>
       <button class="admin-nav-tab" data-section="homepage">Home Page</button>
-      <button class="admin-nav-tab" data-section="floorplan">Floor Plan</button>
+      <button class="admin-nav-tab" data-section="floorplan">Common areas</button>
       <button class="admin-nav-tab" data-section="rooms">Rooms</button>
-      <button class="admin-nav-tab" data-section="massage">Massage</button>
+      <button class="admin-nav-tab" data-section="massage">Wellness Experiences (page)</button>
       <button class="admin-nav-tab" data-section="yoga">Yoga</button>
       <button class="admin-nav-tab" data-section="content">Content</button>
       <button class="admin-nav-tab" data-section="images">Images</button>
@@ -129,7 +129,7 @@
           <p id="total-rooms">4</p>
         </div>
         <div class="admin-stat-card">
-          <h3>Massage Services</h3>
+          <h3>Wellness services</h3>
           <p id="total-massage">3</p>
         </div>
         <div class="admin-stat-card">
@@ -145,7 +145,7 @@
 
     <!-- Home Page Section -->
     <section id="homepage-section" class="admin-section" style="display: none;">
-      <h2>Home Page Management</h2>
+      <h2>Main page</h2>
       
       <div class="admin-form">
         <div class="admin-form-group full-width">
@@ -176,12 +176,9 @@
       </div>
     </section>
 
-    <!-- Floor Plan Section -->
+    <!-- Common areas (floor plan content) -->
     <section id="floorplan-section" class="admin-section" style="display: none;">
-      <h2>Floor Plan Management</h2>
-      
       <div class="admin-form">
-        <h3 style="margin-top: 0; color: #4a5568;">Basement</h3>
         <div class="admin-form-group full-width">
           <label for="basement-subtitle">Subtitle</label>
           <input type="text" id="basement-subtitle" placeholder="Private floor with a separate entrance.">
@@ -191,19 +188,18 @@
           <textarea id="basement-description" class="admin-content-editor" rows="3"></textarea>
         </div>
         <div class="admin-form-group full-width" style="margin-top: 16px;">
-          <label>Basement Image</label>
+          <label>Kitchen Image</label>
           <div class="image-upload-container">
             <input type="file" id="basement-image-upload" accept="image/*" style="display: none;">
-            <button type="button" id="basement-upload-btn" class="admin-btn admin-btn-secondary">Upload Basement Image</button>
+            <button type="button" id="basement-upload-btn" class="admin-btn admin-btn-secondary">Upload Kitchen Image</button>
             <div id="basement-image-preview" class="image-preview"></div>
             <div id="basement-image-path" class="image-path-display"></div>
           </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload basement floor plan image</small>
+          <small style="color: #718096; font-size: 0.875rem;">Upload kitchen floor plan image</small>
         </div>
       </div>
       
       <div class="admin-form" style="margin-top: 32px;">
-        <h3 style="color: #4a5568;">Ground Floor</h3>
         <div class="admin-form-group full-width">
           <label for="ground-subtitle">Subtitle</label>
           <input type="text" id="ground-subtitle" placeholder="Open space with a separate entrance.">
@@ -213,36 +209,35 @@
           <textarea id="ground-description" class="admin-content-editor" rows="3"></textarea>
         </div>
         <div class="admin-form-group full-width" style="margin-top: 16px;">
-          <label>Ground Floor Image</label>
+          <label>Hall Image</label>
           <div class="image-upload-container">
             <input type="file" id="ground-image-upload" accept="image/*" style="display: none;">
-            <button type="button" id="ground-upload-btn" class="admin-btn admin-btn-secondary">Upload Ground Floor Image</button>
+            <button type="button" id="ground-upload-btn" class="admin-btn admin-btn-secondary">Upload Hall Image</button>
             <div id="ground-image-preview" class="image-preview"></div>
             <div id="ground-image-path" class="image-path-display"></div>
           </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload ground floor plan image</small>
+          <small style="color: #718096; font-size: 0.875rem;">Upload hall floor plan image</small>
         </div>
       </div>
       
       <div class="admin-form" style="margin-top: 32px;">
-        <h3 style="color: #4a5568;">Second Floor (Loft)</h3>
         <div class="admin-form-group full-width">
           <label for="loft-subtitle">Subtitle</label>
-          <input type="text" id="loft-subtitle" placeholder="Private top-floor space under the roof.">
+          <input type="text" id="loft-subtitle" placeholder="Multifunctional spaces & small cinema">
         </div>
         <div class="admin-form-group full-width" style="margin-top: 16px;">
           <label for="loft-description">Description</label>
           <textarea id="loft-description" class="admin-content-editor" rows="3"></textarea>
         </div>
         <div class="admin-form-group full-width" style="margin-top: 16px;">
-          <label>Loft Image</label>
+          <label>Floor plan image</label>
           <div class="image-upload-container">
             <input type="file" id="loft-image-upload" accept="image/*" style="display: none;">
-            <button type="button" id="loft-upload-btn" class="admin-btn admin-btn-secondary">Upload Loft Image</button>
+            <button type="button" id="loft-upload-btn" class="admin-btn admin-btn-secondary">Upload floor plan image</button>
             <div id="loft-image-preview" class="image-preview"></div>
             <div id="loft-image-path" class="image-path-display"></div>
           </div>
-          <small style="color: #718096; font-size: 0.875rem;">Upload loft floor plan image</small>
+          <small style="color: #718096; font-size: 0.875rem;">Upload floor plan for workshop rooms and home cinema</small>
         </div>
       </div>
       
@@ -294,13 +289,13 @@
       </div>
     </section>
 
-    <!-- Massage Section -->
+    <!-- Wellness Experiences page (legacy id: massage-section) -->
     <section id="massage-section" class="admin-section" style="display: none;">
-      <h2>Massage Services Management</h2>
+      <h2>Wellness Experiences (page)</h2>
       <div id="massage-list"></div>
       
       <div style="margin-top: 24px;">
-        <h3>Add New Massage Service</h3>
+        <h3>Add new wellness service</h3>
         <form id="add-massage-form" class="admin-form">
           <div class="admin-form-row">
             <div class="admin-form-group">

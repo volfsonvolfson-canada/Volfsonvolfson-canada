@@ -6,6 +6,218 @@
 // Конфигурация API
 const BOOKING_API_URL = 'api.php';
 
+/**
+ * «Корзина» услуг на странице Massage: несколько позиций (тип + длительность) с количеством.
+ * Ключ — type + NUL + duration. После успешной отправки очищается.
+ */
+const massageBookingCart = Object.create(null);
+
+function massageCartLineKey(type, duration) {
+  return `${String(type || '').trim()}\u0000${String(duration || '').trim()}`;
+}
+
+/** @returns {string|null} error message or null if OK */
+function validateMassageServiceCombo(type, durationStr) {
+  const t = String(type || '').trim();
+  const d = String(durationStr || '').trim();
+  if (!t) return 'Service type is required';
+  if (!d) return 'Duration is required';
+  if (t === 'Sauna') {
+    return d === '60' ? null : 'Sauna is booked as 1 hour (60 minutes)';
+  }
+  if (t === 'Reiki Energy Healing') {
+    return d === '15' || d === '30' ? null : 'Reiki is available for 15 or 30 minutes';
+  }
+  if (t === 'Relaxing Massage' || t === 'Deep Tissue Massage') {
+    return d === '60' || d === '90' ? null : 'Choose 60 or 90 minutes for this massage';
+  }
+  return 'Unknown service type';
+}
+
+function getMassageCartLines() {
+  return Object.entries(massageBookingCart)
+    .map(([key, qty]) => {
+      const parts = key.split('\u0000');
+      const type = parts[0] || '';
+      const duration = parts[1] || '';
+      return { key, type, duration, qty: Math.max(0, Number(qty) || 0) };
+    })
+    .filter((line) => line.qty > 0)
+    .sort((a, b) => `${a.type} ${a.duration}`.localeCompare(`${b.type} ${b.duration}`));
+}
+
+function getMassageCartTotalCount() {
+  return getMassageCartLines().reduce((sum, line) => sum + line.qty, 0);
+}
+
+function addMassageCartLine(type, duration) {
+  const err = validateMassageServiceCombo(type, duration);
+  if (err) {
+    console.warn('addMassageCartLine:', err, type, duration);
+    return false;
+  }
+  const key = massageCartLineKey(type, duration);
+  massageBookingCart[key] = (massageBookingCart[key] || 0) + 1;
+  return true;
+}
+
+function removeMassageCartLineCompletely(type, duration) {
+  const key = massageCartLineKey(type, duration);
+  delete massageBookingCart[key];
+}
+
+function clearMassageBookingCart() {
+  Object.keys(massageBookingCart).forEach((k) => {
+    delete massageBookingCart[k];
+  });
+}
+
+function formatMassageDurationLabel(type, minutesStr) {
+  const m = String(minutesStr);
+  if (type === 'Sauna' && m === '60') return '1 hour';
+  if (m === '15') return '15 min';
+  if (m === '30') return '30 min';
+  if (m === '60') return '60 min';
+  if (m === '90') return '90 min';
+  return `${m} min`;
+}
+
+function attachMassageCartFormDelegates(form) {
+  if (!form || form.id !== 'massage-form') return;
+  // Cart panel (#massage-cart-panel) is a sibling of the form, not inside it — delegate from their common parent.
+  const root = form.parentElement;
+  if (!root || root._btbMassageCartClickDelegated) return;
+  root._btbMassageCartClickDelegated = true;
+  root.addEventListener('click', (e) => {
+    const rem = e.target.closest('.massage-cart-remove');
+    if (!rem) return;
+    e.preventDefault();
+    const type = (rem.getAttribute('data-m-type') || '').trim();
+    const duration = (rem.getAttribute('data-m-duration') || '').trim();
+    removeMassageCartLineCompletely(type, duration);
+    const f = document.getElementById('massage-form');
+    if (f) renderMassageCartUI(f);
+  });
+}
+
+function renderMassageCartUI(form) {
+  if (!form || form.id !== 'massage-form') return;
+  attachMassageCartFormDelegates(form);
+  const lines = getMassageCartLines();
+  const panelEl = document.getElementById('massage-cart-panel');
+  const ulEl = document.getElementById('massage-cart-lines');
+  const submitBtn = document.getElementById('massage-submit-btn');
+  const hasLines = lines.length > 0;
+
+  if (ulEl) {
+    ulEl.innerHTML = '';
+    lines.forEach((line) => {
+      const li = document.createElement('li');
+      li.className = 'massage-cart-line';
+      const label = document.createElement('span');
+      label.className = 'massage-cart-line-label';
+      label.textContent = `${line.type} — ${formatMassageDurationLabel(line.type, line.duration)} × ${line.qty}`;
+      const actions = document.createElement('span');
+      actions.className = 'massage-cart-line-actions';
+      const remBtn = document.createElement('button');
+      remBtn.type = 'button';
+      remBtn.className = 'btn outline massage-cart-remove';
+      remBtn.textContent = 'Remove';
+      remBtn.setAttribute('data-m-type', line.type);
+      remBtn.setAttribute('data-m-duration', line.duration);
+      remBtn.setAttribute(
+        'aria-label',
+        `Remove ${line.type} ${formatMassageDurationLabel(line.type, line.duration)} from selection`
+      );
+      actions.appendChild(remBtn);
+      li.appendChild(label);
+      li.appendChild(actions);
+      ulEl.appendChild(li);
+    });
+  }
+
+  if (panelEl) {
+    panelEl.hidden = !hasLines;
+  }
+
+  if (submitBtn) {
+    const total = getMassageCartTotalCount();
+    submitBtn.textContent =
+      total > 0 ? `Book ${total} service request${total === 1 ? '' : 's'}` : 'Book service';
+  }
+
+  syncMassagePriceLinePressedState();
+
+  const typeEl = form.querySelector('#type');
+  const durationEl = form.querySelector('#duration');
+  if (
+    typeEl &&
+    durationEl &&
+    typeEl.tagName === 'SELECT' &&
+    durationEl.tagName === 'SELECT'
+  ) {
+    if (hasLines) {
+      typeEl.disabled = true;
+      durationEl.disabled = true;
+    } else {
+      typeEl.disabled = false;
+      if (typeof form._setMassageDurations === 'function') {
+        form._setMassageDurations();
+      } else {
+        durationEl.disabled = false;
+      }
+    }
+  }
+}
+
+const MASSAGE_LI_IN_CART_CLASS = 'massage-li-in-cart';
+
+function syncMassagePriceLinePressedState() {
+  const lines = getMassageCartLines();
+  const active = new Set(
+    lines.filter((l) => l.qty > 0).map((l) => massageCartLineKey(l.type, l.duration))
+  );
+  document.querySelectorAll('.massage-list li[data-m-type][data-m-duration]').forEach((li) => {
+    const t = li.getAttribute('data-m-type');
+    const d = li.getAttribute('data-m-duration');
+    const on = active.has(massageCartLineKey(t, d));
+    li.classList.toggle(MASSAGE_LI_IN_CART_CLASS, on);
+    li.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+}
+
+async function postSingleMassageBookingRequest(formData) {
+  const formDataToSend = new FormData();
+  formDataToSend.append('action', 'create_massage_booking');
+  formDataToSend.append('massage_type', formData.type);
+  formDataToSend.append('duration', formData.duration);
+  formDataToSend.append('massage_date', formData.date);
+  formDataToSend.append('massage_time', formData.time);
+  formDataToSend.append('guest_name', formData.name);
+  formDataToSend.append('email', formData.email);
+  formDataToSend.append('phone', formData.phone);
+  if (formData.withRoom) {
+    formDataToSend.append('with_room', formData.withRoom);
+  }
+
+  const response = await fetch(BOOKING_API_URL, {
+    method: 'POST',
+    body: formDataToSend
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('MassageAPI: HTTP error:', response.status, errorText);
+    throw new Error(`Failed to create massage booking: HTTP ${response.status}`);
+  }
+
+  const result = await response.json();
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to create massage booking');
+  }
+  return result;
+}
+
 // parseLocalDate - парсинг даты YYYY-MM-DD как локальной даты (без часового пояса)
 // Используется для избежания проблем с часовыми поясами
 function parseLocalDate(iso) {
@@ -963,20 +1175,29 @@ function showBookingSuccessMessage(form, options = {}) {
 /**
  * Валидация данных формы бронирования массажа
  * @param {Object} formData Данные формы
+ * @param {{ skipServiceFields?: boolean }} [options]
  * @returns {Object} {valid: boolean, errors: Object}
  */
-function validateMassageForm(formData) {
+function validateMassageForm(formData, options = {}) {
   const errors = {};
+  const skipService = options.skipServiceFields === true;
 
   // Валидация в правильной последовательности:
   // 1. Сначала type (тип массажа)
-  if (!formData.type || !formData.type.trim()) {
-    errors.type = 'Massage type is required';
-  }
+  if (!skipService) {
+    if (!formData.type || !formData.type.trim()) {
+      errors.type = 'Massage type is required';
+    }
 
-  // 2. Потом duration (длительность)
-  if (!formData.duration || !formData.duration.trim()) {
-    errors.duration = 'Duration is required';
+    // 2. Потом duration (длительность)
+    if (!formData.duration || !formData.duration.trim()) {
+      errors.duration = 'Duration is required';
+    } else {
+      const comboErr = validateMassageServiceCombo(formData.type, formData.duration);
+      if (comboErr) {
+        errors.duration = comboErr;
+      }
+    }
   }
 
   // 3. Потом date (дата)
@@ -1052,13 +1273,11 @@ function validateMassageForm(formData) {
 async function handleMassageForm(form) {
   try {
     console.log('MassageAPI.handleMassageForm: Starting...');
-    
-    // Отключаем стандартную HTML5 валидацию браузера
+
     if (form.checkValidity) {
       form.setAttribute('novalidate', '');
     }
-    
-    // Собираем данные формы
+
     const formData = {
       type: form.querySelector('#type')?.value || '',
       duration: form.querySelector('#duration')?.value || '',
@@ -1067,20 +1286,19 @@ async function handleMassageForm(form) {
       name: form.querySelector('#name')?.value || '',
       email: form.querySelector('#email')?.value || '',
       phone: form.querySelector('#phone')?.value || '',
-      withRoom: '' // Field removed, always empty
+      withRoom: ''
     };
-    
-    console.log('MassageAPI.handleMassageForm: Collected form data:', formData);
 
-    // Валидация
-    console.log('MassageAPI: Validating form data...', formData);
-    const validation = validateMassageForm(formData);
+    const cartLines = getMassageCartLines();
+    const useCart = getMassageCartTotalCount() > 0;
+
+    console.log('MassageAPI.handleMassageForm: Collected form data:', formData, 'useCart:', useCart, cartLines);
+
+    const validation = validateMassageForm(formData, { skipServiceFields: useCart });
     console.log('MassageAPI: Validation result:', validation);
     if (!validation.valid) {
       console.error('MassageAPI: Validation failed:', validation.errors);
-      
-      // Находим первое поле с ошибкой в правильной последовательности:
-      // 1. type, 2. duration, 3. date, 4. time, 5. name, 6. email, 7. phone
+
       const typeEl = form.querySelector('#type');
       const durationEl = form.querySelector('#duration');
       const dateEl = form.querySelector('#date');
@@ -1088,143 +1306,194 @@ async function handleMassageForm(form) {
       const nameEl = form.querySelector('#name');
       const emailEl = form.querySelector('#email');
       const phoneEl = form.querySelector('#phone');
-      
-      // 1. Сначала type
-      if (validation.errors.type && typeEl) {
-        window.showFieldError(typeEl, validation.errors.type);
-        typeEl.classList.add('flash-invalid');
-        typeEl.focus();
+
+      if (!useCart && validation.errors.type && typeEl) {
+        if (typeEl.tagName === 'SELECT' || typeEl.getAttribute('type') !== 'hidden') {
+          window.showFieldError(typeEl, validation.errors.type);
+          typeEl.classList.add('flash-invalid');
+          typeEl.focus();
+        } else {
+          showFormError(
+            form,
+            'services',
+            'Please add at least one service by tapping a price on a card above, then choose date and time.'
+          );
+          const scrollTo =
+            document.getElementById('massage-form') || document.getElementById('book');
+          if (scrollTo) scrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         return false;
       }
-      
-      // 2. Потом duration
-      if (validation.errors.duration && durationEl) {
-        window.showFieldError(durationEl, validation.errors.duration);
-        durationEl.classList.add('flash-invalid');
-        durationEl.focus();
+
+      if (!useCart && validation.errors.duration && durationEl) {
+        if (durationEl.tagName === 'SELECT' || durationEl.getAttribute('type') !== 'hidden') {
+          window.showFieldError(durationEl, validation.errors.duration);
+          durationEl.classList.add('flash-invalid');
+          durationEl.focus();
+        } else {
+          showFormError(
+            form,
+            'services',
+            'Please add at least one service by tapping a price on a card above, then choose date and time.'
+          );
+          const scrollTo =
+            document.getElementById('massage-form') || document.getElementById('book');
+          if (scrollTo) scrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
         return false;
       }
-      
-      // 3. Потом date
+
       if (validation.errors.date && dateEl) {
         window.showFieldError(dateEl, validation.errors.date);
         dateEl.classList.add('flash-invalid');
         dateEl.focus();
         return false;
       }
-      
-      // 4. Потом time
+
       if (validation.errors.time && timeEl) {
         window.showFieldError(timeEl, validation.errors.time);
         timeEl.classList.add('flash-invalid');
         timeEl.focus();
         return false;
       }
-      
-      // 5. Потом name
+
       if (validation.errors.name && nameEl) {
         window.showFieldError(nameEl, validation.errors.name);
         nameEl.classList.add('flash-invalid');
         nameEl.focus();
         return false;
       }
-      
-      // 6. Потом email
+
       if (validation.errors.email && emailEl) {
         window.showFieldError(emailEl, validation.errors.email);
         emailEl.classList.add('flash-invalid');
         emailEl.focus();
         return false;
       }
-      
-      // 7. Потом phone
+
       if (validation.errors.phone && phoneEl) {
         window.showFieldError(phoneEl, validation.errors.phone);
         phoneEl.classList.add('flash-invalid');
         phoneEl.focus();
         return false;
       }
-      
+
       return false;
     }
 
-    // Очищаем все ошибки перед отправкой
     clearFormErrors(form);
 
-    // Отправляем данные на сервер через API
-    console.log('MassageAPI: Creating massage booking...', formData);
-    
-    try {
-      const formDataToSend = new FormData();
-      formDataToSend.append('action', 'create_massage_booking');
-      formDataToSend.append('massage_type', formData.type);
-      formDataToSend.append('duration', formData.duration);
-      formDataToSend.append('massage_date', formData.date);
-      formDataToSend.append('massage_time', formData.time);
-      formDataToSend.append('guest_name', formData.name);
-      formDataToSend.append('email', formData.email);
-      formDataToSend.append('phone', formData.phone);
-      if (formData.withRoom) {
-        formDataToSend.append('with_room', formData.withRoom);
-      }
-      
-      const response = await fetch('api.php', {
-        method: 'POST',
-        body: formDataToSend
-      });
-      
-      console.log('MassageAPI: Response status:', response.status);
-      
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('MassageAPI: HTTP error:', response.status, errorText);
-        throw new Error(`Failed to create massage booking: HTTP ${response.status}`);
-      }
-      
-      const result = await response.json();
-      console.log('MassageAPI: API response:', result);
-      
-      if (!result.success) {
-        throw new Error(result.error || 'Failed to create massage booking');
-      }
-      
-      // Сохраняем в localStorage для истории
-      document.dispatchEvent(new CustomEvent('btb:order:record', { detail: {
-        kind: 'massage',
-        type: formData.type || '',
-        duration: formData.duration || '',
-        date: formData.date || '',
-        time: formData.time || '',
-        name: formData.name || '',
-        phone: formData.phone || '',
-        email: formData.email || '',
-        withRoom: formData.withRoom || '',
-        ts: Date.now(),
-      }}));
-
-      // Показываем сообщение об успехе
-      const serviceType = formData.type === 'Sauna' ? 'Sauna' : 'Massage';
-      const durationText = formData.type === 'Sauna' ? '1 hour' : `${formData.duration} min`;
-      alert(`${serviceType} booking (${formData.type}, ${durationText}) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`);
-      
-      // Показываем напоминание о комнате всегда после бронирования массажа или сауны
+    const afterMassageBookSuccess = () => {
       const reminder = document.getElementById('room-reminder');
       if (reminder) {
-        // Проверяем, есть ли уже бронирование комнаты
         const orders = JSON.parse(localStorage.getItem('btb_orders') || '[]');
-        const hasRoomOrder = orders.some(order => order.kind === 'room');
+        const hasRoomOrder = orders.some((order) => order.kind === 'room');
         if (!hasRoomOrder) {
           localStorage.setItem('btb_room_reminder_shown', '1');
           reminder.style.display = 'block';
           reminder.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
       }
-      
+    };
+
+    try {
+      if (useCart) {
+        console.log('MassageAPI: Creating massage bookings from cart...', cartLines);
+        let created = 0;
+        for (let li = 0; li < cartLines.length; li += 1) {
+          const line = cartLines[li];
+          for (let i = 0; i < line.qty; i += 1) {
+            const payload = {
+              type: line.type,
+              duration: line.duration,
+              date: formData.date,
+              time: formData.time,
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              withRoom: formData.withRoom
+            };
+            const result = await postSingleMassageBookingRequest(payload);
+            created += 1;
+            document.dispatchEvent(
+              new CustomEvent('btb:order:record', {
+                detail: {
+                  kind: 'massage',
+                  type: payload.type || '',
+                  duration: payload.duration || '',
+                  date: payload.date || '',
+                  time: payload.time || '',
+                  name: payload.name || '',
+                  phone: payload.phone || '',
+                  email: payload.email || '',
+                  withRoom: payload.withRoom || '',
+                  confirmationCode: result?.data?.confirmation_code || '',
+                  ts: Date.now()
+                }
+              })
+            );
+          }
+        }
+        const summaryLines = cartLines.map(
+          (l) => `${l.type} (${formatMassageDurationLabel(l.type, l.duration)}) ×${l.qty}`
+        );
+        alert(
+          `${created} booking request${created === 1 ? '' : 's'} sent.\n${summaryLines.join(
+            '\n'
+          )}\n${formData.date} at ${formData.time}.\nWe will confirm by email.`
+        );
+        clearMassageBookingCart();
+        renderMassageCartUI(form);
+        form.reset();
+        if (typeof prefillContact === 'function') {
+          prefillContact(form);
+        }
+        afterMassageBookSuccess();
+        return true;
+      }
+
+      console.log('MassageAPI: Creating single massage booking...', formData);
+      await postSingleMassageBookingRequest(formData);
+
+      document.dispatchEvent(
+        new CustomEvent('btb:order:record', {
+          detail: {
+            kind: 'massage',
+            type: formData.type || '',
+            duration: formData.duration || '',
+            date: formData.date || '',
+            time: formData.time || '',
+            name: formData.name || '',
+            phone: formData.phone || '',
+            email: formData.email || '',
+            withRoom: formData.withRoom || '',
+            ts: Date.now()
+          }
+        })
+      );
+
+      const serviceType = formData.type === 'Sauna' ? 'Sauna' : 'Massage';
+      const durationText =
+        formData.type === 'Sauna' ? '1 hour' : `${formData.duration} min`;
+      alert(
+        `${serviceType} booking (${formData.type}, ${durationText}) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`
+      );
+
+      afterMassageBookSuccess();
+
       form.reset();
+      if (typeof prefillContact === 'function') {
+        prefillContact(form);
+      }
+      renderMassageCartUI(form);
       return true;
     } catch (error) {
       console.error('MassageAPI: Failed to create massage booking:', error);
-      showFormError(form, 'submit', error.message || 'Failed to create massage booking. Please try again.');
+      showFormError(
+        form,
+        'submit',
+        error.message || 'Failed to create massage booking. Please try again.'
+      );
       return false;
     }
   } catch (error) {
@@ -1243,6 +1512,10 @@ window.BookingAPI = {
   handleBookingForm,
   validateMassageForm,
   handleMassageForm,
+  addMassageCartLine,
+  clearMassageBookingCart,
+  getMassageCartLines,
+  renderMassageCartUI,
   showFormErrors,
   showFormError,
   clearFormErrors,

@@ -3,34 +3,90 @@
 require_once 'common.php';
 
 // Load content from database
-$content = fetchOne($conn, "SELECT * FROM content_settings WHERE id = 1");
-if (!$content) {
-    $content = []; // Ensure $content is always an array
+// List of all special page fields
+$specialFields = [
+    'special_hero_title', 'special_hero_subtitle', 'special_hero_image_url',
+    'special_pools_title', 'special_pools_description_1', 'special_pools_description_2', 'special_pools_image_url',
+    'special_dining_title', 'special_dining_description_1', 'special_dining_description_2', 'special_dining_image_url',
+    'special_extra_title', 'special_extra_description_1', 'special_extra_description_2', 'special_extra_image_url',
+    'special_offer_title', 'special_offer_main_text', 'special_offer_description'
+];
+
+$content = [];
+
+// First, try to get data from special_settings table if it exists
+$specialTableCheck = $conn->query("SHOW TABLES LIKE 'special_settings'");
+if ($specialTableCheck && $specialTableCheck->num_rows > 0) {
+    // Use special_settings table with explicit field selection
+    $sql = "SELECT " . implode(', ', $specialFields) . " FROM special_settings WHERE id = 1";
+    $specialResult = $conn->query($sql);
+    if ($specialResult && $specialResult->num_rows > 0) {
+        $content = $specialResult->fetch_assoc();
+        error_log("special.php: Using special_settings table");
+    }
 }
 
-// Helper function for safe output with fallback
-function safeOutput($value, $fallback = '') {
-    return htmlspecialchars($value ?? $fallback, ENT_QUOTES, 'UTF-8');
+// If special_settings doesn't exist or is empty, fall back to content_settings
+if (empty($content) || !isset($content['special_hero_title'])) {
+    // Try explicit field selection from content_settings (avoids "Row size too large" error)
+    try {
+        $sql = "SELECT " . implode(', ', $specialFields) . " FROM content_settings WHERE id = 1";
+        $result = $conn->query($sql);
+        if ($result && $result->num_rows > 0) {
+            $content = $result->fetch_assoc();
+            error_log("special.php: Using content_settings table with explicit SELECT");
+        } else {
+            error_log("special.php: Explicit SELECT from content_settings returned no rows");
+            $content = [];
+        }
+    } catch (Exception $e) {
+        error_log("special.php: Exception with explicit SELECT: " . $e->getMessage());
+        $content = [];
+    }
+    
+    // If explicit SELECT failed, try loading each field individually
+    if (empty($content) || !isset($content['special_hero_title'])) {
+        error_log("special.php: Falling back to individual field loading");
+        foreach ($specialFields as $field) {
+            try {
+                $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
+                if ($columnCheck && $columnCheck->num_rows > 0) {
+                    $singleResult = $conn->query("SELECT $field FROM content_settings WHERE id = 1");
+                    if ($singleResult && $singleResult->num_rows > 0) {
+                        $row = $singleResult->fetch_assoc();
+                        $content[$field] = $row[$field] ?? '';
+                    }
+                }
+            } catch (Exception $e2) {
+                error_log("special.php: Error loading field '$field': " . $e2->getMessage());
+            }
+        }
+    }
 }
 
 // Extract content with fallback values
-$heroTitle = safeOutput($content['special_hero_title'] ?? '', 'Soak & Savor at Ainsworth Hot Springs');
-$heroSubtitle = safeOutput($content['special_hero_subtitle'] ?? '', 'Back to Base offers its guests a unique relaxation experience. See the details below.');
+$heroTitle = safeOutputWithBreaks($content['special_hero_title'] ?? '', 'Soak & Savor at Ainsworth Hot Springs');
+$heroSubtitle = safeOutputWithBreaks($content['special_hero_subtitle'] ?? '', 'Back to Base offers its guests a unique relaxation experience. See the details below.');
 $heroImageUrl = isset($content['special_hero_image_url']) && !empty(trim($content['special_hero_image_url'])) ? safeOutput($content['special_hero_image_url'], '') : '';
 
 $poolsTitle = safeOutput($content['special_pools_title'] ?? '', 'Mineral-Rich Pools & Limestone Cave');
-$poolsDesc1 = safeOutput($content['special_pools_description_1'] ?? '', 'The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge.');
-$poolsDesc2 = safeOutput($content['special_pools_description_2'] ?? '', 'Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.');
+$poolsDesc1 = safeOutputWithBreaks($content['special_pools_description_1'] ?? '', 'The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge.');
+$poolsDesc2 = safeOutputWithBreaks($content['special_pools_description_2'] ?? '', 'Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.');
 $poolsImageUrl = isset($content['special_pools_image_url']) && !empty(trim($content['special_pools_image_url'])) ? safeOutput($content['special_pools_image_url'], '') : 'https://images.unsplash.com/photo-1519824145371-296894a0daa9?q=80&w=1600&auto=format&fit=crop';
 
 $diningTitle = safeOutput($content['special_dining_title'] ?? '', 'Dining & Spa Experience');
-$diningDesc1 = safeOutput($content['special_dining_description_1'] ?? '', 'After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight.');
-$diningDesc2 = safeOutput($content['special_dining_description_2'] ?? '', 'Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.');
+$diningDesc1 = safeOutputWithBreaks($content['special_dining_description_1'] ?? '', 'After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight.');
+$diningDesc2 = safeOutputWithBreaks($content['special_dining_description_2'] ?? '', 'Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.');
 $diningImageUrl = isset($content['special_dining_image_url']) && !empty(trim($content['special_dining_image_url'])) ? safeOutput($content['special_dining_image_url'], '') : 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1600&auto=format&fit=crop';
 
+$extraTitle = safeOutput($content['special_extra_title'] ?? '', 'Discover Nelson & the Kootenays');
+$extraDesc1 = safeOutputWithBreaks($content['special_extra_description_1'] ?? '', 'Beyond the hot springs, the lively town of Nelson offers galleries, cafés, and lakefront strolls — an ideal complement to your retreat.');
+$extraDesc2 = safeOutputWithBreaks($content['special_extra_description_2'] ?? '', 'Ask us for tips on hikes, paddling on Kootenay Lake, or seasonal events during your stay.');
+$extraImageUrl = isset($content['special_extra_image_url']) && !empty(trim($content['special_extra_image_url'])) ? safeOutput($content['special_extra_image_url'], '') : 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1600&auto=format&fit=crop';
+
 $offerTitle = safeOutput($content['special_offer_title'] ?? '', 'Free Hot Springs Access');
-$offerMainText = safeOutput($content['special_offer_main_text'] ?? '', 'Book a minimum 5-night stay at our Erasmus Suite (Second floor — Loft suite) and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!');
-$offerDescription = safeOutput($content['special_offer_description'] ?? '', 'This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.');
+$offerMainText = safeOutputWithBreaks($content['special_offer_main_text'] ?? '', 'Book a minimum 5-night stay at Kelder and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!');
+$offerDescription = safeOutputWithBreaks($content['special_offer_description'] ?? '', 'This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.');
 
 // Build hero background image style
 $heroBackgroundStyle = '';
@@ -45,9 +101,10 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+<?php require_once __DIR__ . '/site-head-consent.php'; ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>Special offer — Back to Base</title>
+  <title>Specials — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -255,9 +312,10 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       </a>
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
-        <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-        <a href="special.php">Special</a>
+        <a href="massage.php">Wellness</a>
+        <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+        <a href="explore.php">Explore</a>
+        <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
       <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
@@ -270,7 +328,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
           </svg>
           <span id="theme-text">Light</span>
         </button>
-        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+        <a href="login.html" class="btn-signin" id="header-signin">Guest login</a>
       </div>
     </div>
   </header>
@@ -281,11 +339,12 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   <!-- Mobile Navigation Menu -->
   <nav class="mobile-nav" id="mobile-nav">
     <a href="index.html#rooms">Rooms</a>
-    <a href="massage.html">Massage</a>
-    <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-    <a href="special.php">Special</a>
+    <a href="massage.php">Wellness</a>
+    <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
     <a href="about.php">About us</a>
-    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
     <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
       <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -325,6 +384,17 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
             <img class="hot-springs-image" src="<?php echo $diningImageUrl; ?>" alt="Ktunaxa Grill restaurant and spa" />
           </div>
         </div>
+
+        <div class="hot-springs-card">
+          <div class="hot-springs-content">
+            <h3 id="special-extra-title"><?php echo $extraTitle; ?></h3>
+            <p id="special-extra-description-1"><?php echo $extraDesc1; ?></p>
+            <p id="special-extra-description-2"><?php echo $extraDesc2; ?></p>
+          </div>
+          <div>
+            <img class="hot-springs-image" src="<?php echo $extraImageUrl; ?>" alt="" />
+          </div>
+        </div>
       </div>
     </section>
 
@@ -355,15 +425,18 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
         <h4>Navigation</h4>
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
-          <li><a href="special.php">Special</a></li>
+          <li><a href="massage.php">Wellness</a></li>
+          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
+          <li><a href="explore.php">Explore</a></li>
+          <li><a href="special.php">Specials</a></li>
           <li><a href="about.php">About us</a></li>
         </ul>
       </div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>

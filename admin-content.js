@@ -49,8 +49,18 @@ function loadSectionData(sectionName) {
       loadHomepageData();
       break;
     case 'floorplan':
+      // Reset initialization flag when switching to floorplan section
+      if (typeof window !== 'undefined') {
+        window.floorplanGalleriesInitialized = false;
+      }
       loadFloorplanData();
       initFloorplanImageUpload();
+      // Initialize gallery management after a short delay to ensure DOM is ready
+      setTimeout(() => {
+        if (typeof initFloorplanGalleries === 'function') {
+          initFloorplanGalleries();
+        }
+      }, 100);
       break;
     case 'rooms':
       loadRoomsData();
@@ -341,28 +351,28 @@ function loadRoomsData() {
 function getDefaultRooms() {
   return [
     {
-      name: 'Basement — Queen bed',
+      name: 'Loki Suite',
       price: 140,
       capacity: 2,
       type: 'queen',
       description: 'Cozy room next to the home cinema and sauna. Perfect for two.'
     },
     {
-      name: 'Ground floor — Queen bed',
+      name: 'The Nouk',
       price: 130,
       capacity: 2,
       type: 'queen',
       description: 'Compact, bright room with access to the fireplace lounge.'
     },
     {
-      name: 'Ground floor — Twin beds',
+      name: 'Vrienden',
       price: 125,
       capacity: 2,
       type: 'twin',
       description: 'Great for friends or colleagues. Close to the kitchen and massage hall.'
     },
     {
-      name: 'Second floor (entire) — Queen bed',
+      name: 'Kelder',
       price: 210,
       capacity: 2,
       type: 'suite',
@@ -637,9 +647,14 @@ async function saveContentToServer(content) {
       method: 'POST',
       body: formData
     });
-    
-    const result = await response.json();
-    return result.success;
+    const rawText = await response.text();
+    let result = null;
+    try {
+      result = rawText ? JSON.parse(rawText) : null;
+    } catch (e) {
+      return false;
+    }
+    return response.ok && result && result.success === true;
   } catch (error) {
     console.error('Error saving to server:', error);
     return false;
@@ -953,7 +968,7 @@ document.addEventListener('DOMContentLoaded', () => {
           };
           localStorage.setItem('btb_floorplan_settings', JSON.stringify(localStorageData));
           console.log('Data saved to localStorage');
-          showStatus('Floor plan content saved successfully!');
+          showStatus('Common areas content saved successfully!');
           return;
         } else {
           console.log('API returned error:', result.error);
@@ -980,7 +995,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Data saved to localStorage as fallback');
       }
       
-      showStatus('Floor plan content saved successfully!');
+      showStatus('Common areas content saved successfully!');
     });
   }
   

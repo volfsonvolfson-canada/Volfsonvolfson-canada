@@ -498,6 +498,13 @@ body {
     -webkit-text-fill-color: #fff !important;
   }
   
+  [data-theme="light"] .btn.outline {
+    background-color: transparent !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    border-color: rgba(0, 0, 0, 0.2) !important;
+  }
+  
   /* Ensure text elements are visible */
   [data-theme="light"] p,
   [data-theme="light"] h1,
@@ -608,6 +615,14 @@ body {
     -webkit-text-fill-color: #fff !important;
   }
   
+  [data-theme="light"] .btn.outline {
+    background-color: transparent !important;
+    background-image: none !important;
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
+    border-color: rgba(0, 0, 0, 0.2) !important;
+  }
+  
   /* Ensure all text is visible */
   [data-theme="light"] p,
   [data-theme="light"] h1,
@@ -621,6 +636,11 @@ body {
   [data-theme="light"] a {
     color: inherit !important;
     -webkit-text-fill-color: inherit !important;
+  }
+  
+  [data-theme="light"] a.btn.outline {
+    color: #1a1a1a !important;
+    -webkit-text-fill-color: #1a1a1a !important;
   }
   
   /* Exception: Keep white text in hero sections for better readability */
@@ -920,6 +940,17 @@ html { scroll-behavior: smooth; }
 .btn:hover { transform: translateY(-1px); border-color: rgba(255,255,255,.22); }
 .btn.primary { background: var(--brand); border-color: var(--brand); }
 .btn.primary:hover { background: var(--brand-600); }
+/** Outline CTA: border only, no fill (e.g. secondary actions on homepage) */
+.btn.outline {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid rgba(255, 255, 255, 0.32);
+}
+.btn.outline:hover {
+  border-color: var(--brand);
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
 .btn[disabled] { opacity: .55; filter: grayscale(1) saturate(.7); cursor: not-allowed; pointer-events: none; }
 .btn.primary[disabled] { background: #5a6474; border-color: #5a6474; }
 
@@ -934,23 +965,84 @@ html { scroll-behavior: smooth; }
   margin-bottom: 44px;
 }
 
-.plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+/* Stretch rows so image blocks share one baseline across columns */
+.plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: stretch; }
 .plan-card { background: var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 18px; }
 .plan-card h3 { margin: 0 0 4px; }
 .plan-card ul { margin: 10px 0 0 20px; color: var(--muted); }
 
-.rooms-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.rooms-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; align-items: stretch; }
 .room-card { display: flex; flex-direction: column; background: var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; overflow: hidden; }
 .room-media { background-size: cover; background-position: center; aspect-ratio: 4/3; }
-.room-body { padding: 16px; display: grid; gap: 8px; grid-template-rows: auto 1fr auto; }
+.room-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; }
 .room-body p { color: var(--muted); margin: 0; }
+/* Homepage only: one rule for all card titles (rooms, Common areas, wellness) */
+body.home .room-body > h3,
+body.home #plan .plan-card.floor-card > h3.floor-sub,
+body.home #wellness-experiences .card-massage .card-body > :is(h2, h3) {
+  margin: 0 0 1rem;
+  padding: 0;
+  flex-shrink: 0;
+  font-size: 1.5rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+/* Homepage: card description text — one scale for rooms, Common areas, wellness */
+body.home .room-body > p:not(.notice),
+body.home .room-body > .room-card-desc,
+body.home #plan .plan-card.floor-card > .floor-desc,
+body.home #wellness-experiences .card-massage .card-body > p {
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+/* Description block grows empty space so price + CTA share one bottom line across cards in a row */
+.room-body > .room-card-desc {
+  flex: 0 1 auto;
+  min-height: 0;
+  margin-bottom: auto;
+}
+.room-body > .room-card-desc p { margin: 0; }
+/* Description stays top-aligned; price + CTA stay at bottom via margin on description */
+.room-body > p:not(.notice) { flex: 0 1 auto; min-height: 0; margin-bottom: auto; }
+.room-body > p.notice { flex-shrink: 0; padding-top: 14px; }
+.room-body > .btn { flex-shrink: 0; align-self: stretch; }
 
 .massage-list { color: var(--muted); }
 
-/* Floor plan schematics */
-.floor-card { display: grid; gap: 10px; }
+/* Floor plan / Common areas cards: variable text height, images aligned on one row */
+.plan-grid .plan-card.floor-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: 8px;
+}
 .floor-sub { margin: 0 0 6px; font-weight: 600; }
 .floor-desc { margin: 0; color: var(--muted); }
+.plan-grid .floor-desc {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.floor-desc p:first-child { margin-top: 0; }
+.floor-desc p:last-child { margin-bottom: 0; }
+/* Markdown-style "- " lines rendered as <ul> via safeOutputWithBreaks() */
+.desc-bullets {
+  margin: 0.4em 0 0.75em;
+  padding-left: 1.25em;
+  list-style-type: disc;
+}
+.desc-bullets:first-child { margin-top: 0; }
+.desc-bullets:last-child { margin-bottom: 0; }
+.desc-bullets li { margin: 0.2em 0; }
+.floor-desc .desc-bullets,
+.room-body .desc-bullets,
+.section-lead .desc-bullets,
+.card-body .desc-bullets,
+.massage-section .desc-bullets {
+  color: inherit;
+}
+.plan-grid .floor-photo-wrapper { flex-shrink: 0; margin-top: auto; }
 .floor-svg { width: 100%; height: auto; background: #0c131b; border: 1px solid rgba(255,255,255,.06); border-radius: 12px; }
 .floor-svg .outline { fill: none; stroke: rgba(255,255,255,.18); stroke-width: 2; }
 .floor-svg .room { fill: #13202e; stroke: rgba(255,255,255,.15); stroke-width: 1.5; }
@@ -1045,7 +1137,9 @@ select:-webkit-autofill:focus {
 
 /* Room page */
 .page-header { padding: 24px 0 2px 0; }
-.page-header h1 {
+/* Same scale as rooms page title ("Choose your accommodation") */
+.page-header h1,
+.section-tight .home-main-title {
   font-size: clamp(32px, 6vw, 52px);
 }
 .breadcrumbs { color: var(--muted); font-size: 14px; }
@@ -1109,6 +1203,7 @@ select:-webkit-autofill:focus {
   .rooms-grid {
     display: flex;
     flex-direction: row;
+    align-items: stretch;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
@@ -1139,6 +1234,7 @@ select:-webkit-autofill:focus {
   .plan-grid {
     display: flex;
     flex-direction: row;
+    align-items: stretch;
     overflow-x: auto;
     overflow-y: hidden;
     scroll-snap-type: x mandatory;
@@ -1216,15 +1312,55 @@ select:-webkit-autofill:focus {
 /* Add space before plan */
 #plan.section { padding-top: 4px; }
 
-/* Room cards: align buttons to bottom */
+/* Room cards: media fixed, body fills height; price + CTA at bottom (see .room-body rules above) */
 .room-card { display: flex; flex-direction: column; }
 .room-media { flex: 0 0 auto; }
-.room-body { padding: 16px; display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; }
-.room-body .btn { margin-top: auto; }
+.room-card > .room-body { flex: 1 1 auto; }
 
 /* Tight section (used for blurb between hero and plan) */
 .section-tight { padding: 36px 0; }
 .section-tight p { font-size: clamp(18px, 2vw, 22px); line-height: 1.6; }
+/* Home: CMS "Main description" = primary page heading (size matches .page-header h1); "Subtitle" = lead paragraph */
+.section-tight .home-main-title {
+  line-height: 1.15;
+  font-weight: 600;
+  margin: 0 0 1rem;
+  color: var(--text);
+}
+.section-tight .home-main-subtitle {
+  font-size: clamp(16px, 1.85vw, 22px);
+  line-height: 1.6;
+  margin: 0;
+  color: var(--muted);
+}
+
+/* Home intro: hidden until first scroll, then animate in (see index.php) */
+body.home .home-intro .home-main-title,
+body.home .home-intro .home-main-subtitle {
+  transition: opacity 0.55s ease, transform 0.55s ease;
+}
+body.home .home-intro:not(.is-revealed) .home-main-title,
+body.home .home-intro:not(.is-revealed) .home-main-subtitle {
+  opacity: 0;
+  transform: translateY(20px);
+}
+body.home .home-intro.is-revealed .home-main-title,
+body.home .home-intro.is-revealed .home-main-subtitle {
+  opacity: 1;
+  transform: translateY(0);
+}
+body.home .home-intro.is-revealed .home-main-subtitle {
+  transition-delay: 0.1s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body.home .home-intro:not(.is-revealed) .home-main-title,
+  body.home .home-intro:not(.is-revealed) .home-main-subtitle {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+}
 
 .media-43 { width: 100%; aspect-ratio: 4 / 3; height: auto; object-fit: cover; }
 
@@ -2196,6 +2332,17 @@ select:-webkit-autofill:focus {
   background: var(--brand-600);
 }
 
+[data-theme="light"] .btn.outline {
+  background: transparent;
+  color: var(--text);
+  border-color: rgba(0, 0, 0, 0.2);
+}
+[data-theme="light"] .btn.outline:hover {
+  border-color: var(--brand);
+  background: rgba(0, 0, 0, 0.04);
+  color: var(--text);
+}
+
 [data-theme="light"] input,
 [data-theme="light"] select,
 [data-theme="light"] textarea {
@@ -2252,7 +2399,8 @@ select:-webkit-autofill:focus {
 }
 
 /* Page titles and headings light theme */
-[data-theme="light"] .page-header h1 {
+[data-theme="light"] .page-header h1,
+[data-theme="light"] .section-tight .home-main-title {
   color: var(--text);
 }
 
@@ -2324,6 +2472,7 @@ select:-webkit-autofill:focus {
 [data-theme="twilight"] .section h3,
 [data-theme="twilight"] .section h4,
 [data-theme="twilight"] .page-header h1,
+[data-theme="twilight"] .section-tight .home-main-title,
 [data-theme="twilight"] .card h2,
 [data-theme="twilight"] .card h3,
 [data-theme="twilight"] .card h4 {
@@ -2492,4 +2641,60 @@ body:has(#book) .massage-list {
 
 .password-toggle .eye-icon.eye-closed {
   display: none;
+}
+
+/* Massage page: toast after adding a service to the cart (no auto-scroll) */
+#btb-massage-booking-toast {
+  position: fixed;
+  left: 50%;
+  top: calc(1rem + env(safe-area-inset-top, 0px));
+  bottom: auto;
+  transform: translateX(-50%) translateY(calc(-100% - 2rem));
+  max-width: min(92vw, 28rem);
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.22);
+  z-index: 10050;
+  transition: transform 0.3s ease, opacity 0.3s ease;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--card);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  text-align: center;
+}
+
+#btb-massage-booking-toast.btb-massage-booking-toast-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+#btb-massage-booking-toast .btb-massage-booking-toast__msg {
+  margin: 0;
+  text-align: center;
+}
+
+#btb-massage-booking-toast .btb-massage-booking-toast__action {
+  width: 100%;
+  margin: 0;
+  font-size: 0.9rem;
+  padding: 0.5rem 0.75rem;
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+#btb-massage-booking-toast .btb-massage-booking-toast__action:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+#btb-massage-booking-toast.btb-massage-booking-toast--visible {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+  pointer-events: auto;
 }

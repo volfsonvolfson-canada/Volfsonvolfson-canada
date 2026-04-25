@@ -13,122 +13,81 @@ if (!$content) {
     $content = []; // Ensure $content is always an array
 }
 
-// Helper function for safe output with fallback
-function safeOutput($value, $fallback = '') {
-    return htmlspecialchars($value ?? $fallback, ENT_QUOTES, 'UTF-8');
-}
-
 // Helper function for safe HTML output (allows certain tags)
 function safeHtmlOutput($value, $fallback = '') {
     $html = $value ?? $fallback;
     // Allow only safe HTML tags
     $allowedTags = '<strong><em><b><i><br><p><a>';
-    return strip_tags($html, $allowedTags);
+    $out = strip_tags($html, $allowedTags);
+    // Text from CMS textareas uses literal newlines; HTML ignores them unless converted
+    $out = preg_replace('/\r\n|\r|\n/', '<br>', $out);
+    return $out;
 }
 
 // Extract content with fallback values
 $heroTitle = safeOutput($content['about_hero_title'] ?? '', 'About Back to Base');
-$heroSubtitle = safeOutput($content['about_hero_subtitle'] ?? '', 'A personal retreat in the heart of British Columbia');
+$heroSubtitle = safeOutputWithBreaks($content['about_hero_subtitle'] ?? '', 'A personal retreat in the heart of British Columbia');
 $heroImageUrl = isset($content['about_hero_image_url']) && !empty(trim($content['about_hero_image_url'])) ? safeOutput($content['about_hero_image_url'], '') : '';
 
 $ideaTitle = safeOutput($content['about_idea_title'] ?? '', 'Idea and Origins');
-$ideaIntro = safeHtmlOutput($content['about_idea_intro'] ?? '', 'Hi! My name is <strong>Rob Vuik</strong>. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.');
-$ideaP1 = safeOutput($content['about_idea_paragraph_1'] ?? '', 'Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.');
-$ideaP2 = safeOutput($content['about_idea_paragraph_2'] ?? '', 'Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I\'m happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.');
-$ideaP3 = safeOutput($content['about_idea_paragraph_3'] ?? '', 'We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.');
-$ideaSignature = safeOutput($content['about_idea_signature'] ?? '', 'I look forward to welcoming you!');
+
+// Visible teaser vs collapsed continuation:
+// - By default: intro is always visible; paragraphs 1–3 merge into one collapsed body (safeOutputWithBreaks).
+// - Optional: put [[READ_MORE]] on its own line inside intro — text BEFORE stays visible, text AFTER joins the collapsed section (still merged with paragraphs).
+$ideaIntroFallback = 'Hi! My name is <strong>Rob Vuik</strong>. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.';
+$introRaw = $content['about_idea_intro'] ?? '';
+$continuationPrefixFromIntro = '';
+if (preg_match('/\[\[READ_MORE\]\]/u', $introRaw)) {
+    $chunks = preg_split('/\s*\[\[READ_MORE\]\]\s*/u', $introRaw, 2);
+    $ideaIntro = safeHtmlOutput(trim($chunks[0] ?? ''), $ideaIntroFallback);
+    $continuationPrefixFromIntro = isset($chunks[1]) ? trim($chunks[1]) : '';
+} else {
+    $ideaIntro = safeHtmlOutput($introRaw, $ideaIntroFallback);
+}
+
+$p1 = trim((string)($content['about_idea_paragraph_1'] ?? ''));
+$p2 = trim((string)($content['about_idea_paragraph_2'] ?? ''));
+$p3 = trim((string)($content['about_idea_paragraph_3'] ?? ''));
+$continuationPieces = array_values(array_filter(
+    [$continuationPrefixFromIntro, $p1, $p2, $p3],
+    static function ($s) {
+        return $s !== '';
+    }
+));
+$continuationPlain = implode("\n\n", $continuationPieces);
+
+$ideaContinuationHtml = '';
+$hasIdeaContinuation = ($continuationPlain !== '');
+if ($hasIdeaContinuation) {
+    $ideaContinuationHtml = safeOutputWithBreaks($continuationPlain, '');
+}
+
+$ideaSignature = safeOutputWithBreaks($content['about_idea_signature'] ?? '', 'I look forward to welcoming you!');
 $founderImageUrl = isset($content['about_founder_image_url']) && !empty(trim($content['about_founder_image_url'])) ? safeOutput($content['about_founder_image_url'], '') : 'assets/Rob Vuik.jpg';
 
 $locTitle = safeOutput($content['about_location_title'] ?? '', 'How to Find Us');
-$locP1 = safeOutput($content['about_location_paragraph_1'] ?? '', 'Back to Base is located in the village of Procter, 35 km from Nelson, B.C.');
-$locP2 = safeOutput($content['about_location_paragraph_2'] ?? '', 'You\'ll need to take the 24/7 Harrop–Procter ferry,');
-$locP3 = safeOutput($content['about_location_paragraph_3'] ?? '', 'then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.');
-$locP4 = safeOutput($content['about_location_paragraph_4'] ?? '', 'From there, it\'s just a 3-minute drive up the mountain road — and you\'re here!');
+$locP1 = safeOutputWithBreaks($content['about_location_paragraph_1'] ?? '', 'Back to Base is located in the village of Procter, 35 km from Nelson, B.C.');
+$locP2 = safeOutputWithBreaks($content['about_location_paragraph_2'] ?? '', 'You\'ll need to take the 24/7 Harrop–Procter ferry,');
+$locP3 = safeOutputWithBreaks($content['about_location_paragraph_3'] ?? '', 'then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.');
+$locP4 = safeOutputWithBreaks($content['about_location_paragraph_4'] ?? '', 'From there, it\'s just a 3-minute drive up the mountain road — and you\'re here!');
 $locCoords = safeOutput($content['about_location_coordinates'] ?? '', 'Coordinates: 49.6125, -116.9579');
 $locDeerWarning = safeHtmlOutput($content['about_location_deer_warning'] ?? '', '🦌 <strong>Be careful</strong> — we have a lot of deer in the area!');
 
-$attrTitle = safeOutput($content['about_attractions_title'] ?? '', 'About the Location');
-$attrLead = safeOutput($content['about_attractions_lead'] ?? '', 'Discover the natural beauty and attractions surrounding Back to Base');
+$contactFormTitle = safeOutput($content['about_contact_form_title'] ?? '', 'Contact us');
 
-$procterTitle = safeOutput($content['about_procter_title'] ?? '', 'Procter Village');
-$procterDistance = safeOutput($content['about_procter_distance'] ?? '', 'In the same village');
-$procterDescription = safeHtmlOutput($content['about_procter_description'] ?? '', 'In the village of Procter, you\'ll find the <strong>Procter Café</strong> with their famous cinnamon buns, a small grocery store, and a gas station.');
-$procterImageUrl = isset($content['about_procter_image_url']) && !empty(trim($content['about_procter_image_url'])) ? safeOutput($content['about_procter_image_url'], '') : 'assets/procter_1.jpg';
-$procterGallery = [];
-if (isset($content['about_procter_gallery']) && !empty(trim($content['about_procter_gallery']))) {
-    $procterGalleryJson = trim($content['about_procter_gallery']);
-    if ($procterGalleryJson !== '' && $procterGalleryJson !== '[]') {
-        $decoded = json_decode($procterGalleryJson, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            $procterGallery = $decoded;
-        } else {
-            error_log('Failed to decode procter gallery JSON: ' . json_last_error_msg() . ' | JSON: ' . $procterGalleryJson);
-        }
+$rawContactFormDescription = trim((string) ($content['about_contact_form_description'] ?? ''));
+if ($rawContactFormDescription === '') {
+    $legacyL = trim((string) ($content['about_contact_form_lead'] ?? ''));
+    $legacyE = trim((string) ($content['about_contact_form_emphasis'] ?? ''));
+    if ($legacyL !== '' || $legacyE !== '') {
+        $rawContactFormDescription = $legacyL . ($legacyL !== '' && $legacyE !== '' ? "\n\n" : '') . $legacyE;
     }
 }
-// Debug: log gallery data
-error_log('Procter gallery from DB: ' . print_r($procterGallery, true));
-
-$halcyonTitle = safeOutput($content['about_halcyon_title'] ?? '', 'Ainsworth Hot Springs Resort');
-$halcyonDistance = safeOutput($content['about_halcyon_distance'] ?? '', '30 km from Back to Base');
-$halcyonDescription = safeOutput($content['about_halcyon_description'] ?? '', 'Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!');
-$halcyonGallery = [];
-if (isset($content['about_halcyon_gallery']) && !empty(trim($content['about_halcyon_gallery']))) {
-    $halcyonGalleryJson = trim($content['about_halcyon_gallery']);
-    if ($halcyonGalleryJson !== '' && $halcyonGalleryJson !== '[]') {
-        $decoded = json_decode($halcyonGalleryJson, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            $halcyonGallery = $decoded;
-        }
-    }
-}
-
-$whitewaterTitle = safeOutput($content['about_whitewater_title'] ?? '', 'Whitewater Mountain Resort');
-$whitewaterDistance = safeOutput($content['about_whitewater_distance'] ?? '', '60 km from Back to Base');
-$whitewaterDescription = safeOutput($content['about_whitewater_description'] ?? '', 'Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.');
-$whitewaterGallery = [];
-if (isset($content['about_whitewater_gallery']) && !empty(trim($content['about_whitewater_gallery']))) {
-    $whitewaterGalleryJson = trim($content['about_whitewater_gallery']);
-    if ($whitewaterGalleryJson !== '' && $whitewaterGalleryJson !== '[]') {
-        $decoded = json_decode($whitewaterGalleryJson, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            $whitewaterGallery = $decoded;
-        }
-    }
-}
-
-$nelsonTitle = safeOutput($content['about_nelson_title'] ?? '', 'Nelson');
-$nelsonDistance = safeOutput($content['about_nelson_distance'] ?? '', '35 km from Back to Base');
-$nelsonDescription = safeOutput($content['about_nelson_description'] ?? '', 'A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.');
-$nelsonGallery = [];
-if (isset($content['about_nelson_gallery']) && !empty(trim($content['about_nelson_gallery']))) {
-    $nelsonGalleryJson = trim($content['about_nelson_gallery']);
-    if ($nelsonGalleryJson !== '' && $nelsonGalleryJson !== '[]') {
-        $decoded = json_decode($nelsonGalleryJson, true);
-        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
-            $nelsonGallery = $decoded;
-        }
-    }
-}
-
-$parksTitle = safeOutput($content['about_parks_title'] ?? '', 'Provincial Parks Nearby');
-$parksIntro = safeOutput($content['about_parks_intro'] ?? '', 'If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base:');
-$parksList = isset($content['about_parks_list']) && !empty(trim($content['about_parks_list'])) ? $content['about_parks_list'] : "Kokanee Creek Provincial Park\nKokanee Glacier Provincial Park\nLockhart Beach Provincial Park\nKianuko Provincial Park";
-
-// Process parks list
-$parksItems = [];
-if (!empty($parksList)) {
-    $parksLines = explode("\n", $parksList);
-    foreach ($parksLines as $line) {
-        $line = trim($line);
-        if (!empty($line)) {
-            $parksItems[] = safeOutput($line);
-        }
-    }
-}
-if (empty($parksItems)) {
-    $parksItems = ['Kokanee Creek Provincial Park', 'Kokanee Glacier Provincial Park', 'Lockhart Beach Provincial Park', 'Kianuko Provincial Park'];
-}
+$contactFormDescriptionDefault = "At Back to Base, you can find exactly the kind of rest you need.\n\nWe'll be happy to help you plan your stay and answer any questions!";
+$contactFormDescription = safeOutputWithBreaks(
+    $rawContactFormDescription !== '' ? $rawContactFormDescription : $contactFormDescriptionDefault,
+    ''
+);
 
 // Build hero background image style
 $heroBackgroundStyle = '';
@@ -143,6 +102,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+<?php require_once __DIR__ . '/site-head-consent.php'; ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>About us — Back to Base</title>
@@ -244,6 +204,11 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       margin-bottom: 10px;
     }
     .founder-content p {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: var(--text-muted);
+    }
+    .founder-expandable-inner {
       font-size: 1.1rem;
       line-height: 1.8;
       color: var(--text-muted);
@@ -577,18 +542,53 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       transform: translateY(-5px);
       box-shadow: 0 10px 30px rgba(0,0,0,0.15);
     }
-    .attraction-card-image {
+    .attraction-card-image-wrapper {
+      position: relative;
       width: 100%;
       height: 250px;
-      object-fit: cover;
+      overflow: hidden;
       cursor: pointer;
+    }
+    .attraction-card-image {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
       transition: transform 0.3s ease;
     }
     .attraction-card[data-gallery="procter"] .attraction-card-image {
       object-position: center 90%;
     }
-    .attraction-card-image:hover {
+    .attraction-card-image-wrapper:hover .attraction-card-image {
       transform: scale(1.05);
+    }
+    
+    /* Gallery overlay - appears on hover */
+    .gallery-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 1;
+    }
+    .attraction-card-image-wrapper:hover .gallery-overlay {
+      opacity: 1;
+    }
+    .gallery-overlay-text {
+      color: white;
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-align: center;
+      padding: 12px 20px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      backdrop-filter: blur(4px);
     }
     .attraction-card-content {
       padding: 30px;
@@ -854,9 +854,10 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       </a>
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
-        <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-        <a href="special.php">Special</a>
+        <a href="massage.php">Wellness</a>
+        <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+        <a href="explore.php">Explore</a>
+        <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
       <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
@@ -869,7 +870,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
           </svg>
           <span id="theme-text">Light</span>
         </button>
-        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+        <a href="login.html" class="btn-signin" id="header-signin">Guest login</a>
       </div>
     </div>
   </header>
@@ -880,11 +881,12 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   <!-- Mobile Navigation Menu -->
   <nav class="mobile-nav" id="mobile-nav">
     <a href="index.html#rooms">Rooms</a>
-    <a href="massage.html">Massage</a>
-    <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-    <a href="special.php">Special</a>
+    <a href="massage.php">Wellness</a>
+    <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
     <a href="about.php">About us</a>
-    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
     <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
       <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -915,13 +917,15 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
           <div class="founder-content reveal">
             <h2><?php echo $ideaTitle; ?></h2>
             <p><?php echo $ideaIntro; ?></p>
+            <?php if ($hasIdeaContinuation): ?>
             <div class="founder-content-expandable" id="founder-expandable">
-              <p style="margin-top: 0;"><?php echo $ideaP1; ?></p>
-              <p><?php echo $ideaP2; ?></p>
-              <p><?php echo $ideaP3; ?></p>
+              <div class="founder-expandable-inner"><?php echo $ideaContinuationHtml; ?></div>
               <p class="founder-signature"><?php echo $ideaSignature; ?></p>
             </div>
-            <button class="read-more-btn" id="read-more-btn" onclick="toggleFounderText()">Read more</button>
+            <button type="button" class="read-more-btn" id="read-more-btn" onclick="toggleFounderText()">Read more</button>
+            <?php else: ?>
+            <p class="founder-signature"><?php echo $ideaSignature; ?></p>
+            <?php endif; ?>
           </div>
         </div>
       </div>
@@ -975,88 +979,14 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       </div>
     </section>
 
-    <!-- About the Location Section -->
-    <section class="about-section">
-      <div class="container">
-        <h2 class="reveal"><?php echo $attrTitle; ?></h2>
-        <p class="section-lead reveal"><?php echo $attrLead; ?></p>
-
-        <!-- Attractions Grid -->
-        <div class="attractions-grid reveal">
-          <div class="attraction-card" data-gallery="procter">
-            <img src="<?php echo $procterImageUrl; ?>" 
-                 alt="Procter Village" 
-                 class="attraction-card-image"
-                 onclick="openGallery('procter', 0)"
-                 onerror="this.onerror=null; this.src='assets/procter_1.jpeg'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.JPG'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.png'; this.onerror=function(){this.onerror=null; this.src='assets/procter_1.PNG';};};};">
-            <div class="attraction-card-content">
-              <h4><?php echo $procterTitle; ?></h4>
-              <div class="distance"><?php echo $procterDistance; ?></div>
-              <p><?php echo $procterDescription; ?></p>
-            </div>
-          </div>
-          <div class="attraction-card" data-gallery="halcyon">
-            <img src="https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=800&auto=format&fit=crop" 
-                 alt="Ainsworth Hot Springs Resort" 
-                 class="attraction-card-image"
-                 onclick="openGallery('halcyon', 0)">
-            <div class="attraction-card-content">
-              <h4><?php echo $halcyonTitle; ?></h4>
-              <div class="distance"><?php echo $halcyonDistance; ?></div>
-              <p><?php echo $halcyonDescription; ?></p>
-            </div>
-          </div>
-          <div class="attraction-card" data-gallery="whitewater">
-            <img src="https://images.unsplash.com/photo-1511497584788-876760111969?q=80&w=800&auto=format&fit=crop" 
-                 alt="Whitewater Mountain Resort" 
-                 class="attraction-card-image"
-                 onclick="openGallery('whitewater', 0)">
-            <div class="attraction-card-content">
-              <h4><?php echo $whitewaterTitle; ?></h4>
-              <div class="distance"><?php echo $whitewaterDistance; ?></div>
-              <p><?php echo $whitewaterDescription; ?></p>
-            </div>
-          </div>
-          <div class="attraction-card" data-gallery="nelson">
-            <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?q=80&w=800&auto=format&fit=crop" 
-                 alt="Nelson" 
-                 class="attraction-card-image"
-                 onclick="openGallery('nelson', 0)">
-            <div class="attraction-card-content">
-              <h4><?php echo $nelsonTitle; ?></h4>
-              <div class="distance"><?php echo $nelsonDistance; ?></div>
-              <p><?php echo $nelsonDescription; ?></p>
-            </div>
-          </div>
-        </div>
-
-        <div class="reveal" style="margin-top: 50px;">
-          <h3 style="margin-bottom: 20px;"><?php echo $parksTitle; ?></h3>
-          <p><?php echo $parksIntro; ?></p>
-          
-          <div class="parks-list">
-            <?php foreach ($parksItems as $park): ?>
-            <div class="park-item"><?php echo $park; ?></div>
-            <?php endforeach; ?>
-          </div>
-        </div>
-      </div>
-    </section>
-
     <!-- Contact us Section -->
     <section class="about-section">
       <div class="container">
-        <h2 class="reveal">Contact us</h2>
+        <h2 class="reveal" id="about-contact-section-heading"><?php echo $contactFormTitle; ?></h2>
           <div class="contact-section-grid" style="margin-top: 30px;">
             <div class="contact-text">
-              <p style="font-size: 1.2rem; line-height: 1.8;">
-                At Back to Base, you can find exactly the kind of rest you need.<br>
-                <strong>We'll be happy to help you plan your stay and answer any questions!</strong>
-              </p>
-              <div class="contact-info" style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--border);">
-                <p id="footer-contact-address" style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Procter, British Columbia, Canada</p>
-                <p id="footer-contact-phone" style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Phone: +1 (555) 123‑4567</p>
-                <p id="footer-contact-email" style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 0;">Email: hello@backtobase.example</p>
+              <div id="about-contact-description" class="about-contact-form-copy" style="font-size: 1.2rem; line-height: 1.8;">
+                <?php echo $contactFormDescription; ?>
               </div>
             </div>
             <div class="contact-form-wrapper">
@@ -1113,139 +1043,28 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
         <h4>Navigation</h4>
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
-          <li><a href="special.php">Special</a></li>
+          <li><a href="massage.php">Wellness</a></li>
+          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
+          <li><a href="explore.php">Explore</a></li>
+          <li><a href="special.php">Specials</a></li>
           <li><a href="about.php">About us</a></li>
         </ul>
       </div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
   </footer>
 
-  <!-- Gallery Modal -->
-  <div id="gallery-modal" class="gallery-modal">
-    <span class="gallery-modal-close" onclick="closeGallery()">&times;</span>
-    <span class="gallery-modal-nav gallery-modal-prev" onclick="changeGalleryImage(-1)">&#10094;</span>
-    <span class="gallery-modal-nav gallery-modal-next" onclick="changeGalleryImage(1)">&#10095;</span>
-    <div class="gallery-modal-content">
-      <img id="gallery-modal-image" class="gallery-modal-image" src="" alt="">
-    </div>
-    <div class="gallery-modal-counter">
-      <span id="gallery-counter">1 / 1</span>
-    </div>
-  </div>
-
-  <!-- Google Maps Embed API (no API key required for basic usage, but we use it for better control) -->
-  
   <script src="utils.js?v=26"></script>
   <script src="script.js?v=26"></script>
   <script src="auth.js"></script>
   <script>
-    // Wait for DOM to be fully loaded
     document.addEventListener('DOMContentLoaded', function() {
-    // Gallery data for each attraction (from database)
-    // Combine main image with gallery images, filtering out empty values
-    <?php
-    // Helper function to filter empty URLs
-    function filterGalleryUrls($gallery) {
-        return array_filter($gallery, function($url) {
-            return !empty(trim($url));
-        });
-    }
-    
-    // Build gallery arrays
-    $procterGalleryFull = array_merge([$procterImageUrl], filterGalleryUrls($procterGallery));
-    $halcyonGalleryFull = array_merge([$halcyonImageUrl], filterGalleryUrls($halcyonGallery));
-    $whitewaterGalleryFull = array_merge([$whitewaterImageUrl], filterGalleryUrls($whitewaterGallery));
-    $nelsonGalleryFull = array_merge([$nelsonImageUrl], filterGalleryUrls($nelsonGallery));
-    ?>
-    const galleries = {
-      procter: <?php echo json_encode(array_values($procterGalleryFull)); ?>,
-      halcyon: <?php echo json_encode(array_values($halcyonGalleryFull)); ?>,
-      whitewater: <?php echo json_encode(array_values($whitewaterGalleryFull)); ?>,
-      nelson: <?php echo json_encode(array_values($nelsonGalleryFull)); ?>
-    };
-    
-    // Debug: log galleries to console
-    console.log('Loaded galleries from database:', galleries);
-    console.log('Procter gallery count:', galleries.procter ? galleries.procter.length : 0, 'images:', galleries.procter);
-    console.log('Halcyon gallery count:', galleries.halcyon ? galleries.halcyon.length : 0, 'images:', galleries.halcyon);
-    console.log('Whitewater gallery count:', galleries.whitewater ? galleries.whitewater.length : 0, 'images:', galleries.whitewater);
-    console.log('Nelson gallery count:', galleries.nelson ? galleries.nelson.length : 0, 'images:', galleries.nelson);
-
-    let currentGallery = null;
-    let currentImageIndex = 0;
-
-    // Gallery functions - make them globally available
-    window.openGallery = function(galleryName, imageIndex) {
-      currentGallery = galleryName;
-      currentImageIndex = imageIndex || 0;
-      const gallery = galleries[galleryName];
-      
-      if (!gallery || gallery.length === 0) return;
-      
-      const modal = document.getElementById('gallery-modal');
-      const modalImage = document.getElementById('gallery-modal-image');
-      const counter = document.getElementById('gallery-counter');
-      
-      modalImage.src = gallery[currentImageIndex];
-      counter.textContent = `${currentImageIndex + 1} / ${gallery.length}`;
-      modal.classList.add('active');
-      
-      // Prevent body scroll
-      document.body.style.overflow = 'hidden';
-    }
-
-    window.closeGallery = function() {
-      const modal = document.getElementById('gallery-modal');
-      modal.classList.remove('active');
-      document.body.style.overflow = '';
-    }
-
-    window.changeGalleryImage = function(direction) {
-      if (!currentGallery) return;
-      
-      const gallery = galleries[currentGallery];
-      if (!gallery || gallery.length === 0) return;
-      
-      currentImageIndex += direction;
-      
-      if (currentImageIndex < 0) {
-        currentImageIndex = gallery.length - 1;
-      } else if (currentImageIndex >= gallery.length) {
-        currentImageIndex = 0;
-      }
-      
-      const modalImage = document.getElementById('gallery-modal-image');
-      const counter = document.getElementById('gallery-counter');
-      
-      modalImage.src = gallery[currentImageIndex];
-      counter.textContent = `${currentImageIndex + 1} / ${gallery.length}`;
-    }
-
-    // Close gallery on Escape key
-    document.addEventListener('keydown', function(e) {
-      if (e.key === 'Escape') {
-        window.closeGallery();
-      } else if (e.key === 'ArrowLeft') {
-        window.changeGalleryImage(-1);
-      } else if (e.key === 'ArrowRight') {
-        window.changeGalleryImage(1);
-      }
-    });
-
-    // Close gallery when clicking outside image
-    document.getElementById('gallery-modal').addEventListener('click', function(e) {
-      if (e.target === this || e.target.classList.contains('gallery-modal-content')) {
-        window.closeGallery();
-      }
-    });
-
     // Generate random captcha
     function generateCaptcha() {
       const num1 = Math.floor(Math.random() * 10) + 1;
@@ -1561,7 +1380,8 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
     window.toggleFounderText = function() {
       const expandable = document.getElementById('founder-expandable');
       const button = document.getElementById('read-more-btn');
-      
+      if (!expandable || !button) return;
+
       if (expandable.classList.contains('expanded')) {
         expandable.classList.remove('expanded');
         button.textContent = 'Read more';

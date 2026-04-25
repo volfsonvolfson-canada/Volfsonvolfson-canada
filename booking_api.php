@@ -1362,17 +1362,32 @@ function checkDateAvailability($conn, $roomName, $checkinDate, $checkoutDate) {
  * Получение цены комнаты
  */
 function getRoomPrice($conn, $roomName) {
-    // Пытаемся получить цену из таблицы rooms
+    // Nightly amount: room_*_price_amount when set, else legacy room_*_price HTML (content_settings)
+    $cmsSlugByRoom = [
+        'Loki Suite' => 'basement',
+        'The Nouk' => 'ground_queen',
+        'Vrienden' => 'ground_twin',
+        'Kelder' => 'second',
+    ];
+    if (isset($cmsSlugByRoom[$roomName])) {
+        $slug = $cmsSlugByRoom[$roomName];
+        $row = fetchOne($conn, 'SELECT * FROM content_settings WHERE id = 1 LIMIT 1');
+        if ($row) {
+            $n = btb_room_price_nightly_amount($row, $slug);
+            if ($n !== null && $n > 0) {
+                return $n;
+            }
+        }
+    }
+
+    // Legacy: таблица rooms (старые демо-данные)
     $sql = "SELECT price FROM rooms WHERE name = ? LIMIT 1";
     $result = fetchOne($conn, $sql, [$roomName]);
-    
     if ($result && isset($result['price'])) {
         return floatval($result['price']);
     }
-    
-    // Если комната не найдена, используем стандартную цену
-    // TODO: Можно добавить конфигурацию стандартных цен
-    return 150.00; // Стандартная цена за ночь в CAD
+
+    return 150.00;
 }
 
 /**

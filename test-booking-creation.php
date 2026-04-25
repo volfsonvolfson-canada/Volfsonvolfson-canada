@@ -19,7 +19,7 @@ echo "<h1>Тест создания бронирования через API</h1>
 // Симулируем данные бронирования
 $_POST = [
     'action' => 'create_booking',
-    'room_name' => 'Basement — Queen',
+    'room_name' => 'Loki Suite',
     'checkin_date' => date('Y-m-d', strtotime('+7 days')),
     'checkout_date' => date('Y-m-d', strtotime('+10 days')),
     'guest_name' => 'Test Guest',

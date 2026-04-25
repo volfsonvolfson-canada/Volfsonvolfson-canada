@@ -17,36 +17,18 @@ html body.admin-body,
   background-color: #ffffff !important;
 }
 
-/* Visual truncation for preview text elements - show full text but visually truncate */
+/* Retreat preview: full text visible; height follows content (no line-clamp truncation) */
 #retreat-workshop-section .editable-preview {
-  max-height: 4.5em; /* ~3 lines of text */
-  overflow: hidden;
-  text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  max-height: none;
+  overflow: visible;
   word-wrap: break-word;
+  overflow-wrap: break-word;
+  white-space: pre-wrap;
   background: #f8fafc;
   border: 1px solid #e5e7eb;
   color: #0f172a;
   padding: 8px 10px;
   border-radius: 6px;
-}
-
-/* For longer text fields, allow more lines */
-#retreat-workshop-section .editable-preview[data-field*="intro"],
-#retreat-workshop-section .editable-preview[data-field*="description"],
-#retreat-workshop-section .editable-preview[data-field*="conclusion"],
-#retreat-workshop-section .editable-preview[data-field*="text"] {
-  max-height: 6em; /* ~4 lines of text */
-  -webkit-line-clamp: 4;
-}
-
-/* When focused, show full text */
-#retreat-workshop-section .editable-preview:focus {
-  max-height: none;
-  -webkit-line-clamp: none;
-  overflow: visible;
 }
 
 .retreat-status-bar,
@@ -453,6 +435,8 @@ html body.admin-body,
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   line-height: 1.5;
+  color: #0f172a;
+  background: #f8fafc;
 }
 
 /* Status Messages */
@@ -949,4 +933,166 @@ html[data-theme="light"] body.admin-body .site-footer .copyright {
 .flatpickr span.flatpickr-next-year:hover {
   color: #ffffff !important;
   fill: #ffffff !important;
+}
+
+/* Global save status — fixed to top of viewport (all CMS sections) */
+.admin-save-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 200000;
+  display: flex;
+  justify-content: center;
+  padding: 0 12px;
+  box-sizing: border-box;
+  pointer-events: none;
+  transform: translateY(-100%);
+  opacity: 0;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+  max-height: 0;
+  overflow: hidden;
+}
+
+.admin-save-banner.is-visible {
+  transform: translateY(0);
+  opacity: 1;
+  max-height: 80px;
+  padding-top: 10px;
+  padding-bottom: 2px;
+  pointer-events: auto;
+}
+
+body.admin-global-save-banner-padded {
+  padding-top: 52px;
+  transition: padding-top 0.2s ease;
+}
+
+.admin-save-banner__inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  max-width: min(960px, 100%);
+  width: 100%;
+  padding: 10px 16px;
+  border-radius: 0 0 12px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #0f172a;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  border-top: none;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+.admin-save-banner[data-state='saving'] .admin-save-banner__inner {
+  background: #eff6ff;
+  border-color: #bfdbfe;
+  color: #1e3a5f;
+}
+
+.admin-save-banner[data-state='saved'] .admin-save-banner__inner {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #065f46;
+}
+
+.admin-save-banner[data-state='error'] .admin-save-banner__inner {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.admin-save-banner[data-state='toast_success'] .admin-save-banner__inner,
+.admin-save-banner[data-state='toast'] .admin-save-banner__inner {
+  background: #f0fdf4;
+  border-color: #bbf7d0;
+  color: #166534;
+}
+
+.admin-save-banner[data-state='toast_error'] .admin-save-banner__inner {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #991b1b;
+}
+
+.admin-save-banner__section {
+  color: #475569;
+  font-size: 0.82rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.admin-save-banner__icon {
+  font-size: 1.1rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.admin-save-banner__message {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* Hide in-flow save chips when the global bar is used */
+body.admin-uses-global-save-banner .retreat-live-status,
+body.admin-uses-global-save-banner .massage-live-status {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+/* Homepage — Rooms Cards: nightly line synced from room tabs (not a form field) */
+#homepage-rooms-section .admin-rooms-card-price-synced {
+  margin: 8px 0 0;
+  padding: 0;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #64748b;
+  letter-spacing: 0.01em;
+  border: none;
+  background: transparent;
+}
+
+/* Room page preview — price line: always light field, readable on dark UIs (no raw HTML in values) */
+input.admin-room-price-input {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: 1px solid #e2e8f0 !important;
+  -webkit-text-fill-color: #0f172a !important;
+  caret-color: #0f172a;
+  color-scheme: light;
+}
+
+input.admin-room-price-input:focus {
+  outline: none;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+input.admin-room-price-input::placeholder {
+  color: #94a3b8;
+}
+
+input.admin-room-price-input:-webkit-autofill,
+input.admin-room-price-input:-webkit-autofill:hover,
+input.admin-room-price-input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
 }

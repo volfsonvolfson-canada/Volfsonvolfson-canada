@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="cookie-consent.css">
+  <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>Special offer — Back to Base</title>
+  <title>Specials — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -66,6 +68,7 @@
       margin-bottom: 1rem;
       color: white !important;
       text-shadow: 0 2px 10px rgba(0,0,0,0.8);
+      white-space: pre-line;
     }
     .special-hero p {
       font-size: clamp(1.1rem, 2vw, 1.5rem);
@@ -216,9 +219,10 @@
       </a>
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
-        <a href="massage.html">Massage</a>
+        <a href="massage.php">Wellness</a>
         <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-        <a href="special.html">Special</a>
+        <a href="explore.php">Explore</a>
+        <a href="special.html">Specials</a>
         <a href="about.html">About us</a>
       </nav>
       <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
@@ -231,7 +235,7 @@
           </svg>
           <span id="theme-text">Light</span>
         </button>
-        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+        <a href="login.html" class="btn-signin" id="header-signin">Guest login</a>
       </div>
     </div>
   </header>
@@ -242,11 +246,12 @@
   <!-- Mobile Navigation Menu -->
   <nav class="mobile-nav" id="mobile-nav">
     <a href="index.html#rooms">Rooms</a>
-    <a href="massage.html">Massage</a>
+    <a href="massage.php">Wellness</a>
     <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-    <a href="special.html">Special</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.html">Specials</a>
     <a href="about.html">About us</a>
-    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
     <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
       <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -286,6 +291,17 @@
             <img class="hot-springs-image" src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1600&auto=format&fit=crop" alt="Ktunaxa Grill restaurant and spa" />
           </div>
         </div>
+
+        <div class="hot-springs-card">
+          <div class="hot-springs-content">
+            <h3 id="special-extra-title">Discover Nelson & the Kootenays</h3>
+            <p id="special-extra-description-1">Beyond the hot springs, the lively town of Nelson offers galleries, cafés, and lakefront strolls — an ideal complement to your retreat.</p>
+            <p id="special-extra-description-2">Ask us for tips on hikes, paddling on Kootenay Lake, or seasonal events during your stay.</p>
+          </div>
+          <div>
+            <img class="hot-springs-image" src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1600&auto=format&fit=crop" alt="Nelson and Kootenay region" />
+          </div>
+        </div>
       </div>
     </section>
 
@@ -295,7 +311,7 @@
         <div class="exclusive-offer-card">
           <div class="exclusive-offer-card-content">
             <h2 id="special-offer-title">Free Hot Springs Access</h2>
-            <p><strong id="special-offer-main-text">Book a minimum 5-night stay at our Erasmus Suite (Second floor — Loft suite) and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!</strong></p>
+            <p><strong id="special-offer-main-text">Book a minimum 5-night stay at Kelder and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!</strong></p>
             <p id="special-offer-description">This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.</p>
           </div>
         </div>
@@ -316,15 +332,18 @@
         <h4>Navigation</h4>
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.html">Massage</a></li>
+          <li><a href="massage.php">Wellness</a></li>
           <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
-          <li><a href="special.html">Special</a></li>
+          <li><a href="explore.php">Explore</a></li>
+          <li><a href="special.html">Specials</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>
       </div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -370,6 +389,16 @@
                 }
               }
             }
+
+            if (data.specialExtraImageUrl) {
+              const extraCard = document.querySelectorAll('.hot-springs-card')[2];
+              if (extraCard) {
+                const img = extraCard.querySelector('.hot-springs-image');
+                if (img) {
+                  img.src = data.specialExtraImageUrl + '?v=' + Date.now();
+                }
+              }
+            }
           }
         } catch(e) {
           console.error('Error updating special images:', e);
@@ -402,7 +431,8 @@
               const contentData = {
                 specialHeroImageUrl: data.specialHeroImageUrl || '',
                 specialPoolsImageUrl: data.specialPoolsImageUrl || '',
-                specialDiningImageUrl: data.specialDiningImageUrl || ''
+                specialDiningImageUrl: data.specialDiningImageUrl || '',
+                specialExtraImageUrl: data.specialExtraImageUrl || ''
               };
               
               const existing = localStorage.getItem('btb_content');
@@ -439,6 +469,13 @@
               if (diningTitle && data.specialDiningTitle) diningTitle.textContent = data.specialDiningTitle;
               if (diningDesc1 && data.specialDiningDescription1) diningDesc1.textContent = data.specialDiningDescription1;
               if (diningDesc2 && data.specialDiningDescription2) diningDesc2.textContent = data.specialDiningDescription2;
+
+              const extraTitle = document.getElementById('special-extra-title');
+              const extraDesc1 = document.getElementById('special-extra-description-1');
+              const extraDesc2 = document.getElementById('special-extra-description-2');
+              if (extraTitle && data.specialExtraTitle) extraTitle.textContent = data.specialExtraTitle;
+              if (extraDesc1 && data.specialExtraDescription1) extraDesc1.textContent = data.specialExtraDescription1;
+              if (extraDesc2 && data.specialExtraDescription2) extraDesc2.textContent = data.specialExtraDescription2;
               
               const offerTitle = document.getElementById('special-offer-title');
               const offerMain = document.getElementById('special-offer-main-text');

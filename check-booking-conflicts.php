@@ -4,7 +4,7 @@
  * 
  * Использование:
  * 1. Загрузите этот файл на хостинг
- * 2. Откройте в браузере: https://new.backtobase.ca/check-booking-conflicts.php?room=Basement — Queen&checkin=2025-11-06&checkout=2025-11-21
+ * 2. Откройте в браузере: https://new.backtobase.ca/check-booking-conflicts.php?room=Loki%20Suite&checkin=2025-11-06&checkout=2025-11-21
  */
 
 require_once 'config.php';
@@ -12,7 +12,7 @@ require_once 'common.php';
 
 header('Content-Type: text/html; charset=utf-8');
 
-$roomName = isset($_GET['room']) ? $_GET['room'] : 'Basement — Queen';
+$roomName = isset($_GET['room']) ? $_GET['room'] : 'Loki Suite';
 $checkinDate = isset($_GET['checkin']) ? $_GET['checkin'] : '2025-11-06';
 $checkoutDate = isset($_GET['checkout']) ? $_GET['checkout'] : '2025-11-21';
 

@@ -2,9 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="cookie-consent.css">
+  <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>Second floor — Loft suite (entire) | Back to Base</title>
+  <title>Kelder | Back to Base</title>
+  <script>
+    // Redirect to PHP version for SSR - must be immediate and synchronous
+    (function() {
+      'use strict';
+      var path = window.location.pathname;
+      if (path.includes('room-second-suite.html')) {
+        var newPath = path.replace('room-second-suite.html', 'room-second-suite.php');
+        var newUrl = newPath + window.location.search + window.location.hash;
+        // Use replace to avoid adding to history
+        window.location.replace(newUrl);
+        // Stop execution
+        return;
+      }
+    })();
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -48,9 +65,10 @@
       </a>
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
-        <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-        <a href="special.php">Special</a>
+        <a href="massage.php">Wellness</a>
+        <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+        <a href="explore.php">Explore</a>
+        <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
       <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
@@ -63,7 +81,7 @@
           </svg>
           <span id="theme-text">Light</span>
         </button>
-        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+        <a href="login.html" class="btn-signin" id="header-signin">Guest login</a>
       </div>
     </div>
   </header>
@@ -74,11 +92,12 @@
   <!-- Mobile Navigation Menu -->
   <nav class="mobile-nav" id="mobile-nav">
     <a href="index.html#rooms">Rooms</a>
-    <a href="massage.html">Massage</a>
-    <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-    <a href="special.php">Special</a>
+    <a href="massage.php">Wellness</a>
+    <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
     <a href="about.php">About us</a>
-    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
     <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
       <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -89,7 +108,7 @@
 
   <div class="page-header">
     <div class="container">
-      <h1 id="room-second-title">Second floor (entire) — Queen bed</h1>
+      <h1 id="room-second-title">Kelder</h1>
       <p class="section-lead" id="room-second-subtitle">A private loft under the roof: bedroom, kitchenette, shower, study and balcony.</p>
     </div>
   </div>
@@ -112,9 +131,8 @@
         <p id="room-second-price"><strong>Price:</strong> 210 CAD / night (entire floor)</p>
         <p id="room-second-capacity"><strong>Capacity:</strong> up to 2 guests</p>
         <p id="room-second-description" style="margin-top: 32px;">A fully private floor featuring a large living area with a king-size bed, a separate kitchen, a private bathroom with a shower, a bright workspace, and a spacious balcony with stunning views of the lake and mountains.</p>
-        <p>This suite offers maximum privacy and independence, making it ideal for guests who need their own living space. From the balcony, you can enjoy not only breathtaking views but also watch wild deer that come almost daily to graze on the lawn in front of the house.</p>
         <p id="room-second-note" style="margin-top: 16px;">*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.</p>
-        <form class="booking-form" data-room="Second floor — Loft suite" data-custom-handler novalidate style="margin-top: 40px;">
+        <form class="booking-form" data-room="Kelder" data-custom-handler novalidate style="margin-top: 40px;">
           <div class="form-row">
             <div>
               <label for="checkin">Check‑in</label>
@@ -172,43 +190,17 @@
   <section id="wellness-section" class="section alt" style="display:none;">
     <div class="container">
       <h2 id="wellness-title">Wellness Experiences</h2>
-      <p class="section-lead" id="wellness-description">Enhance your stay with our additional wellness services.<br>Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.</p>
+      <p class="section-lead" id="wellness-description">Enhance your stay with our additional wellness services.<br>Enjoy relaxing or deep tissue massage and the warmth of our private sauna — all designed to make your vacation even more restorative.</p>
 
       <section class="card card-massage">
         <div class="card-img">
-          <img id="wellness-massage-img" class="floor-photo media-43" src="assets/massage.jpg" alt="Massage at Back to Base" />
+          <img id="wellness-massage-img" class="floor-photo media-43" src="assets/massage.jpg" alt="Wellness at Back to Base" />
         </div>
         <div class="card-body">
-          <h2 id="wellness-massage-title">Massage</h2>
+          <h2 id="wellness-massage-title">Wellness</h2>
           <p id="wellness-massage-description">Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.</p>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a class="btn primary" href="massage.html">Book massage</a>
-          </div>
-        </div>
-      </section>
-
-      <section class="card card-massage card-massage--alt">
-        <div class="card-img">
-          <img id="wellness-yoga-img" class="floor-photo media-43" src="assets/yoga.jpg" alt="Yoga at Back to Base" />
-        </div>
-        <div class="card-body">
-          <h2 id="wellness-yoga-title">Yoga</h2>
-          <p id="wellness-yoga-description">On the property, surrounded by a cozy forest, you'll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.</p>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a class="btn primary" href="retreat-and-workshop.html">Book retreat</a>
-          </div>
-        </div>
-      </section>
-
-      <section class="card card-massage">
-        <div class="card-img">
-          <img id="wellness-sauna-img" class="floor-photo media-43" src="assets/plan-basement-bedroom.jpg" alt="Sauna at Back to Base" />
-        </div>
-        <div class="card-body">
-          <h2 id="wellness-sauna-title">Sauna</h2>
-          <p id="wellness-sauna-description">After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.</p>
-          <div style="display:flex; gap:10px; flex-wrap:wrap;">
-            <a class="btn primary" href="massage.html">Book sauna session</a>
+            <a class="btn primary" href="massage.php">Explore wellness</a>
           </div>
         </div>
       </section>
@@ -227,15 +219,18 @@
         <h4>Navigation</h4>
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
-          <li><a href="special.php">Special</a></li>
+          <li><a href="massage.php">Wellness</a></li>
+          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
+          <li><a href="explore.php">Explore</a></li>
+          <li><a href="special.php">Specials</a></li>
           <li><a href="about.php">About us</a></li>
         </ul>
       </div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -371,7 +366,9 @@
       }
     }
     
-    // Gallery functionality for Second floor — Loft suite
+    const ROOM_GALLERY_LABEL = 'Kelder';
+    const ROOM_THUMB_HINTS = ['Inside', 'Next', 'Also', 'Details', 'Another angle'];
+
     let galleryImages = [];
     let currentImageIndex = 0;
     
@@ -384,7 +381,7 @@
       gallery.forEach((imageUrl, index) => {
         const img = document.createElement('img');
         img.src = imageUrl + '?v=' + Date.now();
-        img.alt = `Second floor ${index + 1}`;
+        img.alt = ROOM_GALLERY_LABEL + ' · ' + ROOM_THUMB_HINTS[index % ROOM_THUMB_HINTS.length] + ' (' + (index + 1) + ')';
         img.style.cursor = 'pointer';
         img.onclick = () => openGalleryModal(index);
         galleryContainer.appendChild(img);
@@ -440,7 +437,7 @@
       
       setTimeout(() => {
         modalImage.src = galleryImages[currentImageIndex] + '?v=' + Date.now();
-        modalImage.alt = `Image ${currentImageIndex + 1} of ${galleryImages.length}`;
+        modalImage.alt = ROOM_GALLERY_LABEL + ' — slide ' + (currentImageIndex + 1) + ' of ' + galleryImages.length;
         if (counter) counter.textContent = `${currentImageIndex + 1} / ${galleryImages.length}`;
         
         // Показываем изображение с плавным появлением
@@ -525,28 +522,6 @@
             if (massageImg && data.wellnessMassageImageUrl) {
               massageImg.src = data.wellnessMassageImageUrl + '?v=' + Date.now();
               massageImg.srcset = data.wellnessMassageImageUrl + '?v=' + Date.now();
-            }
-            
-            // Update yoga card
-            const yogaTitle = document.getElementById('wellness-yoga-title');
-            const yogaDesc = document.getElementById('wellness-yoga-description');
-            const yogaImg = document.getElementById('wellness-yoga-img');
-            if (yogaTitle && data.wellnessYogaTitle) yogaTitle.textContent = data.wellnessYogaTitle;
-            if (yogaDesc && data.wellnessYogaDescription) yogaDesc.textContent = data.wellnessYogaDescription;
-            if (yogaImg && data.wellnessYogaImageUrl) {
-              yogaImg.src = data.wellnessYogaImageUrl + '?v=' + Date.now();
-              yogaImg.srcset = data.wellnessYogaImageUrl + '?v=' + Date.now();
-            }
-            
-            // Update sauna card
-            const saunaTitle = document.getElementById('wellness-sauna-title');
-            const saunaDesc = document.getElementById('wellness-sauna-description');
-            const saunaImg = document.getElementById('wellness-sauna-img');
-            if (saunaTitle && data.wellnessSaunaTitle) saunaTitle.textContent = data.wellnessSaunaTitle;
-            if (saunaDesc && data.wellnessSaunaDescription) saunaDesc.textContent = data.wellnessSaunaDescription;
-            if (saunaImg && data.wellnessSaunaImageUrl) {
-              saunaImg.src = data.wellnessSaunaImageUrl + '?v=' + Date.now();
-              saunaImg.srcset = data.wellnessSaunaImageUrl + '?v=' + Date.now();
             }
           }
         }

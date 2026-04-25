@@ -41,8 +41,8 @@ try {
                 'A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.',
                 'assets/plan.jpg',
                 '',
-                'Private top-floor space under the roof.',
-                'A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.',
+                'Multifunctional spaces & small cinema',
+                'Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.',
                 'assets/plan-loft.jpg'
             )";
             
@@ -75,8 +75,8 @@ try {
                 'A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.',
                 'assets/plan.jpg',
                 '',
-                'Private top-floor space under the roof.',
-                'A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.',
+                'Multifunctional spaces & small cinema',
+                'Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.',
                 'assets/plan-loft.jpg'
             )";
             

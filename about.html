@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="cookie-consent.css">
+  <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>About us — Back to Base</title>
@@ -107,6 +109,11 @@
       margin-bottom: 10px;
     }
     .founder-content p {
+      font-size: 1.1rem;
+      line-height: 1.8;
+      color: var(--text-muted);
+    }
+    .founder-expandable-inner {
       font-size: 1.1rem;
       line-height: 1.8;
       color: var(--text-muted);
@@ -716,9 +723,10 @@
       </a>
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
-        <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-        <a href="special.php">Special</a>
+        <a href="massage.php">Wellness</a>
+        <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+        <a href="explore.php">Explore</a>
+        <a href="special.php">Specials</a>
         <a href="about.html">About us</a>
       </nav>
       <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
@@ -731,7 +739,7 @@
           </svg>
           <span id="theme-text">Light</span>
         </button>
-        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+        <a href="login.html" class="btn-signin" id="header-signin">Guest login</a>
       </div>
     </div>
   </header>
@@ -742,11 +750,12 @@
   <!-- Mobile Navigation Menu -->
   <nav class="mobile-nav" id="mobile-nav">
     <a href="index.html#rooms">Rooms</a>
-    <a href="massage.html">Massage</a>
-    <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-    <a href="special.php">Special</a>
+    <a href="massage.php">Wellness</a>
+    <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
     <a href="about.html">About us</a>
-    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
     <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
       <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -778,12 +787,14 @@
             <h2>Idea and Origins</h2>
             <p>Hi! My name is <strong>Rob Vuik</strong>. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.</p>
             <div class="founder-content-expandable" id="founder-expandable">
-              <p style="margin-top: 0;">Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.</p>
-              <p>Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I'm happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.</p>
-              <p>We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.</p>
+              <div class="founder-expandable-inner">
+                Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.<br><br>
+                Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I'm happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.<br><br>
+                We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.
+              </div>
               <p class="founder-signature">I look forward to welcoming you!</p>
             </div>
-            <button class="read-more-btn" id="read-more-btn" onclick="toggleFounderText()">Read more</button>
+            <button type="button" class="read-more-btn" id="read-more-btn" onclick="toggleFounderText()">Read more</button>
           </div>
         </div>
       </div>
@@ -906,21 +917,15 @@
       </div>
     </section>
 
-    <!-- Contact us Section -->
+    <!-- Contact us Section (heading + lead copy from CMS via script.js) -->
     <section class="about-section">
       <div class="container">
-        <h2 class="reveal">Contact us</h2>
+        <h2 class="reveal" id="about-contact-section-heading">Contact us</h2>
           <div class="contact-section-grid" style="margin-top: 30px;">
             <div class="contact-text">
-              <p style="font-size: 1.2rem; line-height: 1.8;">
-                At Back to Base, you can find exactly the kind of rest you need.<br>
-                <strong>We'll be happy to help you plan your stay and answer any questions!</strong>
-              </p>
-              <div class="contact-info" style="margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--border);">
-                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Procter, British Columbia, Canada</p>
-                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 10px;">Phone: +1 (555) 123‑4567</p>
-                <p style="font-size: 1.2rem; line-height: 1.8; margin-bottom: 0;">Email: hello@backtobase.example</p>
-              </div>
+              <div id="about-contact-description" class="about-contact-form-copy" style="font-size: 1.2rem; line-height: 1.8; white-space: pre-line;">At Back to Base, you can find exactly the kind of rest you need.
+
+We'll be happy to help you plan your stay and answer any questions!</div>
             </div>
             <div class="contact-form-wrapper">
               <form id="contact-form" class="contact-form">
@@ -976,15 +981,18 @@
         <h4>Navigation</h4>
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
-          <li><a href="special.php">Special</a></li>
+          <li><a href="massage.php">Wellness</a></li>
+          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
+          <li><a href="explore.php">Explore</a></li>
+          <li><a href="special.php">Specials</a></li>
           <li><a href="about.html">About us</a></li>
         </ul>
       </div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -1709,7 +1717,8 @@
     window.toggleFounderText = function() {
       const expandable = document.getElementById('founder-expandable');
       const button = document.getElementById('read-more-btn');
-      
+      if (!expandable || !button) return;
+
       if (expandable.classList.contains('expanded')) {
         expandable.classList.remove('expanded');
         button.textContent = 'Read more';

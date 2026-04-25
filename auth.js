@@ -420,7 +420,7 @@ class AuthSystem {
       signinBtn.href = 'dashboard.html';
       signinBtn.classList.add('authenticated');
     } else {
-      signinBtn.innerHTML = 'Sign In';
+      signinBtn.innerHTML = 'Guest login';
       signinBtn.href = 'login.html';
       signinBtn.classList.remove('authenticated');
     }

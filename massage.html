@@ -2,9 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="cookie-consent.css">
+  <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
-  <title>Massage — Back to Base</title>
+  <title>Wellness — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -48,9 +50,10 @@
       </a>
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
-        <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-        <a href="special.php">Special</a>
+        <a href="massage.html">Wellness</a>
+        <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+        <a href="explore.php">Explore</a>
+        <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
       <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
@@ -63,7 +66,7 @@
           </svg>
           <span id="theme-text">Light</span>
         </button>
-        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+        <a href="login.html" class="btn-signin" id="header-signin">Guest login</a>
       </div>
     </div>
   </header>
@@ -74,11 +77,12 @@
   <!-- Mobile Navigation Menu -->
   <nav class="mobile-nav" id="mobile-nav">
     <a href="index.html#rooms">Rooms</a>
-    <a href="massage.html">Massage</a>
-    <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-    <a href="special.php">Special</a>
+    <a href="massage.html">Wellness</a>
+    <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
     <a href="about.php">About us</a>
-    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
     <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
       <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -97,95 +101,94 @@
 
   <main class="section">
     <div class="container">
-      <section class="card card-massage">
+      <section class="card card-massage" data-massage-card-type="Relaxing Massage">
         <div class="card-img">
           <img class="floor-photo media-43" data-src-base="assets/Relaxation Massage|assets/relaxation|assets/relaxation-massage|assets/Relaxation_Massage|assets/Relaxing Massage|assets/Relaxing_Massage|assets/RelaxationMassage|assets/RelaxingMassage|assets/relax" alt="Relaxation massage" />
         </div>
         <div class="card-body">
           <h2 id="massage-relaxing-title">Relaxing Massage</h2>
           <p id="massage-relaxing-description">This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.</p>
+          <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <li>60 minutes — 110 CAD</li>
-            <li>90 minutes — 160 CAD</li>
+            <li data-m-type="Relaxing Massage" data-m-duration="60" role="button" tabindex="0" aria-pressed="false">60 minutes — 110 CAD</li>
+            <li data-m-type="Relaxing Massage" data-m-duration="90" role="button" tabindex="0" aria-pressed="false">90 minutes — 160 CAD</li>
           </ul>
+          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
+          </div>
         </div>
       </section>
 
-      <section class="card card-massage card-massage--alt">
+      <section class="card card-massage card-massage--alt" data-massage-card-type="Deep Tissue Massage">
         <div class="card-img">
           <img class="floor-photo media-43" data-src-base="assets/Deep Tissue Massage|assets/deep|assets/deep-tissue-massage|assets/Deep_Tissue_Massage" alt="Deep tissue massage" />
         </div>
         <div class="card-body">
           <h2 id="massage-deep-tissue-title">Deep Tissue Massage</h2>
           <p id="massage-deep-tissue-description">For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.</p>
+          <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <li>60 minutes — 120 CAD</li>
-            <li>90 minutes — 170 CAD</li>
+            <li data-m-type="Deep Tissue Massage" data-m-duration="60" role="button" tabindex="0" aria-pressed="false">60 minutes — 120 CAD</li>
+            <li data-m-type="Deep Tissue Massage" data-m-duration="90" role="button" tabindex="0" aria-pressed="false">90 minutes — 170 CAD</li>
           </ul>
+          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
+          </div>
         </div>
       </section>
 
-      <section class="card card-massage">
+      <section class="card card-massage" data-massage-card-type="Reiki Energy Healing">
         <div class="card-img">
           <img class="floor-photo media-43" data-src-base="assets/Reiki Energy Healing|assets/reiki|assets/reiki-energy-healing|assets/Reiki_Energy_Healing" alt="Reiki energy healing" />
         </div>
         <div class="card-body">
           <h2 id="massage-reiki-title">Reiki Energy Healing</h2>
           <p id="massage-reiki-description">Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body's energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.</p>
+          <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <li>15 minutes on the go — 25 CAD</li>
-            <li>30 minutes as an add-on — 50 CAD</li>
+            <li data-m-type="Reiki Energy Healing" data-m-duration="15" role="button" tabindex="0" aria-pressed="false">15 minutes on the go — 25 CAD</li>
+            <li data-m-type="Reiki Energy Healing" data-m-duration="30" role="button" tabindex="0" aria-pressed="false">30 minutes as an add-on — 50 CAD</li>
           </ul>
+          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
+          </div>
         </div>
       </section>
 
-      <section class="card card-massage card-massage--alt">
+      <section class="card card-massage card-massage--alt" data-massage-card-type="Sauna">
         <div class="card-img">
           <img class="floor-photo media-43" data-src-base="assets/plan-basement-bedroom|assets/sauna|assets/Sauna" alt="Sauna at Back to Base" />
         </div>
         <div class="card-body">
           <h2 id="massage-sauna-title">Sauna</h2>
           <p id="massage-sauna-description">After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.</p>
+          <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <li>1 hour — 25 CAD</li>
+            <li data-m-type="Sauna" data-m-duration="60" role="button" tabindex="0" aria-pressed="false">1 hour — 25 CAD</li>
           </ul>
+          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
+          </div>
         </div>
       </section>
 
       <section class="card" id="book">
         <h2 id="massage-booking-title">Book a massage or sauna</h2>
+        <p class="massage-booking-intro"></p>
+        <div id="massage-cart-panel" class="massage-cart-panel" hidden>
+          <h3 class="massage-cart-heading">Selected services</h3>
+          <ul id="massage-cart-lines" class="massage-cart-lines" aria-live="polite"></ul>
+        </div>
         <form id="massage-form" novalidate>
-          <div class="form-row">
-            <div>
-              <label for="type">Service type</label>
-              <select id="type" name="type" required>
-                <option>Relaxing Massage</option>
-                <option>Deep Tissue Massage</option>
-                <option>Reiki Energy Healing</option>
-                <option>Sauna</option>
-              </select>
-            </div>
-            <div>
-              <label for="duration">Duration</label>
-              <select id="duration" name="duration" required>
-                <option value="60">60 minutes</option>
-                <option value="90">90 minutes</option>
-              </select>
-            </div>
-            <div>
+          <input type="hidden" id="type" name="type" value="" />
+          <input type="hidden" id="duration" name="duration" value="" />
+          <div class="form-row massage-booking-datetime-row">
+            <div class="massage-booking-col-date">
               <label for="date">Date</label>
               <input id="date" name="date" type="date" required />
-            </div>
-          </div>
-          <div class="form-row">
-            <div>
-              <label for="time">Time</label>
-              <input id="time" name="time" type="time" min="09:00" max="21:00" required />
-              <small style="color: var(--muted); font-size: 0.875rem; margin-top: 4px; display: block;">Available: 9:00 AM - 9:00 PM (30-minute intervals)</small>
-            </div>
-            <div>
               <label for="name">Your name</label>
               <input id="name" name="name" type="text" placeholder="Full name" required />
+            </div>
+            <div class="massage-booking-col-time">
+              <label for="time">Time</label>
+              <input id="time" name="time" type="time" min="09:00" max="21:00" required />
+              <small class="massage-time-hint">Available: 9:00 AM - 9:00 PM (30-minute intervals)</small>
             </div>
           </div>
           <div class="form-row">
@@ -198,7 +201,7 @@
               <input id="phone" name="phone" type="tel" placeholder="+1 555 123‑4567" required />
             </div>
           </div>
-          <button class="btn primary" type="submit">Book service</button>
+          <button class="btn primary" id="massage-submit-btn" type="submit">Book service</button>
         </form>
       </section>
 
@@ -210,7 +213,7 @@
           <h2>Remember to book your room</h2>
           <p>If you haven't booked your stay in our mini-hotel yet, now is the best time.</p>
           <p>Just 35 km from Nelson, BC, our guesthouse offers cozy rooms and apartments for rent, surrounded by forest near Kootenay Lake with views of Mount Loki. Easy booking online — enjoy a peaceful vacation and retreat in nature.</p>
-          <a class="btn primary" href="index.html#rooms">View rooms</a>
+          <a class="btn outline" href="index.html#rooms">View rooms</a>
         </div>
       </section>
 
@@ -221,7 +224,7 @@
             <h2>Book a room in our mini-hotel</h2>
             <p>After your relaxing massage session, why not extend your stay? Our cozy mini-hotel offers comfortable rooms and apartments where you can fully unwind and enjoy the peaceful atmosphere of Back to Base.</p>
             <p>Located just 35 km from Nelson, BC, surrounded by forest near Kootenay Lake with beautiful views of Mount Loki. Easy online booking — perfect for a peaceful vacation and retreat in nature.</p>
-            <a class="btn primary" href="index.html#rooms" style="margin-top: 20px; display: inline-block;">View rooms</a>
+            <a class="btn outline" href="index.html#rooms" style="margin-top: 20px; display: inline-block;">View rooms</a>
           </div>
           <div class="room-booking-image" style="cursor: pointer;" onclick="openRoomGallery(0)">
             <img id="room-gallery-main" 
@@ -249,15 +252,18 @@
         <h4>Navigation</h4>
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
-          <li><a href="special.php">Special</a></li>
+          <li><a href="massage.html">Wellness</a></li>
+          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
+          <li><a href="explore.php">Explore</a></li>
+          <li><a href="special.php">Specials</a></li>
           <li><a href="about.php">About us</a></li>
         </ul>
       </div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -394,6 +400,188 @@
       .card-body {
         grid-template-columns: 1fr !important;
       }
+    }
+    .massage-list li[data-m-type] {
+      transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .massage-list li[data-m-type].massage-li-in-cart {
+      background: var(--brand, #3b82f6);
+      color: #fff;
+      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+    }
+    body:has(#book) .card-massage .massage-price-hover-zone {
+      display: block;
+      margin: 0.5rem -1.75rem 0;
+      padding: 1.4rem 1.75rem 0.9rem;
+      border-radius: 12px;
+    }
+    body:has(#book) .card-massage .massage-price-hover-zone .massage-list {
+      margin: 0;
+    }
+    @media (max-width: 520px) {
+      body:has(#book) .card-massage .massage-price-hover-zone {
+        margin: 0.4rem -0.8rem 0;
+        padding: 1.1rem 0.9rem 0.75rem;
+      }
+    }
+    /* Same vertical rhythm as form gap (12px) between name row and Email row */
+    #massage-form > .form-row {
+      margin-bottom: 0;
+    }
+    #massage-form .massage-booking-datetime-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px 1.25rem;
+      align-items: start;
+    }
+    #massage-form .massage-booking-col-date,
+    #massage-form .massage-booking-col-time {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #massage-form .massage-booking-col-date label,
+    #massage-form .massage-booking-col-time label {
+      display: block;
+      margin-bottom: 0;
+    }
+    #massage-form .massage-booking-col-time .massage-time-hint {
+      color: var(--muted, #64748b);
+      font-size: 0.875rem;
+      margin: 0;
+      display: block;
+      line-height: 1.4;
+    }
+    #massage-form .massage-booking-col-date input#name {
+      width: 100%;
+    }
+    @media (max-width: 560px) {
+      #massage-form .massage-booking-datetime-row {
+        grid-template-columns: 1fr;
+      }
+    }
+    #massage-form > .form-row:not(.massage-booking-datetime-row) > div {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    #massage-form > .form-row:not(.massage-booking-datetime-row) label {
+      margin-bottom: 0;
+    }
+    #book #massage-booking-title {
+      margin-bottom: 1.5rem;
+    }
+    .massage-booking-intro {
+      color: var(--muted, #64748b);
+      font-size: 0.95rem;
+      line-height: 1.55;
+      margin: 0.25rem 0 0.75rem;
+    }
+    .massage-booking-intro:empty {
+      display: none;
+    }
+    .massage-price-tap-hint {
+      display: block;
+      box-sizing: border-box;
+      text-align: center;
+      font-size: 0.82rem;
+      line-height: 1.4;
+      font-weight: 400;
+      font-style: normal;
+      margin: 0;
+      padding: 0;
+      border: none;
+      color: var(--muted, #64748b);
+      overflow: hidden;
+      pointer-events: none;
+      transform-origin: top;
+      transition: opacity 0.2s ease, max-height 0.22s ease, margin 0.22s ease;
+    }
+    @supports (selector(:has(*))) {
+      @media (hover: hover) {
+        .card-massage:has(.massage-price-hover-zone) .massage-price-tap-hint {
+          max-height: 0;
+          opacity: 0;
+        }
+        .card-massage:has(.massage-price-hover-zone:hover) .massage-price-tap-hint,
+        .card-massage:has(.massage-price-hover-zone:focus-within) .massage-price-tap-hint {
+          max-height: 3.5rem;
+          opacity: 1;
+          margin: 0.4rem 0 0;
+        }
+      }
+    }
+    @media (hover: none) {
+      .massage-price-tap-hint {
+        display: none;
+      }
+    }
+    @supports not (selector(:has(*))) {
+      .massage-price-tap-hint {
+        display: none;
+      }
+    }
+    .massage-cart-panel {
+      margin-bottom: 1.25rem;
+      padding: 1rem 1.1rem;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .massage-cart-heading {
+      margin: 0 0 0.65rem;
+      font-size: 1.05rem;
+      color: #f8fafc;
+    }
+    .massage-cart-lines {
+      list-style: none;
+      margin: 0 0 0.75rem;
+      padding: 0.55rem 0.7rem;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+    }
+    [data-theme="light"] .massage-cart-panel .massage-cart-lines {
+      background: rgba(45, 106, 79, 0.1);
+      border-color: rgba(45, 106, 79, 0.22);
+      box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+    .massage-cart-line {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem 1rem;
+      padding: 0.45rem 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 0.95rem;
+    }
+    .massage-cart-line:last-child {
+      border-bottom: none;
+    }
+    .massage-cart-line-label {
+      flex: 1 1 12rem;
+      color: #e2e8f0;
+    }
+    .massage-cart-line-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .massage-cart-line-actions .btn {
+      padding: 0.25rem 0.55rem;
+      font-size: 0.82rem;
+    }
+    .massage-cart-panel .btn.outline {
+      border-color: rgba(248, 250, 252, 0.35);
+      color: #f8fafc;
+    }
+    .massage-cart-panel .btn.outline:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(248, 250, 252, 0.55);
     }
   </style>
 

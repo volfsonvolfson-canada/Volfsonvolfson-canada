@@ -56,8 +56,8 @@ if ($check && $check->num_rows == 0) {
     $default_ground_desc = "A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.";
     $default_ground_queen = "assets/plan-first-queen.jpg";
     $default_ground_twin = "assets/plan-first-twin.jpg";
-    $default_loft_sub = "Private top-floor space under the roof.";
-    $default_loft_desc = "A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.";
+    $default_loft_sub = "Multifunctional spaces & small cinema";
+    $default_loft_desc = "Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.";
     $default_loft_img = "assets/plan-loft.jpg";
     
     $stmt = $conn->prepare("INSERT INTO floorplan_settings (id, basement_subtitle, basement_description, basement_image_url, ground_subtitle, ground_description, ground_queen_image, ground_twin_image, loft_subtitle, loft_description, loft_image_url) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -142,8 +142,8 @@ if ($check && $check->num_rows == 0) {
     $default_ground_desc = "A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.";
     $default_ground_queen = "assets/plan-first-queen.jpg";
     $default_ground_twin = "assets/plan-first-twin.jpg";
-    $default_loft_sub = "Private top-floor space under the roof.";
-    $default_loft_desc = "A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.";
+    $default_loft_sub = "Multifunctional spaces & small cinema";
+    $default_loft_desc = "Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.";
     $default_loft_img = "assets/plan-loft.jpg";
     
     $stmt = $conn->prepare("INSERT INTO floorplan_settings (id, basement_subtitle, basement_description, basement_image_url, ground_subtitle, ground_description, ground_queen_image, ground_twin_image, loft_subtitle, loft_description, loft_image_url) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -233,8 +233,8 @@ if ($check && $check->num_rows == 0) {
     $default_ground_desc = "A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.";
     $default_ground_queen = "assets/plan-first-queen.jpg";
     $default_ground_twin = "assets/plan-first-twin.jpg";
-    $default_loft_sub = "Private top-floor space under the roof.";
-    $default_loft_desc = "A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.";
+    $default_loft_sub = "Multifunctional spaces & small cinema";
+    $default_loft_desc = "Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.";
     $default_loft_img = "assets/plan-loft.jpg";
     
     $stmt = $conn->prepare("INSERT INTO floorplan_settings (id, basement_subtitle, basement_description, basement_image_url, ground_subtitle, ground_description, ground_queen_image, ground_twin_image, loft_subtitle, loft_description, loft_image_url) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -319,8 +319,8 @@ if ($check && $check->num_rows == 0) {
     $default_ground_desc = "A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.";
     $default_ground_queen = "assets/plan-first-queen.jpg";
     $default_ground_twin = "assets/plan-first-twin.jpg";
-    $default_loft_sub = "Private top-floor space under the roof.";
-    $default_loft_desc = "A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.";
+    $default_loft_sub = "Multifunctional spaces & small cinema";
+    $default_loft_desc = "Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.";
     $default_loft_img = "assets/plan-loft.jpg";
     
     $stmt = $conn->prepare("INSERT INTO floorplan_settings (id, basement_subtitle, basement_description, basement_image_url, ground_subtitle, ground_description, ground_queen_image, ground_twin_image, loft_subtitle, loft_description, loft_image_url) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

@@ -1,5 +1,310 @@
 // Admin Panel JavaScript
 
+// Contact Information (declared early so syncPreviewToForm can set contactHasUnsavedChanges safely)
+let contactAutoSaveTimer = null;
+let contactHasUnsavedChanges = false;
+/** Deduplicate concurrent get_content for Contact (prefetch + opening tab) */
+let contactDataLoadInFlight = null;
+const DEFAULT_CONTACT_PHONE = '+1 (555) 123‑4567';
+const DEFAULT_CONTACT_EMAIL = 'hello@backtobase.example';
+const DEFAULT_CONTACT_ADDRESS = 'British Columbia, Canada';
+
+// --- Shared: api.php save responses (JSON { success, error? }) for all admin sections ---
+function parseJsonFromText(rawText) {
+  if (rawText == null || !String(rawText).trim()) {
+    return null;
+  }
+  try {
+    return JSON.parse(String(rawText));
+  } catch (e) {
+    return null;
+  }
+}
+
+function isApiSaveSuccess(result) {
+  return result && result.success === true;
+}
+
+/** @type {ReturnType<typeof setTimeout> | null} */
+let adminGlobalSaveBarAutoHideTimer = null;
+const ADMIN_GLOBAL_SAVED_AUTO_HIDE_MS = 2000;
+const ADMIN_GLOBAL_ERROR_AUTO_HIDE_MS = 8000;
+
+const ADMIN_GLOBAL_SECTION_LABELS = {
+  homepage: 'Home',
+  explore: 'Explore',
+  'room-basement': 'Basement',
+  'room-ground-queen': 'Ground (Queen)',
+  'room-ground-twin': 'Ground (Twin)',
+  'room-second': 'Second floor',
+  retreat: 'Retreat',
+  special: 'Specials',
+  about: 'About',
+  contact: 'Contact',
+  'homepage-rooms': 'Homepage — rooms',
+  floorplan: 'Floor plan',
+  wellness: 'Wellness',
+  massage: 'Massage'
+};
+
+function getAdminGlobalSectionLabel(prefix) {
+  if (ADMIN_GLOBAL_SECTION_LABELS[prefix] != null) {
+    return ADMIN_GLOBAL_SECTION_LABELS[prefix];
+  }
+  return String(prefix)
+    .split('-')
+    .map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase())
+    .join(' ');
+}
+
+function clearAdminGlobalSaveBarAutoHide() {
+  if (adminGlobalSaveBarAutoHideTimer) {
+    clearTimeout(adminGlobalSaveBarAutoHideTimer);
+    adminGlobalSaveBarAutoHideTimer = null;
+  }
+}
+
+function hideAdminGlobalSaveBar() {
+  const el = document.getElementById('admin-save-banner');
+  if (el) {
+    el.classList.remove('is-visible');
+    el.setAttribute('hidden', '');
+    el.removeAttribute('data-state');
+    el.removeAttribute('title');
+  }
+  clearAdminGlobalSaveBarAutoHide();
+  document.body.classList.remove('admin-global-save-banner-padded');
+}
+
+/**
+ * Global top banner for save operations (all CMS sections that use {prefix}-save-status-*).
+ * @param {string} prefix
+ * @param {'saving'|'saved'|'error'} status
+ * @param {string} [detail] - for error: message (full string in title if long)
+ */
+function updateAdminGlobalSaveBar(prefix, status, detail) {
+  const el = document.getElementById('admin-save-banner');
+  const sectionEl = document.getElementById('admin-save-banner-section');
+  const iconEl = document.getElementById('admin-save-banner-icon');
+  const msgEl = document.getElementById('admin-save-banner-message');
+  if (!el || !sectionEl || !iconEl || !msgEl) {
+    return;
+  }
+  const label = getAdminGlobalSectionLabel(prefix);
+  clearAdminGlobalSaveBarAutoHide();
+  if (status === 'saving' || status === 'saved' || status === 'error') {
+    document.body.classList.add('admin-global-save-banner-padded');
+  }
+  el.removeAttribute('hidden');
+  el.classList.add('is-visible');
+  el.removeAttribute('title');
+  if (label) {
+    sectionEl.textContent = label + ' —';
+  } else {
+    sectionEl.textContent = '';
+  }
+  switch (status) {
+    case 'saving': {
+      el.setAttribute('data-state', 'saving');
+      iconEl.textContent = '⏳';
+      msgEl.textContent = 'Saving…';
+      break;
+    }
+    case 'saved': {
+      el.setAttribute('data-state', 'saved');
+      iconEl.textContent = '✓';
+      msgEl.textContent = 'Saved';
+      adminGlobalSaveBarAutoHideTimer = setTimeout(() => {
+        hideAdminGlobalSaveBar();
+      }, ADMIN_GLOBAL_SAVED_AUTO_HIDE_MS);
+      break;
+    }
+    case 'error': {
+      const d = (detail && String(detail).trim()) ? String(detail).trim() : 'Error saving';
+      const short = d.length > 120 ? d.slice(0, 120) + '…' : d;
+      el.setAttribute('data-state', 'error');
+      iconEl.textContent = '✗';
+      msgEl.textContent = short;
+      if (d.length > 120) {
+        el.setAttribute('title', d);
+      }
+      adminGlobalSaveBarAutoHideTimer = setTimeout(() => {
+        hideAdminGlobalSaveBar();
+      }, ADMIN_GLOBAL_ERROR_AUTO_HIDE_MS);
+      break;
+    }
+    default:
+      hideAdminGlobalSaveBar();
+  }
+}
+
+/**
+ * Retreat / Russian save strings — same semantics as #retreat-save-status-* in HTML.
+ * @param {string} text
+ * @param {string} [icon]
+ */
+function updateAdminGlobalRetreatSaveBar(text, icon) {
+  const raw = (text == null) ? '' : String(text);
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    hideAdminGlobalSaveBar();
+    return;
+  }
+  const el = document.getElementById('admin-save-banner');
+  const sectionEl = document.getElementById('admin-save-banner-section');
+  const iconEl = document.getElementById('admin-save-banner-icon');
+  const msgEl = document.getElementById('admin-save-banner-message');
+  if (!el || !sectionEl || !iconEl || !msgEl) {
+    return;
+  }
+  clearAdminGlobalSaveBarAutoHide();
+  document.body.classList.add('admin-global-save-banner-padded');
+  el.removeAttribute('hidden');
+  el.classList.add('is-visible');
+  el.removeAttribute('title');
+  sectionEl.textContent = 'Retreat —';
+  msgEl.textContent = raw;
+  const ic = (icon == null) ? '' : String(icon);
+  iconEl.textContent = ic;
+  if (trimmed === 'Сохранение...') {
+    el.setAttribute('data-state', 'saving');
+    if (!ic) {
+      iconEl.textContent = '⏳';
+    }
+    return;
+  }
+  if (trimmed === 'Сохранено') {
+    el.setAttribute('data-state', 'saved');
+    if (!ic) {
+      iconEl.textContent = '✓';
+    }
+    adminGlobalSaveBarAutoHideTimer = setTimeout(hideAdminGlobalSaveBar, ADMIN_GLOBAL_SAVED_AUTO_HIDE_MS);
+    return;
+  }
+  const isRetry = /Повтор/i.test(trimmed) && /Ошибка/i.test(trimmed);
+  if (isRetry) {
+    el.setAttribute('data-state', 'saving');
+    if (!ic) {
+      iconEl.textContent = '⚠️';
+    }
+    return;
+  }
+  const isError =
+    /Ошибка|ошибка/i.test(trimmed) || /^Не\s+сохранено/i.test(trimmed) || /^не\s+сохранено/i.test(trimmed) || ic === '❌';
+  if (isError) {
+    el.setAttribute('data-state', 'error');
+    if (!ic) {
+      iconEl.textContent = '✗';
+    }
+    adminGlobalSaveBarAutoHideTimer = setTimeout(hideAdminGlobalSaveBar, ADMIN_GLOBAL_ERROR_AUTO_HIDE_MS);
+  } else {
+    el.setAttribute('data-state', 'saving');
+  }
+}
+
+function getApiSaveErrorMessage(result, response, defaultMsg) {
+  if (result && result.error != null && String(result.error).trim() !== '') {
+    return String(result.error);
+  }
+  if (result && result.message != null && String(result.message).trim() !== '') {
+    return String(result.message);
+  }
+  if (response && !response.ok) {
+    return (response.statusText && String(response.statusText).trim()) ? String(response.statusText) : 'HTTP ' + response.status;
+  }
+  if (!result) {
+    return defaultMsg || 'Invalid or empty server response';
+  }
+  if (result.success === false) {
+    return (result.error || result.message || defaultMsg || 'Save failed');
+  }
+  return defaultMsg || 'Save did not complete';
+}
+
+/**
+ * @param {string} prefix - ids: {prefix}-save-status-text, {prefix}-save-status-icon
+ * @param {'saving'|'saved'|'error'} status
+ * @param {string} [detail] - error (truncated in label; full in title)
+ */
+function updateAdminSectionSaveStatus(prefix, status, detail) {
+  const statusText = document.getElementById(prefix + '-save-status-text');
+  const statusIcon = document.getElementById(prefix + '-save-status-icon');
+  if (statusText) {
+    statusText.removeAttribute('title');
+  }
+  if (statusText && statusIcon) {
+    switch (status) {
+      case 'saving':
+        statusText.textContent = 'Saving...';
+        statusIcon.textContent = '⏳';
+        statusIcon.style.color = '#6b7280';
+        break;
+      case 'saved':
+        statusText.textContent = 'Saved';
+        statusIcon.textContent = '✓';
+        statusIcon.style.color = '#10b981';
+        setTimeout(() => {
+          statusText.textContent = '';
+          statusIcon.textContent = '';
+        }, 2000);
+        break;
+      case 'error': {
+        const d = (detail && String(detail).trim()) ? String(detail).trim() : 'Error saving';
+        const short = d.length > 100 ? d.slice(0, 100) + '…' : d;
+        statusText.textContent = short;
+        if (d.length > 100) {
+          statusText.setAttribute('title', d);
+        }
+        statusIcon.textContent = '✗';
+        statusIcon.style.color = '#ef4444';
+        setTimeout(() => {
+          statusText.textContent = '';
+          statusIcon.textContent = '';
+          statusText.removeAttribute('title');
+        }, 8000);
+        break;
+      }
+    }
+  }
+  updateAdminGlobalSaveBar(prefix, status, detail);
+}
+
+/**
+ * POST FormData to api.php and set section status. Use for action save_content and save_floorplan, etc.
+ * @returns {Promise<{ ok: boolean, result: object | null, error?: string }>}
+ */
+async function postApiFormDataAndUpdateStatus(prefix, formData) {
+  const response = await fetch('api.php', { method: 'POST', body: formData });
+  const rawText = await response.text();
+  const result = parseJsonFromText(rawText);
+  if (response.ok && isApiSaveSuccess(result)) {
+    updateAdminSectionSaveStatus(prefix, 'saved');
+    return { ok: true, result };
+  }
+  const err = getApiSaveErrorMessage(result, response, 'Save failed');
+  console.error('postApiFormDataAndUpdateStatus failed:', prefix, err, result);
+  updateAdminSectionSaveStatus(prefix, 'error', err);
+  return { ok: false, result, error: err };
+}
+
+/**
+ * Check save_content response (already read as text). Optionally show section error status.
+ * @param {string} [statusPrefix] - e.g. 'explore', 'retreat' for updateAdminSectionSaveStatus on failure
+ * @returns {boolean} true if DB save succeeded per API
+ */
+function recordSaveContentResponse(response, rawText, statusPrefix) {
+  const result = parseJsonFromText(rawText);
+  if (response.ok && isApiSaveSuccess(result)) {
+    return true;
+  }
+  const err = getApiSaveErrorMessage(result, response, 'Save failed');
+  console.error('save_content response not successful:', err);
+  if (statusPrefix) {
+    updateAdminSectionSaveStatus(statusPrefix, 'error', err);
+  }
+  return false;
+}
+
 // Admin authentication
 const ADMIN_CREDENTIALS = {
   username: 'admin',
@@ -164,6 +469,9 @@ function switchPrimarySection(primaryName) {
       showSection(sectionName);
     }
   }
+  if (primaryName === 'content' && typeof loadContactData === 'function') {
+    setTimeout(function () { loadContactData(); }, 0);
+  }
 }
 
 // Navigation between sections (secondary level)
@@ -307,14 +615,14 @@ function loadSectionData(sectionName) {
     case 'special':
       initContentEditor('special');
       break;
+    case 'explore':
+      initContentEditor('explore');
+      break;
     case 'about':
       initContentEditor('about');
       break;
-    case 'about':
-      // Handled by registerContentEditor
-      break;
     case 'contact':
-      // Handled by registerContentEditor
+      initContentEditor('contact');
       break;
     case 'wellness-experiences':
       initContentEditor('wellness-experiences');
@@ -382,20 +690,18 @@ async function loadHomepageData() {
         if (descriptionField) {
           const description = data.homepageDescription || '';
           descriptionField.value = description;
-          // Replace \n with <br> for preview display
+          // Use textContent - white-space: pre-wrap handles line breaks
           if (descriptionPreview) {
-            descriptionPreview.textContent = description.replace(/\n/g, '\n');
-            descriptionPreview.innerHTML = description.replace(/\n/g, '<br>');
+            descriptionPreview.textContent = description;
           }
         }
         
         if (subtitleField) {
           const subtitle = data.homepageSubtitle || '';
           subtitleField.value = subtitle;
-          // Replace \n with <br> for preview display
+          // Use textContent - white-space: pre-wrap handles line breaks
           if (subtitlePreview) {
-            subtitlePreview.textContent = subtitle.replace(/\n/g, '\n');
-            subtitlePreview.innerHTML = subtitle.replace(/\n/g, '<br>');
+            subtitlePreview.textContent = subtitle;
           }
         }
         
@@ -528,57 +834,20 @@ async function saveHomepageContent() {
     formData.append('hero_image_url', document.getElementById('homepage-hero-image-url')?.value || '');
     formData.append('hero2_image_url', document.getElementById('homepage-hero2-image-url')?.value || '');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      updateHomepageSaveStatus('saved');
-      // Reload data to verify it was saved correctly
+    const { ok } = await postApiFormDataAndUpdateStatus('homepage', formData);
+    if (ok) {
       setTimeout(() => {
         loadHomepageData();
       }, 500);
-    } else {
-      updateHomepageSaveStatus('error');
     }
   } catch (error) {
     console.error('Error saving homepage content:', error);
-    updateHomepageSaveStatus('error');
+    updateHomepageSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateHomepageSaveStatus(status) {
-  const statusText = document.getElementById('homepage-save-status-text');
-  const statusIcon = document.getElementById('homepage-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateHomepageSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('homepage', status, detail);
 }
 
 function initHomepageAutoSave() {
@@ -664,80 +933,57 @@ async function saveFloorplanContent() {
     formData.append('loftDescription', loftDescription);
     formData.append('loftImageUrl', loftImageUrl);
     
+    // Add galleries - IMPORTANT: always include galleries when saving
+    formData.append('basementGallery', document.getElementById('basement-gallery')?.value || '[]');
+    formData.append('groundGallery', document.getElementById('ground-gallery')?.value || '[]');
+    formData.append('loftGallery', document.getElementById('loft-gallery')?.value || '[]');
+    
+    console.log('saveFloorplanContent: Saving galleries:', {
+      basement: document.getElementById('basement-gallery')?.value || '[]',
+      ground: document.getElementById('ground-gallery')?.value || '[]',
+      loft: document.getElementById('loft-gallery')?.value || '[]'
+    });
+    
     const response = await fetch('api.php', {
       method: 'POST',
       body: formData
     });
     
     console.log('Floorplan save response status:', response.status);
-    
-    // Check if response is JSON
+    const rawText = await response.text();
     const contentType = response.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
-      const text = await response.text();
-      console.error('Floorplan save failed: Server returned non-JSON response:', text.substring(0, 200));
-      updateFloorplanSaveStatus('error');
+      console.error('Floorplan save failed: Server returned non-JSON response:', rawText.substring(0, 200));
+      updateFloorplanSaveStatus('error', 'Server did not return JSON. Run add_floorplan_title_fields.php?');
       alert('Ошибка сохранения: Сервер вернул неверный формат ответа. Возможно, в базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php');
       return;
     }
-    
-    const result = await response.json();
+    const result = parseJsonFromText(rawText);
     console.log('Floorplan save response:', result);
-    
-    if (response.ok && result.success) {
+    if (response.ok && isApiSaveSuccess(result)) {
       updateFloorplanSaveStatus('saved');
-      // Reload data to verify it was saved correctly
       setTimeout(() => {
         loadFloorplanData();
       }, 500);
     } else {
-      const errorMsg = result.error || 'Unknown error';
+      const errorMsg = getApiSaveErrorMessage(result, response, 'Save failed');
       console.error('Floorplan save failed:', errorMsg);
-      updateFloorplanSaveStatus('error');
+      updateFloorplanSaveStatus('error', errorMsg);
       if (errorMsg.includes('columns missing') || errorMsg.includes('floorplan_title') || errorMsg.includes('floorplan_subtitle')) {
         alert('Ошибка: В базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php на сервере.');
       }
     }
   } catch (error) {
     console.error('Error saving floorplan content:', error);
-    updateFloorplanSaveStatus('error');
+    updateFloorplanSaveStatus('error', (error && error.message) || 'Save failed');
     if (error.message && error.message.includes('JSON')) {
       alert('Ошибка сохранения: Сервер вернул неверный формат ответа. Возможно, в базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php');
     }
   }
 }
 
-function updateFloorplanSaveStatus(status) {
-  const statusText = document.getElementById('floorplan-save-status-text');
-  const statusIcon = document.getElementById('floorplan-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateFloorplanSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('floorplan', status, detail);
 }
 
 function initFloorplanAutoSave() {
@@ -888,14 +1134,14 @@ async function loadFloorplanData() {
         const floorplanSubtitlePreview = document.getElementById('preview-floorplan-subtitle');
         
         if (floorplanTitleField) {
-          const title = data.floorplan_title || 'Floor plan';
+          const title = data.floorplan_title || 'Common areas';
           floorplanTitleField.value = title;
           if (floorplanTitlePreview) {
             floorplanTitlePreview.textContent = title;
           }
         }
         if (floorplanSubtitleField) {
-          const subtitle = data.floorplan_subtitle || 'Three levels of comfort: basement, ground floor and a cozy loft under the roof.';
+          const subtitle = data.floorplan_subtitle || 'Basement calm, a welcoming main living level, and bright multifunctional rooms for workshops and cinema.';
           floorplanSubtitleField.value = subtitle;
           if (floorplanSubtitlePreview) {
             floorplanSubtitlePreview.textContent = subtitle;
@@ -920,7 +1166,7 @@ async function loadFloorplanData() {
           console.log('Setting basement-description to:', desc);
           basementDescField.value = desc;
           if (basementDescPreview) {
-            basementDescPreview.innerHTML = desc.replace(/\n/g, '<br>');
+            basementDescPreview.textContent = desc;
             console.log('Updated preview-basement-description');
           }
         }
@@ -941,7 +1187,7 @@ async function loadFloorplanData() {
             }
           }
           if (basementImagePreview) {
-            basementImagePreview.innerHTML = `<img src="${imageUrl}" alt="Basement Floor" />`;
+            basementImagePreview.innerHTML = `<img src="${imageUrl}" alt="Kitchen" />`;
             basementImagePreview.style.display = 'block';
           }
           if (basementImagePath) {
@@ -971,7 +1217,7 @@ async function loadFloorplanData() {
           console.log('ground-description length:', desc.length);
           groundDescField.value = desc;
           if (groundDescPreview) {
-            groundDescPreview.innerHTML = desc.replace(/\n/g, '<br>');
+            groundDescPreview.textContent = desc;
             console.log('Updated preview-ground-description, length:', groundDescPreview.innerHTML.length);
           }
         }
@@ -992,7 +1238,7 @@ async function loadFloorplanData() {
             }
           }
           if (groundImagePreview) {
-            groundImagePreview.innerHTML = `<img src="${imageUrl}" alt="Ground Floor" />`;
+            groundImagePreview.innerHTML = `<img src="${imageUrl}" alt="Hall" />`;
             groundImagePreview.style.display = 'block';
           }
           if (groundImagePath) {
@@ -1008,7 +1254,7 @@ async function loadFloorplanData() {
         const loftDescPreview = document.getElementById('preview-loft-description');
         
         if (loftSubtitleField) {
-          const subtitle = data.loft_subtitle || 'Private top-floor space under the roof.';
+          const subtitle = data.loft_subtitle || 'Multifunctional spaces & small cinema';
           console.log('Setting loft-subtitle to:', subtitle);
           loftSubtitleField.value = subtitle;
           if (loftSubtitlePreview) {
@@ -1021,7 +1267,7 @@ async function loadFloorplanData() {
           console.log('Setting loft-description to:', desc);
           loftDescField.value = desc;
           if (loftDescPreview) {
-            loftDescPreview.innerHTML = desc.replace(/\n/g, '<br>');
+            loftDescPreview.textContent = desc;
             console.log('Updated preview-loft-description');
           }
         }
@@ -1042,13 +1288,64 @@ async function loadFloorplanData() {
             }
           }
           if (loftImagePreview) {
-            loftImagePreview.innerHTML = `<img src="${imageUrl}" alt="Loft Floor" />`;
+            loftImagePreview.innerHTML = `<img src="${imageUrl}" alt="Workshop rooms and home cinema" />`;
             loftImagePreview.style.display = 'block';
           }
           if (loftImagePath) {
             loftImagePath.textContent = loftImage;
             loftImagePath.style.display = 'block';
           }
+        }
+        
+        // Load galleries
+        const basementGalleryField = document.getElementById('basement-gallery');
+        const groundGalleryField = document.getElementById('ground-gallery');
+        const loftGalleryField = document.getElementById('loft-gallery');
+        
+        if (basementGalleryField) {
+          const gallery = data.basement_gallery || '[]';
+          basementGalleryField.value = gallery;
+          try {
+            const galleryArray = JSON.parse(gallery);
+            if (typeof updateFloorplanGalleryPreview === 'function') {
+              updateFloorplanGalleryPreview('basement', galleryArray);
+            }
+          } catch (e) {
+            console.error('Failed to parse basement gallery:', e);
+          }
+        }
+        
+        if (groundGalleryField) {
+          const gallery = data.ground_gallery || '[]';
+          groundGalleryField.value = gallery;
+          try {
+            const galleryArray = JSON.parse(gallery);
+            if (typeof updateFloorplanGalleryPreview === 'function') {
+              updateFloorplanGalleryPreview('ground', galleryArray);
+            }
+          } catch (e) {
+            console.error('Failed to parse ground gallery:', e);
+          }
+        }
+        
+        if (loftGalleryField) {
+          const gallery = data.loft_gallery || '[]';
+          loftGalleryField.value = gallery;
+          try {
+            const galleryArray = JSON.parse(gallery);
+            if (typeof updateFloorplanGalleryPreview === 'function') {
+              updateFloorplanGalleryPreview('loft', galleryArray);
+            }
+          } catch (e) {
+            console.error('Failed to parse loft gallery:', e);
+          }
+        }
+        
+        // Initialize galleries after loading data (only once)
+        if (typeof initFloorplanGalleries === 'function' && !window.floorplanGalleriesInitialized) {
+          setTimeout(() => {
+            initFloorplanGalleries();
+          }, 100);
         }
         
         console.log('Floor plan fields populated successfully');
@@ -1091,28 +1388,28 @@ function loadRoomsData() {
 function getDefaultRooms() {
   return [
     {
-      name: 'Basement — Queen bed',
+      name: 'Loki Suite',
       price: 140,
       capacity: 2,
       type: 'queen',
       description: 'Cozy room next to the home cinema and sauna. Perfect for two.'
     },
     {
-      name: 'Ground floor — Queen bed',
+      name: 'The Nouk',
       price: 130,
       capacity: 2,
       type: 'queen',
       description: 'Compact, bright room with access to the fireplace lounge.'
     },
     {
-      name: 'Ground floor — Twin beds',
+      name: 'Vrienden',
       price: 125,
       capacity: 2,
       type: 'twin',
       description: 'Great for friends or colleagues. Close to the kitchen and massage hall.'
     },
     {
-      name: 'Second floor (entire) — Queen bed',
+      name: 'Kelder',
       price: 210,
       capacity: 2,
       type: 'suite',
@@ -1146,6 +1443,90 @@ function loadMassageData() {
   `).join('');
 }
 
+// Wellness page — per-card price lines (JSON in content_settings: label + price; duration is fixed in booking)
+const BTB_MASSAGE_PRICING_DEFAULTS = {
+  relaxing: [
+    { duration: 60, label: '60 minutes', price: '110 CAD' },
+    { duration: 90, label: '90 minutes', price: '160 CAD' }
+  ],
+  deep: [
+    { duration: 60, label: '60 minutes', price: '120 CAD' },
+    { duration: 90, label: '90 minutes', price: '170 CAD' }
+  ],
+  reiki: [
+    { duration: 15, label: '15 minutes on the go', price: '25 CAD' },
+    { duration: 30, label: '30 minutes as an add-on', price: '50 CAD' }
+  ],
+  sauna: [{ duration: 60, label: '1 hour', price: '25 CAD' }]
+};
+
+function applyMassagePricingUIFromApiString(key, jsonStr) {
+  const defaults = BTB_MASSAGE_PRICING_DEFAULTS[key] || [];
+  const byDur = Object.create(null);
+  let rows = null;
+  try {
+    rows = jsonStr && String(jsonStr).trim() ? JSON.parse(jsonStr) : null;
+  } catch (e) {
+    rows = null;
+  }
+  if (Array.isArray(rows) && rows.length) {
+    rows.forEach((r) => {
+      if (r && r.duration != null) {
+        byDur[Number(r.duration)] = r;
+      }
+    });
+  }
+  defaults.forEach((rowDef) => {
+    const dur = rowDef.duration;
+    const r = byDur[dur] || rowDef;
+    const lEl = document.getElementById(`massage-pricing-${key}-${dur}-label`);
+    const pEl = document.getElementById(`massage-pricing-${key}-${dur}-price`);
+    const label = r.label != null && String(r.label).trim() !== '' ? r.label : rowDef.label;
+    const price = r.price != null && String(r.price).trim() !== '' ? r.price : rowDef.price;
+    if (lEl) lEl.value = label;
+    if (pEl) pEl.value = price;
+  });
+}
+
+function collectMassagePricingJsonForKey(key) {
+  const defaults = BTB_MASSAGE_PRICING_DEFAULTS[key] || [];
+  const rows = defaults.map((rowDef) => {
+    const dur = rowDef.duration;
+    const lEl = document.getElementById(`massage-pricing-${key}-${dur}-label`);
+    const pEl = document.getElementById(`massage-pricing-${key}-${dur}-price`);
+    return {
+      duration: dur,
+      label: lEl && lEl.value != null ? String(lEl.value).trim() : '',
+      price: pEl && pEl.value != null ? String(pEl.value).trim() : ''
+    };
+  });
+  return JSON.stringify(rows);
+}
+
+let massagePricingInputDelegated = false;
+function ensureMassagePricingInputDelegation() {
+  if (massagePricingInputDelegated) {
+    return;
+  }
+  massagePricingInputDelegated = true;
+  document.addEventListener('input', (e) => {
+    const t = e.target;
+    const id = t && t.id;
+    if (!id || !id.startsWith('massage-pricing-')) {
+      return;
+    }
+    if (!t.closest || !t.closest('#massage-section')) {
+      return;
+    }
+    if (typeof massageHasUnsavedChanges !== 'undefined') {
+      massageHasUnsavedChanges = true;
+    }
+    if (typeof window.scheduleMassageAutoSave === 'function') {
+      window.scheduleMassageAutoSave();
+    }
+  });
+}
+
 // Load massage page data (text and images)
 async function loadMassageData() {
   console.log('Loading massage page data...');
@@ -1170,7 +1551,7 @@ async function loadMassageData() {
         const introPreview = document.getElementById('preview-massage-intro');
         if (heroTitleField) heroTitleField.value = data.massageHeroTitle || '';
         if (introField) introField.value = data.massageIntro || '';
-        if (heroTitlePreview) heroTitlePreview.textContent = data.massageHeroTitle || 'Massage services';
+        if (heroTitlePreview) heroTitlePreview.textContent = data.massageHeroTitle || 'Wellness';
         if (introPreview) {
           const introText = data.massageIntro || 'Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.';
           introPreview.textContent = introText;
@@ -1228,29 +1609,55 @@ async function loadMassageData() {
           saunaDescPreview.textContent = saunaText;
         }
         
-        // Mini-hotel section - use same simple approach as Sauna Card
+        const defMassageBookingTitle = 'Book a Massage or Sauna';
+        const bookingTitleField = document.getElementById('massage-booking-title');
+        const bookingIntroField = document.getElementById('massage-booking-intro');
+        const bookingTitlePreview = document.getElementById('preview-massage-booking-title');
+        const bookingIntroPreview = document.getElementById('preview-massage-booking-intro');
+        const tBooking = (data.massageBookingTitle && String(data.massageBookingTitle).trim()) || '';
+        const tIntro = (data.massageBookingIntro && String(data.massageBookingIntro).trim()) || '';
+        if (bookingTitleField) bookingTitleField.value = tBooking;
+        if (bookingIntroField) bookingIntroField.value = tIntro;
+        if (bookingTitlePreview) bookingTitlePreview.textContent = tBooking || defMassageBookingTitle;
+        if (bookingIntroPreview) bookingIntroPreview.textContent = tIntro;
+        
+        // Mini-hotel section — one description field (room_cards_settings.mini_hotel_description)
         const miniHotelTitleField = document.getElementById('mini-hotel-title');
         const miniHotelTitlePreview = document.getElementById('preview-mini-hotel-title');
-        const miniHotelDesc1Field = document.getElementById('mini-hotel-description-1');
-        const miniHotelDesc1Preview = document.getElementById('preview-mini-hotel-desc-1');
-        const miniHotelDesc2Field = document.getElementById('mini-hotel-description-2');
-        const miniHotelDesc2Preview = document.getElementById('preview-mini-hotel-desc-2');
-        
-        // Log what we received from API (same as Sauna for comparison)
+        const miniHotelDescField = document.getElementById('mini-hotel-description');
+        const miniHotelDescPreview = document.getElementById('preview-mini-hotel-desc');
+        const inheritedMiniDescMerged = (() => {
+          const a = exploreAdminPlainFromApi(data.miniHotelDescription1);
+          const b = exploreAdminPlainFromApi(data.miniHotelDescription2);
+          if (!a && !b) {
+            return 'After your relaxing massage session, why not extend your stay? Our cozy mini-hotel offers comfortable rooms and apartments where you can fully unwind and enjoy the peaceful atmosphere of Back to Base.\n\nLocated just 35 km from Nelson, BC, surrounded by forest near Kootenay Lake with beautiful views of Mount Loki. Easy online booking — perfect for a peaceful vacation and retreat in nature.';
+          }
+          if (a && b) return a + '\n\n' + b;
+          return b || a;
+        })();
+        window.__miniHotelDescriptionInherited = {
+          'mini-hotel-description': inheritedMiniDescMerged
+        };
+        const apiMiniDesc = data.miniHotelDescription;
         console.log('Loading mini-hotel data from API:', {
           miniHotelTitle: data.miniHotelTitle,
-          miniHotelDescription1: data.miniHotelDescription1,
-          miniHotelDescription2: data.miniHotelDescription2,
-          massageSaunaTitle: data.massageSaunaTitle, // For comparison
-          massageSaunaDescription: data.massageSaunaDescription // For comparison
+          miniHotelDescription: data.miniHotelDescription
         });
-        
         if (miniHotelTitleField) miniHotelTitleField.value = data.miniHotelTitle || '';
         if (miniHotelTitlePreview) miniHotelTitlePreview.textContent = data.miniHotelTitle || 'Book a room in our mini-hotel';
-        if (miniHotelDesc1Field) miniHotelDesc1Field.value = data.miniHotelDescription1 || '';
-        if (miniHotelDesc1Preview) miniHotelDesc1Preview.textContent = data.miniHotelDescription1 || 'After your relaxing massage session, why not extend your stay? Our cozy mini-hotel offers comfortable rooms and apartments where you can fully unwind and enjoy the peaceful atmosphere of Back to Base.';
-        if (miniHotelDesc2Field) miniHotelDesc2Field.value = data.miniHotelDescription2 || '';
-        if (miniHotelDesc2Preview) miniHotelDesc2Preview.textContent = data.miniHotelDescription2 || 'Located just 35 km from Nelson, BC, surrounded by forest near Kootenay Lake with beautiful views of Mount Loki. Easy online booking — perfect for a peaceful vacation and retreat in nature.';
+        if (miniHotelDescField) {
+          miniHotelDescField.value = apiMiniDesc != null && String(apiMiniDesc).trim() !== '' ? apiMiniDesc : '';
+        }
+        if (miniHotelDescPreview) {
+          miniHotelDescPreview.textContent =
+            apiMiniDesc != null && String(apiMiniDesc).trim() !== '' ? apiMiniDesc : inheritedMiniDescMerged;
+        }
+        
+        applyMassagePricingUIFromApiString('relaxing', data.massagePricingRelaxing);
+        applyMassagePricingUIFromApiString('deep', data.massagePricingDeepTissue);
+        applyMassagePricingUIFromApiString('reiki', data.massagePricingReiki);
+        applyMassagePricingUIFromApiString('sauna', data.massagePricingSauna);
+        ensureMassagePricingInputDelegation();
         
         // Load images
         await loadMassageImagesData(data);
@@ -1283,6 +1690,7 @@ async function loadMassageImagesData(data = null) {
     }
     
     if (data) {
+      const heroImageUrl = data.massageHeroImageUrl || '';
       const relaxingImageUrl = data.massageRelaxingImageUrl || '';
       const deepTissueImageUrl = data.massageDeepTissueImageUrl || '';
       const reikiImageUrl = data.massageReikiImageUrl || '';
@@ -1290,6 +1698,13 @@ async function loadMassageImagesData(data = null) {
       const miniHotelImageUrl = data.miniHotelImageUrl || '';
       
       // Update image previews in schematic preview
+      const heroImg = document.getElementById('preview-massage-hero-img');
+      if (heroImg && heroImageUrl) {
+        heroImg.src = heroImageUrl + '?v=' + Date.now();
+        heroImg.style.display = 'block';
+        heroImg.parentElement.querySelector('span').style.display = 'none';
+      }
+      
       const relaxingImg = document.getElementById('preview-massage-relaxing-img');
       if (relaxingImg && relaxingImageUrl) {
         relaxingImg.src = relaxingImageUrl + '?v=' + Date.now();
@@ -1330,6 +1745,7 @@ async function loadMassageImagesData(data = null) {
       const storedJson = JSON.parse(stored);
       const massageImagesData = {
         ...storedJson,
+        hero: heroImageUrl || storedJson.hero || '',
         relaxing: relaxingImageUrl || storedJson.relaxing || '',
         deepTissue: deepTissueImageUrl || storedJson.deepTissue || '',
         reiki: reikiImageUrl || storedJson.reiki || '',
@@ -1347,6 +1763,11 @@ async function loadMassageImagesData(data = null) {
 // Initialize massage image upload
 function initMassageImageUpload() {
   const uploadConfigs = [
+    {
+      inputId: 'massage-hero-upload',
+      previewImgId: 'preview-massage-hero-img',
+      imageType: 'massage-hero'
+    },
     {
       inputId: 'massage-relaxing-upload',
       previewImgId: 'preview-massage-relaxing-img',
@@ -1398,6 +1819,7 @@ function initMassageImageUpload() {
             localStorageKey: 'btb_massage_images',
             fieldNameMapper: (type) => {
               const typeMap = {
+                'massage-hero': 'hero',
                 'massage-relaxing': 'relaxing',
                 'massage-deep-tissue': 'deepTissue',
                 'massage-reiki': 'reiki',
@@ -1409,6 +1831,7 @@ function initMassageImageUpload() {
             reloadFunction: loadMassageImagesData,
             imageNameMapper: (type) => {
               const nameMap = {
+                'massage-hero': 'Hero',
                 'massage-relaxing': 'Relaxing Massage',
                 'massage-deep-tissue': 'Deep Tissue Massage',
                 'massage-reiki': 'Reiki Energy Healing',
@@ -1562,9 +1985,12 @@ async function loadContentData() {
         
         document.getElementById('homepage-description').value = content.homepageDescription || '';
         document.getElementById('homepage-subtitle').value = content.homepageSubtitle || '';
-        document.getElementById('contact-phone').value = content.contactPhone || '+1 (555) 123‑4567';
-        document.getElementById('contact-email').value = content.contactEmail || 'hello@backtobase.example';
-        document.getElementById('contact-address').value = content.contactAddress || 'British Columbia, Canada';
+        document.getElementById('contact-phone').value =
+          (content.contactPhone && String(content.contactPhone).trim()) || DEFAULT_CONTACT_PHONE;
+        document.getElementById('contact-email').value =
+          (content.contactEmail && String(content.contactEmail).trim()) || DEFAULT_CONTACT_EMAIL;
+        document.getElementById('contact-address').value =
+          (content.contactAddress && String(content.contactAddress).trim()) || DEFAULT_CONTACT_ADDRESS;
         return;
       }
     }
@@ -1577,18 +2003,21 @@ async function loadContentData() {
   
   document.getElementById('homepage-description').value = content.homepageDescription || '';
   document.getElementById('homepage-subtitle').value = content.homepageSubtitle || '';
-  document.getElementById('contact-phone').value = content.contactPhone || '+1 (555) 123‑4567';
-  document.getElementById('contact-email').value = content.contactEmail || 'hello@backtobase.example';
-  document.getElementById('contact-address').value = content.contactAddress || 'British Columbia, Canada';
+  document.getElementById('contact-phone').value =
+    (content.contactPhone && String(content.contactPhone).trim()) || DEFAULT_CONTACT_PHONE;
+  document.getElementById('contact-email').value =
+    (content.contactEmail && String(content.contactEmail).trim()) || DEFAULT_CONTACT_EMAIL;
+  document.getElementById('contact-address').value =
+    (content.contactAddress && String(content.contactAddress).trim()) || DEFAULT_CONTACT_ADDRESS;
 }
 
 function getDefaultContent() {
   return {
     homepageDescription: 'Back to Base is a countryside guesthouse in Nelson, British Columbia, where you can rent a room or book the entire house for a vacation, retreat, or wellness getaway. Guests can restore their energy with a relaxing massage and enjoy comfortable accommodation surrounded by mountains and forest.',
     homepageSubtitle: 'Our cozy rooms and inspiring atmosphere make this the perfect place for solitude, meditation, yoga retreats, or simply a peaceful holiday in nature.',
-    contactPhone: '+1 (555) 123‑4567',
-    contactEmail: 'hello@backtobase.example',
-    contactAddress: 'British Columbia, Canada'
+    contactPhone: DEFAULT_CONTACT_PHONE,
+    contactEmail: DEFAULT_CONTACT_EMAIL,
+    contactAddress: DEFAULT_CONTACT_ADDRESS
   };
 }
 
@@ -1628,13 +2057,33 @@ function setStoredData(key, data) {
 }
 
 function showStatus(message, type = 'success') {
+  const el = document.getElementById('admin-save-banner');
+  const sectionEl = document.getElementById('admin-save-banner-section');
+  const iconEl = document.getElementById('admin-save-banner-icon');
+  const msgEl = document.getElementById('admin-save-banner-message');
+  if (el && sectionEl && iconEl && msgEl) {
+    clearAdminGlobalSaveBarAutoHide();
+    document.body.classList.add('admin-global-save-banner-padded');
+    sectionEl.textContent = '';
+    const ok = type === 'success' || type === 'ok';
+    el.setAttribute('data-state', ok ? 'toast_success' : 'toast_error');
+    iconEl.textContent = ok ? '✓' : '✗';
+    msgEl.textContent = String(message);
+    el.removeAttribute('hidden');
+    el.classList.add('is-visible');
+    el.removeAttribute('title');
+    adminGlobalSaveBarAutoHideTimer = setTimeout(() => {
+      hideAdminGlobalSaveBar();
+    }, 3000);
+    return;
+  }
   const statusDiv = document.createElement('div');
   statusDiv.className = `admin-status ${type}`;
   statusDiv.textContent = message;
-  
   const container = document.querySelector('.admin-container');
-  container.insertBefore(statusDiv, container.firstChild);
-  
+  if (container) {
+    container.insertBefore(statusDiv, container.firstChild);
+  }
   setTimeout(() => {
     statusDiv.remove();
   }, 3000);
@@ -1762,9 +2211,9 @@ async function saveContentToServer(content) {
       method: 'POST',
       body: formData
     });
-    
-    const result = await response.json();
-    return result.success;
+    const rawText = await response.text();
+    const result = parseJsonFromText(rawText);
+    return response.ok && isApiSaveSuccess(result);
   } catch (error) {
     console.error('Error saving to server:', error);
     return false;
@@ -1964,23 +2413,40 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
         'retreat-forest': 'preview-retreat-forest-img',
         'retreat-indoor': 'preview-retreat-indoor-img',
         'retreat-theatre': 'preview-retreat-theatre-img',
+        'retreat-collaboration': 'preview-retreat-collaboration-img',
         'special-hero': 'preview-special-hero-img',
         'special-pools': 'preview-special-pools-img',
         'special-dining': 'preview-special-dining-img',
+        'special-extra': 'preview-special-extra-img',
         'about-hero': 'preview-about-hero-img',
         'about-founder': 'preview-about-founder-img',
         'about-procter': 'preview-about-procter-img',
+        'about-nelson': 'preview-about-nelson-img',
+        'about-kaslo': 'preview-about-kaslo-img',
+        'about-crawford': 'preview-about-crawford-img',
+        'about-museum': 'preview-about-museum-img',
+        'explore-hero': 'preview-explore-hero-img',
+        'explore-accommodation': 'preview-explore-accommodation-img',
+        'massage-hero': 'preview-massage-hero-img',
         'massage-relaxing': 'preview-massage-relaxing-img',
         'massage-deep-tissue': 'preview-massage-deep-tissue-img',
         'massage-reiki': 'preview-massage-reiki-img',
         'massage-sauna': 'preview-massage-sauna-img',
         'mini-hotel': 'preview-mini-hotel-img',
-        'wellness-massage': 'preview-wellness-massage-img',
-        'wellness-yoga': 'preview-wellness-yoga-img',
-        'wellness-sauna': 'preview-wellness-sauna-img'
+        'wellness-massage': 'preview-wellness-massage-img'
       };
       
-      const previewImgId = previewImageMap[imageType];
+      let previewImgId = previewImageMap[imageType];
+      if (!previewImgId) {
+        const parkHeroMatch = String(imageType).match(/^about-park-card-(\d+)-hero$/);
+        if (parkHeroMatch) {
+          previewImgId = `preview-about-park-card-${parkHeroMatch[1]}-hero-img`;
+        }
+        const secHeroMatch = String(imageType).match(/^explore-(communities|culture|activities)-card-(\d+)-hero$/);
+        if (secHeroMatch) {
+          previewImgId = `preview-explore-${secHeroMatch[1]}-card-${secHeroMatch[2]}-hero-img`;
+        }
+      }
       if (previewImgId) {
         const previewImg = document.getElementById(previewImgId);
         if (previewImg) {
@@ -2134,6 +2600,30 @@ async function uploadImage(file, imageType, previewElement, pathElement, config 
         const hiddenField = document.getElementById(hiddenFieldId);
         if (hiddenField) {
           hiddenField.value = filepath;
+        }
+      } else if (localStorageKey === 'btb_retreat_images' && imageType.startsWith('retreat-')) {
+        data[fieldName] = filepath;
+        const retreatContentKeyMap = {
+          'retreat-hero': 'retreatHeroImageUrl',
+          'retreat-collaboration': 'retreatCollaborationImageUrl',
+          'retreat-forest': 'retreatForestImageUrl',
+          'retreat-indoor': 'retreatIndoorImageUrl',
+          'retreat-theatre': 'retreatTheatreImageUrl'
+        };
+        const ckey = retreatContentKeyMap[imageType];
+        if (ckey) {
+          let contentData = {};
+          const contentStored = localStorage.getItem('btb_content');
+          if (contentStored) {
+            try {
+              contentData = JSON.parse(contentStored);
+            } catch (e) {
+              console.error('Failed to parse btb_content:', e);
+            }
+          }
+          contentData[ckey] = filepath;
+          localStorage.setItem('btb_content', JSON.stringify(contentData));
+          console.log(`Also saved to btb_content: ${ckey} = ${filepath}`);
         }
       } else {
         // Standard flat structure
@@ -2311,6 +2801,210 @@ async function uploadHomepageImage(file, imageType, previewElement, pathElement)
 // ROOM PAGES MANAGEMENT
 // ==========================================
 
+/** DB may store HTML (<strong>Price:</strong> …); admin editors need plain text + formatted preview. */
+function stripHtmlToPlainText(value) {
+  if (value == null) return '';
+  const s = String(value);
+  if (!s.trim()) return '';
+  const d = document.createElement('div');
+  d.innerHTML = s;
+  return (d.textContent || '').replace(/\s+/g, ' ').trim();
+}
+
+function escapeHtmlForAdminPreview(value) {
+  const d = document.createElement('div');
+  d.textContent = value == null ? '' : String(value);
+  return d.innerHTML;
+}
+
+/**
+ * @param {'price'|'capacity'} kind
+ * @param {string} fallbackPlain text shown after label when API value is empty
+ */
+function applyRoomBookingLineFromApi(kind, rawFromApi, hiddenEl, previewEl, fallbackPlain) {
+  const plain = stripHtmlToPlainText(rawFromApi);
+  if (hiddenEl) {
+    hiddenEl.value = plain;
+  }
+  if (!previewEl) {
+    return;
+  }
+  const label = kind === 'price' ? '<strong>Price:</strong> ' : '<strong>Capacity:</strong> ';
+  const body = plain || fallbackPlain;
+  previewEl.innerHTML = label + escapeHtmlForAdminPreview(body);
+}
+
+function updateRoomPagePriceLinePreview(prefixId, amountId, suffixId, previewId) {
+  const pe = document.getElementById(prefixId);
+  const ae = document.getElementById(amountId);
+  const se = document.getElementById(suffixId);
+  const pr = document.getElementById(previewId);
+  if (!pr) {
+    return;
+  }
+  const p = pe ? String(pe.value || '').trim() : '';
+  const a = ae ? String(ae.value || '').trim() : '';
+  const s = se ? String(se.value || '').trim() : '';
+  const chunks = [];
+  if (p) {
+    chunks.push(`<strong>${escapeHtmlForAdminPreview(p)}</strong>`);
+  }
+  if (a) {
+    chunks.push(escapeHtmlForAdminPreview(a));
+  }
+  if (s) {
+    chunks.push(escapeHtmlForAdminPreview(s));
+  }
+  pr.innerHTML = chunks.join(' ').trim();
+}
+
+function applyRoomPriceTripletFromApi(data, slug) {
+  const cfg = {
+    basement: {
+      prefix: 'room-basement-price-prefix',
+      amount: 'room-basement-price-amount',
+      suffix: 'room-basement-price-suffix',
+      preview: 'preview-room-basement-price',
+      pk: 'roomBasementPricePrefix',
+      ak: 'roomBasementPriceAmount',
+      sk: 'roomBasementPriceSuffix',
+      lk: 'roomBasementPrice'
+    },
+    ground_queen: {
+      prefix: 'room-ground-queen-price-prefix',
+      amount: 'room-ground-queen-price-amount',
+      suffix: 'room-ground-queen-price-suffix',
+      preview: 'preview-room-ground-queen-price',
+      pk: 'roomGroundQueenPricePrefix',
+      ak: 'roomGroundQueenPriceAmount',
+      sk: 'roomGroundQueenPriceSuffix',
+      lk: 'roomGroundQueenPrice'
+    },
+    ground_twin: {
+      prefix: 'room-ground-twin-price-prefix',
+      amount: 'room-ground-twin-price-amount',
+      suffix: 'room-ground-twin-price-suffix',
+      preview: 'preview-room-ground-twin-price',
+      pk: 'roomGroundTwinPricePrefix',
+      ak: 'roomGroundTwinPriceAmount',
+      sk: 'roomGroundTwinPriceSuffix',
+      lk: 'roomGroundTwinPrice'
+    },
+    second: {
+      prefix: 'room-second-price-prefix',
+      amount: 'room-second-price-amount',
+      suffix: 'room-second-price-suffix',
+      preview: 'preview-room-second-price',
+      pk: 'roomSecondPricePrefix',
+      ak: 'roomSecondPriceAmount',
+      sk: 'roomSecondPriceSuffix',
+      lk: 'roomSecondPrice'
+    }
+  }[slug];
+  if (!cfg) {
+    return;
+  }
+  const pe = document.getElementById(cfg.prefix);
+  const ae = document.getElementById(cfg.amount);
+  const se = document.getElementById(cfg.suffix);
+  const pr = document.getElementById(cfg.preview);
+  if (pe) {
+    pe.value = data[cfg.pk] != null ? String(data[cfg.pk]) : '';
+  }
+  if (ae) {
+    ae.value = data[cfg.ak] != null ? String(data[cfg.ak]) : '';
+  }
+  if (se) {
+    se.value = data[cfg.sk] != null ? String(data[cfg.sk]) : '';
+  }
+  if (pr) {
+    const line = data[cfg.lk] != null ? String(data[cfg.lk]) : '';
+    pr.innerHTML = line.trim() !== '' ? line : '';
+    if (pr.innerHTML.trim() === '') {
+      updateRoomPagePriceLinePreview(cfg.prefix, cfg.amount, cfg.suffix, cfg.preview);
+    }
+  }
+}
+
+function initRoomPagePriceTripletInputsOnce() {
+  if (window.__btbRoomPagePriceTripletsWired) {
+    return;
+  }
+  window.__btbRoomPagePriceTripletsWired = true;
+  const rows = [
+    {
+      prefix: 'room-basement-price-prefix',
+      amount: 'room-basement-price-amount',
+      suffix: 'room-basement-price-suffix',
+      preview: 'preview-room-basement-price',
+      schedule() {
+        if (typeof roomBasementHasUnsavedChanges !== 'undefined') {
+          roomBasementHasUnsavedChanges = true;
+        }
+        if (typeof window.scheduleRoomBasementAutoSave === 'function') {
+          window.scheduleRoomBasementAutoSave();
+        }
+      }
+    },
+    {
+      prefix: 'room-ground-queen-price-prefix',
+      amount: 'room-ground-queen-price-amount',
+      suffix: 'room-ground-queen-price-suffix',
+      preview: 'preview-room-ground-queen-price',
+      schedule() {
+        if (typeof roomGroundQueenHasUnsavedChanges !== 'undefined') {
+          roomGroundQueenHasUnsavedChanges = true;
+        }
+        if (typeof window.scheduleRoomGroundQueenAutoSave === 'function') {
+          window.scheduleRoomGroundQueenAutoSave();
+        }
+      }
+    },
+    {
+      prefix: 'room-ground-twin-price-prefix',
+      amount: 'room-ground-twin-price-amount',
+      suffix: 'room-ground-twin-price-suffix',
+      preview: 'preview-room-ground-twin-price',
+      schedule() {
+        if (typeof roomGroundTwinHasUnsavedChanges !== 'undefined') {
+          roomGroundTwinHasUnsavedChanges = true;
+        }
+        if (typeof window.scheduleRoomGroundTwinAutoSave === 'function') {
+          window.scheduleRoomGroundTwinAutoSave();
+        }
+      }
+    },
+    {
+      prefix: 'room-second-price-prefix',
+      amount: 'room-second-price-amount',
+      suffix: 'room-second-price-suffix',
+      preview: 'preview-room-second-price',
+      schedule() {
+        if (typeof roomSecondHasUnsavedChanges !== 'undefined') {
+          roomSecondHasUnsavedChanges = true;
+        }
+        if (typeof window.scheduleRoomSecondAutoSave === 'function') {
+          window.scheduleRoomSecondAutoSave();
+        }
+      }
+    }
+  ];
+  rows.forEach(({ prefix, amount, suffix, preview, schedule }) => {
+    [prefix, amount, suffix].forEach((id) => {
+      const el = document.getElementById(id);
+      if (!el) {
+        return;
+      }
+      const run = () => {
+        updateRoomPagePriceLinePreview(prefix, amount, suffix, preview);
+        schedule();
+      };
+      el.addEventListener('input', run);
+      el.addEventListener('change', run);
+    });
+  });
+}
+
 // Load room basement data
 // Load room basement data (text, banner, gallery)
 async function loadRoomBasementData() {
@@ -2336,7 +3030,7 @@ async function loadRoomBasementData() {
         const subtitlePreview = document.getElementById('preview-room-basement-subtitle');
         if (titleField) titleField.value = data.roomBasementTitle || '';
         if (subtitleField) subtitleField.value = data.roomBasementSubtitle || '';
-        if (titlePreview) titlePreview.textContent = data.roomBasementTitle || 'Basement — Queen bed';
+        if (titlePreview) titlePreview.textContent = data.roomBasementTitle || 'Loki Suite';
         if (subtitlePreview) subtitlePreview.textContent = data.roomBasementSubtitle || 'A cozy room next to the home cinema and sauna. Ideal for two.';
         
         // Banner image
@@ -2370,24 +3064,20 @@ async function loadRoomBasementData() {
         if (galleryField) galleryField.value = JSON.stringify(gallery);
         
         // Booking card
-        const priceField = document.getElementById('room-basement-price');
         const capacityField = document.getElementById('room-basement-capacity');
         const descField = document.getElementById('room-basement-description');
         const noteField = document.getElementById('room-basement-note');
-        const pricePreview = document.getElementById('preview-room-basement-price');
         const capacityPreview = document.getElementById('preview-room-basement-capacity');
         const descPreview = document.getElementById('preview-room-basement-desc');
         const notePreview = document.getElementById('preview-room-basement-note');
-        if (priceField) priceField.value = data.roomBasementPrice || '';
-        if (capacityField) capacityField.value = data.roomBasementCapacity || '';
         if (descField) descField.value = data.roomBasementDescription || '';
         if (noteField) noteField.value = data.roomBasementNote || '';
-        if (pricePreview) pricePreview.textContent = data.roomBasementPrice || '<strong>Price:</strong> 140 CAD / night';
-        if (capacityPreview) capacityPreview.textContent = data.roomBasementCapacity || '<strong>Capacity:</strong> up to 2 guests';
+        applyRoomPriceTripletFromApi(data, 'basement');
+        applyRoomBookingLineFromApi('capacity', data.roomBasementCapacity, capacityField, capacityPreview, 'up to 2 guests');
         if (descPreview) {
           const desc = data.roomBasementDescription || 'Next to this room there is a home theater lounge with a wood-burning stove and a large shower area with a sauna. The floor has a private exit from the house and a passage to the shared lounge on the first floor.';
           // Replace newlines with <br> for display in contenteditable
-          descPreview.innerHTML = desc.replace(/\n/g, '<br>');
+          descPreview.textContent = desc;
         }
         if (notePreview) notePreview.textContent = data.roomBasementNote || '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.';
       }
@@ -2645,7 +3335,7 @@ async function loadRoomGroundQueenData() {
         const subtitlePreview = document.getElementById('preview-room-ground-queen-subtitle');
         if (titleField) titleField.value = data.roomGroundQueenTitle || '';
         if (subtitleField) subtitleField.value = data.roomGroundQueenSubtitle || '';
-        if (titlePreview) titlePreview.textContent = data.roomGroundQueenTitle || 'Ground floor — Queen bed';
+        if (titlePreview) titlePreview.textContent = data.roomGroundQueenTitle || 'The Nouk';
         if (subtitlePreview) subtitlePreview.textContent = data.roomGroundQueenSubtitle || 'Bright room near the living room with fireplace. Ideal for two.';
         
         // Banner image
@@ -2679,24 +3369,20 @@ async function loadRoomGroundQueenData() {
         if (galleryField) galleryField.value = JSON.stringify(gallery);
         
         // Booking card
-        const priceField = document.getElementById('room-ground-queen-price');
         const capacityField = document.getElementById('room-ground-queen-capacity');
         const descField = document.getElementById('room-ground-queen-description');
         const noteField = document.getElementById('room-ground-queen-note');
-        const pricePreview = document.getElementById('preview-room-ground-queen-price');
         const capacityPreview = document.getElementById('preview-room-ground-queen-capacity');
         const descPreview = document.getElementById('preview-room-ground-queen-desc');
         const notePreview = document.getElementById('preview-room-ground-queen-note');
-        if (priceField) priceField.value = data.roomGroundQueenPrice || '';
-        if (capacityField) capacityField.value = data.roomGroundQueenCapacity || '';
         if (descField) descField.value = data.roomGroundQueenDescription || '';
         if (noteField) noteField.value = data.roomGroundQueenNote || '';
-        if (pricePreview) pricePreview.textContent = data.roomGroundQueenPrice || '<strong>Price:</strong> 130 CAD / night';
-        if (capacityPreview) capacityPreview.textContent = data.roomGroundQueenCapacity || '<strong>Capacity:</strong> up to 2 guests';
+        applyRoomPriceTripletFromApi(data, 'ground_queen');
+        applyRoomBookingLineFromApi('capacity', data.roomGroundQueenCapacity, capacityField, capacityPreview, 'up to 2 guests');
         if (descPreview) {
           const desc = data.roomGroundQueenDescription || 'A small but bright room with a large double bed. A shared bathroom with a spacious bathtub is located nearby. The location of the room makes it a perfect spot for socializing and relaxing in the house\'s common areas. With convenient access to the living room with a fireplace, guests can unwind by the fire and connect with others.';
           // Replace newlines with <br> for display in contenteditable
-          descPreview.innerHTML = desc.replace(/\n/g, '<br>');
+          descPreview.textContent = desc;
         }
         if (notePreview) notePreview.textContent = data.roomGroundQueenNote || '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.';
       }
@@ -2929,51 +3615,6 @@ function initRoomGroundQueenImageUpload() {
   }
 }
 
-// Load room ground twin data
-async function loadRoomGroundTwinData() {
-  console.log('Loading ground twin room data...');
-  try {
-    const formData = new FormData();
-    formData.append('action', 'get_content');
-    
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      const result = await response.json();
-      if (result.success && result.data) {
-        const bannerImageUrl = result.data.roomGroundTwinBannerImageUrl || '';
-        
-        if (bannerImageUrl) {
-          const preview = document.getElementById('ground-twin-banner-preview');
-          const pathDisplay = document.getElementById('ground-twin-banner-path');
-          if (preview && pathDisplay) {
-            const img = document.createElement('img');
-            img.src = bannerImageUrl + '?v=' + Date.now();
-            preview.innerHTML = '';
-            preview.appendChild(img);
-            preview.style.display = 'block';
-            pathDisplay.textContent = bannerImageUrl;
-            pathDisplay.style.display = 'block';
-          }
-        }
-        
-        const stored = localStorage.getItem('btb_room_ground_twin') || '{}';
-        const storedJson = JSON.parse(stored);
-        const roomData = {
-          ...storedJson,
-          bannerImageUrl: bannerImageUrl || storedJson.bannerImageUrl || ''
-        };
-        localStorage.setItem('btb_room_ground_twin', JSON.stringify(roomData));
-      }
-    }
-  } catch (error) {
-    console.log('Failed to load ground twin room data:', error);
-  }
-}
-
 // Load room ground twin data (text, banner, gallery)
 async function loadRoomGroundTwinData() {
   console.log('Loading room ground twin page data...');
@@ -2998,7 +3639,7 @@ async function loadRoomGroundTwinData() {
         const subtitlePreview = document.getElementById('preview-room-ground-twin-subtitle');
         if (titleField) titleField.value = data.roomGroundTwinTitle || '';
         if (subtitleField) subtitleField.value = data.roomGroundTwinSubtitle || '';
-        if (titlePreview) titlePreview.textContent = data.roomGroundTwinTitle || 'Ground floor — Twin beds';
+        if (titlePreview) titlePreview.textContent = data.roomGroundTwinTitle || 'Vrienden';
         if (subtitlePreview) subtitlePreview.textContent = data.roomGroundTwinSubtitle || 'Great for friends or colleagues. Close to the kitchen and massage hall.';
         
         // Banner image
@@ -3032,24 +3673,20 @@ async function loadRoomGroundTwinData() {
         if (galleryField) galleryField.value = JSON.stringify(gallery);
         
         // Booking card
-        const priceField = document.getElementById('room-ground-twin-price');
         const capacityField = document.getElementById('room-ground-twin-capacity');
         const descField = document.getElementById('room-ground-twin-description');
         const noteField = document.getElementById('room-ground-twin-note');
-        const pricePreview = document.getElementById('preview-room-ground-twin-price');
         const capacityPreview = document.getElementById('preview-room-ground-twin-capacity');
         const descPreview = document.getElementById('preview-room-ground-twin-desc');
         const notePreview = document.getElementById('preview-room-ground-twin-note');
-        if (priceField) priceField.value = data.roomGroundTwinPrice || '';
-        if (capacityField) capacityField.value = data.roomGroundTwinCapacity || '';
         if (descField) descField.value = data.roomGroundTwinDescription || '';
         if (noteField) noteField.value = data.roomGroundTwinNote || '';
-        if (pricePreview) pricePreview.textContent = data.roomGroundTwinPrice || '<strong>Price:</strong> 125 CAD / night';
-        if (capacityPreview) capacityPreview.textContent = data.roomGroundTwinCapacity || '<strong>Capacity:</strong> up to 2 guests';
+        applyRoomPriceTripletFromApi(data, 'ground_twin');
+        applyRoomBookingLineFromApi('capacity', data.roomGroundTwinCapacity, capacityField, capacityPreview, 'up to 2 guests');
         if (descPreview) {
           const desc = data.roomGroundTwinDescription || 'A comfortable room with two twin beds, perfect for friends or colleagues traveling together. The room is located on the ground floor, close to the shared kitchen and massage hall, making it convenient for guests who want to socialize or use the common areas.';
           // Replace newlines with <br> for display in contenteditable
-          descPreview.innerHTML = desc.replace(/\n/g, '<br>');
+          descPreview.textContent = desc;
         }
         if (notePreview) notePreview.textContent = data.roomGroundTwinNote || '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.';
       }
@@ -3306,7 +3943,7 @@ async function loadRoomSecondData() {
         const subtitlePreview = document.getElementById('preview-room-second-subtitle');
         if (titleField) titleField.value = data.roomSecondTitle || '';
         if (subtitleField) subtitleField.value = data.roomSecondSubtitle || '';
-        if (titlePreview) titlePreview.textContent = data.roomSecondTitle || 'Second floor (entire) — Queen bed';
+        if (titlePreview) titlePreview.textContent = data.roomSecondTitle || 'Kelder';
         if (subtitlePreview) subtitlePreview.textContent = data.roomSecondSubtitle || 'A private loft under the roof: bedroom, kitchenette, shower, study and balcony.';
         
         // Banner image
@@ -3340,24 +3977,20 @@ async function loadRoomSecondData() {
         if (galleryField) galleryField.value = JSON.stringify(gallery);
         
         // Booking card
-        const priceField = document.getElementById('room-second-price');
         const capacityField = document.getElementById('room-second-capacity');
         const descField = document.getElementById('room-second-description');
         const noteField = document.getElementById('room-second-note');
-        const pricePreview = document.getElementById('preview-room-second-price');
         const capacityPreview = document.getElementById('preview-room-second-capacity');
         const descPreview = document.getElementById('preview-room-second-desc');
         const notePreview = document.getElementById('preview-room-second-note');
-        if (priceField) priceField.value = data.roomSecondPrice || '';
-        if (capacityField) capacityField.value = data.roomSecondCapacity || '';
         if (descField) descField.value = data.roomSecondDescription || '';
         if (noteField) noteField.value = data.roomSecondNote || '';
-        if (pricePreview) pricePreview.textContent = data.roomSecondPrice || '<strong>Price:</strong> 210 CAD / night (entire floor)';
-        if (capacityPreview) capacityPreview.textContent = data.roomSecondCapacity || '<strong>Capacity:</strong> up to 2 guests';
+        applyRoomPriceTripletFromApi(data, 'second');
+        applyRoomBookingLineFromApi('capacity', data.roomSecondCapacity, capacityField, capacityPreview, 'up to 2 guests');
         if (descPreview) {
           const desc = data.roomSecondDescription || 'A fully private floor featuring a large living area with a king-size bed, a separate kitchen, a private bathroom with a shower, a bright workspace, and a spacious balcony with stunning views of the lake and mountains.';
           // Replace newlines with <br> for display in contenteditable
-          descPreview.innerHTML = desc.replace(/\n/g, '<br>');
+          descPreview.textContent = desc;
         }
         if (notePreview) notePreview.textContent = data.roomSecondNote || '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.';
       }
@@ -3589,40 +4222,27 @@ function initRoomSecondImageUpload() {
 const retreatDefaultValues = {
   'retreat-hero-title': 'Activities and Practices at Back to Base',
   'retreat-hero-subtitle': 'Where nature and quiet become part of your practice',
-  'retreat-intro-text': 'Back to Base is a place where nature and quiet become part of your practice. Everything here is designed so that any activity — from yoga to a small creative workshop — takes place in an atmosphere of calm, depth, and inspiration.',
   'retreat-locations-title': 'Our locations for your workshops',
-  'retreat-forest-title': 'Forest platforms by the creek',
-  'retreat-forest-description': 'Just a few steps from the house, a winding path leads into the forest, where wooden platforms are hidden among tall trees. The air feels lighter here, the sound of the creek creates a natural meditation, and the soft light filtering through the canopy makes every practice deeper.',
-  "retreat-forest-list-label": "It's an ideal spot for:",
-  'retreat-forest-list-items': 'Sunrise yoga\nEvening meditations\nBreathwork\nAny activity that benefits from a strong connection to nature',
-  'retreat-indoor-title': 'Warm, bright indoor space at Back to Base',
-  'retreat-indoor-description': 'Inside the house, there is a spacious room with large windows filled with light, warmth, and a sense of comfort — perfect for group gatherings, mini-lectures, workshops, breathwork sessions, or yoga during cooler weather.',
-  'retreat-indoor-additional': 'And if you need a more intimate atmosphere or plan to use visual materials, the room can easily be darkened with blackout curtains.',
+  'retreat-forest-title': 'Outdoor space with multi functional platforms',
+  'retreat-forest-description': 'Just a few steps from the house, a winding path leads into the forest, where wooden platforms are hidden among tall trees. The air feels lighter here, the sound of the creek creates a natural meditation, and the soft light filtering through the canopy makes every practice deeper.\n\nIt\'s an ideal spot for:\nSunrise yoga\nEvening meditations\nBreathwork\nAny activity that benefits from a strong connection to nature',
+  'retreat-indoor-title': 'Multifunctional indoor space',
+  'retreat-indoor-description': 'Inside the house, there is a spacious room with large windows filled with light, warmth, and a sense of comfort — perfect for group gatherings, mini-lectures, workshops, breathwork sessions, or yoga during cooler weather.\n\nAnd if you need a more intimate atmosphere or plan to use visual materials, the room can easily be darkened with blackout curtains.',
   'retreat-theatre-title': 'Cozy mini home theatre',
   'retreat-theatre-description': 'For presentations, educational films, documentaries, or shared viewing sessions, we offer a small but very cozy home theatre. Soft lighting, quality sound, and a calm environment help create a fully immersive experience.',
   'retreat-contact-title': 'Are you looking for a place to retreat or interested in joining a workshop?',
   'retreat-contact-text': 'Just send us a message with your preferences, and we will create a program tailored specifically for you!',
-  'retreat-organizer-title': 'Are you a yoga instructor or an event organizer looking for a place to host your sessions?',
-  'retreat-workshops-title': 'What workshops are our spaces suitable for?',
-  'retreat-workshops-intro': 'The indoor spaces, forest platforms, and the forest itself are ideal for the following practices:',
-  'retreat-workshops-list': 'Group and private yoga sessions\nMeditations and mindfulness practices\nSound healing and breathwork\nCreative and educational workshops\nMini-lectures and intimate gatherings',
-  'retreat-workshops-conclusion': 'Create memorable retreat experiences for your community. Nature here is not just a backdrop — it becomes a full participant. People open up more easily, rest more deeply, and return to themselves more naturally.',
   'retreat-collaboration-title': 'Invitation to Collaborate',
-  'retreat-collaboration-intro': 'Back to Base welcomes those who create transformative practices and help people heal and restore.\nWe are looking for:',
-  'retreat-collaboration-list': 'Program creators\nYoga instructors\nMeditation teachers\nMassage therapists\nReiki practitioners\nAcupuncturists\nBody-oriented specialists',
-  'retreat-collaboration-conclusion': 'If you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you.\nJust call or message us!'
+  'retreat-collaboration-intro': 'Back to Base welcomes those who create transformative practices and help people heal and restore.\nWe are looking for:\n\nProgram creators\nYoga instructors\nMeditation teachers\nMassage therapists\nReiki practitioners\nAcupuncturists\nBody-oriented specialists\n\nIf you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you.\nJust call or message us!'
 };
 
 const retreatFieldChecklist = [
-  { id: 'retreat-hero-title', label: 'Hero title' },
-  { id: 'retreat-hero-subtitle', label: 'Hero subtitle' },
-  { id: 'retreat-intro-text', label: 'Introduction' },
-  { id: 'retreat-forest-description', label: 'Forest description' },
-  { id: 'retreat-indoor-description', label: 'Indoor description' },
-  { id: 'retreat-theatre-description', label: 'Theatre description' },
-  { id: 'retreat-contact-text', label: 'Contact text' },
-  { id: 'retreat-workshops-list', label: 'Workshops list' },
-  { id: 'retreat-collaboration-list', label: 'Collaboration list' }
+  { id: 'retreat-hero-title', label: 'Hero Section — title' },
+  { id: 'retreat-hero-subtitle', label: 'Hero Section — subtitle' },
+  { id: 'retreat-forest-description', label: 'Outdoor space card — description' },
+  { id: 'retreat-indoor-description', label: 'Multifunctional indoor space card — description' },
+  { id: 'retreat-theatre-description', label: 'Home Theatre Card — description' },
+  { id: 'retreat-contact-text', label: 'Contact form — body text' },
+  { id: 'retreat-collaboration-intro', label: 'Invitation to Collaborate (side image) — introduction' }
 ];
 
 let retreatHelperInitialized = false;
@@ -3721,6 +4341,50 @@ function initRetreatHelperUI() {
   updateRetreatContentStatus();
 }
 
+/** DB / legacy scripts sometimes store HTML line breaks as literal "<br>" — use real newlines in textareas */
+function normalizeRetreatLegacyBr(s) {
+  if (s == null || typeof s !== 'string') return '';
+  return s.replace(/<br\s*\/?>/gi, '\n');
+}
+
+/** Merge legacy list fields into one outdoor description for editor + save. */
+function mergeLegacyRetreatForestDescription(data) {
+  const n = normalizeRetreatLegacyBr;
+  let desc = n(data.retreatForestDescription || '').trim();
+  const label = n(data.retreatForestListLabel || '').trim();
+  const itemsRaw = n(data.retreatForestListItems || '').trim();
+  if (itemsRaw) {
+    const lines = itemsRaw.split(/\n/).map((l) => l.trim()).filter(Boolean);
+    const block = label ? `${label}\n${lines.join('\n')}` : lines.join('\n');
+    desc = desc ? `${desc}\n\n${block}` : block;
+  }
+  return desc;
+}
+
+/** Merge legacy second paragraph into one indoor description for editor + save. */
+function mergeLegacyRetreatIndoorDescription(data) {
+  const n = normalizeRetreatLegacyBr;
+  let desc = n(data.retreatIndoorDescription || '').trim();
+  const add = n(data.retreatIndoorAdditional || '').trim();
+  if (add) desc = desc ? `${desc}\n\n${add}` : add;
+  return desc;
+}
+
+/** Merge legacy collaboration list + conclusion into one body for editor + save. */
+function mergeLegacyRetreatCollaborationBody(data) {
+  const n = normalizeRetreatLegacyBr;
+  let body = n(data.retreatCollaborationIntro || '').trim();
+  const listRaw = n(data.retreatCollaborationList || '').trim();
+  const concl = n(data.retreatCollaborationConclusion || '').trim();
+  if (listRaw) {
+    const lines = listRaw.split(/\n/).map((l) => l.trim()).filter(Boolean);
+    const block = lines.join('\n');
+    if (block) body = body ? `${body}\n\n${block}` : block;
+  }
+  if (concl) body = body ? `${body}\n\n${concl}` : concl;
+  return body;
+}
+
 // Load retreat and workshop data
 async function loadRetreatWorkshopData() {
   console.log('Loading retreat and workshop data...');
@@ -3737,6 +4401,7 @@ async function loadRetreatWorkshopData() {
       const result = await response.json();
       if (result.success && result.data) {
         const data = result.data;
+        const n = normalizeRetreatLegacyBr;
         console.log('Retreat data loaded from API:', data);
         console.log('Forest gallery from API:', data.retreatForestGallery);
         console.log('Indoor gallery from API:', data.retreatIndoorGallery);
@@ -3745,18 +4410,33 @@ async function loadRetreatWorkshopData() {
         // Hero section
         document.getElementById('retreat-hero-title').value = data.retreatHeroTitle || '';
         document.getElementById('retreat-hero-subtitle').value = data.retreatHeroSubtitle || '';
-        
-        // Introduction
-        document.getElementById('retreat-intro-text').value = data.retreatIntroText || '';
+
+        // Invitation to Collaborate (before location cards on site)
+        document.getElementById('retreat-collaboration-title').value = data.retreatCollaborationTitle || '';
+        document.getElementById('retreat-collaboration-intro').value = n(mergeLegacyRetreatCollaborationBody(data));
+
+        // Schematic preview images (so buildRetreatDataFromFormForPreview sees src after load)
+        const setRetreatSchematicImg = (imgId, url) => {
+          if (!url || typeof url !== 'string') return;
+          const el = document.getElementById(imgId);
+          if (!el) return;
+          el.src = url + '?v=' + Date.now();
+          el.style.display = 'block';
+          const span = el.parentElement && el.parentElement.querySelector('span');
+          if (span) span.style.display = 'none';
+        };
+        setRetreatSchematicImg('preview-retreat-hero-img', data.retreatHeroImageUrl);
+        setRetreatSchematicImg('preview-retreat-collaboration-img', data.retreatCollaborationImageUrl);
+        setRetreatSchematicImg('preview-retreat-forest-img', data.retreatForestImageUrl);
+        setRetreatSchematicImg('preview-retreat-indoor-img', data.retreatIndoorImageUrl);
+        setRetreatSchematicImg('preview-retreat-theatre-img', data.retreatTheatreImageUrl);
         
         // Locations section
         document.getElementById('retreat-locations-title').value = data.retreatLocationsTitle || '';
         
-        // Forest Platforms card
+        // Forest Platforms card (single description; legacy list fields merged on load)
         document.getElementById('retreat-forest-title').value = data.retreatForestTitle || '';
-        document.getElementById('retreat-forest-description').value = data.retreatForestDescription || '';
-        document.getElementById('retreat-forest-list-label').value = data.retreatForestListLabel || '';
-        document.getElementById('retreat-forest-list-items').value = data.retreatForestListItems || '';
+        document.getElementById('retreat-forest-description').value = n(mergeLegacyRetreatForestDescription(data));
         const forestGalleryField = document.getElementById('retreat-forest-gallery');
         if (forestGalleryField) {
           const galleryData = data.retreatForestGallery || '[]';
@@ -3773,10 +4453,9 @@ async function loadRetreatWorkshopData() {
           console.error('Forest gallery field not found!');
         }
         
-        // Indoor Space card
+        // Indoor Space card (single description; legacy additional merged on load)
         document.getElementById('retreat-indoor-title').value = data.retreatIndoorTitle || '';
-        document.getElementById('retreat-indoor-description').value = data.retreatIndoorDescription || '';
-        document.getElementById('retreat-indoor-additional').value = data.retreatIndoorAdditional || '';
+        document.getElementById('retreat-indoor-description').value = n(mergeLegacyRetreatIndoorDescription(data));
         const indoorGalleryField = document.getElementById('retreat-indoor-gallery');
         if (indoorGalleryField) {
           const galleryData = data.retreatIndoorGallery || '[]';
@@ -3795,7 +4474,7 @@ async function loadRetreatWorkshopData() {
         
         // Home Theatre card
         document.getElementById('retreat-theatre-title').value = data.retreatTheatreTitle || '';
-        document.getElementById('retreat-theatre-description').value = data.retreatTheatreDescription || '';
+        document.getElementById('retreat-theatre-description').value = n(data.retreatTheatreDescription || '');
         const theatreGalleryField = document.getElementById('retreat-theatre-gallery');
         if (theatreGalleryField) {
           const galleryData = data.retreatTheatreGallery || '[]';
@@ -3814,25 +4493,10 @@ async function loadRetreatWorkshopData() {
         
         // Contact Form section
         document.getElementById('retreat-contact-title').value = data.retreatContactTitle || '';
-        document.getElementById('retreat-contact-text').value = data.retreatContactText || '';
+        document.getElementById('retreat-contact-text').value = n(data.retreatContactText || '');
         
-        // Organizer section
-        document.getElementById('retreat-organizer-title').value = data.retreatOrganizerTitle || '';
-        
-        // Workshops section
-        document.getElementById('retreat-workshops-title').value = data.retreatWorkshopsTitle || '';
-        document.getElementById('retreat-workshops-intro').value = data.retreatWorkshopsIntro || '';
-        document.getElementById('retreat-workshops-list').value = data.retreatWorkshopsList || '';
-        document.getElementById('retreat-workshops-conclusion').value = data.retreatWorkshopsConclusion || '';
-        
-        // Collaboration section
-        document.getElementById('retreat-collaboration-title').value = data.retreatCollaborationTitle || '';
-        document.getElementById('retreat-collaboration-intro').value = data.retreatCollaborationIntro || '';
-        document.getElementById('retreat-collaboration-list').value = data.retreatCollaborationList || '';
-        document.getElementById('retreat-collaboration-conclusion').value = data.retreatCollaborationConclusion || '';
-        
-        // Update preview
-        updateRetreatPreview(data);
+        // Preview from normalized form fields (API data may still contain literal <br> in strings)
+        updateRetreatPreview(buildRetreatDataFromFormForPreview());
         updateRetreatContentStatus();
         
         // Reset unsaved changes flag after loading
@@ -3849,6 +4513,40 @@ async function loadRetreatWorkshopData() {
   } catch (error) {
     console.log('Failed to load retreat and workshop data:', error);
   }
+}
+
+/** Build the same shape as API get_content for updateRetreatPreview — from hidden fields only (no fetch). */
+function buildRetreatDataFromFormForPreview() {
+  const v = (id) => document.getElementById(id)?.value ?? '';
+  const imgUrl = (imgId) => {
+    const img = document.getElementById(imgId);
+    if (!img || !img.src || img.style.display === 'none') return '';
+    try {
+      return img.src.split('?')[0];
+    } catch (e) {
+      return img.src || '';
+    }
+  };
+  return {
+    retreatHeroTitle: v('retreat-hero-title'),
+    retreatHeroSubtitle: v('retreat-hero-subtitle'),
+    retreatHeroImageUrl: imgUrl('preview-retreat-hero-img'),
+    retreatLocationsTitle: v('retreat-locations-title'),
+    retreatForestTitle: v('retreat-forest-title'),
+    retreatForestDescription: v('retreat-forest-description'),
+    retreatForestImageUrl: imgUrl('preview-retreat-forest-img'),
+    retreatIndoorTitle: v('retreat-indoor-title'),
+    retreatIndoorDescription: v('retreat-indoor-description'),
+    retreatIndoorImageUrl: imgUrl('preview-retreat-indoor-img'),
+    retreatTheatreTitle: v('retreat-theatre-title'),
+    retreatTheatreDescription: v('retreat-theatre-description'),
+    retreatTheatreImageUrl: imgUrl('preview-retreat-theatre-img'),
+    retreatCollaborationImageUrl: imgUrl('preview-retreat-collaboration-img'),
+    retreatContactTitle: v('retreat-contact-title'),
+    retreatContactText: v('retreat-contact-text'),
+    retreatCollaborationTitle: v('retreat-collaboration-title'),
+    retreatCollaborationIntro: v('retreat-collaboration-intro')
+  };
 }
 
 // Update retreat preview
@@ -3882,16 +4580,30 @@ function updateRetreatPreview(data) {
     heroImgEl.style.display = 'block';
     heroImgEl.nextElementSibling.style.display = 'none';
   }
-  
-  // Introduction
-  const introEl = document.getElementById('preview-retreat-intro');
-  if (introEl) {
-    const fullText = data.retreatIntroText || 'Back to Base is a place where nature and quiet become part of your practice...';
-    // Show full text in preview (CSS will handle visual truncation)
-    introEl.textContent = fullText;
-    // Sync to form with full text
-    const formField = document.getElementById('retreat-intro-text');
-    if (formField) formField.value = data.retreatIntroText || '';
+
+  // Invitation to Collaborate (preview order matches site: after Hero, before Outdoor / locations)
+  const collaborationTitleEl = document.getElementById('preview-retreat-collaboration-title');
+  const collaborationIntroEl = document.getElementById('preview-retreat-collaboration-intro');
+  if (collaborationTitleEl) {
+    collaborationTitleEl.textContent = data.retreatCollaborationTitle || 'Invitation to Collaborate';
+    const formField = document.getElementById('retreat-collaboration-title');
+    if (formField) formField.value = collaborationTitleEl.textContent;
+  }
+  if (collaborationIntroEl) {
+    const fullText =
+      data.retreatCollaborationIntro ||
+      retreatDefaultValues['retreat-collaboration-intro'] ||
+      '';
+    collaborationIntroEl.textContent = fullText;
+    const formField = document.getElementById('retreat-collaboration-intro');
+    if (formField) formField.value = data.retreatCollaborationIntro || '';
+  }
+  const collaborationImgEl = document.getElementById('preview-retreat-collaboration-img');
+  if (collaborationImgEl && data.retreatCollaborationImageUrl) {
+    collaborationImgEl.src = data.retreatCollaborationImageUrl;
+    collaborationImgEl.style.display = 'block';
+    const ph = collaborationImgEl.nextElementSibling;
+    if (ph && ph.tagName === 'SPAN') ph.style.display = 'none';
   }
   
   // Locations title
@@ -3901,31 +4613,17 @@ function updateRetreatPreview(data) {
   // Forest Platforms
   const forestTitleEl = document.getElementById('preview-retreat-forest-title');
   const forestDescEl = document.getElementById('preview-retreat-forest-desc');
-  const forestLabelEl = document.getElementById('preview-retreat-forest-label');
-  const forestListEl = document.getElementById('preview-retreat-forest-list');
   const forestImgEl = document.getElementById('preview-retreat-forest-img');
   if (forestTitleEl) {
-    forestTitleEl.textContent = data.retreatForestTitle || 'Forest platforms by the creek';
+    forestTitleEl.textContent = data.retreatForestTitle || 'Outdoor space with multi functional platforms';
     const formField = document.getElementById('retreat-forest-title');
     if (formField) formField.value = forestTitleEl.textContent;
   }
   if (forestDescEl) {
     const fullText = data.retreatForestDescription || 'Just a few steps from the house...';
-    // Show full text in preview (CSS will handle visual truncation)
     forestDescEl.textContent = fullText;
     const formField = document.getElementById('retreat-forest-description');
     if (formField) formField.value = data.retreatForestDescription || '';
-  }
-  if (forestLabelEl) {
-    forestLabelEl.textContent = data.retreatForestListLabel || "It's an ideal spot for:";
-    const formField = document.getElementById('retreat-forest-list-label');
-    if (formField) formField.value = forestLabelEl.textContent;
-  }
-  if (forestListEl && data.retreatForestListItems) {
-    const items = data.retreatForestListItems.split('\n').filter(item => item.trim());
-    forestListEl.innerHTML = items.map(item => `<li>${item.trim()}</li>`).join('');
-    const formField = document.getElementById('retreat-forest-list-items');
-    if (formField) formField.value = data.retreatForestListItems;
   }
   if (forestImgEl && data.retreatForestImageUrl) {
     forestImgEl.src = data.retreatForestImageUrl;
@@ -3936,12 +4634,18 @@ function updateRetreatPreview(data) {
   // Indoor Space
   const indoorTitleEl = document.getElementById('preview-retreat-indoor-title');
   const indoorDescEl = document.getElementById('preview-retreat-indoor-desc');
-  const indoorAddEl = document.getElementById('preview-retreat-indoor-add');
   const indoorImgEl = document.getElementById('preview-retreat-indoor-img');
-  if (indoorTitleEl) indoorTitleEl.textContent = data.retreatIndoorTitle || 'Warm, bright indoor space at Back to Base';
-  // Show full text in preview (CSS will handle visual truncation)
-  if (indoorDescEl) indoorDescEl.textContent = data.retreatIndoorDescription || 'Inside the house, there is a spacious room...';
-  if (indoorAddEl) indoorAddEl.textContent = data.retreatIndoorAdditional || 'And if you need a more intimate atmosphere...';
+  if (indoorTitleEl) {
+    indoorTitleEl.textContent = data.retreatIndoorTitle || 'Multifunctional indoor space';
+    const formField = document.getElementById('retreat-indoor-title');
+    if (formField) formField.value = indoorTitleEl.textContent;
+  }
+  if (indoorDescEl) {
+    const fullText = data.retreatIndoorDescription || 'Inside the house, there is a spacious room...';
+    indoorDescEl.textContent = fullText;
+    const formField = document.getElementById('retreat-indoor-description');
+    if (formField) formField.value = data.retreatIndoorDescription || '';
+  }
   if (indoorImgEl && data.retreatIndoorImageUrl) {
     indoorImgEl.src = data.retreatIndoorImageUrl;
     indoorImgEl.style.display = 'block';
@@ -3988,78 +4692,6 @@ function updateRetreatPreview(data) {
     if (formField) formField.value = data.retreatContactText || '';
   }
   
-  // Organizer
-  const organizerTitleEl = document.getElementById('preview-retreat-organizer-title');
-  if (organizerTitleEl) {
-    const fullText = data.retreatOrganizerTitle || 'Are you a yoga instructor...';
-    // Show full text in preview (CSS will handle visual truncation)
-    organizerTitleEl.textContent = fullText;
-    const formField = document.getElementById('retreat-organizer-title');
-    if (formField) formField.value = data.retreatOrganizerTitle || '';
-  }
-  
-  // Workshops
-  const workshopsTitleEl = document.getElementById('preview-retreat-workshops-title');
-  const workshopsIntroEl = document.getElementById('preview-retreat-workshops-intro');
-  const workshopsListEl = document.getElementById('preview-retreat-workshops-list');
-  const workshopsConclusionEl = document.getElementById('preview-retreat-workshops-conclusion');
-  if (workshopsTitleEl) {
-    workshopsTitleEl.textContent = data.retreatWorkshopsTitle || 'What workshops are our spaces suitable for?';
-    const formField = document.getElementById('retreat-workshops-title');
-    if (formField) formField.value = workshopsTitleEl.textContent;
-  }
-  if (workshopsIntroEl) {
-    const fullText = data.retreatWorkshopsIntro || 'The indoor spaces, forest platforms...';
-    // Show full text in preview (CSS will handle visual truncation)
-    workshopsIntroEl.textContent = fullText;
-    const formField = document.getElementById('retreat-workshops-intro');
-    if (formField) formField.value = data.retreatWorkshopsIntro || '';
-  }
-  if (workshopsListEl && data.retreatWorkshopsList) {
-    const items = data.retreatWorkshopsList.split('\n').filter(item => item.trim());
-    workshopsListEl.innerHTML = items.map(item => `<li>${item.trim()}</li>`).join('');
-    const formField = document.getElementById('retreat-workshops-list');
-    if (formField) formField.value = data.retreatWorkshopsList;
-  }
-  if (workshopsConclusionEl) {
-    const fullText = data.retreatWorkshopsConclusion || 'Create memorable retreat experiences...';
-    // Show full text in preview (CSS will handle visual truncation)
-    workshopsConclusionEl.textContent = fullText;
-    const formField = document.getElementById('retreat-workshops-conclusion');
-    if (formField) formField.value = data.retreatWorkshopsConclusion || '';
-  }
-  
-  // Collaboration
-  const collaborationTitleEl = document.getElementById('preview-retreat-collaboration-title');
-  const collaborationIntroEl = document.getElementById('preview-retreat-collaboration-intro');
-  const collaborationListEl = document.getElementById('preview-retreat-collaboration-list');
-  const collaborationConclusionEl = document.getElementById('preview-retreat-collaboration-conclusion');
-  if (collaborationTitleEl) {
-    collaborationTitleEl.textContent = data.retreatCollaborationTitle || 'Invitation to Collaborate';
-    const formField = document.getElementById('retreat-collaboration-title');
-    if (formField) formField.value = collaborationTitleEl.textContent;
-  }
-  if (collaborationIntroEl) {
-    const fullText = data.retreatCollaborationIntro || 'Back to Base welcomes those...';
-    // Show full text in preview (CSS will handle visual truncation)
-    collaborationIntroEl.textContent = fullText;
-    const formField = document.getElementById('retreat-collaboration-intro');
-    if (formField) formField.value = data.retreatCollaborationIntro || '';
-  }
-  if (collaborationListEl && data.retreatCollaborationList) {
-    const items = data.retreatCollaborationList.split('\n').filter(item => item.trim());
-    collaborationListEl.innerHTML = items.map(item => `<li>${item.trim()}</li>`).join('');
-    const formField = document.getElementById('retreat-collaboration-list');
-    if (formField) formField.value = data.retreatCollaborationList;
-  }
-  if (collaborationConclusionEl) {
-    const fullText = data.retreatCollaborationConclusion || 'If you want to share your work...';
-    // Show full text in preview (CSS will handle visual truncation)
-    collaborationConclusionEl.textContent = fullText;
-    const formField = document.getElementById('retreat-collaboration-conclusion');
-    if (formField) formField.value = data.retreatCollaborationConclusion || '';
-  }
-  
   // Restore flag update state after all form fields are updated
   window.retreatUpdatingPreview = wasUpdatingPreview;
 }
@@ -4070,28 +4702,17 @@ window.updateRetreatPreviewField = function(fieldKey, value) {
   const fieldMap = {
     'hero-title': { previewId: 'preview-retreat-hero-title', formId: 'retreat-hero-title' },
     'hero-subtitle': { previewId: 'preview-retreat-hero-subtitle', formId: 'retreat-hero-subtitle' },
-    'intro-text': { previewId: 'preview-retreat-intro', formId: 'retreat-intro-text' },
     'locations-title': { previewId: 'preview-retreat-locations-title', formId: 'retreat-locations-title' },
     'forest-title': { previewId: 'preview-retreat-forest-title', formId: 'retreat-forest-title' },
     'forest-desc': { previewId: 'preview-retreat-forest-desc', formId: 'retreat-forest-description' },
-    'forest-label': { previewId: 'preview-retreat-forest-label', formId: 'retreat-forest-list-label' },
-    'forest-list-items': { previewId: 'preview-retreat-forest-list', formId: 'retreat-forest-list-items' },
     'indoor-title': { previewId: 'preview-retreat-indoor-title', formId: 'retreat-indoor-title' },
     'indoor-desc': { previewId: 'preview-retreat-indoor-desc', formId: 'retreat-indoor-description' },
-    'indoor-add': { previewId: 'preview-retreat-indoor-add', formId: 'retreat-indoor-additional' },
     'theatre-title': { previewId: 'preview-retreat-theatre-title', formId: 'retreat-theatre-title' },
     'theatre-desc': { previewId: 'preview-retreat-theatre-desc', formId: 'retreat-theatre-description' },
     'contact-title': { previewId: 'preview-retreat-contact-title', formId: 'retreat-contact-title' },
     'contact-text': { previewId: 'preview-retreat-contact-text', formId: 'retreat-contact-text' },
-    'organizer-title': { previewId: 'preview-retreat-organizer-title', formId: 'retreat-organizer-title' },
-    'workshops-title': { previewId: 'preview-retreat-workshops-title', formId: 'retreat-workshops-title' },
-    'workshops-intro': { previewId: 'preview-retreat-workshops-intro', formId: 'retreat-workshops-intro' },
-    'workshops-list': { previewId: 'preview-retreat-workshops-list', formId: 'retreat-workshops-list' },
-    'workshops-conclusion': { previewId: 'preview-retreat-workshops-conclusion', formId: 'retreat-workshops-conclusion' },
     'collaboration-title': { previewId: 'preview-retreat-collaboration-title', formId: 'retreat-collaboration-title' },
-    'collaboration-intro': { previewId: 'preview-retreat-collaboration-intro', formId: 'retreat-collaboration-intro' },
-    'collaboration-list': { previewId: 'preview-retreat-collaboration-list', formId: 'retreat-collaboration-list' },
-    'collaboration-conclusion': { previewId: 'preview-retreat-collaboration-conclusion', formId: 'retreat-collaboration-conclusion' }
+    'collaboration-intro': { previewId: 'preview-retreat-collaboration-intro', formId: 'retreat-collaboration-intro' }
   };
   
   const mapping = fieldMap[fieldKey];
@@ -4104,8 +4725,7 @@ window.updateRetreatPreviewField = function(fieldKey, value) {
   if (previewEl) {
     // Handle list items
     if (previewEl.tagName === 'UL' || previewEl.tagName === 'OL') {
-      const items = value.split('\n').filter(item => item.trim());
-      previewEl.innerHTML = items.map(item => `<li>${item.trim()}</li>`).join('');
+      fillUlFromNewlineText(previewEl, value);
     } else {
       // Show full text in preview (CSS will handle visual truncation)
       previewEl.textContent = value;
@@ -4147,12 +4767,14 @@ async function loadRetreatImagesData() {
       const result = await response.json();
       if (result.success && result.data) {
         const heroImageUrl = result.data.retreatHeroImageUrl || '';
+        const collaborationImageUrl = result.data.retreatCollaborationImageUrl || '';
         const forestImageUrl = result.data.retreatForestImageUrl || '';
         const indoorImageUrl = result.data.retreatIndoorImageUrl || '';
         const theatreImageUrl = result.data.retreatTheatreImageUrl || '';
         
         // Update previews
         updateImagePreview('retreat-hero', heroImageUrl);
+        updateImagePreview('retreat-collaboration', collaborationImageUrl);
         updateImagePreview('retreat-forest', forestImageUrl);
         updateImagePreview('retreat-indoor', indoorImageUrl);
         updateImagePreview('retreat-theatre', theatreImageUrl);
@@ -4163,6 +4785,7 @@ async function loadRetreatImagesData() {
         const retreatImagesData = {
           ...storedJson,
           hero: heroImageUrl || storedJson.hero || '',
+          collaboration: collaborationImageUrl || storedJson.collaboration || '',
           forest: forestImageUrl || storedJson.forest || '',
           indoor: indoorImageUrl || storedJson.indoor || '',
           theatre: theatreImageUrl || storedJson.theatre || ''
@@ -4193,19 +4816,179 @@ function updateImagePreview(prefix, imageUrl) {
   }
 }
 
+// All text fields that support line breaks - preserve whitespace for all contenteditable fields
+// Since we added white-space: pre-wrap to all contenteditable fields in admin.html,
+// we preserve whitespace for all fields by default
 const PREVIEW_PRESERVE_WHITESPACE_FIELDS = new Set([
+  // Homepage
+  'homepage-main-description',
+  'homepage-main-subtitle',
+  // Floor Plan
+  'floorplan-title',
+  'floorplan-subtitle',
+  'basement-subtitle',
+  'basement-description',
+  'ground-subtitle',
+  'ground-description',
+  'loft-subtitle',
+  'loft-description',
+  // Rooms Cards
+  'rooms-title',
+  'rooms-subtitle',
+  'room-basement-card-title',
+  'room-basement-card-description',
+  'room-ground-queen-card-title',
+  'room-ground-queen-card-description',
+  'room-ground-twin-card-title',
+  'room-ground-twin-card-description',
+  'room-second-card-title',
+  'room-second-card-description',
+  // Wellness
   'wellness-description',
   'wellness-massage-description',
-  'wellness-yoga-description',
-  'wellness-sauna-description',
+  // Massage
   'massage-intro',
   'massage-relaxing-description',
   'massage-deep-tissue-description',
   'massage-reiki-description',
   'massage-sauna-description',
-  'mini-hotel-description-1',
-  'mini-hotel-description-2'
+  'massage-booking-intro',
+  'mini-hotel-description',
+  'explore-accommodation-description',
+  // Retreat and Workshops
+  'retreat-forest-description',
+  'retreat-indoor-description',
+  'retreat-theatre-description',
+  'retreat-contact-text',
+  'retreat-collaboration-intro',
+  // Special
+  'special-hero-title',
+  'special-hero-subtitle',
+  'special-offer-main-text',
+  'special-offer-description',
+  // About
+  'about-hero-title',
+  'about-hero-subtitle',
+  'about-idea-intro',
+  'about-idea-signature',
+  'about-location-paragraph-1',
+  'about-location-paragraph-2',
+  'about-location-paragraph-3',
+  'about-contact-form-title',
+  'about-contact-form-description',
+  // Contact
+  'contact-phone',
+  'contact-email',
+  'contact-address',
+  // Room detail pages
+  'room-basement-subtitle',
+  'room-basement-description',
+  'room-basement-note',
+  'room-ground-queen-subtitle',
+  'room-ground-queen-description',
+  'room-ground-queen-note',
+  'room-ground-twin-subtitle',
+  'room-ground-twin-description',
+  'room-ground-twin-note',
+  'room-second-subtitle',
+  'room-second-description',
+  'room-second-note',
+  // Wellness / massage titles (optional multiline)
+  'wellness-title',
+  'wellness-massage-title',
+  'massage-hero-title',
+  'massage-relaxing-title',
+  'massage-deep-tissue-title',
+  'massage-reiki-title',
+  'massage-sauna-title',
+  'massage-booking-title',
+  'mini-hotel-title',
+  // Explore section intros (multiline)
+  'explore-communities-intro',
+  'explore-culture-intro',
+  'explore-activities-intro',
+  'about-parks-intro',
 ]);
+
+/**
+ * Fill a <ul> preview from newline-separated stored text (escapes HTML per <li>).
+ */
+function fillUlFromNewlineText(ulElement, rawText) {
+  if (!ulElement) return;
+  const items = String(rawText || '')
+    .split('\n')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  ulElement.innerHTML = '';
+  items.forEach((text) => {
+    const li = document.createElement('li');
+    li.textContent = text;
+    ulElement.appendChild(li);
+  });
+}
+
+/**
+ * Replace nested ul/ol in a clone with plain text so list structure is preserved on save.
+ * Uses "- item" lines for ul (matches site safeOutputWithBreaks) and "1. item" for ol.
+ */
+function flattenContentEditableListsToPlainText(clone) {
+  for (let guard = 0; guard < 64; guard++) {
+    const leafLists = Array.from(clone.querySelectorAll('ul, ol')).filter(
+      (list) => !list.querySelector('ul, ol')
+    );
+    if (leafLists.length === 0) break;
+    leafLists.forEach((list) => {
+      const isOl = list.tagName === 'OL';
+      const items = Array.from(list.querySelectorAll(':scope > li'));
+      const lines = items
+        .map((li, idx) => {
+          const t = (li.textContent || '').replace(/\r\n/g, '\n').trim();
+          if (!t) return '';
+          return isOl ? `${idx + 1}. ${t}` : `- ${t}`;
+        })
+        .filter(Boolean);
+      list.replaceWith(document.createTextNode(lines.join('\n')));
+    });
+  }
+}
+
+/**
+ * innerText on a detached DOM tree often omits newlines between block elements (e.g. divs from Enter
+ * in contenteditable). Mount in a hidden pre-wrap container so layout matches the live preview.
+ */
+function getPlainTextFromContentEditablePreviewClone(clone) {
+  clone.querySelectorAll('br').forEach((br) => {
+    br.replaceWith(document.createTextNode('\n'));
+  });
+  const wrap = document.createElement('div');
+  wrap.setAttribute('aria-hidden', 'true');
+  // Do not use visibility:hidden: innerText/layout for "invisible" subtrees can collapse
+  // block boundaries (newlines) differently across browsers. Opacity keeps layout usable.
+  wrap.style.cssText =
+    'position:fixed;left:-9999px;top:0;white-space:pre-wrap;width:min(800px,100vw);font:inherit;opacity:0;pointer-events:none;z-index:-1;';
+  wrap.appendChild(clone);
+  document.body.appendChild(wrap);
+  let text = '';
+  try {
+    text = typeof wrap.innerText === 'string' ? wrap.innerText : '';
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    // While wrap is in the document, join explicit top-level blocks if innerText still has no newlines
+    if (!text.includes('\n')) {
+      const blocks = Array.from(clone.children).filter((el) =>
+        ['DIV', 'P', 'BLOCKQUOTE', 'SECTION', 'ARTICLE'].includes(el.tagName)
+      );
+      if (blocks.length > 1) {
+        text = blocks
+          .map((el) => (el.innerText || el.textContent || '').replace(/\r\n/g, '\n').trim())
+          .filter(Boolean)
+          .join('\n');
+      }
+    }
+  } finally {
+    wrap.remove();
+  }
+  return text;
+}
 
 // Sync preview content to form field
 function syncPreviewToForm(previewElement, fieldId) {
@@ -4215,30 +4998,55 @@ function syncPreviewToForm(previewElement, fieldId) {
     
     // Handle list items - convert to newline-separated format
     if (previewElement.tagName === 'UL' || previewElement.tagName === 'OL') {
-      const items = Array.from(previewElement.querySelectorAll('li')).map(li => li.textContent.trim()).filter(item => item);
+      const items = Array.from(previewElement.querySelectorAll(':scope > li'))
+        .map((li) => (li.textContent || '').replace(/\r\n/g, '\n').trim())
+        .filter(Boolean);
       content = items.join('\n');
     } else {
-      // For contenteditable divs, preserve line breaks
-      // Replace <br> and </div><div> with newlines
+      // For contenteditable divs: flatten lists, then read plain text from a mounted clone (see getPlainTextFromContentEditablePreviewClone).
       const clone = previewElement.cloneNode(true);
-      // Replace <br> with newlines
-      const brs = clone.querySelectorAll('br');
-      brs.forEach(br => {
-        br.replaceWith('\n');
-      });
-      // Replace block elements with newlines
-      const blocks = clone.querySelectorAll('div, p');
-      blocks.forEach((block, index) => {
-        if (index > 0) {
-          block.insertAdjacentText('beforebegin', '\n');
-        }
-      });
-      content = clone.textContent || clone.innerText || '';
-      // Clean up: normalize multiple newlines to single newline, but preserve intentional line breaks
-      content = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+      flattenContentEditableListsToPlainText(clone);
+      content = getPlainTextFromContentEditablePreviewClone(clone);
+      // Legacy DB / paste may store line breaks as literal "<br>" in strings — normalize for all sections
+      content = content.replace(/<br\s*\/?>/gi, '\n');
       // Remove leading/trailing whitespace unless field needs to preserve it
       if (!PREVIEW_PRESERVE_WHITESPACE_FIELDS.has(fieldId)) {
         content = content.trim();
+      }
+    }
+    
+    if (fieldId === 'explore-accommodation-title') {
+      const inh = (window.__exploreAccommodationInherited || {})[fieldId];
+      const inhS = String(inh != null ? inh : '');
+      const inhPlain =
+        inhS.indexOf('<') === -1
+          ? inhS.replace(/\r\n/g, '\n').trim()
+          : (() => {
+              const d = document.createElement('div');
+              d.innerHTML = inhS.replace(/<br\s*\/?>/gi, '\n');
+              return (d.textContent || '').replace(/\r\n/g, '\n').trim();
+            })();
+      const cNorm = String(content).replace(/\r\n/g, '\n').trim();
+      if (cNorm === '' || (inhPlain !== '' && cNorm === inhPlain)) {
+        content = '';
+      }
+    } else if (fieldId === 'explore-accommodation-description') {
+      const inh = (window.__exploreAccommodationInherited || {})[fieldId];
+      const inhPlain = String(inh != null ? inh : '')
+        .replace(/\r\n/g, '\n')
+        .trim();
+      const cNorm = String(content).replace(/\r\n/g, '\n').trim();
+      if (cNorm === '' || (inhPlain !== '' && cNorm === inhPlain)) {
+        content = '';
+      }
+    } else if (fieldId === 'mini-hotel-description') {
+      const inh = (window.__miniHotelDescriptionInherited || {})[fieldId];
+      const inhPlain = String(inh != null ? inh : '')
+        .replace(/\r\n/g, '\n')
+        .trim();
+      const cNorm = String(content).replace(/\r\n/g, '\n').trim();
+      if (cNorm === '' || (inhPlain !== '' && cNorm === inhPlain)) {
+        content = '';
       }
     }
     
@@ -4247,13 +5055,27 @@ function syncPreviewToForm(previewElement, fieldId) {
     // Only trigger auto-save if value actually changed
     if (oldValue !== content) {
       formField.value = content;
+
+      // Explore: section headers and sticky-nav row share the same hidden field per H2
+      if (
+        fieldId === 'explore-communities-h2' ||
+        fieldId === 'explore-culture-h2' ||
+        fieldId === 'explore-parks-h2' ||
+        fieldId === 'explore-activities-h2'
+      ) {
+        document.querySelectorAll(`[data-field="${fieldId}"]`).forEach((el) => {
+          if (el !== previewElement) {
+            el.textContent = content;
+          }
+        });
+      }
       
       // Mark as having unsaved changes BEFORE triggering input event
       // This ensures the flag is set before any event handlers run
       if (fieldId.startsWith('retreat-')) {
         if (typeof retreatHasUnsavedChanges !== 'undefined') {
           retreatHasUnsavedChanges = true;
-          console.log('Set retreatHasUnsavedChanges = true for field:', fieldId, 'oldValue:', oldValue.substring(0, 30), 'newValue:', content.substring(0, 30));
+          console.log('Set retreatHasUnsavedChanges = true for field:', fieldId, 'oldValue:', String(oldValue || '').substring(0, 30), 'newValue:', String(content || '').substring(0, 30));
         }
       }
       
@@ -4295,8 +5117,17 @@ function syncPreviewToForm(previewElement, fieldId) {
         }
       }
       
-      // Schedule auto-save for about section
-      if (fieldId.startsWith('about-')) {
+      // Explore page CMS (DB fields: explore_* + about_attractions / cards / parks) vs About us only
+      if (fieldId.startsWith('explore-') || (fieldId.startsWith('about-') && typeof EXPLORE_CMS_FIELD_IDS !== 'undefined' && EXPLORE_CMS_FIELD_IDS.has(fieldId))) {
+        if (typeof scheduleExploreAutoSave === 'function') {
+          if (typeof exploreHasUnsavedChanges !== 'undefined') {
+            exploreHasUnsavedChanges = true;
+          }
+          scheduleExploreAutoSave();
+        } else {
+          console.warn('scheduleExploreAutoSave is not defined');
+        }
+      } else if (fieldId.startsWith('about-')) {
         if (typeof scheduleAboutAutoSave === 'function') {
           if (typeof aboutHasUnsavedChanges !== 'undefined') {
             aboutHasUnsavedChanges = true;
@@ -4447,29 +5278,9 @@ function syncPreviewToForm(previewElement, fieldId) {
       }
       
       console.log(`Synced preview to form: ${fieldId} = "${content.substring(0, 50)}..."`);
-    } else {
-      // Value hasn't changed, but if we're here from onblur, we might still need to ensure flag is set
-      // This handles the case where the value was already synced but user is still editing
-      if (fieldId.startsWith('retreat-')) {
-        // Check if there are any pending changes by comparing preview content with form value
-        const previewContent = previewElement.textContent || previewElement.innerText || '';
-        const formValue = formField.value || '';
-        if (previewContent.trim() !== formValue.trim()) {
-          // There's a mismatch, sync it
-          formField.value = previewContent.trim();
-          if (typeof retreatHasUnsavedChanges !== 'undefined') {
-            retreatHasUnsavedChanges = true;
-            console.log('Set retreatHasUnsavedChanges = true for field (mismatch detected):', fieldId);
-            // Schedule auto-save
-            if (typeof window.scheduleRetreatAutoSave === 'function') {
-              window.scheduleRetreatAutoSave();
-            }
-          }
-        } else {
-          console.log('No change detected for field:', fieldId, 'preview:', previewContent.substring(0, 30), 'form:', formValue.substring(0, 30));
-        }
-      }
     }
+    // Do not fall back to previewElement.textContent when oldValue === content: textContent omits
+    // newlines between block nodes (Enter in contenteditable), which would wipe line breaks for retreat.
   } else {
     console.error(`Failed to sync: formField=${!!formField}, previewElement=${!!previewElement}, fieldId=${fieldId}`);
   }
@@ -4505,7 +5316,8 @@ function initRetreatImageUpload() {
     { buttonId: 'retreat-hero-upload-btn', inputId: 'retreat-hero-upload', previewId: 'retreat-hero-preview', pathId: 'retreat-hero-path', imageType: 'retreat-hero' },
     { buttonId: 'retreat-forest-upload-btn', inputId: 'retreat-forest-upload', previewId: 'retreat-forest-preview', pathId: 'retreat-forest-path', imageType: 'retreat-forest' },
     { buttonId: 'retreat-indoor-upload-btn', inputId: 'retreat-indoor-upload', previewId: 'retreat-indoor-preview', pathId: 'retreat-indoor-path', imageType: 'retreat-indoor' },
-    { buttonId: 'retreat-theatre-upload-btn', inputId: 'retreat-theatre-upload', previewId: 'retreat-theatre-preview', pathId: 'retreat-theatre-path', imageType: 'retreat-theatre' }
+    { buttonId: 'retreat-theatre-upload-btn', inputId: 'retreat-theatre-upload', previewId: 'retreat-theatre-preview', pathId: 'retreat-theatre-path', imageType: 'retreat-theatre' },
+    { buttonId: 'retreat-collaboration-upload-btn', inputId: 'retreat-collaboration-upload', previewId: 'retreat-collaboration-preview', pathId: 'retreat-collaboration-path', imageType: 'retreat-collaboration' }
   ];
 
   uploadConfigs.forEach(config => {
@@ -4540,9 +5352,10 @@ function initRetreatImageUpload() {
             imageNameMapper: (type) => {
               const nameMap = {
                 'retreat-hero': 'Hero',
-                'retreat-forest': 'Forest Platforms',
-                'retreat-indoor': 'Indoor Space',
-                'retreat-theatre': 'Home Theatre'
+                'retreat-forest': 'Outdoor space',
+                'retreat-indoor': 'Multifunctional indoor space',
+                'retreat-theatre': 'Home Theatre',
+                'retreat-collaboration': 'Invitation to Collaborate'
               };
               return nameMap[type] || type;
             }
@@ -4559,6 +5372,7 @@ function initRetreatSaveHandler() {
   if (saveBtn) {
     saveBtn.addEventListener('click', async () => {
       const heroPath = document.getElementById('retreat-hero-path')?.textContent || '';
+      const collaborationPath = document.getElementById('retreat-collaboration-path')?.textContent || '';
       const forestPath = document.getElementById('retreat-forest-path')?.textContent || '';
       const indoorPath = document.getElementById('retreat-indoor-path')?.textContent || '';
       const theatrePath = document.getElementById('retreat-theatre-path')?.textContent || '';
@@ -4572,6 +5386,7 @@ function initRetreatSaveHandler() {
       }
       
       contentData.retreatHeroImageUrl = heroPath;
+      contentData.retreatCollaborationImageUrl = collaborationPath;
       contentData.retreatForestImageUrl = forestPath;
       contentData.retreatIndoorImageUrl = indoorPath;
       contentData.retreatTheatreImageUrl = theatrePath;
@@ -4582,6 +5397,7 @@ function initRetreatSaveHandler() {
         const formData = new FormData();
         formData.append('action', 'save_content');
         formData.append('retreat_hero_image_url', heroPath);
+        formData.append('retreat_collaboration_image_url', collaborationPath);
         formData.append('retreat_forest_image_url', forestPath);
         formData.append('retreat_indoor_image_url', indoorPath);
         formData.append('retreat_theatre_image_url', theatrePath);
@@ -4590,15 +5406,16 @@ function initRetreatSaveHandler() {
           method: 'POST',
           body: formData
         });
-        
-        if (response.ok) {
-          showStatus('Retreat images saved successfully!');
+        const rtxt = await response.text();
+        if (recordSaveContentResponse(response, rtxt, 'retreat')) {
+          showStatus('Retreat images saved to database');
         } else {
-          showStatus('Retreat images saved to localStorage. Server save may have failed.', 'warning');
+          showStatus('Retreat images: localStorage only — server did not confirm save. See status line.', 'warning');
         }
       } catch (error) {
         console.error('Error saving retreat images:', error);
-        showStatus('Retreat images saved to localStorage. Server save failed.', 'warning');
+        showStatus('Retreat images: server save error', 'error');
+        updateAdminSectionSaveStatus('retreat', 'error', (error && error.message) || 'Save failed');
       }
     });
   }
@@ -4642,8 +5459,12 @@ async function loadSpecialData() {
         if (poolsDesc2Field) poolsDesc2Field.value = data.specialPoolsDescription2 || '';
         if (poolsTitlePreview) poolsTitlePreview.textContent = data.specialPoolsTitle || 'Mineral-Rich Pools & Limestone Cave';
         if (poolsDescPreview) {
-          const combined = ((data.specialPoolsDescription1 || '') + ' ' + (data.specialPoolsDescription2 || '')).trim();
-          poolsDescPreview.textContent = combined || 'The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge. Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.';
+          const d1 = (data.specialPoolsDescription1 || '').trim();
+          const d2 = (data.specialPoolsDescription2 || '').trim();
+          const combined = [d1, d2].filter(Boolean).join('\n\n');
+          poolsDescPreview.textContent =
+            combined ||
+            'The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge. Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.';
         }
         
         // Dining & Spa Experience card
@@ -4657,8 +5478,28 @@ async function loadSpecialData() {
         if (diningDesc2Field) diningDesc2Field.value = data.specialDiningDescription2 || '';
         if (diningTitlePreview) diningTitlePreview.textContent = data.specialDiningTitle || 'Dining & Spa Experience';
         if (diningDescPreview) {
-          const combined = ((data.specialDiningDescription1 || '') + ' ' + (data.specialDiningDescription2 || '')).trim();
-          diningDescPreview.textContent = combined || 'After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight. Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.';
+          const d1 = (data.specialDiningDescription1 || '').trim();
+          const d2 = (data.specialDiningDescription2 || '').trim();
+          const combined = [d1, d2].filter(Boolean).join('\n\n');
+          diningDescPreview.textContent =
+            combined ||
+            'After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight. Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.';
+        }
+
+        const extraTitleField = document.getElementById('special-extra-title');
+        const extraDesc1Field = document.getElementById('special-extra-description-1');
+        const extraDesc2Field = document.getElementById('special-extra-description-2');
+        const extraTitlePreview = document.getElementById('preview-special-extra-title');
+        const extraDescPreview = document.getElementById('preview-special-extra-desc');
+        if (extraTitleField) extraTitleField.value = data.specialExtraTitle || '';
+        if (extraDesc1Field) extraDesc1Field.value = data.specialExtraDescription1 || '';
+        if (extraDesc2Field) extraDesc2Field.value = data.specialExtraDescription2 || '';
+        if (extraTitlePreview) extraTitlePreview.textContent = data.specialExtraTitle || 'Discover Nelson & the Kootenays';
+        if (extraDescPreview) {
+          const ex1 = (data.specialExtraDescription1 || '').trim();
+          const ex2 = (data.specialExtraDescription2 || '').trim();
+          extraDescPreview.textContent = [ex1, ex2].filter(Boolean).join('\n\n') ||
+            'Beyond the hot springs, the lively town of Nelson offers galleries, cafés, and lakefront strolls — an ideal complement to your retreat.\n\nAsk us for tips on hikes, paddling on Kootenay Lake, or seasonal events during your stay.';
         }
         
         // Exclusive Offer card
@@ -4672,8 +5513,16 @@ async function loadSpecialData() {
         if (offerMainField) offerMainField.value = data.specialOfferMainText || '';
         if (offerDescField) offerDescField.value = data.specialOfferDescription || '';
         if (offerTitlePreview) offerTitlePreview.textContent = data.specialOfferTitle || 'Free Hot Springs Access';
-        if (offerMainPreview) offerMainPreview.textContent = data.specialOfferMainText || 'Exclusive Offer: Book a minimum 5-night stay at our Erasmus Suite (Second floor — Loft suite) and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!';
+        if (offerMainPreview) offerMainPreview.textContent = data.specialOfferMainText || 'Exclusive Offer: Book a minimum 5-night stay at Kelder and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!';
         if (offerDescPreview) offerDescPreview.textContent = data.specialOfferDescription || 'This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.';
+
+        const extraImgPrev = document.getElementById('preview-special-extra-img');
+        if (extraImgPrev && data.specialExtraImageUrl) {
+          extraImgPrev.src = data.specialExtraImageUrl + '?v=' + Date.now();
+          extraImgPrev.style.display = 'block';
+          const placeholder = extraImgPrev.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
         
         console.log('Special page content loaded successfully');
       }
@@ -4726,6 +5575,23 @@ function updateSpecialPreview(data) {
     diningImgEl.style.display = 'block';
     diningImgEl.nextElementSibling.style.display = 'none';
   }
+
+  // Extra block (after dining)
+  const extraTitleEl = document.getElementById('preview-special-extra-title');
+  const extraDescEl = document.getElementById('preview-special-extra-desc');
+  const extraImgEl = document.getElementById('preview-special-extra-img');
+  if (extraTitleEl) extraTitleEl.textContent = data.specialExtraTitle || 'Discover Nelson & the Kootenays';
+  if (extraDescEl) {
+    const ex1 = (data.specialExtraDescription1 || '').trim();
+    const ex2 = (data.specialExtraDescription2 || '').trim();
+    const desc = [ex1, ex2].filter(Boolean).join(' ');
+    extraDescEl.textContent = desc ? (desc.substring(0, 100) + (desc.length > 100 ? '...' : '')) : 'Beyond the hot springs...';
+  }
+  if (extraImgEl && data.specialExtraImageUrl) {
+    extraImgEl.src = data.specialExtraImageUrl;
+    extraImgEl.style.display = 'block';
+    if (extraImgEl.nextElementSibling) extraImgEl.nextElementSibling.style.display = 'none';
+  }
   
   // Offer
   const offerTitleEl = document.getElementById('preview-special-offer-title');
@@ -4745,6 +5611,8 @@ function updateSpecialPreviewField(field, value) {
     'pools-desc': 'preview-special-pools-desc',
     'dining-title': 'preview-special-dining-title',
     'dining-desc': 'preview-special-dining-desc',
+    'extra-title': 'preview-special-extra-title',
+    'extra-desc': 'preview-special-extra-desc',
     'offer-title': 'preview-special-offer-title',
     'offer-main': 'preview-special-offer-main',
     'offer-desc': 'preview-special-offer-desc'
@@ -4754,7 +5622,7 @@ function updateSpecialPreviewField(field, value) {
   if (previewId) {
     const el = document.getElementById(previewId);
     if (el) {
-      if (field === 'hero-subtitle' || field === 'pools-desc' || field === 'dining-desc' || field === 'offer-main' || field === 'offer-desc') {
+      if (field === 'hero-subtitle' || field === 'pools-desc' || field === 'dining-desc' || field === 'extra-desc' || field === 'offer-main' || field === 'offer-desc') {
         el.textContent = value ? (value.substring(0, 100) + (value.length > 100 ? '...' : '')) : '';
       } else {
         el.textContent = value || '';
@@ -4777,6 +5645,13 @@ function updateSpecialPreviewField(field, value) {
     const descEl = document.getElementById('preview-special-dining-desc');
     if (descEl) descEl.textContent = combined ? (combined.substring(0, 100) + (combined.length > 100 ? '...' : '')) : '';
   }
+  if (field === 'extra-desc-1' || field === 'extra-desc-2') {
+    const desc1 = field === 'extra-desc-1' ? value : document.getElementById('special-extra-description-1')?.value || '';
+    const desc2 = field === 'extra-desc-2' ? value : document.getElementById('special-extra-description-2')?.value || '';
+    const combined = (desc1 + ' ' + desc2).trim();
+    const descEl = document.getElementById('preview-special-extra-desc');
+    if (descEl) descEl.textContent = combined ? (combined.substring(0, 100) + (combined.length > 100 ? '...' : '')) : '';
+  }
 }
 
 // Load special images data
@@ -4797,11 +5672,13 @@ async function loadSpecialImagesData() {
         const heroImageUrl = result.data.specialHeroImageUrl || '';
         const poolsImageUrl = result.data.specialPoolsImageUrl || '';
         const diningImageUrl = result.data.specialDiningImageUrl || '';
+        const extraImageUrl = result.data.specialExtraImageUrl || '';
         
         // Update preview images directly
         const heroImg = document.getElementById('preview-special-hero-img');
         const poolsImg = document.getElementById('preview-special-pools-img');
         const diningImg = document.getElementById('preview-special-dining-img');
+        const extraImg = document.getElementById('preview-special-extra-img');
         
         if (heroImg && heroImageUrl) {
           heroImg.src = heroImageUrl + '?v=' + Date.now();
@@ -4823,6 +5700,13 @@ async function loadSpecialImagesData() {
           const placeholder = diningImg.nextElementSibling;
           if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
         }
+
+        if (extraImg && extraImageUrl) {
+          extraImg.src = extraImageUrl + '?v=' + Date.now();
+          extraImg.style.display = 'block';
+          const placeholder = extraImg.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
         
         const stored = localStorage.getItem('btb_special_images') || '{}';
         const storedJson = JSON.parse(stored);
@@ -4830,7 +5714,8 @@ async function loadSpecialImagesData() {
           ...storedJson,
           hero: heroImageUrl || storedJson.hero || '',
           pools: poolsImageUrl || storedJson.pools || '',
-          dining: diningImageUrl || storedJson.dining || ''
+          dining: diningImageUrl || storedJson.dining || '',
+          extra: extraImageUrl || storedJson.extra || ''
         };
         localStorage.setItem('btb_special_images', JSON.stringify(specialImagesData));
         console.log('Special images data saved to localStorage');
@@ -4846,7 +5731,8 @@ function initSpecialImageUpload() {
   const uploadConfigs = [
     { inputId: 'special-hero-upload', previewImgId: 'preview-special-hero-img', imageType: 'special-hero' },
     { inputId: 'special-pools-upload', previewImgId: 'preview-special-pools-img', imageType: 'special-pools' },
-    { inputId: 'special-dining-upload', previewImgId: 'preview-special-dining-img', imageType: 'special-dining' }
+    { inputId: 'special-dining-upload', previewImgId: 'preview-special-dining-img', imageType: 'special-dining' },
+    { inputId: 'special-extra-upload', previewImgId: 'preview-special-extra-img', imageType: 'special-extra' }
   ];
 
   uploadConfigs.forEach(config => {
@@ -4934,77 +5820,93 @@ function initSpecialImageUpload() {
   });
 }
 
+/**
+ * Special page: one contenteditable shows two DB columns. Prefer splitting on a blank line (\n\n);
+ * otherwise fall back to legacy sentence-based split for older content without explicit breaks.
+ */
+function splitSpecialCombinedIntoTwoFields(fullText) {
+  const t = String(fullText || '')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/<br\s*\/?>/gi, '\n');
+  const trimmed = t.trim();
+  if (!trimmed) return { desc1: '', desc2: '' };
+  const idx = trimmed.indexOf('\n\n');
+  if (idx !== -1) {
+    return {
+      desc1: trimmed.slice(0, idx).trim(),
+      desc2: trimmed.slice(idx + 2).trim()
+    };
+  }
+  const sentences = trimmed.match(/[^.!?]+[.!?]+/g) || [];
+  if (sentences.length >= 2) {
+    const midPoint = Math.floor(sentences.length / 2);
+    return {
+      desc1: sentences.slice(0, midPoint).join(' ').trim(),
+      desc2: sentences.slice(midPoint).join(' ').trim()
+    };
+  }
+  return { desc1: trimmed, desc2: '' };
+}
+
 // Sync special pools description (combines two fields)
 window.syncSpecialPoolsDescription = function(previewElement) {
-  const content = previewElement.textContent || previewElement.innerText || '';
-  const trimmed = content.trim();
-  
-  // Split into two paragraphs (rough heuristic: split at first sentence ending after ~100 chars)
-  let desc1 = '';
-  let desc2 = '';
-  
-  if (trimmed.length > 0) {
-    const sentences = trimmed.match(/[^.!?]+[.!?]+/g) || [];
-    if (sentences.length >= 2) {
-      // Split roughly in the middle
-      const midPoint = Math.floor(sentences.length / 2);
-      desc1 = sentences.slice(0, midPoint).join(' ').trim();
-      desc2 = sentences.slice(midPoint).join(' ').trim();
-    } else {
-      desc1 = trimmed;
-      desc2 = '';
-    }
-  }
-  
+  const clone = previewElement.cloneNode(true);
+  flattenContentEditableListsToPlainText(clone);
+  const fullText = getPlainTextFromContentEditablePreviewClone(clone);
+  const { desc1, desc2 } = splitSpecialCombinedIntoTwoFields(fullText);
+
   const desc1Field = document.getElementById('special-pools-description-1');
   const desc2Field = document.getElementById('special-pools-description-2');
   if (desc1Field) desc1Field.value = desc1;
   if (desc2Field) desc2Field.value = desc2;
-  
-  // Trigger auto-save
+
   if (typeof scheduleSpecialAutoSave === 'function') {
     if (typeof specialHasUnsavedChanges !== 'undefined') {
       specialHasUnsavedChanges = true;
     }
     scheduleSpecialAutoSave();
   }
-}
+};
 
-// Sync special dining description (combines two fields)
-window.syncSpecialDiningDescription = function(previewElement) {
-  const content = previewElement.textContent || previewElement.innerText || '';
-  const trimmed = content.trim();
-  
-  // Split into two paragraphs (rough heuristic: split at first sentence ending after ~100 chars)
-  let desc1 = '';
-  let desc2 = '';
-  
-  if (trimmed.length > 0) {
-    const sentences = trimmed.match(/[^.!?]+[.!?]+/g) || [];
-    if (sentences.length >= 2) {
-      // Split roughly in the middle
-      const midPoint = Math.floor(sentences.length / 2);
-      desc1 = sentences.slice(0, midPoint).join(' ').trim();
-      desc2 = sentences.slice(midPoint).join(' ').trim();
-    } else {
-      desc1 = trimmed;
-      desc2 = '';
+// Sync special extra block description (combines two fields)
+window.syncSpecialExtraDescription = function(previewElement) {
+  const clone = previewElement.cloneNode(true);
+  flattenContentEditableListsToPlainText(clone);
+  const fullText = getPlainTextFromContentEditablePreviewClone(clone);
+  const { desc1, desc2 } = splitSpecialCombinedIntoTwoFields(fullText);
+
+  const desc1Field = document.getElementById('special-extra-description-1');
+  const desc2Field = document.getElementById('special-extra-description-2');
+  if (desc1Field) desc1Field.value = desc1;
+  if (desc2Field) desc2Field.value = desc2;
+
+  if (typeof scheduleSpecialAutoSave === 'function') {
+    if (typeof specialHasUnsavedChanges !== 'undefined') {
+      specialHasUnsavedChanges = true;
     }
+    scheduleSpecialAutoSave();
   }
-  
+};
+
+window.syncSpecialDiningDescription = function(previewElement) {
+  const clone = previewElement.cloneNode(true);
+  flattenContentEditableListsToPlainText(clone);
+  const fullText = getPlainTextFromContentEditablePreviewClone(clone);
+  const { desc1, desc2 } = splitSpecialCombinedIntoTwoFields(fullText);
+
   const desc1Field = document.getElementById('special-dining-description-1');
   const desc2Field = document.getElementById('special-dining-description-2');
   if (desc1Field) desc1Field.value = desc1;
   if (desc2Field) desc2Field.value = desc2;
-  
-  // Trigger auto-save
+
   if (typeof scheduleSpecialAutoSave === 'function') {
     if (typeof specialHasUnsavedChanges !== 'undefined') {
       specialHasUnsavedChanges = true;
     }
     scheduleSpecialAutoSave();
   }
-}
+};
 
 // Special auto-save functionality
 let specialAutoSaveTimer = null;
@@ -5026,6 +5928,7 @@ function scheduleSpecialAutoSave() {
 }
 
 async function saveSpecialContent() {
+  console.log('saveSpecialContent: Starting save...');
   updateSpecialSaveStatus('saving');
   
   try {
@@ -5033,17 +5936,35 @@ async function saveSpecialContent() {
     formData.append('action', 'save_content');
     
     // Get all field values
-    formData.append('special_hero_title', document.getElementById('special-hero-title')?.value || '');
-    formData.append('special_hero_subtitle', document.getElementById('special-hero-subtitle')?.value || '');
-    formData.append('special_pools_title', document.getElementById('special-pools-title')?.value || '');
-    formData.append('special_pools_description_1', document.getElementById('special-pools-description-1')?.value || '');
-    formData.append('special_pools_description_2', document.getElementById('special-pools-description-2')?.value || '');
-    formData.append('special_dining_title', document.getElementById('special-dining-title')?.value || '');
-    formData.append('special_dining_description_1', document.getElementById('special-dining-description-1')?.value || '');
-    formData.append('special_dining_description_2', document.getElementById('special-dining-description-2')?.value || '');
-    formData.append('special_offer_title', document.getElementById('special-offer-title')?.value || '');
-    formData.append('special_offer_main_text', document.getElementById('special-offer-main-text')?.value || '');
-    formData.append('special_offer_description', document.getElementById('special-offer-description')?.value || '');
+    const heroTitle = document.getElementById('special-hero-title')?.value || '';
+    const heroSubtitle = document.getElementById('special-hero-subtitle')?.value || '';
+    const poolsTitle = document.getElementById('special-pools-title')?.value || '';
+    const poolsDesc1 = document.getElementById('special-pools-description-1')?.value || '';
+    const poolsDesc2 = document.getElementById('special-pools-description-2')?.value || '';
+    const diningTitle = document.getElementById('special-dining-title')?.value || '';
+    const diningDesc1 = document.getElementById('special-dining-description-1')?.value || '';
+    const diningDesc2 = document.getElementById('special-dining-description-2')?.value || '';
+    const extraTitle = document.getElementById('special-extra-title')?.value || '';
+    const extraDesc1 = document.getElementById('special-extra-description-1')?.value || '';
+    const extraDesc2 = document.getElementById('special-extra-description-2')?.value || '';
+    const offerTitle = document.getElementById('special-offer-title')?.value || '';
+    const offerMainText = document.getElementById('special-offer-main-text')?.value || '';
+    const offerDescription = document.getElementById('special-offer-description')?.value || '';
+    
+    formData.append('special_hero_title', heroTitle);
+    formData.append('special_hero_subtitle', heroSubtitle);
+    formData.append('special_pools_title', poolsTitle);
+    formData.append('special_pools_description_1', poolsDesc1);
+    formData.append('special_pools_description_2', poolsDesc2);
+    formData.append('special_dining_title', diningTitle);
+    formData.append('special_dining_description_1', diningDesc1);
+    formData.append('special_dining_description_2', diningDesc2);
+    formData.append('special_extra_title', extraTitle);
+    formData.append('special_extra_description_1', extraDesc1);
+    formData.append('special_extra_description_2', extraDesc2);
+    formData.append('special_offer_title', offerTitle);
+    formData.append('special_offer_main_text', offerMainText);
+    formData.append('special_offer_description', offerDescription);
     
     // Get image URLs from localStorage
     const imagesStored = localStorage.getItem('btb_special_images') || '{}';
@@ -5051,60 +5972,1280 @@ async function saveSpecialContent() {
     formData.append('special_hero_image_url', imagesJson.hero || '');
     formData.append('special_pools_image_url', imagesJson.pools || '');
     formData.append('special_dining_image_url', imagesJson.dining || '');
+    formData.append('special_extra_image_url', imagesJson.extra || '');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
+    console.log('saveSpecialContent: Sending data:', {
+      heroTitle: heroTitle.substring(0, 50),
+      poolsTitle: poolsTitle.substring(0, 50),
+      diningTitle: diningTitle.substring(0, 50),
+      offerTitle: offerTitle.substring(0, 50)
     });
     
-    if (response.ok) {
-      updateSpecialSaveStatus('saved');
-    } else {
-      updateSpecialSaveStatus('error');
-    }
+    await postApiFormDataAndUpdateStatus('special', formData);
   } catch (error) {
     console.error('Error saving special content:', error);
-    updateSpecialSaveStatus('error');
+    updateSpecialSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateSpecialSaveStatus(status) {
-  const statusText = document.getElementById('special-save-status-text');
-  const statusIcon = document.getElementById('special-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateSpecialSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('special', status, detail);
 }
 
 function initSpecialAutoSave() {
   // syncPreviewToForm already handles triggering auto-save for special fields
   // This function is here for consistency with retreat pattern
   console.log('Special auto-save initialized');
+}
+
+// Explore page: DB fields that live under about_* and explore_* and are edited in the Explore section
+const EXPLORE_CMS_FIELD_IDS = new Set([
+  'explore-communities-intro', 'explore-culture-intro', 'explore-activities-intro',
+  'about-procter-title', 'about-procter-distance', 'about-procter-description',
+  'about-halcyon-title', 'about-halcyon-distance', 'about-halcyon-description',
+  'about-whitewater-title', 'about-whitewater-distance', 'about-whitewater-description',
+  'about-nelson-title', 'about-nelson-distance', 'about-nelson-description',
+  'about-kaslo-title', 'about-kaslo-distance', 'about-kaslo-description',
+  'about-crawford-title', 'about-crawford-distance', 'about-crawford-description',
+  'about-museum-title', 'about-museum-distance', 'about-museum-description',
+  'explore-communities-h2', 'explore-culture-h2', 'explore-parks-h2', 'explore-activities-h2',
+  'about-parks-intro',
+  'explore-hero-title', 'explore-hero-subtitle',
+  'explore-accommodation-title', 'explore-accommodation-description',
+]);
+
+const attractionGalleries = ['procter', 'nelson', 'kaslo', 'crawford', 'museum', 'halcyon', 'whitewater'];
+
+/** Sync Explore admin map coordinate inputs into hidden fields and schedule save. */
+function syncExploreMapCoordFromPreview(inputEl, hiddenFieldId) {
+  const hid = document.getElementById(hiddenFieldId);
+  if (!hid || !inputEl) return;
+  const v = String(inputEl.value || '').trim();
+  if (hid.value !== v) {
+    hid.value = v;
+    if (typeof exploreHasUnsavedChanges !== 'undefined') {
+      exploreHasUnsavedChanges = true;
+    }
+    if (typeof scheduleExploreAutoSave === 'function') {
+      scheduleExploreAutoSave();
+    }
+  }
+}
+window.syncExploreMapCoordFromPreview = syncExploreMapCoordFromPreview;
+
+/** Parse "lat, lng" or "lat lng" from admin map field into map_lat / map_lng. */
+function parseParkCardMapCoordsInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) {
+    return { map_lat: '', map_lng: '' };
+  }
+  const parts = s.split(/[,;\s]+/).map((p) => p.trim()).filter(Boolean);
+  if (parts.length >= 2) {
+    return { map_lat: parts[0], map_lng: parts[1] };
+  }
+  return { map_lat: '', map_lng: '' };
+}
+
+function formatParkCardMapCoords(lat, lng) {
+  const a = String(lat != null ? lat : '').trim();
+  const b = String(lng != null ? lng : '').trim();
+  if (!a && !b) return '';
+  return `${a}, ${b}`;
+}
+
+const EXPLORE_PARK_CARDS_MAX = 30;
+const EXPLORE_SECTION_CARDS_MAX = 30;
+
+const EXPLORE_SECTION_CARD_META = {
+  communities: {
+    rootId: 'explore-communities-cards-admin-root',
+    hidRootId: 'explore-communities-cards-hidden-fields',
+    jsonId: 'explore-communities-cards-json',
+    uploadSlug: 'communities'
+  },
+  culture: {
+    rootId: 'explore-culture-cards-admin-root',
+    hidRootId: 'explore-culture-cards-hidden-fields',
+    jsonId: 'explore-culture-cards-json',
+    uploadSlug: 'culture'
+  },
+  activities: {
+    rootId: 'explore-activities-cards-admin-root',
+    hidRootId: 'explore-activities-cards-hidden-fields',
+    jsonId: 'explore-activities-cards-json',
+    uploadSlug: 'activities'
+  }
+};
+
+function newExploreGalleryKey() {
+  return 'g_' + Math.random().toString(36).slice(2, 11);
+}
+
+function parseGalleryJson(s) {
+  try {
+    const g = JSON.parse(s || '[]');
+    return Array.isArray(g) ? g.filter((u) => typeof u === 'string' && u.trim()) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function defaultExploreCommunityCardsFromApi(data) {
+  const raw = data && data.exploreCommunitiesCards != null ? String(data.exploreCommunitiesCards).trim() : '';
+  if (raw !== '' && raw !== '[]') {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.slice(0, EXPLORE_SECTION_CARDS_MAX).map((row) => (row && typeof row === 'object' ? row : {}));
+      }
+    } catch (e) {
+      console.error('exploreCommunitiesCards parse', e);
+    }
+  }
+  return [
+    {
+      gallery_key: 'procter',
+      title: data.aboutProcterTitle || 'Procter Village',
+      distance: data.aboutProcterDistance || 'In the same village',
+      description: data.aboutProcterDescription || '',
+      hero_image_url: data.aboutProcterImageUrl || '',
+      gallery: parseGalleryJson(data.aboutProcterGallery)
+    },
+    {
+      gallery_key: 'nelson',
+      title: data.aboutNelsonTitle || 'Nelson City',
+      distance: data.aboutNelsonDistance || '35 km from Back to Base',
+      description: data.aboutNelsonDescription || '',
+      hero_image_url: data.aboutNelsonImageUrl || '',
+      gallery: parseGalleryJson(data.aboutNelsonGallery)
+    },
+    {
+      gallery_key: 'kaslo',
+      title: data.aboutKasloTitle || 'Kaslo Village',
+      distance: data.aboutKasloDistance || 'About 70 km north along Kootenay Lake',
+      description: data.aboutKasloDescription || '',
+      hero_image_url: data.aboutKasloImageUrl || '',
+      gallery: parseGalleryJson(data.aboutKasloGallery)
+    },
+    {
+      gallery_key: 'crawford',
+      title: data.aboutCrawfordTitle || 'Crawford Bay Village',
+      distance: data.aboutCrawfordDistance || 'East shore of Kootenay Lake',
+      description: data.aboutCrawfordDescription || '',
+      hero_image_url: data.aboutCrawfordImageUrl || '',
+      gallery: parseGalleryJson(data.aboutCrawfordGallery)
+    }
+  ];
+}
+
+function defaultExploreCultureCardsFromApi(data) {
+  const raw = data && data.exploreCultureCards != null ? String(data.exploreCultureCards).trim() : '';
+  if (raw !== '' && raw !== '[]') {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.slice(0, EXPLORE_SECTION_CARDS_MAX).map((row) => (row && typeof row === 'object' ? row : {}));
+      }
+    } catch (e) {
+      console.error('exploreCultureCards parse', e);
+    }
+  }
+  return [
+    {
+      gallery_key: 'museum',
+      title: data.aboutMuseumTitle || 'Touchstones Nelson',
+      distance: data.aboutMuseumDistance || 'In downtown Nelson',
+      description: data.aboutMuseumDescription || '',
+      hero_image_url: data.aboutMuseumImageUrl || '',
+      gallery: parseGalleryJson(data.aboutMuseumGallery)
+    }
+  ];
+}
+
+function defaultExploreActivitiesCardsFromApi(data) {
+  const raw = data && data.exploreActivitiesCards != null ? String(data.exploreActivitiesCards).trim() : '';
+  if (raw !== '' && raw !== '[]') {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.slice(0, EXPLORE_SECTION_CARDS_MAX).map((row) => (row && typeof row === 'object' ? row : {}));
+      }
+    } catch (e) {
+      console.error('exploreActivitiesCards parse', e);
+    }
+  }
+  return [
+    {
+      gallery_key: 'halcyon',
+      title: data.aboutHalcyonTitle || 'Ainsworth Hot Springs Resort',
+      distance: data.aboutHalcyonDistance || '30 km from Back to Base',
+      description: data.aboutHalcyonDescription || '',
+      hero_image_url: data.aboutHalcyonImageUrl || '',
+      gallery: parseGalleryJson(data.aboutHalcyonGallery)
+    },
+    {
+      gallery_key: 'whitewater',
+      title: data.aboutWhitewaterTitle || 'Whitewater Mountain Resort',
+      distance: data.aboutWhitewaterDistance || '60 km from Back to Base',
+      description: data.aboutWhitewaterDescription || '',
+      hero_image_url: data.aboutWhitewaterImageUrl || '',
+      gallery: parseGalleryJson(data.aboutWhitewaterGallery)
+    }
+  ];
+}
+
+function appendExploreSectionCardHiddenFields(section, slot) {
+  const cfg = EXPLORE_SECTION_CARD_META[section];
+  if (!cfg) return;
+  const hid = document.getElementById(cfg.hidRootId);
+  if (!hid) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'explore-section-card-hidden-slot';
+  wrap.setAttribute('data-section', section);
+  wrap.setAttribute('data-slot', String(slot));
+  wrap.innerHTML = `
+    <input type="hidden" id="explore-${cfg.uploadSlug}-card-${slot}-hero-url" value="">
+    <input type="hidden" id="explore-${cfg.uploadSlug}-card-${slot}-gallery" value="[]">
+    <input type="hidden" id="explore-${cfg.uploadSlug}-card-${slot}-gallery-key" value="">
+    <input type="file" id="explore-${cfg.uploadSlug}-card-${slot}-hero-upload" accept="image/*" style="display: none;">
+    <input type="file" id="explore-${cfg.uploadSlug}-card-${slot}-gallery-upload" accept="image/*" multiple style="display: none;">
+  `;
+  hid.appendChild(wrap);
+}
+
+function createExploreSectionCardAdminRow(section, slot, total) {
+  const cfg = EXPLORE_SECTION_CARD_META[section];
+  if (!cfg) return document.createElement('div');
+  const slug = cfg.uploadSlug;
+  const row = document.createElement('div');
+  row.className = 'preview-block explore-section-card-admin-row';
+  row.setAttribute('data-explore-section', section);
+  row.setAttribute('data-section-slot', String(slot));
+  const disableRemove = total <= 1;
+  row.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <span style="font-size:0.72rem;color:#64748b;">Card ${slot}</span>
+      <button type="button" class="explore-section-card-remove-btn" data-explore-section="${section}" data-section-slot="${slot}"
+        ${disableRemove ? 'disabled style="opacity:0.4;cursor:not-allowed;padding:2px 8px;font-size:0.7rem;border:1px solid #e5e7eb;border-radius:4px;background:#f9fafb;"' : 'style="padding:2px 8px;font-size:0.7rem;border:1px solid #fecaca;border-radius:4px;background:#fef2f2;color:#b91c1c;cursor:pointer;"'}>Remove</button>
+    </div>
+    <div class="preview-block-content" style="display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: start;">
+      <div class="preview-image" style="width: 96px; height: 72px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('explore-${slug}-card-${slot}-hero-upload')">
+        <img id="preview-explore-${slug}-card-${slot}-hero-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+        <span style="color: #9ca3af; font-size: 0.6rem; text-align: center; padding: 4px;">Photo</span>
+        <button type="button" class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 0.65rem; z-index: 10;">Edit</button>
+      </div>
+      <div class="preview-text" style="display: flex; flex-direction: column; gap: 4px;">
+        <div contenteditable="true" class="editable-preview explore-section-card-field" id="preview-explore-${slug}-card-${slot}-title" style="font-weight: 600; color: #0f172a; font-size: 0.78rem; padding: 2px 6px; border-radius: 4px; outline: none; background: #fff; border: 1px solid #e2e8f0;" onblur="onExploreSectionCardBlur('${section}')"></div>
+        <div contenteditable="true" class="editable-preview explore-section-card-field" id="preview-explore-${slug}-card-${slot}-distance" style="color: #64748b; font-size: 0.7rem; padding: 2px 6px; border-radius: 4px; outline: none; background: #fff; border: 1px solid #e2e8f0;" onblur="onExploreSectionCardBlur('${section}')"></div>
+        <div contenteditable="true" class="editable-preview explore-section-card-field" id="preview-explore-${slug}-card-${slot}-description" style="color: #0f172a; font-size: 0.7rem; line-height: 1.45; min-height: 2.2em; padding: 4px 6px; border-radius: 4px; outline: none; background: #fff; border: 1px solid #e2e8f0;" onblur="onExploreSectionCardBlur('${section}')"></div>
+      </div>
+    </div>
+    <p style="margin: 8px 0 2px 0; font-size: 0.68rem; color: #6b7280; font-weight: 600;">Gallery</p>
+    <div id="explore-${slug}-card-${slot}-gallery-preview" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 14px;"></div>
+  `;
+  return row;
+}
+
+function readExploreSectionCardsFromAdmin(section) {
+  const cfg = EXPLORE_SECTION_CARD_META[section];
+  if (!cfg) return [];
+  const root = document.getElementById(cfg.rootId);
+  if (!root) return [];
+  const rows = Array.from(root.querySelectorAll('.explore-section-card-admin-row')).sort((a, b) => {
+    const sa = parseInt(a.getAttribute('data-section-slot'), 10);
+    const sb = parseInt(b.getAttribute('data-section-slot'), 10);
+    return (Number.isFinite(sa) ? sa : 0) - (Number.isFinite(sb) ? sb : 0);
+  });
+  const cards = [];
+  rows.forEach((row) => {
+    const n = parseInt(row.getAttribute('data-section-slot'), 10);
+    if (!Number.isFinite(n)) return;
+    const slug = cfg.uploadSlug;
+    const titleEl = document.getElementById(`preview-explore-${slug}-card-${n}-title`);
+    const distEl = document.getElementById(`preview-explore-${slug}-card-${n}-distance`);
+    const descEl = document.getElementById(`preview-explore-${slug}-card-${n}-description`);
+    const galEl = document.getElementById(`explore-${slug}-card-${n}-gallery`);
+    const heroHid = document.getElementById(`explore-${slug}-card-${n}-hero-url`);
+    const gkEl = document.getElementById(`explore-${slug}-card-${n}-gallery-key`);
+    let gallery = [];
+    try {
+      gallery = JSON.parse(galEl ? galEl.value || '[]' : '[]');
+    } catch (e) {
+      gallery = [];
+    }
+    let gallery_key = gkEl ? String(gkEl.value || '').trim() : '';
+    if (!gallery_key) {
+      gallery_key = newExploreGalleryKey();
+      if (gkEl) gkEl.value = gallery_key;
+    }
+    cards.push({
+      gallery_key,
+      title: titleEl ? String(titleEl.textContent || '').trim() : '',
+      distance: distEl ? String(distEl.textContent || '').trim() : '',
+      description: descEl ? String(descEl.innerHTML || '').trim() : '',
+      hero_image_url: heroHid ? String(heroHid.value || '').trim() : '',
+      gallery: Array.isArray(gallery) ? gallery : []
+    });
+  });
+  return cards;
+}
+
+function writeExploreSectionCardsToAdmin(section, cards) {
+  const cfg = EXPLORE_SECTION_CARD_META[section];
+  if (!cfg) return;
+  let list = Array.isArray(cards) ? cards.slice(0, EXPLORE_SECTION_CARDS_MAX) : [];
+  if (list.length === 0) {
+    list = [{ gallery_key: newExploreGalleryKey(), title: '', distance: '', description: '', hero_image_url: '', gallery: [] }];
+  }
+  const ta = document.getElementById(cfg.jsonId);
+  if (ta) ta.value = JSON.stringify(list);
+  const root = document.getElementById(cfg.rootId);
+  const hidRoot = document.getElementById(cfg.hidRootId);
+  if (!root || !hidRoot) return;
+  root.innerHTML = '';
+  hidRoot.innerHTML = '';
+  const total = list.length;
+  list.forEach((c, idx) => {
+    const slot = idx + 1;
+    appendExploreSectionCardHiddenFields(section, slot);
+    root.appendChild(createExploreSectionCardAdminRow(section, slot, total));
+  });
+  list.forEach((c, idx) => {
+    const n = idx + 1;
+    const slug = cfg.uploadSlug;
+    const titleEl = document.getElementById(`preview-explore-${slug}-card-${n}-title`);
+    const distEl = document.getElementById(`preview-explore-${slug}-card-${n}-distance`);
+    const descEl = document.getElementById(`preview-explore-${slug}-card-${n}-description`);
+    const galEl = document.getElementById(`explore-${slug}-card-${n}-gallery`);
+    const heroHid = document.getElementById(`explore-${slug}-card-${n}-hero-url`);
+    const gkEl = document.getElementById(`explore-${slug}-card-${n}-gallery-key`);
+    let gk = (c.gallery_key && String(c.gallery_key).trim()) ? String(c.gallery_key).trim() : newExploreGalleryKey();
+    gk = gk.replace(/[^a-zA-Z0-9_]/g, '');
+    if (!gk) gk = newExploreGalleryKey();
+    if (gkEl) gkEl.value = gk;
+    if (titleEl) titleEl.textContent = c.title || '';
+    if (distEl) distEl.textContent = c.distance || '';
+    if (descEl) descEl.innerHTML = c.description || '';
+    const heroUrl = (c.hero_image_url && String(c.hero_image_url).trim()) ? String(c.hero_image_url).trim() : '';
+    if (heroHid) heroHid.value = heroUrl;
+    if (galEl) galEl.value = JSON.stringify(Array.isArray(c.gallery) ? c.gallery : []);
+    const img = document.getElementById(`preview-explore-${slug}-card-${n}-hero-img`);
+    if (img) {
+      if (heroUrl) {
+        img.src = heroUrl + '?v=' + Date.now();
+        img.style.display = 'block';
+        const placeholder = img.nextElementSibling;
+        if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+      } else {
+        img.removeAttribute('src');
+        img.style.display = 'none';
+        const placeholder = img.nextElementSibling;
+        if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = '';
+      }
+    }
+    updateExploreSectionCardGalleryPreview(section, n, Array.isArray(c.gallery) ? c.gallery : []);
+  });
+}
+
+window.onExploreSectionCardBlur = function onExploreSectionCardBlur(section) {
+  const cfg = EXPLORE_SECTION_CARD_META[section];
+  if (!cfg) return;
+  const ta = document.getElementById(cfg.jsonId);
+  if (ta) {
+    ta.value = JSON.stringify(readExploreSectionCardsFromAdmin(section));
+  }
+  if (typeof exploreHasUnsavedChanges !== 'undefined') {
+    exploreHasUnsavedChanges = true;
+  }
+  if (typeof scheduleExploreAutoSave === 'function') {
+    scheduleExploreAutoSave();
+  }
+};
+
+window.addExploreSectionCardRow = function addExploreSectionCardRow(section) {
+  const cards = readExploreSectionCardsFromAdmin(section);
+  if (cards.length >= EXPLORE_SECTION_CARDS_MAX) {
+    alert(`Maximum ${EXPLORE_SECTION_CARDS_MAX} cards for this section.`);
+    return;
+  }
+  cards.push({
+    gallery_key: newExploreGalleryKey(),
+    title: '',
+    distance: '',
+    description: '',
+    hero_image_url: '',
+    gallery: []
+  });
+  writeExploreSectionCardsToAdmin(section, cards);
+  if (typeof exploreHasUnsavedChanges !== 'undefined') {
+    exploreHasUnsavedChanges = true;
+  }
+  if (typeof scheduleExploreAutoSave === 'function') {
+    scheduleExploreAutoSave();
+  }
+};
+
+window.removeExploreSectionCardRow = function removeExploreSectionCardRow(section, slot) {
+  const cards = readExploreSectionCardsFromAdmin(section);
+  if (cards.length <= 1) return;
+  const idx = slot - 1;
+  if (idx < 0 || idx >= cards.length) return;
+  cards.splice(idx, 1);
+  writeExploreSectionCardsToAdmin(section, cards);
+  if (typeof exploreHasUnsavedChanges !== 'undefined') {
+    exploreHasUnsavedChanges = true;
+  }
+  if (typeof scheduleExploreAutoSave === 'function') {
+    scheduleExploreAutoSave();
+  }
+};
+
+function updateExploreSectionCardGalleryPreview(section, slot, gallery) {
+  const cfg = EXPLORE_SECTION_CARD_META[section];
+  if (!cfg) return;
+  const slug = cfg.uploadSlug;
+  const galleryPreview = document.getElementById(`explore-${slug}-card-${slot}-gallery-preview`);
+  if (!galleryPreview) return;
+  galleryPreview.innerHTML = '';
+  const urls = Array.isArray(gallery) ? gallery : [];
+  urls.forEach((imageUrl, index) => {
+    if (!imageUrl || !String(imageUrl).trim()) return;
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText = 'position: relative; width: 56px; height: 56px; border: 2px solid #e5e7eb; border-radius: 6px; overflow: hidden; background: #f3f4f6;';
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = '↻';
+    replaceBtn.type = 'button';
+    replaceBtn.style.cssText = 'position: absolute; top: 1px; left: 1px; padding: 1px 4px; font-size: 0.65rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 3px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceExploreSectionCardGalleryImage(section, slot, index);
+    };
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.type = 'button';
+    deleteBtn.style.cssText = 'position: absolute; top: 1px; right: 1px; width: 18px; height: 18px; padding: 0; font-size: 0.85rem; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteExploreSectionCardGalleryImage(section, slot, index);
+    };
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+  if (urls.length < 10) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText = 'width: 56px; height: 56px; border: 2px dashed #9ca3af; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 1.2rem;">+</span>';
+    addItem.onclick = () => document.getElementById(`explore-${slug}-card-${slot}-gallery-upload`).click();
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+window.replaceExploreSectionCardGalleryImage = function replaceExploreSectionCardGalleryImage(section, slot, index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadExploreSectionCardGalleryImage(section, slot, file, index);
+    }
+  };
+  input.click();
+};
+
+window.deleteExploreSectionCardGalleryImage = function deleteExploreSectionCardGalleryImage(section, slot, index) {
+  const cfg = EXPLORE_SECTION_CARD_META[section];
+  if (!cfg) return;
+  const slug = cfg.uploadSlug;
+  const galleryField = document.getElementById(`explore-${slug}-card-${slot}-gallery`);
+  if (!galleryField) return;
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    return;
+  }
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateExploreSectionCardGalleryPreview(section, slot, gallery);
+  onExploreSectionCardBlur(section);
+};
+
+async function uploadExploreSectionCardGalleryImage(section, slot, file, replaceIndex = null) {
+  const cfg = EXPLORE_SECTION_CARD_META[section];
+  if (!cfg) return;
+  const slug = cfg.uploadSlug;
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', `explore-${slug}-card-${slot}-gallery`);
+    formData.append('image', file);
+    const response = await fetch('upload_image.php', { method: 'POST', body: formData });
+    const result = await response.json();
+    if (!result.success || !result.imageUrl) return;
+    const imageUrl = result.imageUrl;
+    const galleryField = document.getElementById(`explore-${slug}-card-${slot}-gallery`);
+    if (!galleryField) return;
+    let gallery = [];
+    try {
+      gallery = JSON.parse(galleryField.value || '[]');
+    } catch (e) {
+      gallery = [];
+    }
+    if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+      gallery[replaceIndex] = imageUrl;
+    } else if (gallery.length < 10) {
+      gallery.push(imageUrl);
+    } else {
+      alert('Maximum 10 photos allowed in gallery');
+      return;
+    }
+    galleryField.value = JSON.stringify(gallery);
+    updateExploreSectionCardGalleryPreview(section, slot, gallery);
+    const cards = readExploreSectionCardsFromAdmin(section);
+    const fd = new FormData();
+    fd.append('action', 'save_content');
+    const postKey = section === 'communities' ? 'explore_communities_cards' : section === 'culture' ? 'explore_culture_cards' : 'explore_activities_cards';
+    fd.append(postKey, JSON.stringify(cards));
+    const saveResp = await fetch('api.php', { method: 'POST', body: fd });
+    const saveTxt = await saveResp.text();
+    recordSaveContentResponse(saveResp, saveTxt, 'explore');
+    if (typeof scheduleExploreAutoSave === 'function') {
+      exploreHasUnsavedChanges = true;
+      scheduleExploreAutoSave();
+    }
+  } catch (err) {
+    console.error('uploadExploreSectionCardGalleryImage', err);
+  }
+}
+
+let exploreSectionCardsToolbarInit = false;
+function initExploreSectionCardsToolbar() {
+  if (exploreSectionCardsToolbarInit) return;
+  exploreSectionCardsToolbarInit = true;
+  const map = [
+    ['explore-add-communities-card-btn', 'communities'],
+    ['explore-add-culture-card-btn', 'culture'],
+    ['explore-add-activities-card-btn', 'activities']
+  ];
+  map.forEach(([btnId, sec]) => {
+    const b = document.getElementById(btnId);
+    if (b) {
+      b.addEventListener('click', () => {
+        if (typeof window.addExploreSectionCardRow === 'function') {
+          window.addExploreSectionCardRow(sec);
+        }
+      });
+    }
+  });
+  ['communities', 'culture', 'activities'].forEach((sec) => {
+    const cfg = EXPLORE_SECTION_CARD_META[sec];
+    const root = cfg ? document.getElementById(cfg.rootId) : null;
+    if (root) {
+      root.addEventListener('click', (e) => {
+        const btn = e.target && e.target.closest ? e.target.closest('.explore-section-card-remove-btn') : null;
+        if (!btn || btn.disabled) return;
+        const s = parseInt(btn.getAttribute('data-section-slot'), 10);
+        if (Number.isFinite(s) && typeof window.removeExploreSectionCardRow === 'function') {
+          window.removeExploreSectionCardRow(sec, s);
+        }
+      });
+    }
+  });
+}
+
+let exploreSectionGalleryDelegationBound = false;
+function initExploreSectionCardGalleryUploads() {
+  const section = document.getElementById('explore-section');
+  if (!section || exploreSectionGalleryDelegationBound) return;
+  exploreSectionGalleryDelegationBound = true;
+  section.addEventListener('change', async (e) => {
+    const t = e.target;
+    if (!t || !t.id) return;
+    const m = t.id.match(/^explore-(communities|culture|activities)-card-(\d+)-gallery-upload$/);
+    if (!m || t.type !== 'file') return;
+    const sec = m[1] === 'communities' ? 'communities' : m[1] === 'culture' ? 'culture' : 'activities';
+    const slot = parseInt(m[2], 10);
+    const files = Array.from(t.files || []);
+    if (files.length === 0) return;
+    const slug = EXPLORE_SECTION_CARD_META[sec].uploadSlug;
+    const galleryField = document.getElementById(`explore-${slug}-card-${slot}-gallery`);
+    if (!galleryField) return;
+    let gallery = [];
+    try {
+      gallery = JSON.parse(galleryField.value || '[]');
+    } catch (err) {
+      gallery = [];
+    }
+    const remainingSlots = 10 - gallery.length;
+    if (files.length > remainingSlots) {
+      alert(`You can only add ${remainingSlots} more photo(s).`);
+      files.splice(remainingSlots);
+    }
+    for (const file of files) {
+      await uploadExploreSectionCardGalleryImage(sec, slot, file, null);
+    }
+    t.value = '';
+  });
+}
+
+let exploreSectionHeroDelegationBound = false;
+function initExploreSectionCardHeroUploadDelegation() {
+  const section = document.getElementById('explore-section');
+  if (!section || exploreSectionHeroDelegationBound) return;
+  exploreSectionHeroDelegationBound = true;
+  section.addEventListener('change', async (e) => {
+    const t = e.target;
+    if (!t || !t.id) return;
+    const m = t.id.match(/^explore-(communities|culture|activities)-card-(\d+)-hero-upload$/);
+    if (!m || t.type !== 'file') return;
+    const sec = m[1] === 'communities' ? 'communities' : m[1] === 'culture' ? 'culture' : 'activities';
+    const slot = parseInt(m[2], 10);
+    const file = t.files[0];
+    if (!file) return;
+    const slug = EXPLORE_SECTION_CARD_META[sec].uploadSlug;
+    const previewImg = document.getElementById(`preview-explore-${slug}-card-${slot}-hero-img`);
+    if (previewImg) {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        previewImg.src = ev.target.result;
+        previewImg.style.display = 'block';
+        const placeholder = previewImg.nextElementSibling;
+        if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+    await uploadImage(file, `explore-${slug}-card-${slot}-hero`, null, null, {
+      localStorageKey: 'btb_explore_images',
+      fieldNameMapper: (type) => {
+        const mm = String(type).match(/^explore-(communities|culture|activities)-card-(\d+)-hero$/);
+        if (mm) return `secCard_${mm[1]}_${mm[2]}`;
+        return type;
+      },
+      reloadFunction: loadExploreImagesData,
+      imageNameMapper: (type) => type,
+      onSuccess: (filepath) => {
+        const hid = document.getElementById(`explore-${slug}-card-${slot}-hero-url`);
+        if (hid) hid.value = filepath;
+        const cards = readExploreSectionCardsFromAdmin(sec);
+        if (cards[slot - 1]) cards[slot - 1].hero_image_url = filepath;
+        writeExploreSectionCardsToAdmin(sec, cards);
+        const fd = new FormData();
+        fd.append('action', 'save_content');
+        const postKey = sec === 'communities' ? 'explore_communities_cards' : sec === 'culture' ? 'explore_culture_cards' : 'explore_activities_cards';
+        fd.append(postKey, JSON.stringify(cards));
+        fetch('api.php', { method: 'POST', body: fd })
+          .then((r) => r.text().then((txt) => {
+            recordSaveContentResponse(r, txt, 'explore');
+          }))
+          .catch((err) => console.error('save section cards hero', err));
+        if (typeof scheduleExploreAutoSave === 'function') {
+          scheduleExploreAutoSave();
+        }
+      }
+    });
+    t.value = '';
+  });
+}
+
+function defaultExploreParkCardsFromApi(data) {
+  const defaultNames = [
+    'Kokanee Creek Provincial Park',
+    'Kokanee Glacier Provincial Park',
+    'Lockhart Beach Provincial Park',
+    'Kianuko Provincial Park'
+  ];
+  const raw = data && data.aboutParksCards != null ? String(data.aboutParksCards).trim() : '';
+  if (raw !== '' && raw !== '[]') {
+    try {
+      const arr = JSON.parse(raw);
+      if (Array.isArray(arr) && arr.length > 0) {
+        const out = [];
+        const limit = Math.min(arr.length, EXPLORE_PARK_CARDS_MAX);
+        for (let i = 0; i < limit; i++) {
+          const row = arr[i] && typeof arr[i] === 'object' ? arr[i] : {};
+          out.push({
+            title: typeof row.title === 'string' ? row.title : (defaultNames[i] || ''),
+            description: typeof row.description === 'string' ? row.description : '',
+            hero_image_url: typeof row.hero_image_url === 'string' ? row.hero_image_url : '',
+            gallery: Array.isArray(row.gallery) ? row.gallery.filter((u) => typeof u === 'string' && u.trim()) : [],
+            map_lat: typeof row.map_lat === 'string' ? row.map_lat : (row.map_lat != null ? String(row.map_lat) : ''),
+            map_lng: typeof row.map_lng === 'string' ? row.map_lng : (row.map_lng != null ? String(row.map_lng) : '')
+          });
+        }
+        return out;
+      }
+    } catch (e) {
+      console.error('defaultExploreParkCardsFromApi parse error', e);
+    }
+  }
+  const listSrc = (data && data.aboutParksList && String(data.aboutParksList).trim())
+    ? data.aboutParksList
+    : defaultNames.join('\n');
+  const titles = listSrc.split('\n').map((l) => l.trim()).filter(Boolean);
+  while (titles.length < 4) {
+    titles.push(defaultNames[titles.length] || `Park ${titles.length + 1}`);
+  }
+  return titles.slice(0, 4).map((title) => ({
+    title,
+    description: '',
+    hero_image_url: '',
+    gallery: [],
+    map_lat: '',
+    map_lng: ''
+  }));
+}
+
+function appendExploreParkCardHiddenFields(slot) {
+  const hidRoot = document.getElementById('explore-park-cards-hidden-fields');
+  if (!hidRoot) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'explore-park-card-hidden-slot';
+  wrap.dataset.parkSlot = String(slot);
+  wrap.innerHTML = `
+    <input type="hidden" id="about-park-card-${slot}-gallery" value="[]">
+    <input type="hidden" id="about-park-card-${slot}-hero-url" value="">
+    <input type="file" id="about-park-card-${slot}-hero-upload" accept="image/*" style="display: none;">
+    <input type="file" id="about-park-card-${slot}-gallery-upload" accept="image/*" multiple style="display: none;">
+  `;
+  hidRoot.appendChild(wrap);
+}
+
+function createExploreParkCardAdminRow(slot, totalCards) {
+  const canRemove = totalCards > 1;
+  const row = document.createElement('div');
+  row.className = 'preview-block explore-park-card-admin-row';
+  row.style.cssText = 'margin: 0; padding: 12px; background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px;';
+  row.setAttribute('data-park-slot', String(slot));
+  row.innerHTML = `
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 8px; gap: 8px;">
+      <div style="font-weight: 600; color: #475569; font-size: 0.75rem;">Park card ${slot}</div>
+      <button type="button" class="explore-park-card-remove-btn" data-park-slot="${slot}"
+        style="font-size: 0.7rem; padding: 4px 8px; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; cursor: ${canRemove ? 'pointer' : 'not-allowed'}; opacity: ${canRemove ? 1 : 0.45};"
+        ${canRemove ? '' : 'disabled'}>Remove</button>
+    </div>
+    <div style="display: grid; grid-template-columns: 96px 1fr; gap: 8px; align-items: start;">
+      <div class="preview-image" style="width: 96px; height: 72px; background: #f3f4f6; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative; cursor: pointer;" onmouseenter="showImageEditButton(this)" onmouseleave="hideImageEditButton(this)" onclick="triggerImageUpload('about-park-card-${slot}-hero-upload')">
+        <img id="preview-about-park-card-${slot}-hero-img" src="" alt="" style="max-width: 100%; max-height: 100%; object-fit: cover; display: none;">
+        <span style="color: #9ca3af; font-size: 0.6rem; text-align: center; padding: 4px;">Hero</span>
+        <button type="button" class="image-edit-btn" style="display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #3b82f6; color: white; border: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 0.65rem; z-index: 10;">Edit</button>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 4px;">
+        <div contenteditable="true" class="editable-preview explore-park-card-field" id="preview-park-card-${slot}-title" style="font-weight: 600; color: #0f172a; font-size: 0.78rem; padding: 2px 6px; border-radius: 4px; outline: none; background: #fff; border: 1px solid #e2e8f0;" onblur="onExploreParkCardBlur()"></div>
+        <div contenteditable="true" class="editable-preview explore-park-card-field" id="preview-park-card-${slot}-description" style="color: #0f172a; font-size: 0.7rem; line-height: 1.45; min-height: 2.2em; padding: 4px 6px; border-radius: 4px; outline: none; background: #fff; border: 1px solid #e2e8f0;" onblur="onExploreParkCardBlur()"></div>
+        <label style="display: block; font-size: 0.68rem; color: #64748b; margin-top: 2px;">Map coordinates
+          <input type="text" class="explore-park-card-field" id="preview-park-card-${slot}-map-coords" placeholder="49.592, -117.088" style="width: 100%; max-width: 200px; margin-top: 2px; padding: 4px 6px; border: 1px solid #e2e8f0; border-radius: 4px; font-size: 0.68rem; box-sizing: border-box; background: #fff; color: #000; -webkit-text-fill-color: #000;" onblur="onExploreParkCardBlur()">
+        </label>
+      </div>
+    </div>
+    <p style="margin: 8px 0 4px 0; font-size: 0.68rem; color: #6b7280; font-weight: 600;">Gallery</p>
+    <div id="about-park-card-${slot}-gallery-preview" style="display: flex; flex-wrap: wrap; gap: 6px; min-height: 14px;"></div>
+  `;
+  return row;
+}
+
+function readExploreParkCardsFromAdmin() {
+  const root = document.getElementById('explore-park-cards-admin-root');
+  if (!root) return [];
+  const rows = root.querySelectorAll('.explore-park-card-admin-row');
+  const cards = [];
+  rows.forEach((row) => {
+    const n = parseInt(row.getAttribute('data-park-slot'), 10);
+    if (!Number.isFinite(n)) return;
+    const titleEl = document.getElementById(`preview-park-card-${n}-title`);
+    const descEl = document.getElementById(`preview-park-card-${n}-description`);
+    const coordsEl = document.getElementById(`preview-park-card-${n}-map-coords`);
+    const galEl = document.getElementById(`about-park-card-${n}-gallery`);
+    const heroHid = document.getElementById(`about-park-card-${n}-hero-url`);
+    const { map_lat: ml, map_lng: mg } = parseParkCardMapCoordsInput(coordsEl ? coordsEl.value : '');
+    let gallery = [];
+    try {
+      gallery = JSON.parse(galEl ? galEl.value || '[]' : '[]');
+    } catch (e) {
+      gallery = [];
+    }
+    cards.push({
+      title: titleEl ? String(titleEl.textContent || '').trim() : '',
+      description: descEl ? String(descEl.innerHTML || '').trim() : '',
+      hero_image_url: heroHid ? String(heroHid.value || '').trim() : '',
+      gallery: Array.isArray(gallery) ? gallery : [],
+      map_lat: ml,
+      map_lng: mg
+    });
+  });
+  return cards;
+}
+
+function writeExploreParkCardsToAdmin(cards) {
+  let list = Array.isArray(cards) ? cards.slice(0, EXPLORE_PARK_CARDS_MAX) : [];
+  if (list.length === 0) {
+    list = [{
+      title: '',
+      description: '',
+      hero_image_url: '',
+      gallery: [],
+      map_lat: '',
+      map_lng: ''
+    }];
+  }
+  const ta = document.getElementById('about-parks-cards-json');
+  if (ta) {
+    ta.value = JSON.stringify(list);
+  }
+  const root = document.getElementById('explore-park-cards-admin-root');
+  const hidRoot = document.getElementById('explore-park-cards-hidden-fields');
+  if (!root || !hidRoot) return;
+  root.innerHTML = '';
+  hidRoot.innerHTML = '';
+  const total = list.length;
+  list.forEach((c, idx) => {
+    const slot = idx + 1;
+    appendExploreParkCardHiddenFields(slot);
+    root.appendChild(createExploreParkCardAdminRow(slot, total));
+  });
+  list.forEach((c, idx) => {
+    const n = idx + 1;
+    const titleEl = document.getElementById(`preview-park-card-${n}-title`);
+    const descEl = document.getElementById(`preview-park-card-${n}-description`);
+    const coordsEl = document.getElementById(`preview-park-card-${n}-map-coords`);
+    const galEl = document.getElementById(`about-park-card-${n}-gallery`);
+    const heroHid = document.getElementById(`about-park-card-${n}-hero-url`);
+    const img = document.getElementById(`preview-about-park-card-${n}-hero-img`);
+    if (titleEl) titleEl.textContent = c.title || '';
+    if (descEl) descEl.innerHTML = c.description || '';
+    if (coordsEl) coordsEl.value = formatParkCardMapCoords(c.map_lat, c.map_lng);
+    const heroUrl = (c.hero_image_url && String(c.hero_image_url).trim()) ? String(c.hero_image_url).trim() : '';
+    if (heroHid) heroHid.value = heroUrl;
+    if (galEl) galEl.value = JSON.stringify(Array.isArray(c.gallery) ? c.gallery : []);
+    if (img) {
+      if (heroUrl) {
+        img.src = heroUrl + '?v=' + Date.now();
+        img.style.display = 'block';
+        const placeholder = img.nextElementSibling;
+        if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+      } else {
+        img.removeAttribute('src');
+        img.style.display = 'none';
+        const placeholder = img.nextElementSibling;
+        if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = '';
+      }
+    }
+    updateParkCardGalleryPreview(n, Array.isArray(c.gallery) ? c.gallery : []);
+  });
+}
+
+window.addExploreParkCardRow = function addExploreParkCardRow() {
+  const cards = readExploreParkCardsFromAdmin();
+  if (cards.length >= EXPLORE_PARK_CARDS_MAX) {
+    alert(`Maximum ${EXPLORE_PARK_CARDS_MAX} park cards.`);
+    return;
+  }
+  cards.push({
+    title: '',
+    description: '',
+    hero_image_url: '',
+    gallery: [],
+    map_lat: '',
+    map_lng: ''
+  });
+  writeExploreParkCardsToAdmin(cards);
+  if (typeof exploreHasUnsavedChanges !== 'undefined') {
+    exploreHasUnsavedChanges = true;
+  }
+  if (typeof scheduleExploreAutoSave === 'function') {
+    scheduleExploreAutoSave();
+  }
+};
+
+window.removeExploreParkCardRow = function removeExploreParkCardRow(slot) {
+  const cards = readExploreParkCardsFromAdmin();
+  if (cards.length <= 1) return;
+  const idx = slot - 1;
+  if (idx < 0 || idx >= cards.length) return;
+  cards.splice(idx, 1);
+  writeExploreParkCardsToAdmin(cards);
+  if (typeof exploreHasUnsavedChanges !== 'undefined') {
+    exploreHasUnsavedChanges = true;
+  }
+  if (typeof scheduleExploreAutoSave === 'function') {
+    scheduleExploreAutoSave();
+  }
+};
+
+let exploreParkCardsToolbarInit = false;
+function initExploreParkCardsToolbar() {
+  if (exploreParkCardsToolbarInit) return;
+  exploreParkCardsToolbarInit = true;
+  const addBtn = document.getElementById('explore-add-park-card-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      if (typeof window.addExploreParkCardRow === 'function') {
+        window.addExploreParkCardRow();
+      }
+    });
+  }
+  const root = document.getElementById('explore-park-cards-admin-root');
+  if (root) {
+    root.addEventListener('click', (e) => {
+      const btn = e.target && e.target.closest ? e.target.closest('.explore-park-card-remove-btn') : null;
+      if (!btn || btn.disabled) return;
+      const s = parseInt(btn.getAttribute('data-park-slot'), 10);
+      if (Number.isFinite(s) && typeof window.removeExploreParkCardRow === 'function') {
+        window.removeExploreParkCardRow(s);
+      }
+    });
+  }
+}
+
+function persistExploreParkCardsToServer() {
+  const cards = readExploreParkCardsFromAdmin();
+  const listFromTitles = cards.map((c) => (c.title || '').trim()).filter(Boolean).join('\n');
+  const fd = new FormData();
+  fd.append('action', 'save_content');
+  fd.append('about_parks_cards', JSON.stringify(cards));
+  fd.append('about_parks_list', listFromTitles);
+  return fetch('api.php', { method: 'POST', body: fd }).then((r) =>
+    r.text().then((txt) => {
+      recordSaveContentResponse(r, txt, 'explore');
+      return { response: r, text: txt };
+    })
+  );
+}
+
+window.onExploreParkCardBlur = function onExploreParkCardBlur() {
+  const ta = document.getElementById('about-parks-cards-json');
+  if (ta) {
+    ta.value = JSON.stringify(readExploreParkCardsFromAdmin());
+  }
+  if (typeof exploreHasUnsavedChanges !== 'undefined') {
+    exploreHasUnsavedChanges = true;
+  }
+  if (typeof scheduleExploreAutoSave === 'function') {
+    scheduleExploreAutoSave();
+  }
+};
+
+function updateParkCardGalleryPreview(slot, gallery) {
+  const galleryPreview = document.getElementById(`about-park-card-${slot}-gallery-preview`);
+  if (!galleryPreview) return;
+  galleryPreview.innerHTML = '';
+  const urls = Array.isArray(gallery) ? gallery : [];
+  urls.forEach((imageUrl, index) => {
+    if (!imageUrl || !String(imageUrl).trim()) return;
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText = 'position: relative; width: 56px; height: 56px; border: 2px solid #e5e7eb; border-radius: 6px; overflow: hidden; background: #f3f4f6;';
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = '↻';
+    replaceBtn.type = 'button';
+    replaceBtn.style.cssText = 'position: absolute; top: 1px; left: 1px; padding: 1px 4px; font-size: 0.65rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 3px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceParkCardGalleryImage(slot, index);
+    };
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.type = 'button';
+    deleteBtn.style.cssText = 'position: absolute; top: 1px; right: 1px; width: 16px; height: 16px; padding: 0; font-size: 0.75rem; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; line-height: 1;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteParkCardGalleryImage(slot, index);
+    };
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+  if (urls.length < 10) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText = 'width: 56px; height: 56px; border: 2px dashed #9ca3af; border-radius: 6px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 1.1rem;">+</span>';
+    addItem.onclick = () => {
+      const up = document.getElementById(`about-park-card-${slot}-gallery-upload`);
+      if (up) up.click();
+    };
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+window.replaceParkCardGalleryImage = function replaceParkCardGalleryImage(slot, index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadParkCardGalleryImage(slot, file, index);
+    }
+  };
+  input.click();
+};
+
+window.deleteParkCardGalleryImage = function deleteParkCardGalleryImage(slot, index) {
+  const galleryField = document.getElementById(`about-park-card-${slot}-gallery`);
+  if (!galleryField) return;
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    return;
+  }
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateParkCardGalleryPreview(slot, gallery);
+  if (typeof exploreHasUnsavedChanges !== 'undefined') {
+    exploreHasUnsavedChanges = true;
+  }
+  if (typeof scheduleExploreAutoSave === 'function') {
+    scheduleExploreAutoSave();
+  }
+};
+
+async function uploadParkCardGalleryImage(slot, file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', `about-park-card-${slot}-gallery`);
+    formData.append('image', file);
+    const response = await fetch('upload_image.php', { method: 'POST', body: formData });
+    if (!response.ok) return;
+    const result = await response.json();
+    const payload = result && result.data ? result.data : result;
+    const imageUrl = payload && payload.imageUrl ? payload.imageUrl : (payload && payload.filepath ? payload.filepath : '');
+    if (!result.success || !imageUrl) return;
+    const galleryField = document.getElementById(`about-park-card-${slot}-gallery`);
+    if (!galleryField) return;
+    let gallery = [];
+    try {
+      gallery = JSON.parse(galleryField.value || '[]');
+    } catch (e) {
+      gallery = [];
+    }
+    if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+      gallery[replaceIndex] = imageUrl;
+    } else if (gallery.length < 10) {
+      gallery.push(imageUrl);
+    } else {
+      alert('Maximum 10 photos allowed in gallery');
+      return;
+    }
+    galleryField.value = JSON.stringify(gallery);
+    updateParkCardGalleryPreview(slot, gallery);
+    const cards = readExploreParkCardsFromAdmin();
+    const fd = new FormData();
+    fd.append('action', 'save_content');
+    fd.append('about_parks_cards', JSON.stringify(cards));
+    const listFromTitles = cards.map((c) => (c.title || '').trim()).filter(Boolean).join('\n');
+    fd.append('about_parks_list', listFromTitles);
+    const pr = await fetch('api.php', { method: 'POST', body: fd });
+    const ptxt = await pr.text();
+    recordSaveContentResponse(pr, ptxt, 'explore');
+  } catch (err) {
+    console.error('uploadParkCardGalleryImage', err);
+  }
+}
+
+let exploreParkGalleryUploadDelegationBound = false;
+function initParkCardGalleryUploads() {
+  const section = document.getElementById('explore-section');
+  if (!section || exploreParkGalleryUploadDelegationBound) return;
+  exploreParkGalleryUploadDelegationBound = true;
+  section.addEventListener('change', async (e) => {
+    const t = e.target;
+    if (!t || !t.id) return;
+    const m = t.id.match(/^about-park-card-(\d+)-gallery-upload$/);
+    if (!m || t.type !== 'file') return;
+    const slot = parseInt(m[1], 10);
+    const files = Array.from(t.files || []);
+    if (files.length === 0) return;
+    const galleryField = document.getElementById(`about-park-card-${slot}-gallery`);
+    if (!galleryField) return;
+    let gallery = [];
+    try {
+      gallery = JSON.parse(galleryField.value || '[]');
+    } catch (err) {
+      gallery = [];
+    }
+    const remainingSlots = 10 - gallery.length;
+    if (files.length > remainingSlots) {
+      alert(`You can only add ${remainingSlots} more photo(s).`);
+      files.splice(remainingSlots);
+    }
+    for (const file of files) {
+      await uploadParkCardGalleryImage(slot, file, null);
+    }
+    t.value = '';
+  });
+}
+
+/** Plain text for Explore accommodation inherited copy (from mini-hotel API fields). */
+function exploreAdminPlainFromApi(s) {
+  if (s == null || s === undefined) return '';
+  const str = String(s);
+  if (str.indexOf('<') === -1) {
+    return str.replace(/\r\n/g, '\n').trim();
+  }
+  const d = document.createElement('div');
+  d.innerHTML = str.replace(/<br\s*\/?>/gi, '\n');
+  return (d.textContent || '').replace(/\r\n/g, '\n').trim();
+}
+
+// Load Explore page (hero + location intro + attraction cards + parks)
+async function loadExploreData() {
+  console.log('Loading Explore page data...');
+  try {
+    const formData = new FormData();
+    formData.append('action', 'get_content');
+
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        const data = result.data;
+
+        const exTitle = document.getElementById('explore-hero-title');
+        const exSub = document.getElementById('explore-hero-subtitle');
+        const exTitleP = document.getElementById('preview-explore-hero-title');
+        const exSubP = document.getElementById('preview-explore-hero-subtitle');
+        if (exTitle) exTitle.value = data.exploreHeroTitle || '';
+        if (exSub) exSub.value = data.exploreHeroSubtitle || '';
+        if (exTitleP) exTitleP.textContent = data.exploreHeroTitle || 'Explore';
+        if (exSubP) exSubP.textContent = data.exploreHeroSubtitle || 'Forests, lakes, and mountain towns around Back to Base';
+
+        const commIntroFromApi =
+          (data.exploreCommunitiesIntro && String(data.exploreCommunitiesIntro).trim() !== '')
+            ? data.exploreCommunitiesIntro
+            : (data.aboutAttractionsLead || '');
+        const commIntroField = document.getElementById('explore-communities-intro');
+        const commIntroPreview = document.getElementById('preview-explore-communities-intro');
+        if (commIntroField) commIntroField.value = commIntroFromApi || '';
+        if (commIntroPreview) commIntroPreview.textContent = commIntroFromApi || '';
+
+        const culIntroField = document.getElementById('explore-culture-intro');
+        const culIntroPreview = document.getElementById('preview-explore-culture-intro');
+        if (culIntroField) culIntroField.value = data.exploreCultureIntro || '';
+        if (culIntroPreview) culIntroPreview.textContent = data.exploreCultureIntro || '';
+
+        const actIntroField = document.getElementById('explore-activities-intro');
+        const actIntroPreview = document.getElementById('preview-explore-activities-intro');
+        if (actIntroField) actIntroField.value = data.exploreActivitiesIntro || '';
+        if (actIntroPreview) actIntroPreview.textContent = data.exploreActivitiesIntro || '';
+
+        const inheritedAccDesc = (() => {
+          const fromSingle = exploreAdminPlainFromApi(
+            data.miniHotelDescription != null ? data.miniHotelDescription : ''
+          );
+          if (fromSingle) return fromSingle;
+          const a = exploreAdminPlainFromApi(
+            data.miniHotelDescription1 != null ? data.miniHotelDescription1 : ''
+          );
+          const b = exploreAdminPlainFromApi(
+            data.miniHotelDescription2 != null ? data.miniHotelDescription2 : ''
+          );
+          if (!a && !b) return '';
+          if (a && b) return a + '\n\n' + b;
+          return b || a;
+        })();
+        const inhAcc = (window.__exploreAccommodationInherited = {});
+        inhAcc['explore-accommodation-title'] = String(data.miniHotelTitle || '').trim();
+        inhAcc['explore-accommodation-description'] = inheritedAccDesc;
+
+        const exOvT = data.exploreAccommodationTitle;
+        const exOvDesc = data.exploreAccommodationDescription;
+        const exAccHid = document.getElementById('explore-accommodation-title');
+        const exDesc = document.getElementById('explore-accommodation-description');
+        if (exAccHid) {
+          exAccHid.value = exOvT != null && String(exOvT).trim() !== '' ? exOvT : '';
+        }
+        if (exDesc) {
+          exDesc.value = exOvDesc != null && String(exOvDesc).trim() !== '' ? exOvDesc : '';
+        }
+        const pAccT = document.getElementById('preview-explore-accommodation-title');
+        const pAccDesc = document.getElementById('preview-explore-accommodation-desc');
+        if (pAccT) {
+          pAccT.textContent =
+            exOvT != null && String(exOvT).trim() !== ''
+              ? exOvT
+              : (data.miniHotelTitle || 'Book a room in our mini-hotel');
+        }
+        if (pAccDesc) {
+          pAccDesc.textContent =
+            exOvDesc != null && String(exOvDesc).trim() !== ''
+              ? exOvDesc
+              : inheritedAccDesc;
+        }
+
+        const exploreH2Load = [
+          { hid: 'explore-communities-h2', val: data.exploreCommunitiesH2, fb: 'Communities' },
+          { hid: 'explore-culture-h2', val: data.exploreCultureH2, fb: 'Culture' },
+          { hid: 'explore-parks-h2', val: data.exploreParksH2, fb: 'Parks and beaches' },
+          { hid: 'explore-activities-h2', val: data.exploreActivitiesH2, fb: 'Activities' }
+        ];
+        exploreH2Load.forEach(({ hid, val, fb }) => {
+          const h = document.getElementById(hid);
+          if (h) h.value = val || '';
+          const text = (val && String(val).trim() !== '') ? String(val) : fb;
+          document.querySelectorAll(`[data-field="${hid}"]`).forEach((node) => {
+            node.textContent = text;
+          });
+        });
+
+        writeExploreSectionCardsToAdmin('communities', defaultExploreCommunityCardsFromApi(data));
+        writeExploreSectionCardsToAdmin('culture', defaultExploreCultureCardsFromApi(data));
+        writeExploreSectionCardsToAdmin('activities', defaultExploreActivitiesCardsFromApi(data));
+
+        attractionGalleries.forEach((attractionName) => {
+          const galleryField = document.getElementById(`about-${attractionName}-gallery`);
+          if (!galleryField) return;
+          let gallery = [];
+          try {
+            const k = 'about' + attractionName.charAt(0).toUpperCase() + attractionName.slice(1) + 'Gallery';
+            const galleryData = data[k] || '[]';
+            gallery = JSON.parse(galleryData);
+          } catch (e) {
+            console.error(`Failed to parse gallery for ${attractionName}:`, e);
+          }
+          galleryField.value = JSON.stringify(gallery);
+          updateAboutAttractionGalleryPreview(attractionName, gallery);
+        });
+
+        const parksTitleField = document.getElementById('about-parks-title');
+        const parksIntroField = document.getElementById('about-parks-intro');
+        const parksListField = document.getElementById('about-parks-list');
+        const parksIntroPreview = document.getElementById('preview-about-parks-intro');
+        if (parksTitleField) parksTitleField.value = data.aboutParksTitle || '';
+        if (parksIntroField) parksIntroField.value = data.aboutParksIntro || '';
+        if (parksIntroPreview) {
+          parksIntroPreview.textContent = data.aboutParksIntro
+            || 'If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base.';
+        }
+
+        const parkCards = defaultExploreParkCardsFromApi(data);
+        if (parksListField) {
+          parksListField.value = parkCards.map((c) => (c.title || '').trim()).filter(Boolean).join('\n');
+        }
+        writeExploreParkCardsToAdmin(parkCards);
+        if (typeof loadExploreImagesData === 'function') {
+          loadExploreImagesData();
+        }
+
+        console.log('Explore page content loaded successfully');
+      }
+    }
+  } catch (error) {
+    console.log('Failed to load Explore page data:', error);
+  }
 }
 
 // Load about data
@@ -5134,30 +7275,29 @@ async function loadAboutData() {
         if (heroTitlePreview) heroTitlePreview.textContent = data.aboutHeroTitle || 'About Back to Base';
         if (heroSubtitlePreview) heroSubtitlePreview.textContent = data.aboutHeroSubtitle || 'A personal retreat in the heart of British Columbia';
         
-        // Idea and Origins section
+        // Idea and Origins: single text block (optional [[READ_MORE]]); legacy paragraph_1–3 merged on load
         const ideaTitleField = document.getElementById('about-idea-title');
         const ideaIntroField = document.getElementById('about-idea-intro');
-        const ideaP1Field = document.getElementById('about-idea-paragraph-1');
-        const ideaP2Field = document.getElementById('about-idea-paragraph-2');
-        const ideaP3Field = document.getElementById('about-idea-paragraph-3');
         const ideaSignatureField = document.getElementById('about-idea-signature');
         const ideaTitlePreview = document.getElementById('preview-about-idea-title');
         const ideaIntroPreview = document.getElementById('preview-about-idea-intro');
-        const ideaP1Preview = document.getElementById('preview-about-idea-p1');
-        const ideaP2Preview = document.getElementById('preview-about-idea-p2');
-        const ideaP3Preview = document.getElementById('preview-about-idea-p3');
         const ideaSignaturePreview = document.getElementById('preview-about-idea-signature');
+        const pMergedLegacy = [data.aboutIdeaParagraph1, data.aboutIdeaParagraph2, data.aboutIdeaParagraph3]
+          .map((s) => (s || '').trim())
+          .filter(Boolean)
+          .join('\n\n');
+        let ideaEditorText = (data.aboutIdeaIntro || '');
+        if (pMergedLegacy && !/\[\[READ_MORE\]\]/u.test(ideaEditorText)) {
+          ideaEditorText = (ideaEditorText.trim() + (ideaEditorText.trim() ? '\n\n' : '') + '[[READ_MORE]]\n\n' + pMergedLegacy).trim();
+        }
         if (ideaTitleField) ideaTitleField.value = data.aboutIdeaTitle || '';
-        if (ideaIntroField) ideaIntroField.value = data.aboutIdeaIntro || '';
-        if (ideaP1Field) ideaP1Field.value = data.aboutIdeaParagraph1 || '';
-        if (ideaP2Field) ideaP2Field.value = data.aboutIdeaParagraph2 || '';
-        if (ideaP3Field) ideaP3Field.value = data.aboutIdeaParagraph3 || '';
+        if (ideaIntroField) ideaIntroField.value = ideaEditorText;
         if (ideaSignatureField) ideaSignatureField.value = data.aboutIdeaSignature || '';
         if (ideaTitlePreview) ideaTitlePreview.textContent = data.aboutIdeaTitle || 'Idea and Origins';
-        if (ideaIntroPreview) ideaIntroPreview.textContent = data.aboutIdeaIntro || 'Hi! My name is Rob Vuik. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.';
-        if (ideaP1Preview) ideaP1Preview.textContent = data.aboutIdeaParagraph1 || 'Back to Base started as a personal retreat project, created in the forests of British Columbia near Kootenay Lake. The idea behind it is to build a place you can return to — to yourself, to silence, to simplicity, and to nature.';
-        if (ideaP2Preview) ideaP2Preview.textContent = data.aboutIdeaParagraph2 || 'Over time, I became more and more interested in the idea of restoration and well-being. I trained as a massage therapist and now work professionally at Ainsworth Hot Springs Resort. Naturally, I\'m happy to offer massage services to guests of Back to Base as well. And one more pleasant bonus: all Back to Base guests receive special rates at Ainsworth Hot Springs Resort.';
-        if (ideaP3Preview) ideaP3Preview.textContent = data.aboutIdeaParagraph3 || 'We all get tired sometimes — work, household tasks, endless to-dos… it all wears us down. Back to Base was created to give people a chance to pause for a moment. Here, you can rest, sleep well, wander through the forest or along the shore of a mountain lake, and regain your energy.';
+        if (ideaIntroPreview) {
+          ideaIntroPreview.textContent = ideaEditorText
+            || 'Hi! My name is Rob Vuik. I founded Back to Base after twenty years of working as a co-owner of a large hotel in Nelson. When I retired, I realized something simple: many people — just like me — need a quiet place where they can rest, recover, and feel better.';
+        }
         if (ideaSignaturePreview) ideaSignaturePreview.textContent = data.aboutIdeaSignature || 'I look forward to welcoming you!';
         
         // How to Find Us section
@@ -5189,103 +7329,27 @@ async function loadAboutData() {
         if (locP4Preview) locP4Preview.textContent = data.aboutLocationParagraph4 || 'From there, it\'s just a 3-minute drive up the mountain road — and you\'re here!';
         if (locCoordsPreview) locCoordsPreview.textContent = data.aboutLocationCoordinates || 'Coordinates: 49.6125, -116.9579';
         if (locDeerPreview) locDeerPreview.textContent = data.aboutLocationDeerWarning || '🦌 Be careful — we have a lot of deer in the area!';
-        
-        // About the Location section
-        const attrTitleField = document.getElementById('about-attractions-title');
-        const attrLeadField = document.getElementById('about-attractions-lead');
-        const attrTitlePreview = document.getElementById('preview-about-attractions-title');
-        const attrLeadPreview = document.getElementById('preview-about-attractions-lead');
-        if (attrTitleField) attrTitleField.value = data.aboutAttractionsTitle || '';
-        if (attrLeadField) attrLeadField.value = data.aboutAttractionsLead || '';
-        if (attrTitlePreview) attrTitlePreview.textContent = data.aboutAttractionsTitle || 'About the Location';
-        if (attrLeadPreview) attrLeadPreview.textContent = data.aboutAttractionsLead || 'Discover the natural beauty and attractions surrounding Back to Base';
-        
-        // Attractions cards
-        const procterTitleField = document.getElementById('about-procter-title');
-        const procterDistField = document.getElementById('about-procter-distance');
-        const procterDescField = document.getElementById('about-procter-description');
-        const procterTitlePreview = document.getElementById('preview-about-procter-title');
-        const procterDistPreview = document.getElementById('preview-about-procter-distance');
-        const procterDescPreview = document.getElementById('preview-about-procter-desc');
-        if (procterTitleField) procterTitleField.value = data.aboutProcterTitle || '';
-        if (procterDistField) procterDistField.value = data.aboutProcterDistance || '';
-        if (procterDescField) procterDescField.value = data.aboutProcterDescription || '';
-        if (procterTitlePreview) procterTitlePreview.textContent = data.aboutProcterTitle || 'Procter Village';
-        if (procterDistPreview) procterDistPreview.textContent = data.aboutProcterDistance || 'In the same village';
-        if (procterDescPreview) procterDescPreview.textContent = data.aboutProcterDescription || 'In the village of Procter, you\'ll find the Procter Café with their famous cinnamon buns, a small grocery store, and a gas station.';
-        
-        const halcyonTitleField = document.getElementById('about-halcyon-title');
-        const halcyonDistField = document.getElementById('about-halcyon-distance');
-        const halcyonDescField = document.getElementById('about-halcyon-description');
-        const halcyonTitlePreview = document.getElementById('preview-about-halcyon-title');
-        const halcyonDistPreview = document.getElementById('preview-about-halcyon-distance');
-        const halcyonDescPreview = document.getElementById('preview-about-halcyon-desc');
-        if (halcyonTitleField) halcyonTitleField.value = data.aboutHalcyonTitle || '';
-        if (halcyonDistField) halcyonDistField.value = data.aboutHalcyonDistance || '';
-        if (halcyonDescField) halcyonDescField.value = data.aboutHalcyonDescription || '';
-        if (halcyonTitlePreview) halcyonTitlePreview.textContent = data.aboutHalcyonTitle || 'Ainsworth Hot Springs Resort';
-        if (halcyonDistPreview) halcyonDistPreview.textContent = data.aboutHalcyonDistance || '30 km from Back to Base';
-        if (halcyonDescPreview) halcyonDescPreview.textContent = data.aboutHalcyonDescription || 'Known for its healing sulfur waters, perfect for relaxation and rejuvenation. Back to Base guests receive special rates!';
-        
-        const whitewaterTitleField = document.getElementById('about-whitewater-title');
-        const whitewaterDistField = document.getElementById('about-whitewater-distance');
-        const whitewaterDescField = document.getElementById('about-whitewater-description');
-        const whitewaterTitlePreview = document.getElementById('preview-about-whitewater-title');
-        const whitewaterDistPreview = document.getElementById('preview-about-whitewater-distance');
-        const whitewaterDescPreview = document.getElementById('preview-about-whitewater-desc');
-        if (whitewaterTitleField) whitewaterTitleField.value = data.aboutWhitewaterTitle || '';
-        if (whitewaterDistField) whitewaterDistField.value = data.aboutWhitewaterDistance || '';
-        if (whitewaterDescField) whitewaterDescField.value = data.aboutWhitewaterDescription || '';
-        if (whitewaterTitlePreview) whitewaterTitlePreview.textContent = data.aboutWhitewaterTitle || 'Whitewater Mountain Resort';
-        if (whitewaterDistPreview) whitewaterDistPreview.textContent = data.aboutWhitewaterDistance || '60 km from Back to Base';
-        if (whitewaterDescPreview) whitewaterDescPreview.textContent = data.aboutWhitewaterDescription || 'Top-class slopes and excellent service for outdoor sports enthusiasts. Perfect for skiing and snowboarding.';
-        
-        const nelsonTitleField = document.getElementById('about-nelson-title');
-        const nelsonDistField = document.getElementById('about-nelson-distance');
-        const nelsonDescField = document.getElementById('about-nelson-description');
-        const nelsonTitlePreview = document.getElementById('preview-about-nelson-title');
-        const nelsonDistPreview = document.getElementById('preview-about-nelson-distance');
-        const nelsonDescPreview = document.getElementById('preview-about-nelson-desc');
-        if (nelsonTitleField) nelsonTitleField.value = data.aboutNelsonTitle || '';
-        if (nelsonDistField) nelsonDistField.value = data.aboutNelsonDistance || '';
-        if (nelsonDescField) nelsonDescField.value = data.aboutNelsonDescription || '';
-        if (nelsonTitlePreview) nelsonTitlePreview.textContent = data.aboutNelsonTitle || 'Nelson';
-        if (nelsonDistPreview) nelsonDistPreview.textContent = data.aboutNelsonDistance || '35 km from Back to Base';
-        if (nelsonDescPreview) nelsonDescPreview.textContent = data.aboutNelsonDescription || 'A former gold-rush settlement with beautifully preserved architecture, modern restaurants, cafés, cinema, theatre, and regular concerts by visiting artists.';
-        
-        // Load galleries for attractions
-        attractionGalleries.forEach(attractionName => {
-          const galleryField = document.getElementById(`about-${attractionName}-gallery`);
-          let gallery = [];
-          try {
-            const galleryData = data[`about${attractionName.charAt(0).toUpperCase() + attractionName.slice(1)}Gallery`] || '[]';
-            gallery = JSON.parse(galleryData);
-          } catch (e) {
-            console.error(`Failed to parse gallery for ${attractionName}:`, e);
-          }
-          if (galleryField) {
-            galleryField.value = JSON.stringify(gallery);
-            updateAboutAttractionGalleryPreview(attractionName, gallery);
-          }
-        });
-        
-        // Provincial Parks section
-        const parksTitleField = document.getElementById('about-parks-title');
-        const parksIntroField = document.getElementById('about-parks-intro');
-        const parksListField = document.getElementById('about-parks-list');
-        const parksTitlePreview = document.getElementById('preview-about-parks-title');
-        const parksIntroPreview = document.getElementById('preview-about-parks-intro');
-        const parksListPreview = document.getElementById('preview-about-parks-list');
-        if (parksTitleField) parksTitleField.value = data.aboutParksTitle || '';
-        if (parksIntroField) parksIntroField.value = data.aboutParksIntro || '';
-        if (parksListField) parksListField.value = data.aboutParksList || '';
-        if (parksTitlePreview) parksTitlePreview.textContent = data.aboutParksTitle || 'Provincial Parks Nearby';
-        if (parksIntroPreview) parksIntroPreview.textContent = data.aboutParksIntro || 'If you enjoy spending time in nature, there are many hiking trails and several provincial parks near Back to Base:';
-        if (parksListPreview && data.aboutParksList) {
-          const items = data.aboutParksList.split('\n').filter(item => item.trim());
-          parksListPreview.innerHTML = items.map(item => `<li style="color: #0f172a;">${item.trim()}</li>`).join('');
+
+        // Contact us block: section heading (h2) + text beside the form
+        const cft = document.getElementById('about-contact-form-title');
+        const cftP = document.getElementById('preview-about-contact-form-title');
+        const tCont = (data.aboutContactFormTitle && String(data.aboutContactFormTitle).trim()) || 'Contact us';
+        if (cft) cft.value = tCont;
+        if (cftP) cftP.textContent = tCont;
+        const cfd = document.getElementById('about-contact-form-description');
+        const cfdP = document.getElementById('preview-about-contact-form-description');
+        let dDesc = (data.aboutContactFormDescription && String(data.aboutContactFormDescription).trim()) || '';
+        if (!dDesc) {
+          const l = (data.aboutContactFormLead && String(data.aboutContactFormLead).trim()) || '';
+          const e = (data.aboutContactFormEmphasis && String(data.aboutContactFormEmphasis).trim()) || '';
+          dDesc = [l, e].filter(Boolean).join('\n\n');
         }
-        
+        if (!dDesc) {
+          dDesc = "At Back to Base, you can find exactly the kind of rest you need.\n\nWe'll be happy to help you plan your stay and answer any questions!";
+        }
+        if (cfd) cfd.value = dDesc;
+        if (cfdP) cfdP.textContent = dDesc;
+
         console.log('About page content loaded successfully');
       }
     }
@@ -5311,12 +7375,10 @@ async function loadAboutImagesData() {
       if (result.success && result.data) {
         const heroImageUrl = result.data.aboutHeroImageUrl || '';
         const founderImageUrl = result.data.aboutFounderImageUrl || '';
-        const procterImageUrl = result.data.aboutProcterImageUrl || '';
         
         // Update preview images directly
         const heroImg = document.getElementById('preview-about-hero-img');
         const founderImg = document.getElementById('preview-about-founder-img');
-        const procterImg = document.getElementById('preview-about-procter-img');
         
         if (heroImg && heroImageUrl) {
           heroImg.src = heroImageUrl + '?v=' + Date.now();
@@ -5332,20 +7394,12 @@ async function loadAboutImagesData() {
           if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
         }
         
-        if (procterImg && procterImageUrl) {
-          procterImg.src = procterImageUrl + '?v=' + Date.now();
-          procterImg.style.display = 'block';
-          const placeholder = procterImg.nextElementSibling;
-          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
-        }
-        
         const stored = localStorage.getItem('btb_about_images') || '{}';
         const storedJson = JSON.parse(stored);
         const aboutImagesData = {
           ...storedJson,
           hero: heroImageUrl || storedJson.hero || '',
-          founder: founderImageUrl || storedJson.founder || '',
-          procter: procterImageUrl || storedJson.procter || ''
+          founder: founderImageUrl || storedJson.founder || ''
         };
         localStorage.setItem('btb_about_images', JSON.stringify(aboutImagesData));
         console.log('About images data saved to localStorage');
@@ -5356,12 +7410,119 @@ async function loadAboutImagesData() {
   }
 }
 
+// Load Explore page images (hero + Procter main image)
+async function loadExploreImagesData() {
+  console.log('Loading Explore images data...');
+  try {
+    const formData = new FormData();
+    formData.append('action', 'get_content');
+
+    const response = await fetch('api.php', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      if (result.success && result.data) {
+        const exploreHeroUrl = result.data.exploreHeroImageUrl || '';
+
+        const heroImg = document.getElementById('preview-explore-hero-img');
+
+        if (heroImg && exploreHeroUrl) {
+          heroImg.src = exploreHeroUrl + '?v=' + Date.now();
+          heroImg.style.display = 'block';
+          const placeholder = heroImg.nextElementSibling;
+          if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+        }
+
+        function applyExploreSectionHeroes(data) {
+          const sections = [
+            { key: 'communities', cards: defaultExploreCommunityCardsFromApi(data) },
+            { key: 'culture', cards: defaultExploreCultureCardsFromApi(data) },
+            { key: 'activities', cards: defaultExploreActivitiesCardsFromApi(data) }
+          ];
+          sections.forEach(({ key, cards }) => {
+            const slug = EXPLORE_SECTION_CARD_META[key].uploadSlug;
+            cards.forEach((c, idx) => {
+              const n = idx + 1;
+              const url = (c.hero_image_url && String(c.hero_image_url).trim()) ? String(c.hero_image_url).trim() : '';
+              const img = document.getElementById(`preview-explore-${slug}-card-${n}-hero-img`);
+              const hid = document.getElementById(`explore-${slug}-card-${n}-hero-url`);
+              if (hid) hid.value = url;
+              if (img && url) {
+                img.src = url + '?v=' + Date.now();
+                img.style.display = 'block';
+                const placeholder = img.nextElementSibling;
+                if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+              } else if (img && !url) {
+                img.removeAttribute('src');
+                img.style.display = 'none';
+                const placeholder = img.nextElementSibling;
+                if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = '';
+              }
+            });
+          });
+        }
+        applyExploreSectionHeroes(result.data);
+
+        const parkCardsForImg = defaultExploreParkCardsFromApi(result.data);
+        for (let n = 1; n <= parkCardsForImg.length; n++) {
+          const c = parkCardsForImg[n - 1] || {};
+          const url = (c.hero_image_url && String(c.hero_image_url).trim()) ? String(c.hero_image_url).trim() : '';
+          const img = document.getElementById(`preview-about-park-card-${n}-hero-img`);
+          const hid = document.getElementById(`about-park-card-${n}-hero-url`);
+          if (hid) hid.value = url;
+          if (img && url) {
+            img.src = url + '?v=' + Date.now();
+            img.style.display = 'block';
+            const placeholder = img.nextElementSibling;
+            if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+          } else if (img && !url) {
+            img.removeAttribute('src');
+            img.style.display = 'none';
+            const placeholder = img.nextElementSibling;
+            if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = '';
+          }
+        }
+
+        const stored = localStorage.getItem('btb_explore_images') || '{}';
+        const storedJson = JSON.parse(stored);
+        const accUrl = result.data.exploreAccommodationImageUrl || '';
+        const miniH = result.data.miniHotelImageUrl || '';
+        const accImg = document.getElementById('preview-explore-accommodation-img');
+        const accShow = (accUrl && String(accUrl).trim() !== '' ? accUrl : miniH) || '';
+        if (accImg && accShow) {
+          accImg.src = accShow + '?v=' + Date.now();
+          accImg.style.display = 'block';
+          const ph = accImg.nextElementSibling;
+          if (ph && ph.tagName === 'SPAN') ph.style.display = 'none';
+        } else if (accImg) {
+          accImg.removeAttribute('src');
+          accImg.style.display = 'none';
+          const ph = accImg.nextElementSibling;
+          if (ph && ph.tagName === 'SPAN') ph.style.display = '';
+        }
+
+        const exploreImagesData = {
+          ...storedJson,
+          hero: exploreHeroUrl || storedJson.hero || '',
+          accommodation: accUrl || storedJson.accommodation || ''
+        };
+        localStorage.setItem('btb_explore_images', JSON.stringify(exploreImagesData));
+        console.log('Explore images data saved to localStorage');
+      }
+    }
+  } catch (error) {
+    console.log('Failed to load Explore images data:', error);
+  }
+}
+
 // Initialize about image upload
 function initAboutImageUpload() {
   const uploadConfigs = [
     { inputId: 'about-hero-upload', previewImgId: 'preview-about-hero-img', imageType: 'about-hero' },
-    { inputId: 'about-founder-upload', previewImgId: 'preview-about-founder-img', imageType: 'about-founder' },
-    { inputId: 'about-procter-upload', previewImgId: 'preview-about-procter-img', imageType: 'about-procter' }
+    { inputId: 'about-founder-upload', previewImgId: 'preview-about-founder-img', imageType: 'about-founder' }
   ];
 
   uploadConfigs.forEach(config => {
@@ -5428,8 +7589,7 @@ function initAboutImageUpload() {
               // Map imageKey to correct database field name
               const fieldMap = {
                 'hero': 'about_hero_image_url',
-                'founder': 'about_founder_image_url',
-                'procter': 'about_procter_image_url'
+                'founder': 'about_founder_image_url'
               };
               const dbFieldName = fieldMap[imageKey] || ('about_' + imageKey.replace('-', '_') + '_image_url');
               contentFormData.append(dbFieldName, filepath);
@@ -5455,8 +7615,170 @@ function initAboutImageUpload() {
   });
 }
 
+// Initialize Explore page image uploads (hero only; section + park card heroes use delegation)
+function initExploreImageUpload() {
+  const uploadConfigs = [
+    {
+      inputId: 'explore-hero-upload',
+      previewImgId: 'preview-explore-hero-img',
+      imageType: 'explore-hero',
+      storageKey: 'hero',
+      contentDataKey: 'exploreHeroImageUrl',
+      formField: 'explore_hero_image_url',
+      parkSlot: null
+    },
+    {
+      inputId: 'explore-accommodation-image-upload',
+      previewImgId: 'preview-explore-accommodation-img',
+      imageType: 'explore-accommodation',
+      storageKey: 'accommodation',
+      contentDataKey: 'exploreAccommodationImageUrl',
+      formField: 'explore_accommodation_image_url',
+      parkSlot: null
+    }
+  ];
+
+  uploadConfigs.forEach((config) => {
+    const fileInput = document.getElementById(config.inputId);
+    const previewImg = document.getElementById(config.previewImgId);
+
+    if (fileInput) {
+      fileInput.addEventListener('change', async (e) => {
+        const file = e.target.files[0];
+        if (file) {
+          if (previewImg) {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+              previewImg.src = event.target.result;
+              previewImg.style.display = 'block';
+              const placeholder = previewImg.nextElementSibling;
+              if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+            };
+            reader.readAsDataURL(file);
+          }
+
+          await uploadImage(file, config.imageType, null, null, {
+            localStorageKey: 'btb_explore_images',
+            fieldNameMapper: (type) => {
+              if (type === 'explore-hero') return 'hero';
+              if (type === 'explore-accommodation') return 'accommodation';
+              const m = String(type).match(/^about-park-card-(\d+)-hero$/);
+              if (m) return `parkCard${m[1]}Hero`;
+              return type.replace('about-', '');
+            },
+            reloadFunction: loadExploreImagesData,
+            imageNameMapper: (type) => type,
+            onSuccess: (filepath) => {
+              if (config.parkSlot != null) {
+                const n = config.parkSlot;
+                const hid = document.getElementById(`about-park-card-${n}-hero-url`);
+                if (hid) hid.value = filepath;
+                const cards = readExploreParkCardsFromAdmin();
+                if (cards[n - 1]) cards[n - 1].hero_image_url = filepath;
+                writeExploreParkCardsToAdmin(cards);
+                persistExploreParkCardsToServer()
+                  .then(() => {
+                    if (typeof loadExploreImagesData === 'function') loadExploreImagesData();
+                  })
+                  .catch((err) => console.error('persist park cards hero', err));
+                return;
+              }
+
+              const imageKey = config.storageKey;
+              const stored = localStorage.getItem('btb_explore_images') || '{}';
+              const storedJson = JSON.parse(stored);
+              storedJson[imageKey] = filepath;
+              localStorage.setItem('btb_explore_images', JSON.stringify(storedJson));
+
+              let contentData = {};
+              const contentStored = localStorage.getItem('btb_content');
+              if (contentStored) {
+                try {
+                  contentData = JSON.parse(contentStored);
+                } catch (err) {
+                  console.error('Failed to parse btb_content:', err);
+                }
+              }
+              contentData[config.contentDataKey] = filepath;
+              localStorage.setItem('btb_content', JSON.stringify(contentData));
+
+              const contentFormData = new FormData();
+              contentFormData.append('action', 'save_content');
+              contentFormData.append(config.formField, filepath);
+
+              fetch('api.php', {
+                method: 'POST',
+                body: contentFormData
+              }).then((response) => response.json()).then((result) => {
+                console.log('Explore image save via save_content:', result);
+                if (typeof scheduleExploreAutoSave === 'function') {
+                  scheduleExploreAutoSave();
+                }
+              }).catch((err) => {
+                console.error('Error saving explore image to content:', err);
+              });
+            }
+          });
+        }
+      });
+    }
+  });
+  bindExploreParkCardHeroUploadDelegation();
+  initExploreSectionCardHeroUploadDelegation();
+}
+
+let exploreParkHeroDelegationBound = false;
+function bindExploreParkCardHeroUploadDelegation() {
+  const section = document.getElementById('explore-section');
+  if (!section || exploreParkHeroDelegationBound) return;
+  exploreParkHeroDelegationBound = true;
+  section.addEventListener('change', async (e) => {
+    const t = e.target;
+    if (!t || !t.id || t.type !== 'file') return;
+    const m = t.id.match(/^about-park-card-(\d+)-hero-upload$/);
+    if (!m || !t.files || !t.files[0]) return;
+    const slot = parseInt(m[1], 10);
+    const file = t.files[0];
+    const previewImg = document.getElementById(`preview-about-park-card-${slot}-hero-img`);
+    if (previewImg) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        previewImg.src = event.target.result;
+        previewImg.style.display = 'block';
+        const placeholder = previewImg.nextElementSibling;
+        if (placeholder && placeholder.tagName === 'SPAN') placeholder.style.display = 'none';
+      };
+      reader.readAsDataURL(file);
+    }
+    await uploadImage(file, `about-park-card-${slot}-hero`, null, null, {
+      localStorageKey: 'btb_explore_images',
+      fieldNameMapper: (type) => {
+        if (type === 'explore-hero') return 'hero';
+        if (type === 'explore-accommodation') return 'accommodation';
+        const mm = String(type).match(/^about-park-card-(\d+)-hero$/);
+        if (mm) return `parkCard${mm[1]}Hero`;
+        return type.replace('about-', '');
+      },
+      reloadFunction: loadExploreImagesData,
+      imageNameMapper: (type) => type,
+      onSuccess: (filepath) => {
+        const hid = document.getElementById(`about-park-card-${slot}-hero-url`);
+        if (hid) hid.value = filepath;
+        const cards = readExploreParkCardsFromAdmin();
+        if (cards[slot - 1]) cards[slot - 1].hero_image_url = filepath;
+        writeExploreParkCardsToAdmin(cards);
+        persistExploreParkCardsToServer()
+          .then(() => {
+            if (typeof loadExploreImagesData === 'function') loadExploreImagesData();
+          })
+          .catch((err) => console.error('persist park cards hero', err));
+      }
+    });
+    t.value = '';
+  });
+}
+
 // Gallery management functions for attractions
-const attractionGalleries = ['procter', 'halcyon', 'whitewater', 'nelson'];
 
 // Update gallery preview for an attraction
 function updateAboutAttractionGalleryPreview(attractionName, gallery) {
@@ -5537,11 +7859,11 @@ window.deleteAboutAttractionGalleryImage = function(attractionName, index) {
   galleryField.value = JSON.stringify(gallery);
   updateAboutAttractionGalleryPreview(attractionName, gallery);
   
-  if (typeof scheduleAboutAutoSave === 'function') {
-    if (typeof aboutHasUnsavedChanges !== 'undefined') {
-      aboutHasUnsavedChanges = true;
+  if (typeof scheduleExploreAutoSave === 'function') {
+    if (typeof exploreHasUnsavedChanges !== 'undefined') {
+      exploreHasUnsavedChanges = true;
     }
-    scheduleAboutAutoSave();
+    scheduleExploreAutoSave();
   }
 };
 
@@ -5612,12 +7934,12 @@ async function uploadAboutAttractionGalleryImage(attractionName, file, replaceIn
           console.error(`Error saving gallery for ${attractionName}:`, error);
         });
         
-        // Also trigger auto-save for other fields
-        if (typeof scheduleAboutAutoSave === 'function') {
-          if (typeof aboutHasUnsavedChanges !== 'undefined') {
-            aboutHasUnsavedChanges = true;
+        // Also trigger auto-save for other fields (Explore page content)
+        if (typeof scheduleExploreAutoSave === 'function') {
+          if (typeof exploreHasUnsavedChanges !== 'undefined') {
+            exploreHasUnsavedChanges = true;
           }
-          scheduleAboutAutoSave();
+          scheduleExploreAutoSave();
         }
       }
     }
@@ -5668,6 +7990,295 @@ function initAboutAttractionGalleries() {
         galleryInput.value = '';
       });
     }
+  });
+}
+
+// ==========================================
+// FLOOR PLAN GALLERY MANAGEMENT
+// ==========================================
+
+// Floor plan galleries
+const floorplanGalleries = ['basement', 'ground', 'loft'];
+
+// Update gallery preview for a floor plan floor
+function updateFloorplanGalleryPreview(floorName, gallery) {
+  const galleryPreview = document.getElementById(`floorplan-${floorName}-gallery-preview`);
+  if (!galleryPreview) return;
+  
+  galleryPreview.innerHTML = '';
+  
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText = 'position: relative; width: 80px; height: 80px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+    
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+    
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Заменить';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText = 'position: absolute; top: 2px; left: 2px; padding: 2px 6px; font-size: 0.7rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceFloorplanGalleryImage(floorName, index);
+    };
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText = 'position: absolute; top: 2px; right: 2px; width: 20px; height: 20px; padding: 0; font-size: 1rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteFloorplanGalleryImage(floorName, index);
+    };
+    
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+  
+  // Show add button if less than 10 photos
+  if (gallery.length < 10) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText = 'width: 80px; height: 80px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 1.5rem;">+</span>';
+    addItem.onclick = () => document.getElementById(`floorplan-${floorName}-gallery-upload`).click();
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+// Replace gallery image
+window.replaceFloorplanGalleryImage = function(floorName, index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadFloorplanGalleryImage(floorName, file, index);
+    }
+  };
+  input.click();
+};
+
+// Delete gallery image
+window.deleteFloorplanGalleryImage = function(floorName, index) {
+  const galleryField = document.getElementById(`${floorName}-gallery`);
+  if (!galleryField) return;
+  
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse gallery:', e);
+    return;
+  }
+  
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateFloorplanGalleryPreview(floorName, gallery);
+  
+  // Save to server
+  saveFloorplanGalleries();
+};
+
+// Upload gallery image
+async function uploadFloorplanGalleryImage(floorName, file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', `floorplan-${floorName}-gallery`);
+    formData.append('image', file);
+    
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+    
+    if (response.ok) {
+      const result = await response.json();
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl ? payload.imageUrl : (payload && payload.filepath ? payload.filepath : (result.imageUrl || result.filepath || ''));
+      console.log(`Gallery image upload result for ${floorName}:`, result);
+      console.log('Extracted imageUrl:', imageUrl);
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById(`${floorName}-gallery`);
+        if (!galleryField) return;
+        
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else {
+          if (gallery.length < 10) {
+            gallery.push(imageUrl);
+          } else {
+            alert('Maximum 10 photos allowed in gallery');
+            return;
+          }
+        }
+        
+        galleryField.value = JSON.stringify(gallery);
+        updateFloorplanGalleryPreview(floorName, gallery);
+        
+        console.log(`Gallery updated for ${floorName}:`, gallery);
+        
+        // Save to server
+        saveFloorplanGalleries();
+      }
+    }
+  } catch (error) {
+    console.error(`Error uploading gallery image for ${floorName}:`, error);
+  }
+}
+
+// Initialize floor plan gallery uploads
+function initFloorplanGalleries() {
+  // Prevent double initialization
+  if (window.floorplanGalleriesInitialized) {
+    console.log('Floor plan galleries already initialized, skipping...');
+    return;
+  }
+  window.floorplanGalleriesInitialized = true;
+  
+  floorplanGalleries.forEach(floorName => {
+    // Add photo button - remove existing listeners first
+    const addBtn = document.getElementById(`floorplan-${floorName}-add-gallery-photo`);
+    if (addBtn) {
+      // Clone button to remove all event listeners
+      const newAddBtn = addBtn.cloneNode(true);
+      addBtn.parentNode.replaceChild(newAddBtn, addBtn);
+      
+      newAddBtn.addEventListener('click', () => {
+        document.getElementById(`floorplan-${floorName}-gallery-upload`).click();
+      });
+    }
+    
+    // Gallery upload input - remove existing listeners first
+    const galleryInput = document.getElementById(`floorplan-${floorName}-gallery-upload`);
+    if (galleryInput) {
+      // Clone input to remove all event listeners
+      const newGalleryInput = galleryInput.cloneNode(true);
+      galleryInput.parentNode.replaceChild(newGalleryInput, galleryInput);
+      
+      newGalleryInput.addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (files.length === 0) return;
+        
+        const galleryField = document.getElementById(`${floorName}-gallery`);
+        if (!galleryField) return;
+        
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse gallery:', e);
+        }
+        
+        const remainingSlots = 10 - gallery.length;
+        if (files.length > remainingSlots) {
+          alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+          files.splice(remainingSlots);
+        }
+        
+        for (const file of files) {
+          await uploadFloorplanGalleryImage(floorName, file);
+        }
+        
+        // Reset input
+        e.target.value = '';
+      });
+    }
+  });
+}
+
+// Save floor plan galleries to server
+function saveFloorplanGalleries() {
+  const formData = new FormData();
+  formData.append('action', 'save_floorplan');
+  
+  // Get all floor plan data - use same logic as saveFloorplanContent()
+  const floorplanTitle = document.getElementById('floorplan-title')?.value || '';
+  const floorplanSubtitle = document.getElementById('floorplan-subtitle')?.value || '';
+  const basementSubtitle = document.getElementById('basement-subtitle')?.value || '';
+  const basementDescription = document.getElementById('basement-description')?.value || '';
+  const groundSubtitle = document.getElementById('ground-subtitle')?.value || '';
+  const groundDescription = document.getElementById('ground-description')?.value || '';
+  const loftSubtitle = document.getElementById('loft-subtitle')?.value || '';
+  const loftDescription = document.getElementById('loft-description')?.value || '';
+  
+  // Get image URLs from path elements or localStorage (same as saveFloorplanContent)
+  const stored = localStorage.getItem('btb_floorplan_settings');
+  const storedJson = stored ? JSON.parse(stored) : {};
+  const basementPathEl = document.getElementById('basement-image-path');
+  const groundPathEl = document.getElementById('ground-image-path');
+  const loftPathEl = document.getElementById('loft-image-path');
+  const basementImageUrl = (basementPathEl && basementPathEl.textContent) || storedJson.basement_image_url || '';
+  const groundQueenImage = (groundPathEl && groundPathEl.textContent) || storedJson.ground_image_url || storedJson.ground_queen_image || '';
+  const loftImageUrl = (loftPathEl && loftPathEl.textContent) || storedJson.loft_image_url || '';
+  
+  formData.append('floorplanTitle', floorplanTitle);
+  formData.append('floorplanSubtitle', floorplanSubtitle);
+  formData.append('basementSubtitle', basementSubtitle);
+  formData.append('basementDescription', basementDescription);
+  formData.append('basementImageUrl', basementImageUrl);
+  formData.append('groundSubtitle', groundSubtitle);
+  formData.append('groundDescription', groundDescription);
+  formData.append('groundQueenImage', groundQueenImage);
+  formData.append('groundTwinImage', '');
+  formData.append('loftSubtitle', loftSubtitle);
+  formData.append('loftDescription', loftDescription);
+  formData.append('loftImageUrl', loftImageUrl);
+  
+  // Add galleries
+  formData.append('basementGallery', document.getElementById('basement-gallery')?.value || '[]');
+  formData.append('groundGallery', document.getElementById('ground-gallery')?.value || '[]');
+  formData.append('loftGallery', document.getElementById('loft-gallery')?.value || '[]');
+  
+  fetch('api.php', {
+    method: 'POST',
+    body: formData
+  }).then(async response => {
+    // Get response text first to check what we received
+    const responseText = await response.text();
+    console.log('saveFloorplanGalleries: Response status:', response.status);
+    console.log('saveFloorplanGalleries: Response text:', responseText.substring(0, 500));
+    
+    // Check if response is JSON
+    const contentType = response.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
+      console.error('Server returned non-JSON response. Status:', response.status);
+      console.error('Response text:', responseText);
+      throw new Error('Server returned non-JSON response (status ' + response.status + '): ' + responseText.substring(0, 200));
+    }
+    
+    // Try to parse JSON
+    try {
+      return JSON.parse(responseText);
+    } catch (e) {
+      console.error('Failed to parse JSON response:', e);
+      console.error('Response text:', responseText);
+      throw new Error('Invalid JSON response: ' + responseText.substring(0, 200));
+    }
+  }).then(result => {
+    console.log('Floor plan galleries saved to server:', result);
+    if (result.success) {
+      console.log('✓ Floor plan galleries successfully saved to database');
+    } else {
+      console.error('✗ Failed to save floor plan galleries:', result.error);
+      if (result.error_details) {
+        console.error('Error details:', result.error_details);
+      }
+    }
+  }).catch(error => {
+    console.error('Error saving floor plan galleries:', error);
+    alert('Ошибка при сохранении галерей: ' + error.message);
   });
 }
 
@@ -5934,6 +8545,14 @@ async function saveAboutContent() {
   updateAboutSaveStatus('saving');
   
   try {
+    // Contenteditable previews sync to hidden fields on blur; auto-save may run first — force sync so DB gets latest text
+    document.querySelectorAll('#about-section [data-field]').forEach((el) => {
+      const fid = el.getAttribute('data-field');
+      if (fid && typeof syncPreviewToForm === 'function') {
+        syncPreviewToForm(el, fid);
+      }
+    });
+
     const formData = new FormData();
     formData.append('action', 'save_content');
     
@@ -5942,9 +8561,9 @@ async function saveAboutContent() {
     formData.append('about_hero_subtitle', document.getElementById('about-hero-subtitle')?.value || '');
     formData.append('about_idea_title', document.getElementById('about-idea-title')?.value || '');
     formData.append('about_idea_intro', document.getElementById('about-idea-intro')?.value || '');
-    formData.append('about_idea_paragraph_1', document.getElementById('about-idea-paragraph-1')?.value || '');
-    formData.append('about_idea_paragraph_2', document.getElementById('about-idea-paragraph-2')?.value || '');
-    formData.append('about_idea_paragraph_3', document.getElementById('about-idea-paragraph-3')?.value || '');
+    formData.append('about_idea_paragraph_1', '');
+    formData.append('about_idea_paragraph_2', '');
+    formData.append('about_idea_paragraph_3', '');
     formData.append('about_idea_signature', document.getElementById('about-idea-signature')?.value || '');
     formData.append('about_location_title', document.getElementById('about-location-title')?.value || '');
     formData.append('about_location_paragraph_1', document.getElementById('about-location-paragraph-1')?.value || '');
@@ -5953,8 +8572,75 @@ async function saveAboutContent() {
     formData.append('about_location_paragraph_4', document.getElementById('about-location-paragraph-4')?.value || '');
     formData.append('about_location_coordinates', document.getElementById('about-location-coordinates')?.value || '');
     formData.append('about_location_deer_warning', document.getElementById('about-location-deer-warning')?.value || '');
-    formData.append('about_attractions_title', document.getElementById('about-attractions-title')?.value || '');
-    formData.append('about_attractions_lead', document.getElementById('about-attractions-lead')?.value || '');
+    formData.append('about_contact_form_title', document.getElementById('about-contact-form-title')?.value || '');
+    formData.append('about_contact_form_description', document.getElementById('about-contact-form-description')?.value || '');
+    
+    // Get image URLs from localStorage
+    const imagesStored = localStorage.getItem('btb_about_images') || '{}';
+    const imagesJson = JSON.parse(imagesStored);
+    formData.append('about_hero_image_url', imagesJson.hero || '');
+    formData.append('about_founder_image_url', imagesJson.founder || '');
+    
+    await postApiFormDataAndUpdateStatus('about', formData);
+  } catch (error) {
+    console.error('Error saving about content:', error);
+    updateAboutSaveStatus('error', (error && error.message) || 'Save failed');
+  }
+}
+
+function updateAboutSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('about', status, detail);
+}
+
+function initAboutAutoSave() {
+  // syncPreviewToForm already handles triggering auto-save for about fields
+  // This function is here for consistency with retreat/special pattern
+  console.log('About auto-save initialized');
+}
+
+// Explore page auto-save
+let exploreAutoSaveTimer = null;
+let exploreHasUnsavedChanges = false;
+
+function scheduleExploreAutoSave() {
+  if (exploreAutoSaveTimer) {
+    clearTimeout(exploreAutoSaveTimer);
+  }
+
+  exploreAutoSaveTimer = setTimeout(() => {
+    if (exploreHasUnsavedChanges) {
+      saveExploreContent();
+      exploreHasUnsavedChanges = false;
+    }
+  }, 2000);
+
+  updateExploreSaveStatus('saving');
+}
+
+async function saveExploreContent() {
+  updateExploreSaveStatus('saving');
+
+  try {
+    const formData = new FormData();
+    formData.append('action', 'save_content');
+
+    formData.append('explore_hero_title', document.getElementById('explore-hero-title')?.value || '');
+    formData.append('explore_hero_subtitle', document.getElementById('explore-hero-subtitle')?.value || '');
+
+    formData.append('explore_communities_h2', document.getElementById('explore-communities-h2')?.value || '');
+    formData.append('explore_culture_h2', document.getElementById('explore-culture-h2')?.value || '');
+    formData.append('explore_parks_h2', document.getElementById('explore-parks-h2')?.value || '');
+    formData.append('explore_activities_h2', document.getElementById('explore-activities-h2')?.value || '');
+    formData.append('explore_communities_cards', JSON.stringify(readExploreSectionCardsFromAdmin('communities')));
+    formData.append('explore_culture_cards', JSON.stringify(readExploreSectionCardsFromAdmin('culture')));
+    formData.append('explore_activities_cards', JSON.stringify(readExploreSectionCardsFromAdmin('activities')));
+
+    const commIntroVal = document.getElementById('explore-communities-intro')?.value || '';
+    formData.append('explore_communities_intro', commIntroVal);
+    formData.append('explore_culture_intro', document.getElementById('explore-culture-intro')?.value || '');
+    formData.append('explore_activities_intro', document.getElementById('explore-activities-intro')?.value || '');
+    formData.append('about_attractions_title', '');
+    formData.append('about_attractions_lead', commIntroVal);
     formData.append('about_procter_title', document.getElementById('about-procter-title')?.value || '');
     formData.append('about_procter_distance', document.getElementById('about-procter-distance')?.value || '');
     formData.append('about_procter_description', document.getElementById('about-procter-description')?.value || '');
@@ -5967,124 +8653,135 @@ async function saveAboutContent() {
     formData.append('about_nelson_title', document.getElementById('about-nelson-title')?.value || '');
     formData.append('about_nelson_distance', document.getElementById('about-nelson-distance')?.value || '');
     formData.append('about_nelson_description', document.getElementById('about-nelson-description')?.value || '');
+    formData.append('about_kaslo_title', document.getElementById('about-kaslo-title')?.value || '');
+    formData.append('about_kaslo_distance', document.getElementById('about-kaslo-distance')?.value || '');
+    formData.append('about_kaslo_description', document.getElementById('about-kaslo-description')?.value || '');
+    formData.append('about_crawford_title', document.getElementById('about-crawford-title')?.value || '');
+    formData.append('about_crawford_distance', document.getElementById('about-crawford-distance')?.value || '');
+    formData.append('about_crawford_description', document.getElementById('about-crawford-description')?.value || '');
+    formData.append('about_museum_title', document.getElementById('about-museum-title')?.value || '');
+    formData.append('about_museum_distance', document.getElementById('about-museum-distance')?.value || '');
+    formData.append('about_museum_description', document.getElementById('about-museum-description')?.value || '');
     formData.append('about_parks_title', document.getElementById('about-parks-title')?.value || '');
     formData.append('about_parks_intro', document.getElementById('about-parks-intro')?.value || '');
-    formData.append('about_parks_list', document.getElementById('about-parks-list')?.value || '');
-    
-    // Get image URLs from localStorage
-    const imagesStored = localStorage.getItem('btb_about_images') || '{}';
-    const imagesJson = JSON.parse(imagesStored);
-    formData.append('about_hero_image_url', imagesJson.hero || '');
-    formData.append('about_founder_image_url', imagesJson.founder || '');
-    formData.append('about_procter_image_url', imagesJson.procter || '');
-    
-    // Get gallery data
-    attractionGalleries.forEach(attractionName => {
+    const parkCardsPayload = readExploreParkCardsFromAdmin();
+    formData.append('about_parks_cards', JSON.stringify(parkCardsPayload));
+    formData.append(
+      'about_parks_list',
+      parkCardsPayload.map((c) => (c.title || '').trim()).filter(Boolean).join('\n')
+    );
+
+    const exStore = localStorage.getItem('btb_explore_images') || '{}';
+    const exJson = JSON.parse(exStore);
+    formData.append('explore_hero_image_url', exJson.hero || '');
+    formData.append('explore_accommodation_image_url', exJson.accommodation || '');
+    formData.append('explore_accommodation_title', document.getElementById('explore-accommodation-title')?.value || '');
+    formData.append('explore_accommodation_description', document.getElementById('explore-accommodation-description')?.value || '');
+    formData.append('about_procter_image_url', exJson.procter || '');
+    formData.append('about_nelson_image_url', exJson.nelson || '');
+    formData.append('about_kaslo_image_url', exJson.kaslo || '');
+    formData.append('about_crawford_image_url', exJson.crawford || '');
+    formData.append('about_museum_image_url', exJson.museum || '');
+
+    attractionGalleries.forEach((attractionName) => {
       const galleryField = document.getElementById(`about-${attractionName}-gallery`);
       if (galleryField) {
         formData.append(`about_${attractionName}_gallery`, galleryField.value || '[]');
       }
     });
-    
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      updateAboutSaveStatus('saved');
-    } else {
-      updateAboutSaveStatus('error');
+
+    const { ok } = await postApiFormDataAndUpdateStatus('explore', formData);
+    if (ok) {
+      setTimeout(() => {
+        if (typeof loadExploreData === 'function') {
+          loadExploreData();
+        }
+      }, 400);
     }
   } catch (error) {
-    console.error('Error saving about content:', error);
-    updateAboutSaveStatus('error');
+    console.error('Error saving explore content:', error);
+    updateExploreSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateAboutSaveStatus(status) {
-  const statusText = document.getElementById('about-save-status-text');
-  const statusIcon = document.getElementById('about-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateExploreSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('explore', status, detail);
 }
 
-function initAboutAutoSave() {
-  // syncPreviewToForm already handles triggering auto-save for about fields
-  // This function is here for consistency with retreat/special pattern
-  console.log('About auto-save initialized');
+function initExploreAutoSave() {
+  console.log('Explore auto-save initialized');
 }
 
-// Load contact data
+// Load contact data (phone, email, address) from get_content. Same pattern as other CMS blocks:
+// contenteditable previews + hidden fields stay in sync; data comes from API, not long-lived HTML defaults.
 async function loadContactData() {
-  console.log('Loading contact data...');
-  try {
-    const formData = new FormData();
-    formData.append('action', 'get_content');
-    
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
+  if (contactDataLoadInFlight) {
+    return contactDataLoadInFlight;
+  }
+  const work = (async function contactDataLoad() {
+    console.log('Loading contact data...');
+    const phoneField = document.getElementById('contact-phone');
+    const emailField = document.getElementById('contact-email');
+    const addressField = document.getElementById('contact-address');
+    const phonePreview = document.getElementById('preview-contact-phone');
+    const emailPreview = document.getElementById('preview-contact-email');
+    const addressPreview = document.getElementById('preview-contact-address');
+
+    // Remove stale placeholder copy from admin.html before the network returns (avoids default-text flash)
+    if (phonePreview) phonePreview.textContent = '';
+    if (emailPreview) emailPreview.textContent = '';
+    if (addressPreview) addressPreview.textContent = '';
+
+    function applyContactValues(phoneVal, emailVal, addressVal) {
+      if (phoneField) phoneField.value = phoneVal;
+      if (emailField) emailField.value = emailVal;
+      if (addressField) addressField.value = addressVal;
+      if (phonePreview) phonePreview.textContent = phoneVal;
+      if (emailPreview) emailPreview.textContent = emailVal;
+      if (addressPreview) addressPreview.textContent = addressVal;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('action', 'get_content');
+      const response = await fetch('api.php', { method: 'POST', body: formData });
+      if (!response.ok) {
+        throw new Error('get_content failed: ' + response.status);
+      }
       const result = await response.json();
       if (result.success && result.data) {
         const data = result.data;
-        
-        // Update hidden fields and preview
-        const phoneField = document.getElementById('contact-phone');
-        const emailField = document.getElementById('contact-email');
-        const addressField = document.getElementById('contact-address');
-        const phonePreview = document.getElementById('preview-contact-phone');
-        const emailPreview = document.getElementById('preview-contact-email');
-        const addressPreview = document.getElementById('preview-contact-address');
-        
-        if (phoneField) phoneField.value = data.contactPhone || '';
-        if (emailField) emailField.value = data.contactEmail || '';
-        if (addressField) addressField.value = data.contactAddress || '';
-        
-        if (phonePreview) phonePreview.textContent = data.contactPhone || '+1 (555) 123‑4567';
-        if (emailPreview) emailPreview.textContent = data.contactEmail || 'hello@backtobase.example';
-        if (addressPreview) addressPreview.textContent = data.contactAddress || 'British Columbia, Canada';
-        
+        const phoneVal =
+          data.contactPhone != null && String(data.contactPhone).trim() !== ''
+            ? String(data.contactPhone).trim()
+            : DEFAULT_CONTACT_PHONE;
+        const emailVal =
+          data.contactEmail != null && String(data.contactEmail).trim() !== ''
+            ? String(data.contactEmail).trim()
+            : DEFAULT_CONTACT_EMAIL;
+        const addressVal =
+          data.contactAddress != null && String(data.contactAddress).trim() !== ''
+            ? String(data.contactAddress).trim()
+            : DEFAULT_CONTACT_ADDRESS;
+        applyContactValues(phoneVal, emailVal, addressVal);
         console.log('Contact data loaded successfully');
+      } else {
+        applyContactValues(DEFAULT_CONTACT_PHONE, DEFAULT_CONTACT_EMAIL, DEFAULT_CONTACT_ADDRESS);
       }
+    } catch (error) {
+      console.log('Failed to load contact data:', error);
+      applyContactValues(DEFAULT_CONTACT_PHONE, DEFAULT_CONTACT_EMAIL, DEFAULT_CONTACT_ADDRESS);
     }
-  } catch (error) {
-    console.log('Failed to load contact data:', error);
+  })();
+  contactDataLoadInFlight = work;
+  try {
+    await work;
+  } finally {
+    contactDataLoadInFlight = null;
   }
 }
 
-// Contact auto-save functionality
-let contactAutoSaveTimer = null;
-let contactHasUnsavedChanges = false;
+// Contact auto-save (contactAutoSaveTimer + contactHasUnsavedChanges defined at top of file)
 
 window.scheduleContactAutoSave = function() {
   if (contactAutoSaveTimer) {
@@ -6113,53 +8810,15 @@ async function saveContactContent() {
     formData.append('contact_email', document.getElementById('contact-email')?.value || '');
     formData.append('contact_address', document.getElementById('contact-address')?.value || '');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      updateContactSaveStatus('saved');
-    } else {
-      updateContactSaveStatus('error');
-    }
+    await postApiFormDataAndUpdateStatus('contact', formData);
   } catch (error) {
     console.error('Error saving contact content:', error);
-    updateContactSaveStatus('error');
+    updateContactSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateContactSaveStatus(status) {
-  const statusText = document.getElementById('contact-save-status-text');
-  const statusIcon = document.getElementById('contact-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateContactSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('contact', status, detail);
 }
 
 function initContactAutoSave() {
@@ -6196,58 +8855,25 @@ async function saveRoomSecondContent() {
     formData.append('room_second_title', document.getElementById('room-second-title')?.value || '');
     formData.append('room_second_subtitle', document.getElementById('room-second-subtitle')?.value || '');
     formData.append('room_second_description', document.getElementById('room-second-description')?.value || '');
-    formData.append('room_second_price', document.getElementById('room-second-price')?.value || '');
+    formData.append('room_second_price_prefix', document.getElementById('room-second-price-prefix')?.value || '');
+    formData.append('room_second_price_amount', document.getElementById('room-second-price-amount')?.value || '');
+    formData.append('room_second_price_suffix', document.getElementById('room-second-price-suffix')?.value || '');
     formData.append('room_second_capacity', document.getElementById('room-second-capacity')?.value || '');
     formData.append('room_second_note', document.getElementById('room-second-note')?.value || '');
     formData.append('room_second_gallery', document.getElementById('room-second-gallery')?.value || '[]');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      updateRoomSecondSaveStatus('saved');
-    } else {
-      updateRoomSecondSaveStatus('error');
+    const { ok } = await postApiFormDataAndUpdateStatus('room-second', formData);
+    if (ok) {
+      void refreshHomepageRoomCardPricePreviewsFromApi();
     }
   } catch (error) {
     console.error('Error saving room second content:', error);
-    updateRoomSecondSaveStatus('error');
+    updateRoomSecondSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateRoomSecondSaveStatus(status) {
-  const statusText = document.getElementById('room-second-save-status-text');
-  const statusIcon = document.getElementById('room-second-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateRoomSecondSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('room-second', status, detail);
 }
 
 function initRoomSecondAutoSave() {
@@ -6284,58 +8910,25 @@ async function saveRoomGroundTwinContent() {
     formData.append('room_ground_twin_title', document.getElementById('room-ground-twin-title')?.value || '');
     formData.append('room_ground_twin_subtitle', document.getElementById('room-ground-twin-subtitle')?.value || '');
     formData.append('room_ground_twin_description', document.getElementById('room-ground-twin-description')?.value || '');
-    formData.append('room_ground_twin_price', document.getElementById('room-ground-twin-price')?.value || '');
+    formData.append('room_ground_twin_price_prefix', document.getElementById('room-ground-twin-price-prefix')?.value || '');
+    formData.append('room_ground_twin_price_amount', document.getElementById('room-ground-twin-price-amount')?.value || '');
+    formData.append('room_ground_twin_price_suffix', document.getElementById('room-ground-twin-price-suffix')?.value || '');
     formData.append('room_ground_twin_capacity', document.getElementById('room-ground-twin-capacity')?.value || '');
     formData.append('room_ground_twin_note', document.getElementById('room-ground-twin-note')?.value || '');
     formData.append('room_ground_twin_gallery', document.getElementById('room-ground-twin-gallery')?.value || '[]');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      updateRoomGroundTwinSaveStatus('saved');
-    } else {
-      updateRoomGroundTwinSaveStatus('error');
+    const { ok } = await postApiFormDataAndUpdateStatus('room-ground-twin', formData);
+    if (ok) {
+      void refreshHomepageRoomCardPricePreviewsFromApi();
     }
   } catch (error) {
     console.error('Error saving room ground twin content:', error);
-    updateRoomGroundTwinSaveStatus('error');
+    updateRoomGroundTwinSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateRoomGroundTwinSaveStatus(status) {
-  const statusText = document.getElementById('room-ground-twin-save-status-text');
-  const statusIcon = document.getElementById('room-ground-twin-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateRoomGroundTwinSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('room-ground-twin', status, detail);
 }
 
 function initRoomGroundTwinAutoSave() {
@@ -6372,58 +8965,25 @@ async function saveRoomGroundQueenContent() {
     formData.append('room_ground_queen_title', document.getElementById('room-ground-queen-title')?.value || '');
     formData.append('room_ground_queen_subtitle', document.getElementById('room-ground-queen-subtitle')?.value || '');
     formData.append('room_ground_queen_description', document.getElementById('room-ground-queen-description')?.value || '');
-    formData.append('room_ground_queen_price', document.getElementById('room-ground-queen-price')?.value || '');
+    formData.append('room_ground_queen_price_prefix', document.getElementById('room-ground-queen-price-prefix')?.value || '');
+    formData.append('room_ground_queen_price_amount', document.getElementById('room-ground-queen-price-amount')?.value || '');
+    formData.append('room_ground_queen_price_suffix', document.getElementById('room-ground-queen-price-suffix')?.value || '');
     formData.append('room_ground_queen_capacity', document.getElementById('room-ground-queen-capacity')?.value || '');
     formData.append('room_ground_queen_note', document.getElementById('room-ground-queen-note')?.value || '');
     formData.append('room_ground_queen_gallery', document.getElementById('room-ground-queen-gallery')?.value || '[]');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      updateRoomGroundQueenSaveStatus('saved');
-    } else {
-      updateRoomGroundQueenSaveStatus('error');
+    const { ok } = await postApiFormDataAndUpdateStatus('room-ground-queen', formData);
+    if (ok) {
+      void refreshHomepageRoomCardPricePreviewsFromApi();
     }
   } catch (error) {
     console.error('Error saving room ground queen content:', error);
-    updateRoomGroundQueenSaveStatus('error');
+    updateRoomGroundQueenSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateRoomGroundQueenSaveStatus(status) {
-  const statusText = document.getElementById('room-ground-queen-save-status-text');
-  const statusIcon = document.getElementById('room-ground-queen-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateRoomGroundQueenSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('room-ground-queen', status, detail);
 }
 
 function initRoomGroundQueenAutoSave() {
@@ -6460,58 +9020,25 @@ async function saveRoomBasementContent() {
     formData.append('room_basement_title', document.getElementById('room-basement-title')?.value || '');
     formData.append('room_basement_subtitle', document.getElementById('room-basement-subtitle')?.value || '');
     formData.append('room_basement_description', document.getElementById('room-basement-description')?.value || '');
-    formData.append('room_basement_price', document.getElementById('room-basement-price')?.value || '');
+    formData.append('room_basement_price_prefix', document.getElementById('room-basement-price-prefix')?.value || '');
+    formData.append('room_basement_price_amount', document.getElementById('room-basement-price-amount')?.value || '');
+    formData.append('room_basement_price_suffix', document.getElementById('room-basement-price-suffix')?.value || '');
     formData.append('room_basement_capacity', document.getElementById('room-basement-capacity')?.value || '');
     formData.append('room_basement_note', document.getElementById('room-basement-note')?.value || '');
     formData.append('room_basement_gallery', document.getElementById('room-basement-gallery')?.value || '[]');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      updateRoomBasementSaveStatus('saved');
-    } else {
-      updateRoomBasementSaveStatus('error');
+    const { ok } = await postApiFormDataAndUpdateStatus('room-basement', formData);
+    if (ok) {
+      void refreshHomepageRoomCardPricePreviewsFromApi();
     }
   } catch (error) {
     console.error('Error saving room basement content:', error);
-    updateRoomBasementSaveStatus('error');
+    updateRoomBasementSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateRoomBasementSaveStatus(status) {
-  const statusText = document.getElementById('room-basement-save-status-text');
-  const statusIcon = document.getElementById('room-basement-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateRoomBasementSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('room-basement', status, detail);
 }
 
 function initRoomBasementAutoSave() {
@@ -6549,58 +9076,18 @@ async function saveWellnessContent() {
     formData.append('wellness_description', document.getElementById('wellness-description')?.value || '');
     formData.append('wellness_massage_title', document.getElementById('wellness-massage-title')?.value || '');
     formData.append('wellness_massage_description', document.getElementById('wellness-massage-description')?.value || '');
-    formData.append('wellness_yoga_title', document.getElementById('wellness-yoga-title')?.value || '');
-    formData.append('wellness_yoga_description', document.getElementById('wellness-yoga-description')?.value || '');
-    formData.append('wellness_sauna_title', document.getElementById('wellness-sauna-title')?.value || '');
-    formData.append('wellness_sauna_description', document.getElementById('wellness-sauna-description')?.value || '');
+    formData.append('wellness_yoga_title', '');
+    formData.append('wellness_yoga_description', '');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      updateWellnessSaveStatus('saved');
-    } else {
-      updateWellnessSaveStatus('error');
-    }
+    await postApiFormDataAndUpdateStatus('wellness', formData);
   } catch (error) {
     console.error('Error saving wellness content:', error);
-    updateWellnessSaveStatus('error');
+    updateWellnessSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateWellnessSaveStatus(status) {
-  const statusText = document.getElementById('wellness-save-status-text');
-  const statusIcon = document.getElementById('wellness-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateWellnessSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('wellness', status, detail);
 }
 
 function initWellnessAutoSave() {
@@ -6637,18 +9124,19 @@ async function saveMassageContent() {
   try {
     // Sync all preview fields to form before saving to ensure latest changes are included
     const miniHotelTitlePreview = document.getElementById('preview-mini-hotel-title');
-    const miniHotelDesc1Preview = document.getElementById('preview-mini-hotel-desc-1');
-    const miniHotelDesc2Preview = document.getElementById('preview-mini-hotel-desc-2');
-    
+    const miniHotelDescPreview = document.getElementById('preview-mini-hotel-desc');
     if (miniHotelTitlePreview) {
       syncPreviewToForm(miniHotelTitlePreview, 'mini-hotel-title');
     }
-    if (miniHotelDesc1Preview) {
-      syncPreviewToForm(miniHotelDesc1Preview, 'mini-hotel-description-1');
+    if (miniHotelDescPreview) {
+      syncPreviewToForm(miniHotelDescPreview, 'mini-hotel-description');
     }
-    if (miniHotelDesc2Preview) {
-      syncPreviewToForm(miniHotelDesc2Preview, 'mini-hotel-description-2');
-    }
+    const bookingTitlePrev = document.getElementById('preview-massage-booking-title');
+    const bookingIntroPrev = document.getElementById('preview-massage-booking-intro');
+    const bookingEmptyPrev = document.getElementById('preview-massage-booking-empty-hint');
+    if (bookingTitlePrev) syncPreviewToForm(bookingTitlePrev, 'massage-booking-title');
+    if (bookingIntroPrev) syncPreviewToForm(bookingIntroPrev, 'massage-booking-intro');
+    if (bookingEmptyPrev) syncPreviewToForm(bookingEmptyPrev, 'massage-booking-empty-hint');
     
     const formData = new FormData();
     formData.append('action', 'save_content');
@@ -6664,92 +9152,39 @@ async function saveMassageContent() {
     formData.append('massage_reiki_description', document.getElementById('massage-reiki-description')?.value || '');
     formData.append('massage_sauna_title', document.getElementById('massage-sauna-title')?.value || '');
     formData.append('massage_sauna_description', document.getElementById('massage-sauna-description')?.value || '');
+    formData.append('massage_booking_title', document.getElementById('massage-booking-title')?.value || '');
+    formData.append('massage_booking_intro', document.getElementById('massage-booking-intro')?.value || '');
+    formData.append('massage_pricing_relaxing', collectMassagePricingJsonForKey('relaxing'));
+    formData.append('massage_pricing_deep_tissue', collectMassagePricingJsonForKey('deep'));
+    formData.append('massage_pricing_reiki', collectMassagePricingJsonForKey('reiki'));
+    formData.append('massage_pricing_sauna', collectMassagePricingJsonForKey('sauna'));
     
     const miniHotelTitleField = document.getElementById('mini-hotel-title');
-    const miniHotelDesc1Field = document.getElementById('mini-hotel-description-1');
-    const miniHotelDesc2Field = document.getElementById('mini-hotel-description-2');
-    
+    const miniHotelDescField = document.getElementById('mini-hotel-description');
     const miniHotelTitle = miniHotelTitleField?.value || '';
-    const miniHotelDesc1 = miniHotelDesc1Field?.value || '';
-    const miniHotelDesc2 = miniHotelDesc2Field?.value || '';
-    
+    const miniHotelDescription = miniHotelDescField?.value || '';
     console.log('saveMassageContent: Mini-hotel fields:', {
       titleFieldExists: !!miniHotelTitleField,
       titleFieldValue: miniHotelTitle,
-      desc1FieldExists: !!miniHotelDesc1Field,
-      desc1FieldValue: miniHotelDesc1.substring(0, 50),
-      desc2FieldExists: !!miniHotelDesc2Field,
-      desc2FieldValue: miniHotelDesc2.substring(0, 50)
+      descFieldExists: !!miniHotelDescField,
+      descFieldValue: miniHotelDescription.substring(0, 80)
     });
-    
     formData.append('mini_hotel_title', miniHotelTitle);
-    formData.append('mini_hotel_description_1', miniHotelDesc1);
-    formData.append('mini_hotel_description_2', miniHotelDesc2);
-    
-    // Log what we're sending
+    formData.append('mini_hotel_description', miniHotelDescription);
     console.log('saveMassageContent: Sending data:', {
       mini_hotel_title: miniHotelTitle.substring(0, 50),
-      mini_hotel_description_1: miniHotelDesc1.substring(0, 50),
-      mini_hotel_description_2: miniHotelDesc2.substring(0, 50)
+      mini_hotel_description: miniHotelDescription.substring(0, 50)
     });
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    if (response.ok) {
-      const result = await response.json();
-      console.log('saveMassageContent: Save response:', result);
-      if (result.success) {
-        updateMassageSaveStatus('saved');
-        console.log('saveMassageContent: Content saved successfully');
-      } else {
-        updateMassageSaveStatus('error');
-        console.error('saveMassageContent: Save failed:', result.error || result.message);
-      }
-    } else {
-      const errorText = await response.text();
-      updateMassageSaveStatus('error');
-      console.error('saveMassageContent: HTTP error:', response.status, errorText);
-    }
+    await postApiFormDataAndUpdateStatus('massage', formData);
   } catch (error) {
     console.error('Error saving massage content:', error);
-    updateMassageSaveStatus('error');
+    updateMassageSaveStatus('error', (error && error.message) || 'Save failed');
   }
 }
 
-function updateMassageSaveStatus(status) {
-  const statusText = document.getElementById('massage-save-status-text');
-  const statusIcon = document.getElementById('massage-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateMassageSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('massage', status, detail);
 }
 
 function initMassageAutoSave() {
@@ -6759,6 +9194,52 @@ function initMassageAutoSave() {
 // ==========================================
 // HOMEPAGE ROOMS CARDS MANAGEMENT
 // ==========================================
+
+const BTB_HOMEPAGE_ROOM_CARD_PRICE_FALLBACK_HTML = {
+  basement: '<strong>Price:</strong> 140 CAD / night',
+  groundQueen: '<strong>Price:</strong> 130 CAD / night',
+  groundTwin: '<strong>Price:</strong> 125 CAD / night',
+  second: '<strong>Price:</strong> 210 CAD / night (entire floor)'
+};
+
+/** Same HTML line as index.php / room pages; server returns trusted HTML from api.php get_content. */
+function btbSetHomepageRoomCardPricePreview(element, serverHtml, fallbackHtml) {
+  if (!element) {
+    return;
+  }
+  const raw = serverHtml == null ? '' : String(serverHtml);
+  element.innerHTML = raw.trim() !== '' ? raw : fallbackHtml;
+}
+
+/** After saving a room nightly price, refresh read-only homepage card price previews (same as get_content / site). */
+async function refreshHomepageRoomCardPricePreviewsFromApi() {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'get_content');
+    const response = await fetch('api.php', { method: 'POST', body: formData });
+    if (!response.ok) {
+      return;
+    }
+    const result = await response.json();
+    if (!result.success || !result.data) {
+      return;
+    }
+    const d = result.data;
+    const fb = BTB_HOMEPAGE_ROOM_CARD_PRICE_FALLBACK_HTML;
+    const rows = [
+      ['preview-room-basement-card-price', d.roomBasementCardPrice, fb.basement],
+      ['preview-room-ground-queen-card-price', d.roomGroundQueenCardPrice, fb.groundQueen],
+      ['preview-room-ground-twin-card-price', d.roomGroundTwinCardPrice, fb.groundTwin],
+      ['preview-room-second-card-price', d.roomSecondCardPrice, fb.second]
+    ];
+    rows.forEach(([id, val, fallbackHtml]) => {
+      const el = document.getElementById(id);
+      btbSetHomepageRoomCardPricePreview(el, val, fallbackHtml);
+    });
+  } catch (e) {
+    console.warn('refreshHomepageRoomCardPricePreviewsFromApi:', e);
+  }
+}
 
 // Load homepage rooms cards data
 async function loadHomepageRoomsData() {
@@ -6822,7 +9303,6 @@ async function loadHomepageRoomsData() {
         // Basement card
         const basementTitleField = document.getElementById('room-basement-card-title');
         const basementDescField = document.getElementById('room-basement-card-description');
-        const basementPriceField = document.getElementById('room-basement-card-price');
         const basementTitlePreview = document.getElementById('preview-room-basement-card-title');
         const basementDescPreview = document.getElementById('preview-room-basement-card-description');
         const basementPricePreview = document.getElementById('preview-room-basement-card-price');
@@ -6834,7 +9314,7 @@ async function loadHomepageRoomsData() {
         });
         
         if (basementTitleField) {
-          const title = data.roomBasementCardTitle || 'Basement<br/>Queen bed';
+          const title = data.roomBasementCardTitle || 'Loki Suite';
           basementTitleField.value = title;
           console.log('Set room-basement-card-title:', title);
           if (basementTitlePreview) {
@@ -6848,16 +9328,16 @@ async function loadHomepageRoomsData() {
           console.log('Set room-basement-card-description:', desc);
           if (basementDescPreview) {
             basementDescPreview.textContent = desc.replace(/\n/g, '\n');
-            basementDescPreview.innerHTML = desc.replace(/\n/g, '<br>');
+            basementDescPreview.textContent = desc;
           }
         }
-        if (basementPriceField) {
-          const price = data.roomBasementCardPrice || 'From 140 CAD/night';
-          basementPriceField.value = price;
-          console.log('Set room-basement-card-price:', price);
-          if (basementPricePreview) {
-            basementPricePreview.textContent = price;
-          }
+        if (basementPricePreview) {
+          btbSetHomepageRoomCardPricePreview(
+            basementPricePreview,
+            data.roomBasementCardPrice,
+            BTB_HOMEPAGE_ROOM_CARD_PRICE_FALLBACK_HTML.basement
+          );
+          console.log('Set preview room card price (from CMS nightly):', data.roomBasementCardPrice);
         }
         
         // Update basement card image
@@ -6875,13 +9355,12 @@ async function loadHomepageRoomsData() {
         // Ground Queen card
         const groundQueenTitleField = document.getElementById('room-ground-queen-card-title');
         const groundQueenDescField = document.getElementById('room-ground-queen-card-description');
-        const groundQueenPriceField = document.getElementById('room-ground-queen-card-price');
         const groundQueenTitlePreview = document.getElementById('preview-room-ground-queen-card-title');
         const groundQueenDescPreview = document.getElementById('preview-room-ground-queen-card-description');
         const groundQueenPricePreview = document.getElementById('preview-room-ground-queen-card-price');
         
         if (groundQueenTitleField) {
-          const title = data.roomGroundQueenCardTitle || 'Ground floor<br/>Queen bed';
+          const title = data.roomGroundQueenCardTitle || 'The Nouk';
           groundQueenTitleField.value = title;
           if (groundQueenTitlePreview) {
             groundQueenTitlePreview.textContent = title.replace(/<br\s*\/?>/gi, '\n');
@@ -6893,15 +9372,15 @@ async function loadHomepageRoomsData() {
           groundQueenDescField.value = desc;
           if (groundQueenDescPreview) {
             groundQueenDescPreview.textContent = desc.replace(/\n/g, '\n');
-            groundQueenDescPreview.innerHTML = desc.replace(/\n/g, '<br>');
+            groundQueenDescPreview.textContent = desc;
           }
         }
-        if (groundQueenPriceField) {
-          const price = data.roomGroundQueenCardPrice || 'From 130 CAD/night';
-          groundQueenPriceField.value = price;
-          if (groundQueenPricePreview) {
-            groundQueenPricePreview.textContent = price;
-          }
+        if (groundQueenPricePreview) {
+          btbSetHomepageRoomCardPricePreview(
+            groundQueenPricePreview,
+            data.roomGroundQueenCardPrice,
+            BTB_HOMEPAGE_ROOM_CARD_PRICE_FALLBACK_HTML.groundQueen
+          );
         }
         
         // Update ground queen card image
@@ -6919,13 +9398,12 @@ async function loadHomepageRoomsData() {
         // Ground Twin card
         const groundTwinTitleField = document.getElementById('room-ground-twin-card-title');
         const groundTwinDescField = document.getElementById('room-ground-twin-card-description');
-        const groundTwinPriceField = document.getElementById('room-ground-twin-card-price');
         const groundTwinTitlePreview = document.getElementById('preview-room-ground-twin-card-title');
         const groundTwinDescPreview = document.getElementById('preview-room-ground-twin-card-description');
         const groundTwinPricePreview = document.getElementById('preview-room-ground-twin-card-price');
         
         if (groundTwinTitleField) {
-          const title = data.roomGroundTwinCardTitle || 'Ground floor<br/>Twin beds';
+          const title = data.roomGroundTwinCardTitle || 'Vrienden';
           groundTwinTitleField.value = title;
           if (groundTwinTitlePreview) {
             groundTwinTitlePreview.textContent = title.replace(/<br\s*\/?>/gi, '\n');
@@ -6937,15 +9415,15 @@ async function loadHomepageRoomsData() {
           groundTwinDescField.value = desc;
           if (groundTwinDescPreview) {
             groundTwinDescPreview.textContent = desc.replace(/\n/g, '\n');
-            groundTwinDescPreview.innerHTML = desc.replace(/\n/g, '<br>');
+            groundTwinDescPreview.textContent = desc;
           }
         }
-        if (groundTwinPriceField) {
-          const price = data.roomGroundTwinCardPrice || 'From 125 CAD/night';
-          groundTwinPriceField.value = price;
-          if (groundTwinPricePreview) {
-            groundTwinPricePreview.textContent = price;
-          }
+        if (groundTwinPricePreview) {
+          btbSetHomepageRoomCardPricePreview(
+            groundTwinPricePreview,
+            data.roomGroundTwinCardPrice,
+            BTB_HOMEPAGE_ROOM_CARD_PRICE_FALLBACK_HTML.groundTwin
+          );
         }
         
         // Update ground twin card image
@@ -6963,13 +9441,12 @@ async function loadHomepageRoomsData() {
         // Second card
         const secondTitleField = document.getElementById('room-second-card-title');
         const secondDescField = document.getElementById('room-second-card-description');
-        const secondPriceField = document.getElementById('room-second-card-price');
         const secondTitlePreview = document.getElementById('preview-room-second-card-title');
         const secondDescPreview = document.getElementById('preview-room-second-card-description');
         const secondPricePreview = document.getElementById('preview-room-second-card-price');
         
         if (secondTitleField) {
-          const title = data.roomSecondCardTitle || 'Second floor (entire)<br/>Queen bed';
+          const title = data.roomSecondCardTitle || 'Kelder';
           secondTitleField.value = title;
           if (secondTitlePreview) {
             secondTitlePreview.textContent = title.replace(/<br\s*\/?>/gi, '\n');
@@ -6981,15 +9458,15 @@ async function loadHomepageRoomsData() {
           secondDescField.value = desc;
           if (secondDescPreview) {
             secondDescPreview.textContent = desc.replace(/\n/g, '\n');
-            secondDescPreview.innerHTML = desc.replace(/\n/g, '<br>');
+            secondDescPreview.textContent = desc;
           }
         }
-        if (secondPriceField) {
-          const price = data.roomSecondCardPrice || 'From 210 CAD/night (entire floor)';
-          secondPriceField.value = price;
-          if (secondPricePreview) {
-            secondPricePreview.textContent = price;
-          }
+        if (secondPricePreview) {
+          btbSetHomepageRoomCardPricePreview(
+            secondPricePreview,
+            data.roomSecondCardPrice,
+            BTB_HOMEPAGE_ROOM_CARD_PRICE_FALLBACK_HTML.second
+          );
         }
         
         // Update second card image
@@ -7092,7 +9569,7 @@ async function loadWellnessExperiencesData() {
         if (descField) descField.value = data.wellnessDescription || '';
         if (titlePreview) titlePreview.textContent = data.wellnessTitle || 'Wellness Experiences';
         if (descPreview) {
-          const previewText = data.wellnessDescription || 'Enhance your stay with our additional wellness services. Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.';
+          const previewText = data.wellnessDescription || 'Enhance your stay with optional massage: relaxing or deep tissue sessions with an experienced therapist — an easy way to make your time in the mountains feel even more restorative.';
           descPreview.textContent = previewText;
         }
         
@@ -7105,7 +9582,7 @@ async function loadWellnessExperiencesData() {
         const massageImageUrl = result.data.wellnessMassageImageUrl || '';
         if (massageTitleField) massageTitleField.value = data.wellnessMassageTitle || '';
         if (massageDescField) massageDescField.value = data.wellnessMassageDescription || '';
-        if (massageTitlePreview) massageTitlePreview.textContent = data.wellnessMassageTitle || 'Massage';
+        if (massageTitlePreview) massageTitlePreview.textContent = data.wellnessMassageTitle || 'Wellness';
         if (massageDescPreview) {
           const massageText = data.wellnessMassageDescription || 'Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.';
           massageDescPreview.textContent = massageText;
@@ -7114,48 +9591,6 @@ async function loadWellnessExperiencesData() {
           massageImg.src = massageImageUrl + '?v=' + Date.now();
           massageImg.style.display = 'block';
           const span = massageImg.parentElement.querySelector('span');
-          if (span) span.style.display = 'none';
-        }
-        
-        // Yoga card
-        const yogaTitleField = document.getElementById('wellness-yoga-title');
-        const yogaDescField = document.getElementById('wellness-yoga-description');
-        const yogaTitlePreview = document.getElementById('preview-wellness-yoga-title');
-        const yogaDescPreview = document.getElementById('preview-wellness-yoga-desc');
-        const yogaImg = document.getElementById('preview-wellness-yoga-img');
-        const yogaImageUrl = result.data.wellnessYogaImageUrl || '';
-        if (yogaTitleField) yogaTitleField.value = data.wellnessYogaTitle || '';
-        if (yogaDescField) yogaDescField.value = data.wellnessYogaDescription || '';
-        if (yogaTitlePreview) yogaTitlePreview.textContent = data.wellnessYogaTitle || 'Yoga';
-        if (yogaDescPreview) {
-          const yogaText = data.wellnessYogaDescription || 'On the property, surrounded by a cozy forest, you\'ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.';
-          yogaDescPreview.textContent = yogaText;
-        }
-        if (yogaImg && yogaImageUrl) {
-          yogaImg.src = yogaImageUrl + '?v=' + Date.now();
-          yogaImg.style.display = 'block';
-          const span = yogaImg.parentElement.querySelector('span');
-          if (span) span.style.display = 'none';
-        }
-        
-        // Sauna card
-        const saunaTitleField = document.getElementById('wellness-sauna-title');
-        const saunaDescField = document.getElementById('wellness-sauna-description');
-        const saunaTitlePreview = document.getElementById('preview-wellness-sauna-title');
-        const saunaDescPreview = document.getElementById('preview-wellness-sauna-desc');
-        const saunaImg = document.getElementById('preview-wellness-sauna-img');
-        const saunaImageUrl = result.data.wellnessSaunaImageUrl || '';
-        if (saunaTitleField) saunaTitleField.value = data.wellnessSaunaTitle || '';
-        if (saunaDescField) saunaDescField.value = data.wellnessSaunaDescription || '';
-        if (saunaTitlePreview) saunaTitlePreview.textContent = data.wellnessSaunaTitle || 'Sauna';
-        if (saunaDescPreview) {
-          const saunaText = data.wellnessSaunaDescription || 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.';
-          saunaDescPreview.textContent = saunaText;
-        }
-        if (saunaImg && saunaImageUrl) {
-          saunaImg.src = saunaImageUrl + '?v=' + Date.now();
-          saunaImg.style.display = 'block';
-          const span = saunaImg.parentElement.querySelector('span');
           if (span) span.style.display = 'none';
         }
       }
@@ -7184,62 +9619,6 @@ function initWellnessExperiencesImageUpload() {
               massageImg.src = imageUrl + '?v=' + Date.now();
               massageImg.style.display = 'block';
               const span = massageImg.parentElement.querySelector('span');
-              if (span) span.style.display = 'none';
-            }
-            setTimeout(() => {
-              loadWellnessExperiencesData();
-            }, 1000);
-          }
-        });
-      }
-    });
-  }
-  
-  // Yoga image upload
-  const yogaInput = document.getElementById('wellness-yoga-upload');
-  if (yogaInput) {
-    yogaInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const yogaImg = document.getElementById('preview-wellness-yoga-img');
-        await uploadImage(file, 'wellness-yoga', null, null, {
-          localStorageKey: 'btb_wellness_experiences',
-          fieldNameMapper: () => 'yoga.imageUrl',
-          reloadFunction: loadWellnessExperiencesData,
-          imageNameMapper: () => 'Wellness Yoga',
-          onSuccess: (imageUrl) => {
-            if (yogaImg) {
-              yogaImg.src = imageUrl + '?v=' + Date.now();
-              yogaImg.style.display = 'block';
-              const span = yogaImg.parentElement.querySelector('span');
-              if (span) span.style.display = 'none';
-            }
-            setTimeout(() => {
-              loadWellnessExperiencesData();
-            }, 1000);
-          }
-        });
-      }
-    });
-  }
-  
-  // Sauna image upload
-  const saunaInput = document.getElementById('wellness-sauna-upload');
-  if (saunaInput) {
-    saunaInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (file) {
-        const saunaImg = document.getElementById('preview-wellness-sauna-img');
-        await uploadImage(file, 'wellness-sauna', null, null, {
-          localStorageKey: 'btb_wellness_experiences',
-          fieldNameMapper: () => 'sauna.imageUrl',
-          reloadFunction: loadWellnessExperiencesData,
-          imageNameMapper: () => 'Wellness Sauna',
-          onSuccess: (imageUrl) => {
-            if (saunaImg) {
-              saunaImg.src = imageUrl + '?v=' + Date.now();
-              saunaImg.style.display = 'block';
-              const span = saunaImg.parentElement.querySelector('span');
               if (span) span.style.display = 'none';
             }
             setTimeout(() => {
@@ -7343,17 +9722,13 @@ function initPageContentSaveHandlers() {
     saveRetreatBtn.addEventListener('click', async () => {
       console.log('Saving retreat and workshop content...');
       
-      // Ensure preview changes are synced to form before saving
-      const heroTitlePreview = document.getElementById('preview-retreat-hero-title');
-      const heroTitleForm = document.getElementById('retreat-hero-title');
-      if (heroTitlePreview && heroTitleForm) {
-        heroTitleForm.value = heroTitlePreview.textContent.trim();
-      }
-      const heroSubtitlePreview = document.getElementById('preview-retreat-hero-subtitle');
-      const heroSubtitleForm = document.getElementById('retreat-hero-subtitle');
-      if (heroSubtitlePreview && heroSubtitleForm) {
-        heroSubtitleForm.value = heroSubtitlePreview.textContent.trim();
-      }
+      // Sync every contenteditable preview to hidden fields (same as auto-save)
+      document.querySelectorAll('#retreat-workshop-section .editable-preview').forEach((previewEl) => {
+        const fieldId = previewEl.getAttribute('data-field');
+        if (fieldId) {
+          syncPreviewToForm(previewEl, fieldId);
+        }
+      });
       
       const formData = new FormData();
       formData.append('action', 'save_content');
@@ -7366,22 +9741,19 @@ function initPageContentSaveHandlers() {
       formData.append('retreat_hero_title', heroTitle);
       formData.append('retreat_hero_subtitle', heroSubtitle);
       
-      // Introduction
-      formData.append('retreat_intro_text', document.getElementById('retreat-intro-text')?.value || '');
-      
       // Locations section
       formData.append('retreat_locations_title', document.getElementById('retreat-locations-title')?.value || '');
       
       // Forest Platforms card
       formData.append('retreat_forest_title', document.getElementById('retreat-forest-title')?.value || '');
       formData.append('retreat_forest_description', document.getElementById('retreat-forest-description')?.value || '');
-      formData.append('retreat_forest_list_label', document.getElementById('retreat-forest-list-label')?.value || '');
-      formData.append('retreat_forest_list_items', document.getElementById('retreat-forest-list-items')?.value || '');
+      formData.append('retreat_forest_list_label', '');
+      formData.append('retreat_forest_list_items', '');
       
       // Indoor Space card
       formData.append('retreat_indoor_title', document.getElementById('retreat-indoor-title')?.value || '');
       formData.append('retreat_indoor_description', document.getElementById('retreat-indoor-description')?.value || '');
-      formData.append('retreat_indoor_additional', document.getElementById('retreat-indoor-additional')?.value || '');
+      formData.append('retreat_indoor_additional', '');
       
       // Home Theatre card
       formData.append('retreat_theatre_title', document.getElementById('retreat-theatre-title')?.value || '');
@@ -7391,20 +9763,18 @@ function initPageContentSaveHandlers() {
       formData.append('retreat_contact_title', document.getElementById('retreat-contact-title')?.value || '');
       formData.append('retreat_contact_text', document.getElementById('retreat-contact-text')?.value || '');
       
-      // Organizer section
-      formData.append('retreat_organizer_title', document.getElementById('retreat-organizer-title')?.value || '');
-      
-      // Workshops section
-      formData.append('retreat_workshops_title', document.getElementById('retreat-workshops-title')?.value || '');
-      formData.append('retreat_workshops_intro', document.getElementById('retreat-workshops-intro')?.value || '');
-      formData.append('retreat_workshops_list', document.getElementById('retreat-workshops-list')?.value || '');
-      formData.append('retreat_workshops_conclusion', document.getElementById('retreat-workshops-conclusion')?.value || '');
+      // Removed from site: keep DB fields cleared on save
+      formData.append('retreat_organizer_title', '');
+      formData.append('retreat_workshops_title', '');
+      formData.append('retreat_workshops_intro', '');
+      formData.append('retreat_workshops_list', '');
+      formData.append('retreat_workshops_conclusion', '');
       
       // Collaboration section
       formData.append('retreat_collaboration_title', document.getElementById('retreat-collaboration-title')?.value || '');
       formData.append('retreat_collaboration_intro', document.getElementById('retreat-collaboration-intro')?.value || '');
-      formData.append('retreat_collaboration_list', document.getElementById('retreat-collaboration-list')?.value || '');
-      formData.append('retreat_collaboration_conclusion', document.getElementById('retreat-collaboration-conclusion')?.value || '');
+      formData.append('retreat_collaboration_list', '');
+      formData.append('retreat_collaboration_conclusion', '');
       
       try {
         const response = await fetch('api.php', {
@@ -7435,34 +9805,23 @@ function initPageContentSaveHandlers() {
             const retreatContent = {
               retreatHeroTitle: document.getElementById('retreat-hero-title')?.value || '',
               retreatHeroSubtitle: document.getElementById('retreat-hero-subtitle')?.value || '',
-              retreatIntroText: document.getElementById('retreat-intro-text')?.value || '',
               retreatLocationsTitle: document.getElementById('retreat-locations-title')?.value || '',
               retreatForestTitle: document.getElementById('retreat-forest-title')?.value || '',
               retreatForestDescription: document.getElementById('retreat-forest-description')?.value || '',
-              retreatForestListLabel: document.getElementById('retreat-forest-list-label')?.value || '',
-              retreatForestListItems: document.getElementById('retreat-forest-list-items')?.value || '',
               retreatIndoorTitle: document.getElementById('retreat-indoor-title')?.value || '',
               retreatIndoorDescription: document.getElementById('retreat-indoor-description')?.value || '',
-              retreatIndoorAdditional: document.getElementById('retreat-indoor-additional')?.value || '',
               retreatTheatreTitle: document.getElementById('retreat-theatre-title')?.value || '',
               retreatTheatreDescription: document.getElementById('retreat-theatre-description')?.value || '',
               retreatContactTitle: document.getElementById('retreat-contact-title')?.value || '',
               retreatContactText: document.getElementById('retreat-contact-text')?.value || '',
-              retreatOrganizerTitle: document.getElementById('retreat-organizer-title')?.value || '',
-              retreatWorkshopsTitle: document.getElementById('retreat-workshops-title')?.value || '',
-              retreatWorkshopsIntro: document.getElementById('retreat-workshops-intro')?.value || '',
-              retreatWorkshopsList: document.getElementById('retreat-workshops-list')?.value || '',
-              retreatWorkshopsConclusion: document.getElementById('retreat-workshops-conclusion')?.value || '',
               retreatCollaborationTitle: document.getElementById('retreat-collaboration-title')?.value || '',
-              retreatCollaborationIntro: document.getElementById('retreat-collaboration-intro')?.value || '',
-              retreatCollaborationList: document.getElementById('retreat-collaboration-list')?.value || '',
-              retreatCollaborationConclusion: document.getElementById('retreat-collaboration-conclusion')?.value || ''
+              retreatCollaborationIntro: document.getElementById('retreat-collaboration-intro')?.value || ''
             };
             localStorage.setItem('btb_retreat_workshop_content', JSON.stringify(retreatContent));
             console.log('Retreat content saved to localStorage');
             
-            // Reload data to refresh preview
-            await loadRetreatWorkshopData();
+            // Keep preview in sync with hidden fields (do not refetch — avoids newline / list loss)
+            updateRetreatPreview(buildRetreatDataFromFormForPreview());
           } else {
             showStatus('Failed to save: ' + (result.error || 'Unknown error'), 'error');
             if (typeof updateRetreatSaveStatus === 'function') {
@@ -7542,6 +9901,10 @@ function scheduleRetreatAutoSave() {
 window.scheduleRetreatAutoSave = scheduleRetreatAutoSave;
 
 function initRetreatAutoSave() {
+  if (window._retreatAutoSaveListenersAttached) {
+    return;
+  }
+  window._retreatAutoSaveListenersAttached = true;
   // Track changes in preview fields (contenteditable)
   const previewFields = document.querySelectorAll('#retreat-workshop-section .editable-preview');
   previewFields.forEach(field => {
@@ -7571,14 +9934,13 @@ function initRetreatAutoSave() {
   
   // Track changes in form fields
   const formFields = [
-    'retreat-hero-title', 'retreat-hero-subtitle', 'retreat-intro-text',
+    'retreat-hero-title', 'retreat-hero-subtitle',
     'retreat-locations-title', 'retreat-forest-title', 'retreat-forest-description',
-    'retreat-forest-list-label', 'retreat-forest-list-items', 'retreat-indoor-title',
-    'retreat-indoor-description', 'retreat-indoor-additional', 'retreat-theatre-title',
-    'retreat-theatre-description', 'retreat-contact-title', 'retreat-contact-text',
-    'retreat-organizer-title', 'retreat-workshops-title', 'retreat-workshops-intro',
-    'retreat-workshops-list', 'retreat-workshops-conclusion', 'retreat-collaboration-title',
-    'retreat-collaboration-intro', 'retreat-collaboration-list', 'retreat-collaboration-conclusion'
+    'retreat-indoor-title', 'retreat-indoor-description', 'retreat-theatre-title',
+    'retreat-theatre-description',
+    'retreat-contact-title', 'retreat-contact-text',
+    'retreat-collaboration-title',
+    'retreat-collaboration-intro'
   ];
   
   formFields.forEach(fieldId => {
@@ -7665,17 +10027,14 @@ async function saveRetreatContentWithRetry() {
     formData.append('retreat_hero_title', document.getElementById('retreat-hero-title')?.value || '');
     formData.append('retreat_hero_subtitle', document.getElementById('retreat-hero-subtitle')?.value || '');
     
-    // Introduction
-    formData.append('retreat_intro_text', document.getElementById('retreat-intro-text')?.value || '');
-    
     // Locations section
     formData.append('retreat_locations_title', document.getElementById('retreat-locations-title')?.value || '');
     
     // Forest Platforms card
     formData.append('retreat_forest_title', document.getElementById('retreat-forest-title')?.value || '');
     formData.append('retreat_forest_description', document.getElementById('retreat-forest-description')?.value || '');
-    formData.append('retreat_forest_list_label', document.getElementById('retreat-forest-list-label')?.value || '');
-    formData.append('retreat_forest_list_items', document.getElementById('retreat-forest-list-items')?.value || '');
+    formData.append('retreat_forest_list_label', '');
+    formData.append('retreat_forest_list_items', '');
     const forestGalleryField = document.getElementById('retreat-forest-gallery');
     if (forestGalleryField) {
       const galleryValue = forestGalleryField.value || '[]';
@@ -7688,7 +10047,7 @@ async function saveRetreatContentWithRetry() {
     // Indoor Space card
     formData.append('retreat_indoor_title', document.getElementById('retreat-indoor-title')?.value || '');
     formData.append('retreat_indoor_description', document.getElementById('retreat-indoor-description')?.value || '');
-    formData.append('retreat_indoor_additional', document.getElementById('retreat-indoor-additional')?.value || '');
+    formData.append('retreat_indoor_additional', '');
     const indoorGalleryField = document.getElementById('retreat-indoor-gallery');
     if (indoorGalleryField) {
       const galleryValue = indoorGalleryField.value || '[]';
@@ -7714,20 +10073,17 @@ async function saveRetreatContentWithRetry() {
     formData.append('retreat_contact_title', document.getElementById('retreat-contact-title')?.value || '');
     formData.append('retreat_contact_text', document.getElementById('retreat-contact-text')?.value || '');
     
-    // Organizer section
-    formData.append('retreat_organizer_title', document.getElementById('retreat-organizer-title')?.value || '');
-    
-    // Workshops section
-    formData.append('retreat_workshops_title', document.getElementById('retreat-workshops-title')?.value || '');
-    formData.append('retreat_workshops_intro', document.getElementById('retreat-workshops-intro')?.value || '');
-    formData.append('retreat_workshops_list', document.getElementById('retreat-workshops-list')?.value || '');
-    formData.append('retreat_workshops_conclusion', document.getElementById('retreat-workshops-conclusion')?.value || '');
+    formData.append('retreat_organizer_title', '');
+    formData.append('retreat_workshops_title', '');
+    formData.append('retreat_workshops_intro', '');
+    formData.append('retreat_workshops_list', '');
+    formData.append('retreat_workshops_conclusion', '');
     
     // Collaboration section
     formData.append('retreat_collaboration_title', document.getElementById('retreat-collaboration-title')?.value || '');
     formData.append('retreat_collaboration_intro', document.getElementById('retreat-collaboration-intro')?.value || '');
-    formData.append('retreat_collaboration_list', document.getElementById('retreat-collaboration-list')?.value || '');
-    formData.append('retreat_collaboration_conclusion', document.getElementById('retreat-collaboration-conclusion')?.value || '');
+    formData.append('retreat_collaboration_list', '');
+    formData.append('retreat_collaboration_conclusion', '');
     
     console.log('Sending save request to api.php...');
     // Log all form data being sent (especially gallery fields)
@@ -7742,89 +10098,58 @@ async function saveRetreatContentWithRetry() {
       method: 'POST',
       body: formData
     });
-    
-    console.log('Response status:', response.status);
-    if (response.ok) {
-      const result = await response.json();
-      console.log('Save response:', result);
-      if (result.success) {
-        console.log('✓ Gallery data saved successfully to database');
-      } else {
-        console.error('✗ Failed to save gallery data:', result.error);
+    const rawText = await response.text();
+    const result = parseJsonFromText(rawText);
+    console.log('Response status:', response.status, 'body:', result);
+
+    if (response.ok && isApiSaveSuccess(result)) {
+      console.log('Auto-save successful!');
+      retreatHasUnsavedChanges = false;
+      retreatSaveRetryCount = 0;
+      const retreatContent = {
+        retreatHeroTitle: document.getElementById('retreat-hero-title')?.value || '',
+        retreatHeroSubtitle: document.getElementById('retreat-hero-subtitle')?.value || '',
+        retreatLocationsTitle: document.getElementById('retreat-locations-title')?.value || '',
+        retreatForestTitle: document.getElementById('retreat-forest-title')?.value || '',
+        retreatForestDescription: document.getElementById('retreat-forest-description')?.value || '',
+        retreatIndoorTitle: document.getElementById('retreat-indoor-title')?.value || '',
+        retreatIndoorDescription: document.getElementById('retreat-indoor-description')?.value || '',
+        retreatTheatreTitle: document.getElementById('retreat-theatre-title')?.value || '',
+        retreatTheatreDescription: document.getElementById('retreat-theatre-description')?.value || '',
+        retreatContactTitle: document.getElementById('retreat-contact-title')?.value || '',
+        retreatContactText: document.getElementById('retreat-contact-text')?.value || '',
+        retreatCollaborationTitle: document.getElementById('retreat-collaboration-title')?.value || '',
+        retreatCollaborationIntro: document.getElementById('retreat-collaboration-intro')?.value || ''
+      };
+      localStorage.setItem('btb_retreat_workshop_content', JSON.stringify(retreatContent));
+      if (typeof updateRetreatSaveStatus === 'function') {
+        updateRetreatSaveStatus('Сохранено', '✓');
+        setTimeout(() => {
+          if (!retreatHasUnsavedChanges) {
+            updateRetreatSaveStatus('', '');
+          }
+        }, 3000);
       }
-      if (result.success) {
-        console.log('Auto-save successful!');
-        retreatHasUnsavedChanges = false;
-        retreatSaveRetryCount = 0;
-        
-        // Save to localStorage for immediate site update
-        const retreatContent = {
-          retreatHeroTitle: document.getElementById('retreat-hero-title')?.value || '',
-          retreatHeroSubtitle: document.getElementById('retreat-hero-subtitle')?.value || '',
-          retreatIntroText: document.getElementById('retreat-intro-text')?.value || '',
-          retreatLocationsTitle: document.getElementById('retreat-locations-title')?.value || '',
-          retreatForestTitle: document.getElementById('retreat-forest-title')?.value || '',
-          retreatForestDescription: document.getElementById('retreat-forest-description')?.value || '',
-          retreatForestListLabel: document.getElementById('retreat-forest-list-label')?.value || '',
-          retreatForestListItems: document.getElementById('retreat-forest-list-items')?.value || '',
-          retreatIndoorTitle: document.getElementById('retreat-indoor-title')?.value || '',
-          retreatIndoorDescription: document.getElementById('retreat-indoor-description')?.value || '',
-          retreatIndoorAdditional: document.getElementById('retreat-indoor-additional')?.value || '',
-          retreatTheatreTitle: document.getElementById('retreat-theatre-title')?.value || '',
-          retreatTheatreDescription: document.getElementById('retreat-theatre-description')?.value || '',
-          retreatContactTitle: document.getElementById('retreat-contact-title')?.value || '',
-          retreatContactText: document.getElementById('retreat-contact-text')?.value || '',
-          retreatOrganizerTitle: document.getElementById('retreat-organizer-title')?.value || '',
-          retreatWorkshopsTitle: document.getElementById('retreat-workshops-title')?.value || '',
-          retreatWorkshopsIntro: document.getElementById('retreat-workshops-intro')?.value || '',
-          retreatWorkshopsList: document.getElementById('retreat-workshops-list')?.value || '',
-          retreatWorkshopsConclusion: document.getElementById('retreat-workshops-conclusion')?.value || '',
-          retreatCollaborationTitle: document.getElementById('retreat-collaboration-title')?.value || '',
-          retreatCollaborationIntro: document.getElementById('retreat-collaboration-intro')?.value || '',
-          retreatCollaborationList: document.getElementById('retreat-collaboration-list')?.value || '',
-          retreatCollaborationConclusion: document.getElementById('retreat-collaboration-conclusion')?.value || ''
-        };
-        localStorage.setItem('btb_retreat_workshop_content', JSON.stringify(retreatContent));
-        
-        console.log('Auto-save successful! Updating status...');
-        if (typeof updateRetreatSaveStatus === 'function') {
-          updateRetreatSaveStatus('Сохранено', '✓');
-          
-          // Hide status after 3 seconds
-          setTimeout(() => {
-            if (!retreatHasUnsavedChanges) {
-              updateRetreatSaveStatus('', '');
-            }
-          }, 3000);
-        } else {
-          console.error('updateRetreatSaveStatus is not defined!');
-        }
-        
-        // Reload data to refresh preview
-        await loadRetreatWorkshopData();
-        
-        // Re-initialize auto-save after reload (fields might have changed)
-        initRetreatAutoSave();
-      } else {
-        throw new Error(result.error || 'Unknown error');
-      }
+      updateRetreatPreview(buildRetreatDataFromFormForPreview());
     } else {
-      const errorText = await response.text();
-      throw new Error('Server error: ' + errorText);
+      const errMsg = getApiSaveErrorMessage(result, response, 'Save failed');
+      throw new Error(errMsg);
     }
   } catch (error) {
     console.error('Auto-save error:', error);
     retreatSaveRetryCount++;
-    
+    const errDetail = (error && error.message) ? String(error.message) : 'Ошибка сохранения';
     if (retreatSaveRetryCount < RETREAT_MAX_RETRIES) {
-      updateRetreatSaveStatus(`Ошибка сохранения. Повтор... (${retreatSaveRetryCount}/${RETREAT_MAX_RETRIES})`, '⚠️');
-      // Retry after 1 second
+      const short = errDetail.length > 60 ? errDetail.slice(0, 60) + '…' : errDetail;
+      updateRetreatSaveStatus(`Ошибка. Повтор… (${retreatSaveRetryCount}/${RETREAT_MAX_RETRIES}) ` + short, '⚠️');
       setTimeout(() => {
         saveRetreatContentWithRetry();
       }, 1000);
     } else {
-      updateRetreatSaveStatus('Ошибка сохранения', '❌');
-      retreatHasUnsavedChanges = true; // Keep flag as true so user knows there are unsaved changes
+      const finalMsg = 'Не сохранено: ' + errDetail;
+      const show = finalMsg.length > 120 ? finalMsg.slice(0, 120) + '…' : finalMsg;
+      updateRetreatSaveStatus(show, '❌');
+      retreatHasUnsavedChanges = true;
     }
   }
 }
@@ -7834,162 +10159,67 @@ window.saveRetreatContentWithRetry = saveRetreatContentWithRetry;
 
 function updateRetreatSaveStatus(text, icon) {
   console.log('updateRetreatSaveStatus called with:', text, icon);
-  const statusText = document.getElementById('retreat-save-status-text');
-  const statusIcon = document.getElementById('retreat-save-status-icon');
-  
-  if (!statusText) {
-    console.warn('retreat-save-status-text element not found!');
+  if (text != null && String(text).trim() === '') {
+    const statusTextClear = document.getElementById('retreat-save-status-text');
+    const statusIconClear = document.getElementById('retreat-save-status-icon');
+    if (statusTextClear) {
+      statusTextClear.textContent = '';
+    }
+    if (statusIconClear) {
+      statusIconClear.textContent = '';
+    }
+    hideAdminGlobalSaveBar();
     return;
   }
-  
+  const statusText = document.getElementById('retreat-save-status-text');
+  const statusIcon = document.getElementById('retreat-save-status-icon');
+  if (!statusText) {
+    console.warn('retreat-save-status-text element not found!');
+    updateAdminGlobalRetreatSaveBar(text, icon);
+    return;
+  }
   if (!statusIcon) {
     console.warn('retreat-save-status-icon element not found!');
   }
-  
   statusText.textContent = text;
   if (text === 'Сохранено') {
     statusText.style.color = '#10b981';
-  } else if (text.includes('Ошибка')) {
+  } else if (String(text).includes('Ошибка')) {
     statusText.style.color = '#ef4444';
   } else if (text === 'Сохранение...') {
     statusText.style.color = '#3b82f6';
   } else {
     statusText.style.color = '#6b7280';
   }
-  
   if (statusIcon) {
     statusIcon.textContent = icon;
   }
-  
+  updateAdminGlobalRetreatSaveBar(text, icon);
   console.log('Status updated:', text);
 }
 
 // Make it globally accessible
 window.updateRetreatSaveStatus = updateRetreatSaveStatus;
 
-  // Special
+  // Special — same payload as auto-save (includes localStorage images)
   const saveSpecialBtn = document.getElementById('save-special');
   if (saveSpecialBtn) {
-    saveSpecialBtn.addEventListener('click', async () => {
-      const formData = new FormData();
-      formData.append('action', 'save_content');
-      
-      // Hero section
-      formData.append('special_hero_title', document.getElementById('special-hero-title')?.value || '');
-      formData.append('special_hero_subtitle', document.getElementById('special-hero-subtitle')?.value || '');
-      
-      // Mineral-Rich Pools & Limestone Cave card
-      formData.append('special_pools_title', document.getElementById('special-pools-title')?.value || '');
-      formData.append('special_pools_description_1', document.getElementById('special-pools-description-1')?.value || '');
-      formData.append('special_pools_description_2', document.getElementById('special-pools-description-2')?.value || '');
-      
-      // Dining & Spa Experience card
-      formData.append('special_dining_title', document.getElementById('special-dining-title')?.value || '');
-      formData.append('special_dining_description_1', document.getElementById('special-dining-description-1')?.value || '');
-      formData.append('special_dining_description_2', document.getElementById('special-dining-description-2')?.value || '');
-      
-      // Exclusive Offer card
-      formData.append('special_offer_title', document.getElementById('special-offer-title')?.value || '');
-      formData.append('special_offer_main_text', document.getElementById('special-offer-main-text')?.value || '');
-      formData.append('special_offer_description', document.getElementById('special-offer-description')?.value || '');
-      
-      try {
-        const response = await fetch('api.php', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            showStatus('Special page content saved successfully!');
-          } else {
-            showStatus('Failed to save: ' + (result.error || 'Unknown error'), 'error');
-          }
-        } else {
-          showStatus('Failed to save special content', 'error');
-        }
-      } catch (error) {
-        console.error('Error saving special content:', error);
-        showStatus('Error saving special content: ' + error.message, 'error');
+    saveSpecialBtn.addEventListener('click', () => {
+      if (typeof specialHasUnsavedChanges !== 'undefined') {
+        specialHasUnsavedChanges = true;
       }
+      saveSpecialContent();
     });
   }
 
-  // About
+  // About — same as auto-save (includes hero / founder images from localStorage)
   const saveAboutBtn = document.getElementById('save-about');
   if (saveAboutBtn) {
-    saveAboutBtn.addEventListener('click', async () => {
-      const formData = new FormData();
-      formData.append('action', 'save_content');
-      
-      // Hero section
-      formData.append('about_hero_title', document.getElementById('about-hero-title')?.value || '');
-      formData.append('about_hero_subtitle', document.getElementById('about-hero-subtitle')?.value || '');
-      
-      // Idea and Origins section
-      formData.append('about_idea_title', document.getElementById('about-idea-title')?.value || '');
-      formData.append('about_idea_intro', document.getElementById('about-idea-intro')?.value || '');
-      formData.append('about_idea_paragraph_1', document.getElementById('about-idea-paragraph-1')?.value || '');
-      formData.append('about_idea_paragraph_2', document.getElementById('about-idea-paragraph-2')?.value || '');
-      formData.append('about_idea_paragraph_3', document.getElementById('about-idea-paragraph-3')?.value || '');
-      formData.append('about_idea_signature', document.getElementById('about-idea-signature')?.value || '');
-      
-      // How to Find Us section
-      formData.append('about_location_title', document.getElementById('about-location-title')?.value || '');
-      formData.append('about_location_paragraph_1', document.getElementById('about-location-paragraph-1')?.value || '');
-      formData.append('about_location_paragraph_2', document.getElementById('about-location-paragraph-2')?.value || '');
-      formData.append('about_location_paragraph_3', document.getElementById('about-location-paragraph-3')?.value || '');
-      formData.append('about_location_paragraph_4', document.getElementById('about-location-paragraph-4')?.value || '');
-      formData.append('about_location_coordinates', document.getElementById('about-location-coordinates')?.value || '');
-      formData.append('about_location_deer_warning', document.getElementById('about-location-deer-warning')?.value || '');
-      
-      // About the Location section
-      formData.append('about_attractions_title', document.getElementById('about-attractions-title')?.value || '');
-      formData.append('about_attractions_lead', document.getElementById('about-attractions-lead')?.value || '');
-      
-      // Attractions cards
-      formData.append('about_procter_title', document.getElementById('about-procter-title')?.value || '');
-      formData.append('about_procter_distance', document.getElementById('about-procter-distance')?.value || '');
-      formData.append('about_procter_description', document.getElementById('about-procter-description')?.value || '');
-      
-      formData.append('about_halcyon_title', document.getElementById('about-halcyon-title')?.value || '');
-      formData.append('about_halcyon_distance', document.getElementById('about-halcyon-distance')?.value || '');
-      formData.append('about_halcyon_description', document.getElementById('about-halcyon-description')?.value || '');
-      
-      formData.append('about_whitewater_title', document.getElementById('about-whitewater-title')?.value || '');
-      formData.append('about_whitewater_distance', document.getElementById('about-whitewater-distance')?.value || '');
-      formData.append('about_whitewater_description', document.getElementById('about-whitewater-description')?.value || '');
-      
-      formData.append('about_nelson_title', document.getElementById('about-nelson-title')?.value || '');
-      formData.append('about_nelson_distance', document.getElementById('about-nelson-distance')?.value || '');
-      formData.append('about_nelson_description', document.getElementById('about-nelson-description')?.value || '');
-      
-      // Provincial Parks section
-      formData.append('about_parks_title', document.getElementById('about-parks-title')?.value || '');
-      formData.append('about_parks_intro', document.getElementById('about-parks-intro')?.value || '');
-      formData.append('about_parks_list', document.getElementById('about-parks-list')?.value || '');
-      
-      try {
-        const response = await fetch('api.php', {
-          method: 'POST',
-          body: formData
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          if (result.success) {
-            showStatus('About us page content saved successfully!');
-          } else {
-            showStatus('Failed to save: ' + (result.error || 'Unknown error'), 'error');
-          }
-        } else {
-          showStatus('Failed to save about content', 'error');
-        }
-      } catch (error) {
-        console.error('Error saving about content:', error);
-        showStatus('Error saving about content: ' + error.message, 'error');
+    saveAboutBtn.addEventListener('click', () => {
+      if (typeof aboutHasUnsavedChanges !== 'undefined') {
+        aboutHasUnsavedChanges = true;
       }
+      saveAboutContent();
     });
   }
 }
@@ -8023,10 +10253,10 @@ async function saveHomepageRoomsContent() {
     // Sync all preview fields to hidden form fields before saving
     const previewFields = [
       'rooms-title', 'rooms-subtitle',
-      'room-basement-card-title', 'room-basement-card-description', 'room-basement-card-price',
-      'room-ground-queen-card-title', 'room-ground-queen-card-description', 'room-ground-queen-card-price',
-      'room-ground-twin-card-title', 'room-ground-twin-card-description', 'room-ground-twin-card-price',
-      'room-second-card-title', 'room-second-card-description', 'room-second-card-price'
+      'room-basement-card-title', 'room-basement-card-description',
+      'room-ground-queen-card-title', 'room-ground-queen-card-description',
+      'room-ground-twin-card-title', 'room-ground-twin-card-description',
+      'room-second-card-title', 'room-second-card-description'
     ];
     
     previewFields.forEach(fieldName => {
@@ -8045,54 +10275,42 @@ async function saveHomepageRoomsContent() {
     
     const basementCardTitle = document.getElementById('room-basement-card-title')?.value || '';
     const basementCardDescription = document.getElementById('room-basement-card-description')?.value || '';
-    const basementCardPrice = document.getElementById('room-basement-card-price')?.value || '';
     
     const groundQueenCardTitle = document.getElementById('room-ground-queen-card-title')?.value || '';
     const groundQueenCardDescription = document.getElementById('room-ground-queen-card-description')?.value || '';
-    const groundQueenCardPrice = document.getElementById('room-ground-queen-card-price')?.value || '';
     
     const groundTwinCardTitle = document.getElementById('room-ground-twin-card-title')?.value || '';
     const groundTwinCardDescription = document.getElementById('room-ground-twin-card-description')?.value || '';
-    const groundTwinCardPrice = document.getElementById('room-ground-twin-card-price')?.value || '';
     
     const secondCardTitle = document.getElementById('room-second-card-title')?.value || '';
     const secondCardDescription = document.getElementById('room-second-card-description')?.value || '';
-    const secondCardPrice = document.getElementById('room-second-card-price')?.value || '';
     
     console.log('Saving homepage rooms content:', {
       rooms_title: roomsTitle,
       rooms_subtitle: roomsSubtitle,
       room_basement_card_title: basementCardTitle,
       room_basement_card_description: basementCardDescription,
-      room_basement_card_price: basementCardPrice,
       room_ground_queen_card_title: groundQueenCardTitle,
       room_ground_queen_card_description: groundQueenCardDescription,
-      room_ground_queen_card_price: groundQueenCardPrice,
       room_ground_twin_card_title: groundTwinCardTitle,
       room_ground_twin_card_description: groundTwinCardDescription,
-      room_ground_twin_card_price: groundTwinCardPrice,
       room_second_card_title: secondCardTitle,
-      room_second_card_description: secondCardDescription,
-      room_second_card_price: secondCardPrice
+      room_second_card_description: secondCardDescription
     });
     
     formData.append('rooms_title', roomsTitle);
     formData.append('rooms_subtitle', roomsSubtitle);
     formData.append('room_basement_card_title', basementCardTitle);
     formData.append('room_basement_card_description', basementCardDescription);
-    formData.append('room_basement_card_price', basementCardPrice);
     
     formData.append('room_ground_queen_card_title', groundQueenCardTitle);
     formData.append('room_ground_queen_card_description', groundQueenCardDescription);
-    formData.append('room_ground_queen_card_price', groundQueenCardPrice);
     
     formData.append('room_ground_twin_card_title', groundTwinCardTitle);
     formData.append('room_ground_twin_card_description', groundTwinCardDescription);
-    formData.append('room_ground_twin_card_price', groundTwinCardPrice);
     
     formData.append('room_second_card_title', secondCardTitle);
     formData.append('room_second_card_description', secondCardDescription);
-    formData.append('room_second_card_price', secondCardPrice);
     
     // Get image URLs from localStorage (they're saved there by upload_image.php)
     const stored = localStorage.getItem('btb_homepage_rooms') || '{}';
@@ -8103,91 +10321,35 @@ async function saveHomepageRoomsContent() {
     formData.append('room_ground_twin_card_image_url', storedJson.groundTwin?.imageUrl || '');
     formData.append('room_second_card_image_url', storedJson.second?.imageUrl || '');
     
-    const response = await fetch('api.php', {
-      method: 'POST',
-      body: formData
-    });
-    
-    const responseText = await response.text();
-    let result;
-    try {
-      result = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Error parsing JSON response:', parseError);
-      console.error('Response text:', responseText);
-      updateHomepageRoomsSaveStatus('error');
-      alert('Ошибка при сохранении: сервер вернул неверный ответ. Проверьте консоль для деталей.');
-      return;
-    }
-    
-    if (response.ok && result.success) {
+    const { ok, result, error: saveErr } = await postApiFormDataAndUpdateStatus('homepage-rooms', formData);
+    if (ok) {
       console.log('Homepage rooms content saved successfully:', result);
-      
-      // Check for warnings about missing columns
-      if (result.warning) {
+      if (result && result.warning) {
         console.warn('Warning:', result.warning);
         alert('Внимание: ' + result.warning + '\n\nПожалуйста, запустите скрипт add_rooms_title_fields.php на сервере для добавления необходимых колонок в базу данных.');
       }
-      
-      updateHomepageRoomsSaveStatus('saved');
-      
-      // Save to localStorage for persistence
       const stored = localStorage.getItem('btb_content') || '{}';
-      const storedJson = JSON.parse(stored);
-      storedJson.roomsTitle = roomsTitle;
-      storedJson.roomsSubtitle = roomsSubtitle;
-      localStorage.setItem('btb_content', JSON.stringify(storedJson));
+      const cj = JSON.parse(stored);
+      cj.roomsTitle = roomsTitle;
+      cj.roomsSubtitle = roomsSubtitle;
+      localStorage.setItem('btb_content', JSON.stringify(cj));
     } else {
-      console.error('Error saving homepage rooms content:', result);
-      const errorMessage = result.error || 'Неизвестная ошибка при сохранении';
-      
-      // Check if it's a database column missing error
+      const errorMessage = saveErr || 'Неизвестная ошибка при сохранении';
       if (errorMessage.includes('Database columns missing') || errorMessage.includes('rooms_title') || errorMessage.includes('rooms_subtitle')) {
         alert('Ошибка: отсутствуют необходимые колонки в базе данных. Пожалуйста, запустите add_rooms_title_fields.php для их создания.');
       } else {
         alert('Ошибка при сохранении: ' + errorMessage);
       }
-      
-      updateHomepageRoomsSaveStatus('error');
     }
   } catch (error) {
     console.error('Error saving homepage rooms content:', error);
-    updateHomepageRoomsSaveStatus('error');
-    alert('Ошибка при сохранении: ' + error.message);
+    updateHomepageRoomsSaveStatus('error', (error && error.message) || 'Save failed');
+    alert('Ошибка при сохранении: ' + (error && error.message));
   }
 }
 
-function updateHomepageRoomsSaveStatus(status) {
-  const statusText = document.getElementById('homepage-rooms-save-status-text');
-  const statusIcon = document.getElementById('homepage-rooms-save-status-icon');
-  
-  if (!statusText || !statusIcon) return;
-  
-  switch(status) {
-    case 'saving':
-      statusText.textContent = 'Saving...';
-      statusIcon.textContent = '⏳';
-      statusIcon.style.color = '#6b7280';
-      break;
-    case 'saved':
-      statusText.textContent = 'Saved';
-      statusIcon.textContent = '✓';
-      statusIcon.style.color = '#10b981';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 2000);
-      break;
-    case 'error':
-      statusText.textContent = 'Error saving';
-      statusIcon.textContent = '✗';
-      statusIcon.style.color = '#ef4444';
-      setTimeout(() => {
-        statusText.textContent = '';
-        statusIcon.textContent = '';
-      }, 3000);
-      break;
-  }
+function updateHomepageRoomsSaveStatus(status, detail) {
+  updateAdminSectionSaveStatus('homepage-rooms', status, detail);
 }
 
 function initHomepageRoomsAutoSave() {
@@ -8237,11 +10399,21 @@ registerContentEditor('special', () => {
   initSpecialAutoSave();
 });
 
+registerContentEditor('explore', () => {
+  loadExploreData();
+  initExploreImageUpload();
+  initExploreParkCardsToolbar();
+  initExploreSectionCardsToolbar();
+  initAboutAttractionGalleries();
+  initParkCardGalleryUploads();
+  initExploreSectionCardGalleryUploads();
+  initExploreAutoSave();
+});
+
 registerContentEditor('about', () => {
   loadAboutData();
   loadAboutImagesData();
   initAboutImageUpload();
-  initAboutAttractionGalleries();
   initAboutAutoSave();
 });
 
@@ -8283,9 +10455,17 @@ registerContentEditor('room-basement', () => {
 
 registerContentEditor('floorplan', () => {
   console.log('registerContentEditor: floorplan initializer called');
+  // Reset initialization flag when switching to floorplan section
+  window.floorplanGalleriesInitialized = false;
   loadFloorplanData();
   initFloorplanImageUpload();
   initFloorplanAutoSave();
+  // Initialize gallery management after a short delay to ensure DOM is ready
+  setTimeout(() => {
+    if (typeof initFloorplanGalleries === 'function') {
+      initFloorplanGalleries();
+    }
+  }, 200);
 });
 
 registerContentEditor('wellness-experiences', () => {
@@ -8297,6 +10477,7 @@ registerContentEditor('wellness-experiences', () => {
 document.addEventListener('DOMContentLoaded', () => {
   // Check authentication
   checkAdminAuth();
+  initRoomPagePriceTripletInputsOnce();
   
   // Initialize login form
   initAdminLogin();
@@ -8348,8 +10529,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const currentLoftImage = (loftPathEl && loftPathEl.textContent) || storedJson.loft_image_url || '';
 
       const floorplanData = {
-        floorplanTitle: document.getElementById('floorplan-title')?.value || 'Floor plan',
-        floorplanSubtitle: document.getElementById('floorplan-subtitle')?.value || 'Three levels of comfort: basement, ground floor and a cozy loft under the roof.',
+        floorplanTitle: document.getElementById('floorplan-title')?.value || 'Common areas',
+        floorplanSubtitle: document.getElementById('floorplan-subtitle')?.value || 'Basement calm, a welcoming main living level, and bright multifunctional rooms for workshops and cinema.',
         basementSubtitle: document.getElementById('basement-subtitle').value,
         basementDescription: document.getElementById('basement-description').value,
         basementImageUrl: currentBasementImage,
@@ -8402,7 +10583,7 @@ document.addEventListener('DOMContentLoaded', () => {
           };
           localStorage.setItem('btb_floorplan_settings', JSON.stringify(localStorageData));
           console.log('Data saved to localStorage');
-          showStatus('Floor plan content saved successfully!');
+          showStatus('Common areas content saved successfully!');
           return;
         } else {
           console.log('API returned error:', result.error);
@@ -8431,7 +10612,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Data saved to localStorage as fallback');
       }
       
-      showStatus('Floor plan content saved successfully!');
+      showStatus('Common areas content saved successfully!');
     });
   }
   
@@ -11184,7 +13365,7 @@ async function confirmMassageBooking(bookingId) {
     const result = await response.json();
     
     if (result.success) {
-      showStatus('Massage booking confirmed successfully!');
+      showStatus('Wellness booking confirmed successfully!');
       loadBookingsData();
       updateBookingsDashboardStats();
     } else {
@@ -11226,7 +13407,7 @@ async function cancelMassageBooking(bookingId) {
     const result = await response.json();
     
     if (result.success) {
-      showStatus('Massage booking cancelled successfully!');
+      showStatus('Wellness booking cancelled successfully!');
       loadBookingsData();
       updateBookingsDashboardStats();
     } else {
@@ -11260,7 +13441,7 @@ async function deleteMassageBooking(bookingId) {
     const result = await response.json();
     
     if (result.success) {
-      showStatus('Massage booking deleted successfully!');
+      showStatus('Wellness booking deleted successfully!');
       loadBookingsData();
       updateBookingsDashboardStats();
     } else {

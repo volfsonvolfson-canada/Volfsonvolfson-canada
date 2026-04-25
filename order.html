@@ -2,6 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <link rel="stylesheet" href="cookie-consent.css">
+  <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>My Account — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,9 +28,10 @@
       </a>
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
-        <a href="massage.html">Massage</a>
-        <a href="retreat-and-workshop.html">Retreats and Workshops</a>
-        <a href="special.php">Special</a>
+        <a href="massage.php">Wellness</a>
+        <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+        <a href="explore.php">Explore</a>
+        <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
       <div class="header-actions">
@@ -38,7 +41,7 @@
           </svg>
           <span id="theme-text">Light</span>
         </button>
-        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+        <a href="login.html" class="btn-signin" id="header-signin">Guest login</a>
       </div>
     </div>
   </header>
@@ -86,15 +89,18 @@
         <h4>Navigation</h4>
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.html">Massage</a></li>
-          <li><a href="retreat-and-workshop.html">Retreats and Workshops</a></li>
-          <li><a href="special.php">Special</a></li>
+          <li><a href="massage.php">Wellness</a></li>
+          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
+          <li><a href="explore.php">Explore</a></li>
+          <li><a href="special.php">Specials</a></li>
           <li><a href="about.php">About us</a></li>
         </ul>
       </div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -106,6 +112,8 @@
       const elEmpty = document.getElementById('order-empty');
       const list = document.getElementById('orders-list');
       const elPayment = document.getElementById('payment-card');
+      const KELDER_ROOM_NAMES = ['Kelder','Second floor — Loft suite','Second floor — Loft suite (entire)','Second floor (entire) — Queen bed'];
+      const isKelderRoomName = (room) => KELDER_ROOM_NAMES.includes(room);
       const renderSummary = (order, editable) => {
         const esc = escapeHtml; const at = escapeAttr;
         if (order.kind === 'massage') {
@@ -122,9 +130,9 @@
                <p><span class="label-muted">Email:</span> ${esc(order.email||'')}</p>
                <p><span class="label-muted">Phone:</span> ${esc(order.phone||'')}</p>`;
         }
-        const isSecond = order.room==='Second floor — Loft suite' || order.room==='Second floor — Loft suite (entire)' || order.room==='Second floor (entire) — Queen bed';
+        const isKelder = isKelderRoomName(order.room);
         return editable
-          ? `<p><span class="label-muted">Room:</span> <select><option${order.room==='Basement — Queen'?' selected':''}>Basement — Queen</option><option${order.room==='Ground floor — Queen bed'?' selected':''}>Ground floor — Queen bed</option><option${order.room==='Ground floor — Twin beds'?' selected':''}>Ground floor — Twin beds</option><option${isSecond?' selected':''}>Second floor (entire) — Queen bed</option></select></p>
+          ? `<p><span class="label-muted">Room:</span> <select><option${order.room==='Loki Suite'?' selected':''}>Loki Suite</option><option${order.room==='The Nouk'?' selected':''}>The Nouk</option><option${order.room==='Vrienden'?' selected':''}>Vrienden</option><option${isKelder?' selected':''}>Kelder</option></select></p>
              <p><span class="label-muted">Check‑in:</span> <input data-field="checkin" type="date" value="${at(order.checkin||'')}" style="margin-left:6px;" /></p>
              <p><span class="label-muted">Check‑out:</span> <input data-field="checkout" type="date" value="${at(order.checkout||'')}" style="margin-left:6px;" /></p>
              <p><span class="label-muted">Guests:</span> <select><option value="1"${String(order.guests)==='1'?' selected':''}>1</option><option value="2"${String(order.guests)==='2'?' selected':''}>2</option></select></p>
@@ -206,7 +214,7 @@
             const rate = getRoomNightRate(order);
             const nights = nightsBetween(order.checkin, order.checkout);
             const total = calcRoomPrice(order);
-            const cleaningFee = order.room === 'Second floor (entire) — Queen bed' ? 100 : 60;
+            const cleaningFee = isKelderRoomName(order.room) ? 100 : 60;
             const petsFee = order.pets === 'add' ? 75 : 0;
             priceEl.innerHTML = `
               <div>Price: ${rate} CAD/night × ${nights} night${nights===1?'':'s'} = ${total} CAD</div>
@@ -313,7 +321,7 @@
               const rate = getRoomNightRate(order);
               const nights = nightsBetween(order.checkin, order.checkout);
               const total = calcRoomPrice(order);
-              const cleaningFee = order.room === 'Second floor (entire) — Queen bed' ? 100 : 60;
+              const cleaningFee = isKelderRoomName(order.room) ? 100 : 60;
               const petsFee = order.pets === 'add' ? 75 : 0;
               priceEl.innerHTML = `
                 <div>Price: ${rate} CAD/night × ${nights} night${nights===1?'':'s'} = ${total} CAD</div>
@@ -443,12 +451,17 @@
         return new Date(y, m, d);
       }
 
-      // map legacy room names to new naming
+      // map legacy room names to new naming (display)
       function mapRoomName(name) {
-        if (name === 'Second floor — Loft suite' || name === 'Second floor — Loft suite (entire)') {
-          return 'Second floor (entire) — Queen bed';
-        }
-        return name;
+        const m = {
+          'Basement — Queen': 'Loki Suite',
+          'Ground floor — Queen bed': 'The Nouk',
+          'Ground floor — Twin beds': 'Vrienden',
+          'Second floor (entire) — Queen bed': 'Kelder',
+          'Second floor — Loft suite': 'Kelder',
+          'Second floor — Loft suite (entire)': 'Kelder',
+        };
+        return m[name] || name;
       }
 
       load();
@@ -458,6 +471,10 @@
       }
       function getRoomNightRate(o) {
         const per = {
+          'Loki Suite': 140,
+          'The Nouk': 130,
+          'Vrienden': 125,
+          'Kelder': 210,
           'Basement — Queen': 140,
           'Ground floor — Queen bed': 130,
           'Ground floor — Twin beds': 125,
@@ -500,7 +517,7 @@
             a2.forEach(o => {
               if (o.kind === 'room') {
                 // Second floor (entire) — Queen bed: +100 CAD, остальные: +60 CAD
-                if (o.room === 'Second floor (entire) — Queen bed') {
+                if (isKelderRoomName(o.room)) {
                   sum += 100;
                 } else {
                   sum += 60;

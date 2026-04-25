@@ -18,16 +18,16 @@ $fullTexts = [
     // Locations section
     'retreat_locations_title' => 'Our locations for your workshops',
     
-    // Forest Platforms
-    'retreat_forest_title' => 'Forest platforms by the creek',
-    'retreat_forest_description' => 'Just a few steps from the house, a winding path leads into the forest, where wooden platforms are hidden among tall trees. The air feels lighter here, the sound of the creek creates a natural meditation, and the soft light filtering through the canopy makes every practice deeper.',
-    'retreat_forest_list_label' => "It's an ideal spot for:",
-    'retreat_forest_list_items' => "Sunrise yoga\nEvening meditations\nBreathwork\nAny activity that benefits from a strong connection to nature",
+    // Outdoor space (single description; list fields cleared)
+    'retreat_forest_title' => 'Outdoor space with multi functional platforms',
+    'retreat_forest_description' => "Just a few steps from the house, a winding path leads into the forest, where wooden platforms are hidden among tall trees. The air feels lighter here, the sound of the creek creates a natural meditation, and the soft light filtering through the canopy makes every practice deeper.\n\nIt's an ideal spot for:\nSunrise yoga\nEvening meditations\nBreathwork\nAny activity that benefits from a strong connection to nature",
+    'retreat_forest_list_label' => '',
+    'retreat_forest_list_items' => '',
     
-    // Indoor Space
-    'retreat_indoor_title' => 'Warm, bright indoor space at Back to Base',
-    'retreat_indoor_description' => 'Inside the house, there is a spacious room with large windows filled with light, warmth, and a sense of comfort — perfect for group gatherings, mini-lectures, workshops, breathwork sessions, or yoga during cooler weather.',
-    'retreat_indoor_additional' => 'And if you need a more intimate atmosphere or plan to use visual materials, the room can easily be darkened with blackout curtains.',
+    // Multifunctional indoor space (single description)
+    'retreat_indoor_title' => 'Multifunctional indoor space',
+    'retreat_indoor_description' => "Inside the house, there is a spacious room with large windows filled with light, warmth, and a sense of comfort — perfect for group gatherings, mini-lectures, workshops, breathwork sessions, or yoga during cooler weather.\n\nAnd if you need a more intimate atmosphere or plan to use visual materials, the room can easily be darkened with blackout curtains.",
+    'retreat_indoor_additional' => '',
     
     // Home Theatre
     'retreat_theatre_title' => 'Cozy mini home theatre',
@@ -38,19 +38,19 @@ $fullTexts = [
     'retreat_contact_text' => 'Just send us a message with your preferences, and we will create a program tailored specifically for you!',
     
     // Organizer
-    'retreat_organizer_title' => 'Are you a yoga instructor or an event organizer looking for a place to host your sessions?',
+    'retreat_organizer_title' => '',
     
-    // Workshops
-    'retreat_workshops_title' => 'What workshops are our spaces suitable for?',
-    'retreat_workshops_intro' => 'The indoor spaces, forest platforms, and the forest itself are ideal for the following practices:',
-    'retreat_workshops_list' => "Group and private yoga sessions\nMeditations and mindfulness practices\nSound healing and breathwork\nCreative and educational workshops\nMini-lectures and intimate gatherings",
-    'retreat_workshops_conclusion' => 'Create memorable retreat experiences for your community. Nature here is not just a backdrop — it becomes a full participant. People open up more easily, rest more deeply, and return to themselves more naturally.',
+    // Workshops (single body; legacy list + conclusion cleared)
+    'retreat_workshops_title' => '',
+    'retreat_workshops_intro' => '',
+    'retreat_workshops_list' => '',
+    'retreat_workshops_conclusion' => '',
     
-    // Collaboration
+    // Collaboration (single body; legacy list + conclusion cleared)
     'retreat_collaboration_title' => 'Invitation to Collaborate',
-    'retreat_collaboration_intro' => 'Back to Base welcomes those who create transformative practices and help people heal and restore.<br>We are looking for:',
-    'retreat_collaboration_list' => "Program creators\nYoga instructors\nMeditation teachers\nMassage therapists\nReiki practitioners\nAcupuncturists\nBody-oriented specialists",
-    'retreat_collaboration_conclusion' => 'If you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you.<br>Just call or message us!'
+    'retreat_collaboration_intro' => "Back to Base welcomes those who create transformative practices and help people heal and restore.\nWe are looking for:\n\nProgram creators\nYoga instructors\nMeditation teachers\nMassage therapists\nReiki practitioners\nAcupuncturists\nBody-oriented specialists\n\nIf you want to share your work in the quiet of the forest beside a mountain lake, we would be happy to collaborate with you.\nJust call or message us!",
+    'retreat_collaboration_list' => '',
+    'retreat_collaboration_conclusion' => ''
 ];
 
 echo "<h2>Восстановление полных текстов страницы Retreats and Workshops</h2>";
@@ -170,4 +170,12 @@ echo "<p><strong>Важно:</strong> После проверки удалите
 
 $conn->close();
 ?>
+
+
+
+
+
+
+
+
 

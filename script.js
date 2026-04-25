@@ -256,8 +256,8 @@ const initMassageForm = () => {
   const form = document.querySelector('form#massage-form');
   if (!form) return;
   prefillContact(form);
-  const typeSel = form.querySelector('select#type');
-  const durationSel = form.querySelector('select#duration');
+  const typeSel = form.querySelector('#type');
+  const durationSel = form.querySelector('#duration');
   // const withRoomSel = form.querySelector('select#with-room'); // Field removed
   const reminder = document.getElementById('room-reminder');
   // Temporarily disable auto-show from localStorage; keep hidden until successful booking submit
@@ -265,8 +265,10 @@ const initMassageForm = () => {
     reminder.style.display = 'none';
   }
   const setDurations = () => {
-    if (!durationSel) return;
-    const type = typeSel ? typeSel.value : '';
+    if (!durationSel || durationSel.tagName !== 'SELECT' || !typeSel || typeSel.tagName !== 'SELECT') {
+      return;
+    }
+    const type = typeSel.value;
     let options = [];
     if (type === 'Reiki Energy Healing') {
       options = [
@@ -296,8 +298,14 @@ const initMassageForm = () => {
       durationSel.value = options[0].v;
     }
   };
-  if (typeSel) typeSel.addEventListener('change', setDurations);
-  setDurations();
+  if (typeSel && durationSel && typeSel.tagName === 'SELECT' && durationSel.tagName === 'SELECT') {
+    typeSel.addEventListener('change', setDurations);
+    setDurations();
+  }
+  form._setMassageDurations = setDurations;
+  if (window.BookingAPI && typeof window.BookingAPI.renderMassageCartUI === 'function') {
+    window.BookingAPI.renderMassageCartUI(form);
+  }
   
   // Настраиваем очистку ошибок
   setupMassageFieldErrorClearing(form);
@@ -329,17 +337,33 @@ const initMassageForm = () => {
       const withRoom = ''; // Field removed
 
       // Ordered validation с новым стилем подсказок
-      if (!type) { 
-        if (window.showFieldError) window.showFieldError(typeSel, 'Massage type is required');
-        typeSel.classList.add('flash-invalid');
-        typeSel.focus();
-        return; 
+      if (!type) {
+        if (typeSel && typeSel.getAttribute('type') === 'hidden') {
+          const scrollTo = document.getElementById('massage-form') || document.getElementById('book');
+          if (scrollTo) {
+            scrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          alert('Please add at least one service by tapping a price on a card above, then choose date and time.');
+        } else if (typeSel) {
+          if (window.showFieldError) window.showFieldError(typeSel, 'Massage type is required');
+          typeSel.classList.add('flash-invalid');
+          typeSel.focus();
+        }
+        return;
       }
-      if (!dur) { 
-        if (window.showFieldError) window.showFieldError(durationSel, 'Duration is required');
-        durationSel.classList.add('flash-invalid');
-        durationSel.focus();
-        return; 
+      if (!dur) {
+        if (durationSel && durationSel.getAttribute('type') === 'hidden') {
+          const scrollTo = document.getElementById('massage-form') || document.getElementById('book');
+          if (scrollTo) {
+            scrollTo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+          alert('Please add at least one service by tapping a price on a card above, then choose date and time.');
+        } else if (durationSel) {
+          if (window.showFieldError) window.showFieldError(durationSel, 'Duration is required');
+          durationSel.classList.add('flash-invalid');
+          durationSel.focus();
+        }
+        return;
       }
       if (!dateEl.value) { 
         if (window.showFieldError) window.showFieldError(dateEl, 'Date is required');
@@ -420,19 +444,19 @@ const initMassageForm = () => {
 function setupMassageFieldErrorClearing(form) {
   if (!form) return;
   
-  // Поле type - очищаем ошибку при выборе значения
+  // Поле type - очищаем ошибку при выборе значения (только для видимого select)
   const typeSelect = form.querySelector('#type');
-  if (typeSelect) {
+  if (typeSelect && typeSelect.tagName === 'SELECT') {
     typeSelect.addEventListener('change', () => {
       if (typeSelect.value && window.clearFieldError) {
         window.clearFieldError(typeSelect);
       }
     });
   }
-  
-  // Поле duration - очищаем ошибку при выборе значения
+
+  // Поле duration - очищаем ошибку при выборе значения (только для видимого select)
   const durationSelect = form.querySelector('#duration');
-  if (durationSelect) {
+  if (durationSelect && durationSelect.tagName === 'SELECT') {
     durationSelect.addEventListener('change', () => {
       if (durationSelect.value && window.clearFieldError) {
         window.clearFieldError(durationSelect);
@@ -705,7 +729,7 @@ function hideOrderIndicatorOnRoomPages() {
   }
 }
 
-// Room booking form validation for Basement — Queen bed and other rooms
+// Room booking form validation (Loki Suite basement form uses data-custom-handler)
 // Единая функция для инициализации формы бронирования
 // Используется для всех страниц комнат
 function initBookingForm(form, roomName) {
@@ -1007,7 +1031,7 @@ function initBookingForm(form, roomName) {
       form.reset();
       
       // Show wellness section automatically after successful booking (только для Basement)
-      if (roomName === 'Basement — Queen') {
+      if (roomName === 'Loki Suite') {
         showWellnessReminder();
         // Удаляем флаг скрытия, чтобы секция показывалась после бронирования
         localStorage.removeItem('btb_wellness_hidden');
@@ -1018,9 +1042,9 @@ function initBookingForm(form, roomName) {
 
 // Инициализация формы для Basement
 const initBasementBooking = () => {
-  const form = document.querySelector('form.booking-form[data-room="Basement — Queen"]');
+  const form = document.querySelector('form.booking-form[data-room="Loki Suite"]');
   if (form) {
-    initBookingForm(form, 'Basement — Queen');
+    initBookingForm(form, 'Loki Suite');
   }
 };
 
@@ -1747,7 +1771,7 @@ function formatDateString(date) {
 
 // Инициализация форм для остальных комнат
 const initOtherRoomWellness = () => {
-  const forms = document.querySelectorAll('form.booking-form[data-custom-handler]:not([data-room="Basement — Queen"])');
+  const forms = document.querySelectorAll('form.booking-form[data-custom-handler]:not([data-room="Loki Suite"])');
   forms.forEach(form => {
     const roomName = form.getAttribute('data-room');
     if (roomName) {
@@ -2013,6 +2037,82 @@ async function initBlockedDatesForMassage(form, fpInstance) {
   }
 }
 
+function formatMassageDurationLabelForToast(type, minutesStr) {
+  const m = String(minutesStr);
+  if (type === 'Sauna' && m === '60') return '1 hour';
+  if (m === '15') return '15 min';
+  if (m === '30') return '30 min';
+  if (m === '60') return '60 min';
+  if (m === '90') return '90 min';
+  return `${m} min`;
+}
+
+/**
+ * Non-blocking hint after adding a massage/sauna line to the cart (no auto-scroll).
+ * Includes a control to jump to the booking block (#book).
+ */
+function showMassageBookingToast(message) {
+  const text = String(message || '').trim();
+  if (!text) return;
+  let el = document.getElementById('btb-massage-booking-toast');
+  if (el && !el.querySelector('.btb-massage-booking-toast__msg')) {
+    el.remove();
+    el = null;
+  }
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'btb-massage-booking-toast';
+    el.className = 'btb-massage-booking-toast-inner';
+    const msg = document.createElement('p');
+    msg.className = 'btb-massage-booking-toast__msg';
+    msg.id = 'btb-massage-booking-toast-msg';
+    msg.setAttribute('role', 'status');
+    msg.setAttribute('aria-live', 'polite');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'btn outline btb-massage-booking-toast__action';
+    btn.textContent = 'Go to booking';
+    btn.setAttribute('aria-describedby', 'btb-massage-booking-toast-msg');
+    el.appendChild(msg);
+    el.appendChild(btn);
+    document.body.appendChild(el);
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const book = document.getElementById('book');
+      if (book) {
+        book.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        const massageFormEl = document.getElementById('massage-form');
+        const focusTarget = massageFormEl && massageFormEl.querySelector('#date');
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+          setTimeout(() => {
+            try {
+              focusTarget.focus({ preventScroll: true });
+            } catch (_) {
+              focusTarget.focus();
+            }
+          }, 400);
+        }
+      }
+      el.classList.remove('btb-massage-booking-toast--visible');
+      if (el._hideToastTimer) {
+        clearTimeout(el._hideToastTimer);
+        el._hideToastTimer = null;
+      }
+    });
+  }
+  const msgEl = el.querySelector('.btb-massage-booking-toast__msg');
+  if (msgEl) {
+    msgEl.textContent = text;
+  }
+  el.classList.add('btb-massage-booking-toast--visible');
+  if (el._hideToastTimer) {
+    clearTimeout(el._hideToastTimer);
+  }
+  el._hideToastTimer = setTimeout(() => {
+    el.classList.remove('btb-massage-booking-toast--visible');
+  }, 9500);
+}
+
 // Initialize clickable massage options
 function initClickableMassageOptions() {
   const massageOptions = document.querySelectorAll('.massage-list li');
@@ -2020,53 +2120,74 @@ function initClickableMassageOptions() {
   
   if (!form) return;
   
-  const typeSelect = form.querySelector('select#type');
-  const durationSelect = form.querySelector('select#duration');
+  const typeSelect = form.querySelector('#type');
+  const durationSelect = form.querySelector('#duration');
   
-  massageOptions.forEach(option => {
-    option.addEventListener('click', () => {
-      // Extract massage type and duration from the clicked option
+  massageOptions.forEach((option) => {
+    option.style.cursor = 'pointer';
+    const activate = () => {
       const card = option.closest('.card-massage');
-      const massageType = card.querySelector('h2').textContent;
-      const durationText = option.textContent;
-      
-      // Extract duration value (e.g., "60 minutes" -> "60" or "1 hour" -> "60")
-      let duration = '';
-      const minutesMatch = durationText.match(/(\d+)\s*minutes?/);
-      const hourMatch = durationText.match(/(\d+)\s*hour/);
-      if (minutesMatch) {
-        duration = minutesMatch[1];
-      } else if (hourMatch) {
-        // Convert hours to minutes (1 hour = 60 minutes)
-        duration = String(parseInt(hourMatch[1]) * 60);
+      const massageType = (card && card.getAttribute('data-massage-card-type')
+        ? String(card.getAttribute('data-massage-card-type')).trim()
+        : '');
+      let duration = option.getAttribute('data-m-duration')
+        ? String(option.getAttribute('data-m-duration')).trim()
+        : '';
+      if (!duration) {
+        const durationText = option.textContent;
+        const minutesMatch = durationText.match(/(\d+)\s*minutes?/i);
+        const hourMatch = durationText.match(/(\d+)\s*hours?/i);
+        if (minutesMatch) {
+          duration = minutesMatch[1];
+        } else if (hourMatch) {
+          duration = String(parseInt(hourMatch[1], 10) * 60);
+        }
       }
-      
-      // Set form values
-      if (typeSelect) {
-        typeSelect.value = massageType;
-        typeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+
+      if (!massageType || !duration) {
+        return;
       }
-      
-      if (durationSelect && duration) {
-        // Wait for duration options to be updated after type change
+
+      if (window.BookingAPI && typeof window.BookingAPI.addMassageCartLine === 'function') {
+        const added = window.BookingAPI.addMassageCartLine(massageType, duration);
+        if (added) {
+          if (typeof window.BookingAPI.renderMassageCartUI === 'function') {
+            window.BookingAPI.renderMassageCartUI(form);
+          }
+          const durLabel = formatMassageDurationLabelForToast(massageType, duration);
+          showMassageBookingToast(
+            `Added: ${massageType} (${durLabel}). Choose date and time in the booking section below.`
+          );
+        }
+      } else if (typeSelect && durationSelect) {
+        if (typeSelect) {
+          typeSelect.value = massageType;
+          typeSelect.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (duration) {
+          setTimeout(() => {
+            durationSelect.value = duration;
+          }, 0);
+        }
+        option.style.background = 'var(--brand)';
+        option.style.color = 'white';
         setTimeout(() => {
-          durationSelect.value = duration;
-        }, 0);
+          option.style.background = '';
+          option.style.color = '';
+        }, 1000);
+        const durLabel = formatMassageDurationLabelForToast(massageType, duration);
+        showMassageBookingToast(
+          `${massageType} (${durLabel}) is selected below. Add date and time when you are ready.`
+        );
       }
-      
-      // Smooth scroll to form
-      form.scrollIntoView({ 
-        behavior: 'smooth', 
-        block: 'start' 
-      });
-      
-      // Add visual feedback
-      option.style.background = 'var(--brand)';
-      option.style.color = 'white';
-      setTimeout(() => {
-        option.style.background = '';
-        option.style.color = '';
-      }, 1000);
+    };
+
+    option.addEventListener('click', activate);
+    option.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        activate();
+      }
     });
   });
 }
@@ -2409,7 +2530,14 @@ const resolveImages = () => {
   const imgs = document.querySelectorAll('img[data-src-base]');
   const exts = ['.jpg', '.jpeg', '.JPG', '.JPEG'];
   imgs.forEach(img => {
+    // Skip images that are loaded via SSR or marked as no-resolve
+    if (img.hasAttribute('data-ssr-loaded') || img.hasAttribute('data-no-resolve')) {
+      return;
+    }
+    
     const baseAttr = img.getAttribute('data-src-base');
+    if (!baseAttr) return;
+    
     const bases = baseAttr.split('|');
     let resolved = false;
     for (const base of bases) {
@@ -2775,6 +2903,39 @@ async function loadContactInfo() {
         if (emailEl) {
           emailEl.textContent = 'Email: ' + (data.contactEmail || 'hello@backtobase.example');
         }
+
+        // About page — section heading (Contact us) + text next to the form (phone/email/address: footer)
+        const aboutContactHeading = document.getElementById('about-contact-section-heading');
+        if (aboutContactHeading) {
+          const ht = (data.aboutContactFormTitle && String(data.aboutContactFormTitle).trim()) || '';
+          if (ht) aboutContactHeading.textContent = ht;
+        }
+        const aboutContactDesc = document.getElementById('about-contact-description');
+        if (aboutContactDesc) {
+          let desc = (data.aboutContactFormDescription && String(data.aboutContactFormDescription).trim()) || '';
+          if (!desc) {
+            const l = (data.aboutContactFormLead && String(data.aboutContactFormLead).trim()) || '';
+            const e = (data.aboutContactFormEmphasis && String(data.aboutContactFormEmphasis).trim()) || '';
+            desc = [l, e].filter(Boolean).join('\n\n');
+          }
+          if (desc) {
+            aboutContactDesc.textContent = desc;
+            aboutContactDesc.style.whiteSpace = 'pre-line';
+          }
+        }
+
+        // Wellness / massage page — booking block: only replace title/intro when API sends non-empty text
+        // (if empty, keep server-rendered HTML; avoids stomping good PHP output on fetch quirks).
+        const mBookTitle = document.getElementById('massage-booking-title');
+        if (mBookTitle) {
+          const t = (data.massageBookingTitle && String(data.massageBookingTitle).trim()) || '';
+          if (t) mBookTitle.textContent = t;
+        }
+        const mBookIntro = document.querySelector('.massage-booking-intro');
+        if (mBookIntro) {
+          const t = (data.massageBookingIntro && String(data.massageBookingIntro).trim()) || '';
+          if (t) mBookIntro.textContent = t;
+        }
       }
     }
   } catch (error) {
@@ -2878,77 +3039,14 @@ async function loadHomepageFromAdmin() {
 }
 
 // Update homepage hero images on the page
+// NOTE: Hero images, descriptions, and Wellness Experiences are now loaded via Server-Side Rendering (SSR) in index.php
+// This function is kept for backward compatibility but only updates room cards images
 function updateHomepageContent(data) {
   try {
     console.log('Updating homepage content with data:', data);
     
-    // Update hero image (first hero section)
-    const heroImageUrl = data.heroImageUrl || data.hero_image_url || '';
-    if (heroImageUrl) {
-      const heroImg = document.querySelector('.hero-full-img');
-      if (heroImg) {
-        const imageUrl = heroImageUrl + '?v=' + Date.now();
-        heroImg.src = imageUrl;
-        heroImg.srcset = imageUrl;
-        console.log('Updated hero image:', imageUrl);
-      }
-    }
-    
-    // Update hero2 image (second hero section)
-    const hero2ImageUrl = data.hero2ImageUrl || data.hero2_image_url || '';
-    if (hero2ImageUrl) {
-      const hero2Img = document.querySelector('.hero-contained-img');
-      if (hero2Img) {
-        const imageUrl = hero2ImageUrl + '?v=' + Date.now();
-        hero2Img.src = imageUrl;
-        hero2Img.srcset = imageUrl;
-        console.log('Updated hero2 image:', imageUrl);
-      }
-    }
-    
-    // Update wellness images
-    const wellnessMassageImageUrl = data.wellnessMassageImageUrl || data.wellness_massage_image_url || '';
-    const wellnessYogaImageUrl = data.wellnessYogaImageUrl || data.wellness_yoga_image_url || '';
-    const wellnessSaunaImageUrl = data.wellnessSaunaImageUrl || data.wellness_sauna_image_url || '';
-    
-    // Update wellness massage image
-    if (wellnessMassageImageUrl) {
-      const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
-      if (wellnessCards.length >= 1) {
-        const massageImg = wellnessCards[0].querySelector('.card-img img');
-        if (massageImg) {
-          massageImg.src = wellnessMassageImageUrl + '?v=' + Date.now();
-          massageImg.srcset = wellnessMassageImageUrl + '?v=' + Date.now();
-          console.log('Updated wellness massage image:', wellnessMassageImageUrl);
-        }
-      }
-    }
-    
-    // Update wellness yoga image
-    if (wellnessYogaImageUrl) {
-      const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
-      if (wellnessCards.length >= 2) {
-        const yogaImg = wellnessCards[1].querySelector('.card-img img');
-        if (yogaImg) {
-          yogaImg.src = wellnessYogaImageUrl + '?v=' + Date.now();
-          yogaImg.srcset = wellnessYogaImageUrl + '?v=' + Date.now();
-          console.log('Updated wellness yoga image:', wellnessYogaImageUrl);
-        }
-      }
-    }
-    
-    // Update wellness sauna image
-    if (wellnessSaunaImageUrl) {
-      const wellnessCards = document.querySelectorAll('#wellness-experiences .card-massage');
-      if (wellnessCards.length >= 3) {
-        const saunaImg = wellnessCards[2].querySelector('.card-img img');
-        if (saunaImg) {
-          saunaImg.src = wellnessSaunaImageUrl + '?v=' + Date.now();
-          saunaImg.srcset = wellnessSaunaImageUrl + '?v=' + Date.now();
-          console.log('Updated wellness sauna image:', wellnessSaunaImageUrl);
-        }
-      }
-    }
+    // Hero images, descriptions, and Wellness Experiences are loaded via SSR
+    // Only update room cards images from localStorage for backward compatibility
     
     // Update room cards images
     const roomBasementCardImageUrl = data.roomBasementCardImageUrl || data.room_basement_card_image_url || '';
@@ -2957,52 +3055,60 @@ function updateHomepageContent(data) {
     const roomSecondCardImageUrl = data.roomSecondCardImageUrl || data.room_second_card_image_url || '';
     
     // Update room cards background images
+    // Skip if images are loaded via SSR (have data-ssr-loaded attribute)
     const roomCards = document.querySelectorAll('.room-card');
     if (roomCards.length >= 1 && roomBasementCardImageUrl) {
       const basementCard = roomCards[0];
       const roomMedia = basementCard.querySelector('.room-media');
-      if (roomMedia) {
+      if (roomMedia && !roomMedia.hasAttribute('data-ssr-loaded')) {
+        // Only update if not loaded via SSR
         roomMedia.style.backgroundImage = `url('${roomBasementCardImageUrl}?v=${Date.now()}')`;
         console.log('Updated basement room card image:', roomBasementCardImageUrl);
+      } else if (roomMedia && roomMedia.hasAttribute('data-ssr-loaded')) {
+        console.log('Skipping basement room card image update - loaded via SSR');
       }
     }
     
     if (roomCards.length >= 2 && roomGroundQueenCardImageUrl) {
       const groundQueenCard = roomCards[1];
       const roomMedia = groundQueenCard.querySelector('.room-media');
-      if (roomMedia) {
+      if (roomMedia && !roomMedia.hasAttribute('data-ssr-loaded')) {
+        // Only update if not loaded via SSR
         roomMedia.style.backgroundImage = `url('${roomGroundQueenCardImageUrl}?v=${Date.now()}')`;
         console.log('Updated ground queen room card image:', roomGroundQueenCardImageUrl);
+      } else if (roomMedia && roomMedia.hasAttribute('data-ssr-loaded')) {
+        console.log('Skipping ground queen room card image update - loaded via SSR');
       }
     }
     
     if (roomCards.length >= 3 && roomGroundTwinCardImageUrl) {
       const groundTwinCard = roomCards[2];
       const roomMedia = groundTwinCard.querySelector('.room-media');
-      if (roomMedia) {
+      if (roomMedia && !roomMedia.hasAttribute('data-ssr-loaded')) {
+        // Only update if not loaded via SSR
         roomMedia.style.backgroundImage = `url('${roomGroundTwinCardImageUrl}?v=${Date.now()}')`;
         console.log('Updated ground twin room card image:', roomGroundTwinCardImageUrl);
+      } else if (roomMedia && roomMedia.hasAttribute('data-ssr-loaded')) {
+        console.log('Skipping ground twin room card image update - loaded via SSR');
       }
     }
     
     if (roomCards.length >= 4 && roomSecondCardImageUrl) {
       const secondCard = roomCards[3];
       const roomMedia = secondCard.querySelector('.room-media');
-      if (roomMedia) {
+      if (roomMedia && !roomMedia.hasAttribute('data-ssr-loaded')) {
+        // Only update if not loaded via SSR
         roomMedia.style.backgroundImage = `url('${roomSecondCardImageUrl}?v=${Date.now()}')`;
         console.log('Updated second floor room card image:', roomSecondCardImageUrl);
+      } else if (roomMedia && roomMedia.hasAttribute('data-ssr-loaded')) {
+        console.log('Skipping second floor room card image update - loaded via SSR');
       }
     }
     
-    // Save to localStorage for immediate updates
+    // Save to localStorage for immediate updates (room cards images only)
     const contentData = {
-      homepageDescription: data.homepageDescription || data.homepage_description || '',
-      homepageSubtitle: data.homepageSubtitle || data.homepage_subtitle || '',
-      heroImageUrl: heroImageUrl,
-      hero2ImageUrl: hero2ImageUrl,
-      wellnessMassageImageUrl: wellnessMassageImageUrl,
-      wellnessYogaImageUrl: wellnessYogaImageUrl,
-      wellnessSaunaImageUrl: wellnessSaunaImageUrl,
+      // Hero images, descriptions, and Wellness Experiences are loaded via SSR
+      // Only save room cards images for backward compatibility
       roomBasementCardImageUrl: roomBasementCardImageUrl,
       roomGroundQueenCardImageUrl: roomGroundQueenCardImageUrl,
       roomGroundTwinCardImageUrl: roomGroundTwinCardImageUrl,
@@ -3229,9 +3335,19 @@ async function fetchFloorPlanFromAPI() {
 }
 
 // Initialize floor plan data when DOM is ready - call SYNCHRONOUSLY to update before images load
+// NOTE: Floor Plan content (text and images) is now loaded via Server-Side Rendering (SSR) in index.php
+// This function is kept for backward compatibility but is disabled for SSR pages
 function initFloorPlanData() {
   // Only load floor plan data on main site, not in admin
+  // Skip if page is SSR (has data-ssr-loaded attributes on floor plan images)
   if (!window.location.pathname.includes('admin')) {
+    const floorPlanImages = document.querySelectorAll('.floor-photo[data-ssr-loaded]');
+    if (floorPlanImages.length > 0) {
+      // Page uses SSR, skip JavaScript loading
+      console.log('Floor Plan content loaded via SSR, skipping JavaScript update');
+      return;
+    }
+    // Fallback for non-SSR pages
     loadFloorPlanData();
   }
 }
@@ -3301,7 +3417,7 @@ function initMobileMenu() {
             mobileNavSignin.textContent = window.authSystem.user.name || 'Account';
             mobileNavSignin.href = 'dashboard.html';
           } else {
-            mobileNavSignin.textContent = 'Sign In';
+            mobileNavSignin.textContent = 'Guest login';
             mobileNavSignin.href = 'login.html';
           }
         }

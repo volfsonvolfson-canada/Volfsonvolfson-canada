@@ -18,8 +18,8 @@ if ($action === 'get_floorplan') {
                 'ground_description' => 'A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.',
                 'ground_queen_image' => 'assets/plan.jpg',
                 'ground_image_url' => 'assets/plan.jpg', // Universal field name
-                'loft_subtitle' => 'Private top-floor space under the roof.',
-                'loft_description' => 'A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.',
+                'loft_subtitle' => 'Multifunctional spaces & small cinema',
+                'loft_description' => 'Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.',
                 'loft_image_url' => 'assets/plan.jpg'
             ];
             sendSuccess($defaultData);
@@ -49,8 +49,8 @@ if ($action === 'get_floorplan') {
                 'ground_description' => 'A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.',
                 'ground_queen_image' => 'assets/plan.jpg',
                 'ground_image_url' => 'assets/plan.jpg', // Universal field name
-                'loft_subtitle' => 'Private top-floor space under the roof.',
-                'loft_description' => 'A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.',
+                'loft_subtitle' => 'Multifunctional spaces & small cinema',
+                'loft_description' => 'Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.',
                 'loft_image_url' => 'assets/plan.jpg'
             ];
             sendSuccess($defaultData);

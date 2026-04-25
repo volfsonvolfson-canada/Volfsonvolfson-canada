@@ -23,19 +23,6 @@ if ($wellnessTableCheck && $wellnessTableCheck->num_rows > 0) {
     }
 }
 
-// Helper function for safe output with fallback
-function safeOutput($value, $fallback = '') {
-    return htmlspecialchars($value ?? $fallback, ENT_QUOTES, 'UTF-8');
-}
-
-// Helper function for safe output with line breaks preserved
-function safeOutputWithBreaks($value, $fallback = '') {
-    $text = $value ?? $fallback;
-    // Replace newlines with <br> tags
-    $text = nl2br(htmlspecialchars($text, ENT_QUOTES, 'UTF-8'));
-    return $text;
-}
-
 // Extract Home Page content with fallback values
 $homepageDescription = safeOutputWithBreaks($content['homepage_description'] ?? '', 'Back to Base is a countryside guesthouse in Nelson, British Columbia, where you can rent a room or book the entire house for a vacation, retreat, or wellness getaway. Guests can restore their energy with a relaxing massage and enjoy comfortable accommodation surrounded by mountains and forest.');
 $homepageSubtitle = safeOutputWithBreaks($content['homepage_subtitle'] ?? '', 'Our cozy rooms and inspiring atmosphere make this the perfect place for solitude, meditation, yoga retreats, or simply a peaceful holiday in nature.');
@@ -48,12 +35,12 @@ if ($roomsTableCheck && $roomsTableCheck->num_rows > 0) {
     $roomsData = fetchOne($conn, "SELECT * FROM rooms_settings WHERE id = 1");
     if ($roomsData) {
         $roomsTitle = safeOutput($roomsData['rooms_title'] ?? '', 'Choose your room');
-        $roomsSubtitle = safeOutput($roomsData['rooms_subtitle'] ?? '');
+        $roomsSubtitle = safeOutputWithBreaks($roomsData['rooms_subtitle'] ?? '', '');
     }
 } else {
     // Fall back to content_settings for backward compatibility
     $roomsTitle = safeOutput($content['rooms_title'] ?? '', 'Choose your room');
-    $roomsSubtitle = safeOutput($content['rooms_subtitle'] ?? '');
+    $roomsSubtitle = safeOutputWithBreaks($content['rooms_subtitle'] ?? '', '');
 }
 
 // Room cards content - try room_cards_settings table first, fall back to content_settings
@@ -80,30 +67,30 @@ function safeOutputHTML($value, $fallback = '') {
 }
 
 // Extract room card content with fallback values
-$roomBasementCardTitle = safeOutputHTML($roomCardData['room_basement_card_title'] ?? '', 'Basement<br/>Queen bed');
+$roomBasementCardTitle = safeOutputHTML($roomCardData['room_basement_card_title'] ?? '', 'Loki Suite');
 $roomBasementCardDescription = safeOutputWithBreaks($roomCardData['room_basement_card_description'] ?? '', 'Cozy room next to the home cinema and sauna. Perfect for two.');
-$roomBasementCardPrice = safeOutput($roomCardData['room_basement_card_price'] ?? '', 'From 140 CAD/night');
+$roomBasementCardPrice = btb_room_price_line_html($content, 'basement', btb_room_price_default_line_html('basement'));
 $roomBasementCardImageUrl = isset($roomCardData['room_basement_card_image_url']) && !empty(trim($roomCardData['room_basement_card_image_url'])) 
     ? safeOutput($roomCardData['room_basement_card_image_url'], '') 
     : '';
 
-$roomGroundQueenCardTitle = safeOutputHTML($roomCardData['room_ground_queen_card_title'] ?? '', 'Ground floor<br/>Queen bed');
+$roomGroundQueenCardTitle = safeOutputHTML($roomCardData['room_ground_queen_card_title'] ?? '', 'The Nouk');
 $roomGroundQueenCardDescription = safeOutputWithBreaks($roomCardData['room_ground_queen_card_description'] ?? '', 'Compact, bright room with access to the fireplace lounge.');
-$roomGroundQueenCardPrice = safeOutput($roomCardData['room_ground_queen_card_price'] ?? '', 'From 130 CAD/night');
+$roomGroundQueenCardPrice = btb_room_price_line_html($content, 'ground_queen', btb_room_price_default_line_html('ground_queen'));
 $roomGroundQueenCardImageUrl = isset($roomCardData['room_ground_queen_card_image_url']) && !empty(trim($roomCardData['room_ground_queen_card_image_url'])) 
     ? safeOutput($roomCardData['room_ground_queen_card_image_url'], '') 
     : '';
 
-$roomGroundTwinCardTitle = safeOutputHTML($roomCardData['room_ground_twin_card_title'] ?? '', 'Ground floor<br/>Twin beds');
+$roomGroundTwinCardTitle = safeOutputHTML($roomCardData['room_ground_twin_card_title'] ?? '', 'Vrienden');
 $roomGroundTwinCardDescription = safeOutputWithBreaks($roomCardData['room_ground_twin_card_description'] ?? '', 'Great for friends or colleagues. Close to the kitchen and massage hall.');
-$roomGroundTwinCardPrice = safeOutput($roomCardData['room_ground_twin_card_price'] ?? '', 'From 125 CAD/night');
+$roomGroundTwinCardPrice = btb_room_price_line_html($content, 'ground_twin', btb_room_price_default_line_html('ground_twin'));
 $roomGroundTwinCardImageUrl = isset($roomCardData['room_ground_twin_card_image_url']) && !empty(trim($roomCardData['room_ground_twin_card_image_url'])) 
     ? safeOutput($roomCardData['room_ground_twin_card_image_url'], '') 
     : '';
 
-$roomSecondCardTitle = safeOutputHTML($roomCardData['room_second_card_title'] ?? '', 'Second floor (entire)<br/>Queen bed');
+$roomSecondCardTitle = safeOutputHTML($roomCardData['room_second_card_title'] ?? '', 'Kelder');
 $roomSecondCardDescription = safeOutputWithBreaks($roomCardData['room_second_card_description'] ?? '', 'Separate kitchen and shower, study, and a balcony with lake view.');
-$roomSecondCardPrice = safeOutput($roomCardData['room_second_card_price'] ?? '', 'From 210 CAD/night (entire floor)');
+$roomSecondCardPrice = btb_room_price_line_html($content, 'second', btb_room_price_default_line_html('second'));
 $roomSecondCardImageUrl = isset($roomCardData['room_second_card_image_url']) && !empty(trim($roomCardData['room_second_card_image_url'])) 
     ? safeOutput($roomCardData['room_second_card_image_url'], '') 
     : '';
@@ -118,9 +105,9 @@ $hero2ImageUrl = isset($content['hero2_image_url']) && !empty(trim($content['her
 
 // Extract Wellness Experiences content with fallback values
 $wellnessTitle = safeOutput($content['wellness_title'] ?? '', 'Wellness Experiences');
-$wellnessDescription = safeOutputWithBreaks($content['wellness_description'] ?? '', 'Enhance your stay with our additional wellness services. Enjoy yoga sessions in the forest, relaxing or deep tissue massages, and the warmth of our private sauna — all designed to make your vacation even more restorative.');
+$wellnessDescription = safeOutputWithBreaks($content['wellness_description'] ?? '', 'Enhance your stay with optional massage: relaxing or deep tissue sessions with an experienced therapist — an easy way to make your time in the mountains feel even more restorative.');
 
-$wellnessMassageTitle = safeOutput($content['wellness_massage_title'] ?? '', 'Massage');
+$wellnessMassageTitle = safeOutput($content['wellness_massage_title'] ?? '', 'Wellness');
 $wellnessMassageDescription = safeOutputWithBreaks($content['wellness_massage_description'] ?? '', 'Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.');
 $wellnessMassageImageUrl = '';
 if (!empty($wellnessImages) && !empty(trim($wellnessImages['wellness_massage_image_url'] ?? ''))) {
@@ -129,42 +116,24 @@ if (!empty($wellnessImages) && !empty(trim($wellnessImages['wellness_massage_ima
     $wellnessMassageImageUrl = safeOutput($content['wellness_massage_image_url'], '');
 }
 
-$wellnessYogaTitle = safeOutput($content['wellness_yoga_title'] ?? '', 'Yoga');
-$wellnessYogaDescription = safeOutputWithBreaks($content['wellness_yoga_description'] ?? '', 'On the property, surrounded by a cozy forest, you\'ll find platforms for yoga and meditation. An experienced instructor will guide you towards harmony with yourself and the world, while the soothing sound of a mountain stream nearby will be your soundtrack along the way.');
-$wellnessYogaImageUrl = '';
-if (!empty($wellnessImages) && !empty(trim($wellnessImages['wellness_yoga_image_url'] ?? ''))) {
-    $wellnessYogaImageUrl = safeOutput($wellnessImages['wellness_yoga_image_url'], '');
-} elseif (isset($content['wellness_yoga_image_url']) && !empty(trim($content['wellness_yoga_image_url']))) {
-    $wellnessYogaImageUrl = safeOutput($content['wellness_yoga_image_url'], '');
-}
-
-$wellnessSaunaTitle = safeOutput($content['wellness_sauna_title'] ?? '', 'Sauna');
-$wellnessSaunaDescription = safeOutputWithBreaks($content['wellness_sauna_description'] ?? '', 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests free access to a small sauna. It is located right in the house, on the basement floor.');
-$wellnessSaunaImageUrl = '';
-if (!empty($wellnessImages) && !empty(trim($wellnessImages['wellness_sauna_image_url'] ?? ''))) {
-    $wellnessSaunaImageUrl = safeOutput($wellnessImages['wellness_sauna_image_url'], '');
-} elseif (isset($content['wellness_sauna_image_url']) && !empty(trim($content['wellness_sauna_image_url']))) {
-    $wellnessSaunaImageUrl = safeOutput($content['wellness_sauna_image_url'], '');
-}
-
 // Load Floor Plan content from database
 $floorplan = fetchOne($conn, "SELECT * FROM floorplan_settings WHERE id = 1");
 if (!$floorplan) {
     $floorplan = []; // Ensure $floorplan is always an array
 }
 
-// Floor Plan section title and subtitle
-$floorplanTitle = safeOutput($floorplan['floorplan_title'] ?? '', 'Floor plan');
-$floorplanSubtitle = safeOutput($floorplan['floorplan_subtitle'] ?? '', 'Three levels of comfort: basement, ground floor and a cozy loft under the roof.');
+// Common areas (floor plan) section title and subtitle
+$floorplanTitle = safeOutput($floorplan['floorplan_title'] ?? '', 'Common areas');
+$floorplanSubtitle = safeOutputWithBreaks($floorplan['floorplan_subtitle'] ?? '', 'Basement calm, a welcoming main living level, and bright multifunctional rooms for workshops and cinema.');
 
 // Extract Floor Plan content with fallback values
-$basementSubtitle = safeOutput($floorplan['basement_subtitle'] ?? '', 'Private floor with a separate entrance.');
+$basementSubtitle = safeOutputWithBreaks($floorplan['basement_subtitle'] ?? '', 'Private floor with a separate entrance.');
 $basementDescription = safeOutputWithBreaks($floorplan['basement_description'] ?? '', 'A spacious bedroom with a king-size bed and a small study, a home theater with a fireplace, and a private bathroom featuring a shower and a sauna room.');
 $basementImageUrl = isset($floorplan['basement_image_url']) && !empty(trim($floorplan['basement_image_url'])) 
     ? safeOutput($floorplan['basement_image_url'], '') 
     : 'assets/plan.jpg';
 
-$groundSubtitle = safeOutput($floorplan['ground_subtitle'] ?? '', 'Open space with a separate entrance.');
+$groundSubtitle = safeOutputWithBreaks($floorplan['ground_subtitle'] ?? '', 'Open space with a separate entrance.');
 $groundDescription = safeOutputWithBreaks($floorplan['ground_description'] ?? '', 'A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.');
 $groundImageUrl = isset($floorplan['ground_image_url']) && !empty(trim($floorplan['ground_image_url'])) 
     ? safeOutput($floorplan['ground_image_url'], '') 
@@ -172,11 +141,101 @@ $groundImageUrl = isset($floorplan['ground_image_url']) && !empty(trim($floorpla
         ? safeOutput($floorplan['ground_queen_image'], '') 
         : 'assets/plan.jpg');
 
-$loftSubtitle = safeOutput($floorplan['loft_subtitle'] ?? '', 'Private top-floor space under the roof.');
-$loftDescription = safeOutputWithBreaks($floorplan['loft_description'] ?? '', 'A large bedroom with a king-size bed, a bright study, a small kitchen, a private bathroom with a shower, and a spacious balcony with stunning views of the lake and mountains.');
+$loftSubtitle = safeOutputWithBreaks($floorplan['loft_subtitle'] ?? '', 'Multifunctional spaces & small cinema');
+$loftDescription = safeOutputWithBreaks($floorplan['loft_description'] ?? '', 'Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.');
 $loftImageUrl = isset($floorplan['loft_image_url']) && !empty(trim($floorplan['loft_image_url'])) 
     ? safeOutput($floorplan['loft_image_url'], '') 
     : 'assets/plan.jpg';
+
+// Plain floor labels for gallery overlay, image alt, and modal captions (matches floor card subtitles when set)
+$basementFloorLabelPlain = trim((string) ($floorplan['basement_subtitle'] ?? ''));
+if ($basementFloorLabelPlain === '') {
+    $basementFloorLabelPlain = 'Private floor with a separate entrance.';
+}
+$groundFloorLabelPlain = trim((string) ($floorplan['ground_subtitle'] ?? ''));
+if ($groundFloorLabelPlain === '') {
+    $groundFloorLabelPlain = 'Open space with a separate entrance.';
+}
+$loftFloorLabelPlain = trim((string) ($floorplan['loft_subtitle'] ?? ''));
+if ($loftFloorLabelPlain === '') {
+    $loftFloorLabelPlain = 'Multifunctional spaces & small cinema';
+}
+
+if (!function_exists('floorplan_gallery_overlay_hook')) {
+    /**
+     * Warm, inviting CTAs for Common areas floor galleries (plain UTF-8).
+     */
+    function floorplan_gallery_overlay_hook(string $floorKey, string $labelPlain): string {
+        $banks = [
+            'basement' => [
+                'Fancy a peek downstairs? Tap to open the gallery',
+                'Cozy corners down here — come see the photos',
+                '{L} — tap through and see every corner',
+                'Sauna glow & soft sofas — take a little tour',
+            ],
+            'ground' => [
+                'Where coffee & chatter live — tap to explore',
+                'The warm middle of the house — open the gallery',
+                '{L} — pull up a chair and browse the snaps',
+                'Kitchen, hearth & hello hugs — come take a look',
+            ],
+            'loft' => [
+                'Workshops & movie nights live here — tap to browse',
+                '{L} — we saved a friendlier photo tour for you',
+                'Roll out mats or dim the lights — come see',
+                'Flexible rooms for groups — open the gallery',
+            ],
+        ];
+        $list = $banks[$floorKey] ?? $banks['basement'];
+        $i = abs(crc32($floorKey . '|' . $labelPlain)) % count($list);
+        $line = str_replace('{L}', $labelPlain, $list[$i]);
+        if (function_exists('mb_strlen') && function_exists('mb_substr') && mb_strlen($line) > 90) {
+            return mb_substr($line, 0, 87) . '…';
+        }
+        if (strlen($line) > 90) {
+            return substr($line, 0, 87) . '…';
+        }
+        return $line;
+    }
+}
+
+$basementFloorGalleryHook = floorplan_gallery_overlay_hook('basement', $basementFloorLabelPlain);
+$groundFloorGalleryHook = floorplan_gallery_overlay_hook('ground', $groundFloorLabelPlain);
+$loftFloorGalleryHook = floorplan_gallery_overlay_hook('loft', $loftFloorLabelPlain);
+
+// Load galleries for each floor
+$basementGallery = [];
+if (isset($floorplan['basement_gallery']) && !empty(trim($floorplan['basement_gallery']))) {
+    $basementGalleryJson = trim($floorplan['basement_gallery']);
+    if ($basementGalleryJson !== '' && $basementGalleryJson !== '[]') {
+        $decoded = json_decode($basementGalleryJson, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $basementGallery = $decoded;
+        }
+    }
+}
+
+$groundGallery = [];
+if (isset($floorplan['ground_gallery']) && !empty(trim($floorplan['ground_gallery']))) {
+    $groundGalleryJson = trim($floorplan['ground_gallery']);
+    if ($groundGalleryJson !== '' && $groundGalleryJson !== '[]') {
+        $decoded = json_decode($groundGalleryJson, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $groundGallery = $decoded;
+        }
+    }
+}
+
+$loftGallery = [];
+if (isset($floorplan['loft_gallery']) && !empty(trim($floorplan['loft_gallery']))) {
+    $loftGalleryJson = trim($floorplan['loft_gallery']);
+    if ($loftGalleryJson !== '' && $loftGalleryJson !== '[]') {
+        $decoded = json_decode($loftGalleryJson, true);
+        if (json_last_error() === JSON_ERROR_NONE && is_array($decoded)) {
+            $loftGallery = $decoded;
+        }
+    }
+}
 
 // Cache buster for images - use current timestamp to force browser to reload images
 // This ensures new images from admin panel are displayed immediately without flickering
@@ -186,10 +245,11 @@ $cacheBuster = '?v=' . time();
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+<?php require_once __DIR__ . '/site-head-consent.php'; ?>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>Back to Base — Boutique Retreat in British Columbia</title>
-  <meta name="description" content="Back to Base — boutique forest retreat in British Columbia, Canada. Rooms for rent, massage services, yoga, and nature immersion.">
+  <meta name="description" content="Back to Base — boutique forest retreat in British Columbia, Canada. Rooms for rent, wellness services, yoga, and nature immersion.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -361,7 +421,7 @@ $cacheBuster = '?v=' . time();
     })();
   </script>
 </head>
-<body>
+<body class="home">
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="index.php">
@@ -370,9 +430,10 @@ $cacheBuster = '?v=' . time();
       </a>
       <nav class="nav">
         <a href="#rooms">Rooms</a>
-        <a href="massage.php">Massage</a>
+        <a href="massage.php">Wellness</a>
         <a href="retreat-and-workshop.php">Retreats and Workshops</a>
-        <a href="special.php">Special</a>
+        <a href="explore.php">Explore</a>
+        <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
       <button class="mobile-menu-toggle" id="mobile-menu-toggle" aria-label="Toggle mobile menu">
@@ -385,7 +446,7 @@ $cacheBuster = '?v=' . time();
           </svg>
           <span id="theme-text">Light</span>
         </button>
-        <a href="login.html" class="btn-signin" id="header-signin">Sign In</a>
+        <a href="login.html" class="btn-signin" id="header-signin">Guest login</a>
       </div>
     </div>
   </header>
@@ -396,11 +457,12 @@ $cacheBuster = '?v=' . time();
   <!-- Mobile Navigation Menu -->
   <nav class="mobile-nav" id="mobile-nav">
     <a href="index.php#rooms">Rooms</a>
-    <a href="massage.php">Massage</a>
+    <a href="massage.php">Wellness</a>
     <a href="retreat-and-workshop.php">Retreats and Workshops</a>
-    <a href="special.php">Special</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
     <a href="about.php">About us</a>
-    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Sign In</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
     <button class="theme-toggle" id="mobile-theme-toggle" aria-label="Toggle theme">
       <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -432,10 +494,10 @@ $cacheBuster = '?v=' . time();
   </section>
 
   <main>
-    <section class="section-tight">
+    <section class="section-tight home-intro" aria-label="Welcome message">
       <div class="container">
-        <p><?php echo $homepageDescription; ?></p>
-        <p><?php echo $homepageSubtitle; ?></p>
+        <h1 class="home-main-title"><?php echo $homepageDescription; ?></h1>
+        <p class="home-main-subtitle"><?php echo $homepageSubtitle; ?></p>
       </div>
     </section>
 
@@ -474,50 +536,8 @@ $cacheBuster = '?v=' . time();
 
     <div class="page-header">
       <div class="container">
-        <h1><?php echo htmlspecialchars($floorplanTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-        <p class="section-lead"><?php echo htmlspecialchars($floorplanSubtitle, ENT_QUOTES, 'UTF-8'); ?></p>
-      </div>
-    </div>
-
-    <section id="plan" class="section">
-      <div class="container">
-        <div class="plan-grid reveal">
-          <article class="plan-card floor-card">
-            <h3>Basement</h3>
-            <p class="floor-sub"><?php echo $basementSubtitle; ?></p>
-            <div class="floor-desc"><?php echo $basementDescription; ?></div>
-            <picture class="floor-photo-wrap">
-              <source srcset="<?php echo htmlspecialchars($basementImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" type="image/jpeg" />
-              <img class="floor-photo" src="<?php echo htmlspecialchars($basementImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Basement floor plan" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
-            </picture>
-          </article>
-          <article class="plan-card floor-card">
-            <h3>Ground floor</h3>
-            <p class="floor-sub"><?php echo $groundSubtitle; ?></p>
-            <div class="floor-desc"><?php echo $groundDescription; ?></div>
-            <picture class="floor-photo-wrap">
-              <source srcset="<?php echo htmlspecialchars($groundImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" type="image/jpeg" />
-              <img class="floor-photo" src="<?php echo htmlspecialchars($groundImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Ground floor plan" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
-            </picture>
-          </article>
-          <article class="plan-card floor-card">
-            <h3>Second floor (loft)</h3>
-            <p class="floor-sub"><?php echo $loftSubtitle; ?></p>
-            <div class="floor-desc"><?php echo $loftDescription; ?></div>
-            <picture class="floor-photo-wrap">
-              <source srcset="<?php echo htmlspecialchars($loftImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" type="image/jpeg" />
-              <img class="floor-photo" src="<?php echo htmlspecialchars($loftImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Second floor plan" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
-            </picture>
-          </article>
-        </div>
-        <p class="plan-swipe-hint">Swipe to see more</p>
-      </div>
-    </section>
-
-    <div class="page-header">
-      <div class="container">
         <h1><?php echo htmlspecialchars($roomsTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
-        <p class="section-lead"><?php echo htmlspecialchars($roomsSubtitle, ENT_QUOTES, 'UTF-8'); ?></p>
+        <p class="section-lead"><?php echo $roomsSubtitle; ?></p>
       </div>
     </div>
 
@@ -534,9 +554,9 @@ $cacheBuster = '?v=' . time();
             ?>');" data-ssr-loaded="true" data-no-resolve="true"></div>
             <div class="room-body">
               <h3><?php echo $roomBasementCardTitle; ?></h3>
-              <p><?php echo $roomBasementCardDescription; ?></p>
+              <div class="room-card-desc"><?php echo $roomBasementCardDescription; ?></div>
               <p class="notice"><?php echo $roomBasementCardPrice; ?></p>
-              <a class="btn primary" href="room-basement.php">Details & booking</a>
+              <a class="btn primary" href="room-basement.php">Book a stay</a>
             </div>
           </article>
 
@@ -550,9 +570,9 @@ $cacheBuster = '?v=' . time();
             ?>');" data-ssr-loaded="true" data-no-resolve="true"></div>
             <div class="room-body">
               <h3><?php echo $roomGroundQueenCardTitle; ?></h3>
-              <p><?php echo $roomGroundQueenCardDescription; ?></p>
+              <div class="room-card-desc"><?php echo $roomGroundQueenCardDescription; ?></div>
               <p class="notice"><?php echo $roomGroundQueenCardPrice; ?></p>
-              <a class="btn primary" href="room-first-double.php">Details & booking</a>
+              <a class="btn primary" href="room-first-double.php">Book a stay</a>
             </div>
           </article>
 
@@ -567,9 +587,9 @@ $cacheBuster = '?v=' . time();
             ?>');" data-ssr-loaded="true" data-no-resolve="true"></div>
             <div class="room-body">
               <h3><?php echo $roomGroundTwinCardTitle; ?></h3>
-              <p><?php echo $roomGroundTwinCardDescription; ?></p>
+              <div class="room-card-desc"><?php echo $roomGroundTwinCardDescription; ?></div>
               <p class="notice"><?php echo $roomGroundTwinCardPrice; ?></p>
-              <a class="btn primary" href="room-first-twin.php">Details & booking</a>
+              <a class="btn primary" href="room-first-twin.php">Book a stay</a>
             </div>
           </article>
 
@@ -583,9 +603,63 @@ $cacheBuster = '?v=' . time();
             ?>');" data-ssr-loaded="true" data-no-resolve="true"></div>
             <div class="room-body">
               <h3><?php echo $roomSecondCardTitle; ?></h3>
-              <p><?php echo $roomSecondCardDescription; ?></p>
+              <div class="room-card-desc"><?php echo $roomSecondCardDescription; ?></div>
               <p class="notice"><?php echo $roomSecondCardPrice; ?></p>
-              <a class="btn primary" href="room-second-suite.php">Details & booking</a>
+              <a class="btn primary" href="room-second-suite.php">Book a stay</a>
+            </div>
+          </article>
+        </div>
+        <p class="plan-swipe-hint">Swipe to see more</p>
+      </div>
+    </section>
+
+    <div class="page-header">
+      <div class="container">
+        <h1><?php echo htmlspecialchars($floorplanTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
+        <p class="section-lead"><?php echo $floorplanSubtitle; ?></p>
+      </div>
+    </div>
+
+    <section id="plan" class="section">
+      <div class="container">
+        <div class="plan-grid reveal">
+          <article class="plan-card floor-card">
+            <h3 class="floor-sub"><?php echo $basementSubtitle; ?></h3>
+            <div class="floor-desc"><?php echo $basementDescription; ?></div>
+            <div class="floor-photo-wrapper" data-gallery-name="basement">
+              <picture class="floor-photo-wrap">
+                <source srcset="<?php echo htmlspecialchars($basementImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" type="image/jpeg" />
+                <img class="floor-photo" src="<?php echo htmlspecialchars($basementImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($basementFloorLabelPlain, ''); ?>" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
+              </picture>
+              <div class="gallery-overlay">
+                <div class="gallery-overlay-text"><?php echo safeOutput($basementFloorGalleryHook, 'Open gallery'); ?></div>
+              </div>
+            </div>
+          </article>
+          <article class="plan-card floor-card">
+            <h3 class="floor-sub"><?php echo $groundSubtitle; ?></h3>
+            <div class="floor-desc"><?php echo $groundDescription; ?></div>
+            <div class="floor-photo-wrapper" data-gallery-name="ground">
+              <picture class="floor-photo-wrap">
+                <source srcset="<?php echo htmlspecialchars($groundImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" type="image/jpeg" />
+                <img class="floor-photo" src="<?php echo htmlspecialchars($groundImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($groundFloorLabelPlain, ''); ?>" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
+              </picture>
+              <div class="gallery-overlay">
+                <div class="gallery-overlay-text"><?php echo safeOutput($groundFloorGalleryHook, 'Open gallery'); ?></div>
+              </div>
+            </div>
+          </article>
+          <article class="plan-card floor-card">
+            <h3 class="floor-sub"><?php echo $loftSubtitle; ?></h3>
+            <div class="floor-desc"><?php echo $loftDescription; ?></div>
+            <div class="floor-photo-wrapper" data-gallery-name="loft">
+              <picture class="floor-photo-wrap">
+                <source srcset="<?php echo htmlspecialchars($loftImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" type="image/jpeg" />
+                <img class="floor-photo" src="<?php echo htmlspecialchars($loftImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($loftFloorLabelPlain, ''); ?>" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
+              </picture>
+              <div class="gallery-overlay">
+                <div class="gallery-overlay-text"><?php echo safeOutput($loftFloorGalleryHook, 'Open gallery'); ?></div>
+              </div>
             </div>
           </article>
         </div>
@@ -605,50 +679,16 @@ $cacheBuster = '?v=' . time();
         <section class="card card-massage">
           <div class="card-img">
             <?php if (!empty($wellnessMassageImageUrl)): ?>
-              <img id="wellness-massage-img" class="floor-photo media-43" src="<?php echo htmlspecialchars($wellnessMassageImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Massage at Back to Base" />
+              <img id="wellness-massage-img" class="floor-photo media-43" src="<?php echo htmlspecialchars($wellnessMassageImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Wellness at Back to Base" />
             <?php else: ?>
-              <img id="wellness-massage-img" class="floor-photo media-43" src="assets/massage.jpg" alt="Massage at Back to Base" />
+              <img id="wellness-massage-img" class="floor-photo media-43" src="assets/massage.jpg" alt="Wellness at Back to Base" />
             <?php endif; ?>
           </div>
           <div class="card-body">
-            <h2><?php echo $wellnessMassageTitle; ?></h2>
+            <h3><?php echo $wellnessMassageTitle; ?></h3>
             <p><?php echo $wellnessMassageDescription; ?></p>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <a class="btn primary" href="massage.php">Book massage</a>
-            </div>
-          </div>
-        </section>
-
-        <section class="card card-massage card-massage--alt">
-          <div class="card-img">
-            <?php if (!empty($wellnessYogaImageUrl)): ?>
-              <img id="wellness-yoga-img" class="floor-photo media-43" src="<?php echo htmlspecialchars($wellnessYogaImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Yoga at Back to Base" />
-            <?php else: ?>
-              <img id="wellness-yoga-img" class="floor-photo media-43" src="assets/yoga.jpg" alt="Yoga at Back to Base" />
-            <?php endif; ?>
-          </div>
-          <div class="card-body">
-            <h2><?php echo $wellnessYogaTitle; ?></h2>
-            <p><?php echo $wellnessYogaDescription; ?></p>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <a class="btn primary" href="retreat-and-workshop.php">Book retreat</a>
-            </div>
-          </div>
-        </section>
-
-        <section class="card card-massage">
-          <div class="card-img">
-            <?php if (!empty($wellnessSaunaImageUrl)): ?>
-              <img id="wellness-sauna-img" class="floor-photo media-43" src="<?php echo htmlspecialchars($wellnessSaunaImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Sauna at Back to Base" />
-            <?php else: ?>
-              <img id="wellness-sauna-img" class="floor-photo media-43" src="assets/plan-basement-bedroom.jpg" alt="Sauna at Back to Base" />
-            <?php endif; ?>
-          </div>
-          <div class="card-body">
-            <h2><?php echo $wellnessSaunaTitle; ?></h2>
-            <p><?php echo $wellnessSaunaDescription; ?></p>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-              <a class="btn primary" href="massage.php">Book sauna session</a>
+              <a class="btn outline" href="massage.php">Explore wellness</a>
             </div>
           </div>
         </section>
@@ -668,15 +708,18 @@ $cacheBuster = '?v=' . time();
         <h4>Navigation</h4>
         <ul class="footer-nav">
           <li><a href="#rooms">Rooms</a></li>
-          <li><a href="massage.php">Massage</a></li>
+          <li><a href="massage.php">Wellness</a></li>
           <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
-          <li><a href="special.php">Special</a></li>
+          <li><a href="explore.php">Explore</a></li>
+          <li><a href="special.php">Specials</a></li>
           <li><a href="about.php">About us</a></li>
         </ul>
       </div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
+        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -684,7 +727,8 @@ $cacheBuster = '?v=' . time();
 
   <style>
     /* Scroll offset for anchor links to account for fixed header */
-    #rooms {
+    #rooms,
+    #plan {
       scroll-margin-top: 100px;
     }
     
@@ -800,6 +844,337 @@ $cacheBuster = '?v=' . time();
             // Update URL without triggering scroll
             history.pushState(null, null, '#' + hash);
           }
+        });
+      });
+    })();
+  </script>
+  <script>
+    /* Home intro: hide headline + subtitle until user scrolls, then fade in */
+    (function () {
+      var intro = document.querySelector('body.home .home-intro');
+      if (!intro) return;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        intro.classList.add('is-revealed');
+        return;
+      }
+      function reveal() {
+        if (intro.classList.contains('is-revealed')) return;
+        intro.classList.add('is-revealed');
+        window.removeEventListener('scroll', reveal, { passive: true });
+      }
+      function onScroll() {
+        if (window.scrollY > 24 || document.documentElement.scrollTop > 24) {
+          reveal();
+        }
+      }
+      if (window.scrollY > 24 || document.documentElement.scrollTop > 24) {
+        intro.classList.add('is-revealed');
+        return;
+      }
+      window.addEventListener('scroll', onScroll, { passive: true });
+    })();
+  </script>
+
+  <!-- Gallery Modal for Floor Plan -->
+  <div id="floorplan-gallery-modal" class="gallery-modal">
+    <span class="gallery-modal-close" onclick="closeFloorplanGallery()">&times;</span>
+    <span class="gallery-modal-nav gallery-modal-prev" onclick="changeFloorplanGalleryImage(-1)">&#10094;</span>
+    <span class="gallery-modal-nav gallery-modal-next" onclick="changeFloorplanGalleryImage(1)">&#10095;</span>
+    <div class="gallery-modal-content">
+      <img id="floorplan-gallery-modal-image" class="gallery-modal-image" src="" alt="">
+    </div>
+    <div class="gallery-modal-counter">
+      <span id="floorplan-gallery-counter">1 / 1</span>
+    </div>
+  </div>
+
+  <style>
+    /* Floor Plan Gallery Styles */
+    .floor-photo-wrapper {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      overflow: hidden;
+      cursor: pointer;
+      border-radius: 10px;
+    }
+    .floor-photo-wrap {
+      position: relative;
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    .floor-photo-wrapper .floor-photo {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: center;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+    .floor-photo-wrapper:hover .floor-photo {
+      transform: scale(1.05);
+    }
+    
+    /* Gallery overlay - appears on hover */
+    .floor-photo-wrapper .gallery-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      z-index: 1;
+      border-radius: 10px;
+    }
+    .floor-photo-wrapper:hover .gallery-overlay {
+      opacity: 1;
+    }
+    .floor-photo-wrapper .gallery-overlay-text {
+      color: white;
+      font-size: 1.05rem;
+      font-weight: 600;
+      text-align: center;
+      padding: 12px 20px;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 8px;
+      backdrop-filter: blur(4px);
+      max-width: 96%;
+      line-height: 1.28;
+    }
+
+    /* Gallery Modal Styles */
+    .gallery-modal {
+      display: none;
+      position: fixed;
+      z-index: 10000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      backdrop-filter: blur(10px);
+    }
+    .gallery-modal.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gallery-modal-content {
+      position: relative;
+      max-width: 90%;
+      max-height: 90%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .gallery-modal-image {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 8px;
+    }
+    .gallery-modal-close {
+      position: absolute;
+      top: 20px;
+      right: 30px;
+      color: white;
+      font-size: 40px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10001;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      transition: background 0.3s ease;
+    }
+    .gallery-modal-close:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .gallery-modal-nav {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: white;
+      font-size: 30px;
+      font-weight: bold;
+      cursor: pointer;
+      z-index: 10001;
+      width: 50px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.5);
+      border-radius: 50%;
+      transition: background 0.3s ease;
+      user-select: none;
+    }
+    .gallery-modal-nav:hover {
+      background: rgba(0, 0, 0, 0.8);
+    }
+    .gallery-modal-prev {
+      left: 20px;
+    }
+    .gallery-modal-next {
+      right: 20px;
+    }
+    .gallery-modal-counter {
+      position: absolute;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      background: rgba(0, 0, 0, 0.5);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+    }
+  </style>
+
+  <script>
+    // Floor Plan Gallery functionality
+    (function() {
+      'use strict';
+      
+      // Initialize gallery variables
+      let floorplanGalleries = {};
+      let currentFloorplanGallery = null;
+      let currentFloorplanImageIndex = 0;
+
+      // Wait for DOM to be fully loaded
+      document.addEventListener('DOMContentLoaded', function() {
+        // Load gallery data from PHP
+        <?php
+        // Helper function to filter empty URLs
+        function filterGalleryUrls($gallery) {
+            return array_filter($gallery, function($url) {
+                return !empty(trim($url));
+            });
+        }
+        
+        // Build gallery arrays (combine main image with gallery images)
+        $basementGalleryFull = array_merge([$basementImageUrl], filterGalleryUrls($basementGallery));
+        $groundGalleryFull = array_merge([$groundImageUrl], filterGalleryUrls($groundGallery));
+        $loftGalleryFull = array_merge([$loftImageUrl], filterGalleryUrls($loftGallery));
+        ?>
+        
+        floorplanGalleries = {
+          basement: <?php echo json_encode(array_values($basementGalleryFull)); ?>,
+          ground: <?php echo json_encode(array_values($groundGalleryFull)); ?>,
+          loft: <?php echo json_encode(array_values($loftGalleryFull)); ?>
+        };
+
+        const floorplanGalleryAltPrefixes = <?php echo json_encode([
+            'basement' => $basementFloorLabelPlain,
+            'ground' => $groundFloorLabelPlain,
+            'loft' => $loftFloorLabelPlain,
+        ], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG); ?>;
+        
+        console.log('Loaded floorplan galleries:', floorplanGalleries);
+
+        // Gallery functions - make them globally available
+        window.openFloorplanGallery = function(galleryName, imageIndex) {
+          console.log('openFloorplanGallery called:', galleryName, imageIndex);
+          currentFloorplanGallery = galleryName;
+          currentFloorplanImageIndex = imageIndex || 0;
+          const gallery = floorplanGalleries[galleryName];
+          
+          if (!gallery || gallery.length === 0) {
+            console.warn('Gallery is empty or not found:', galleryName);
+            return;
+          }
+          
+          const modal = document.getElementById('floorplan-gallery-modal');
+          const modalImage = document.getElementById('floorplan-gallery-modal-image');
+          const counter = document.getElementById('floorplan-gallery-counter');
+          
+          if (!modal || !modalImage || !counter) {
+            console.error('Gallery modal elements not found');
+            return;
+          }
+          
+          modalImage.src = gallery[currentFloorplanImageIndex];
+          const fpPrefix = floorplanGalleryAltPrefixes[galleryName] || 'Common areas';
+          modalImage.alt = fpPrefix + ' — slide ' + (currentFloorplanImageIndex + 1) + ' of ' + gallery.length;
+          counter.textContent = `${currentFloorplanImageIndex + 1} / ${gallery.length}`;
+          modal.classList.add('active');
+          
+          // Prevent body scroll
+          document.body.style.overflow = 'hidden';
+        }
+
+        window.closeFloorplanGallery = function() {
+          const modal = document.getElementById('floorplan-gallery-modal');
+          if (modal) {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+          }
+        }
+
+        window.changeFloorplanGalleryImage = function(direction) {
+          if (!currentFloorplanGallery) return;
+          
+          const gallery = floorplanGalleries[currentFloorplanGallery];
+          if (!gallery || gallery.length === 0) return;
+          
+          currentFloorplanImageIndex += direction;
+          
+          if (currentFloorplanImageIndex < 0) {
+            currentFloorplanImageIndex = gallery.length - 1;
+          } else if (currentFloorplanImageIndex >= gallery.length) {
+            currentFloorplanImageIndex = 0;
+          }
+          
+          const modalImage = document.getElementById('floorplan-gallery-modal-image');
+          const counter = document.getElementById('floorplan-gallery-counter');
+          
+          modalImage.src = gallery[currentFloorplanImageIndex];
+          const fpPrefix2 = floorplanGalleryAltPrefixes[currentFloorplanGallery] || 'Common areas';
+          modalImage.alt = fpPrefix2 + ' — slide ' + (currentFloorplanImageIndex + 1) + ' of ' + gallery.length;
+          counter.textContent = `${currentFloorplanImageIndex + 1} / ${gallery.length}`;
+        }
+
+        // Close gallery on Escape key
+        document.addEventListener('keydown', function(e) {
+          const modal = document.getElementById('floorplan-gallery-modal');
+          if (modal && modal.classList.contains('active')) {
+            if (e.key === 'Escape') {
+              window.closeFloorplanGallery();
+            } else if (e.key === 'ArrowLeft') {
+              window.changeFloorplanGalleryImage(-1);
+            } else if (e.key === 'ArrowRight') {
+              window.changeFloorplanGalleryImage(1);
+            }
+          }
+        });
+
+        // Close gallery when clicking outside image
+        document.getElementById('floorplan-gallery-modal').addEventListener('click', function(e) {
+          if (e.target === this || e.target.classList.contains('gallery-modal-content')) {
+            window.closeFloorplanGallery();
+          }
+        });
+        
+        // Add click handlers to floor plan image wrappers
+        document.querySelectorAll('.floor-photo-wrapper').forEach(function(wrapper) {
+          wrapper.addEventListener('click', function(e) {
+            // Don't trigger if clicking on the icon (it's just a visual indicator)
+            const galleryName = this.getAttribute('data-gallery-name');
+            if (galleryName) {
+              console.log('Floor plan gallery wrapper clicked:', galleryName);
+              window.openFloorplanGallery(galleryName, 0);
+            }
+          });
         });
       });
     })();
