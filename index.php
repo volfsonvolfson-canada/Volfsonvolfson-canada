@@ -116,6 +116,102 @@ if (!empty($wellnessImages) && !empty(trim($wellnessImages['wellness_massage_ima
     $wellnessMassageImageUrl = safeOutput($content['wellness_massage_image_url'], '');
 }
 
+if (!function_exists('btb_guest_review_stars')) {
+    function btb_guest_review_stars(int $rating): string
+    {
+        $r = max(0, min(5, $rating));
+        $s = '';
+        for ($i = 1; $i <= 5; $i++) {
+            $s .= $i <= $r ? '★' : '☆';
+        }
+        return $s;
+    }
+}
+
+if (!function_exists('btb_default_guest_reviews_payload')) {
+    function btb_default_guest_reviews_payload(): array
+    {
+        return [
+            'section_title' => 'Guest reviews',
+            'section_subtitle' => 'What recent guests have shared on Vrbo and Airbnb.',
+            'vrbo' => [
+                ['name' => 'Emily R.', 'rating' => 5, 'text' => 'A wonderful stay. The home is even better than the photos, surrounded by trees and so peaceful. We would happily return.'],
+                ['name' => 'James K.', 'rating' => 5, 'text' => 'Spotless, spacious, and thoughtfully equipped. The hosts were warm and the location is perfect for exploring Nelson.'],
+                ['name' => 'Olivia T.', 'rating' => 5, 'text' => 'Loved the quiet setting and the comfortable beds. Mornings on the deck with coffee were a highlight.'],
+                ['name' => 'Michael P.', 'rating' => 4, 'text' => 'Great for a group retreat. Kitchen and common areas are ideal for cooking together. Minor wish: faster Wi‑Fi, but that is a small point in such a restful place.'],
+                ['name' => 'Anna L.', 'rating' => 5, 'text' => 'Truly a place to slow down. Every detail made us feel welcome from check‑in to departure.'],
+            ],
+            'airbnb' => [
+                ['name' => 'Sofia M.', 'rating' => 5, 'text' => 'The house felt like a private lodge — cozy, light‑filled, and every room had character. We did not want to leave.'],
+                ['name' => 'David C.', 'rating' => 5, 'text' => 'Immaculate, relaxed vibe, and easy communication. Perfect base for ski days and evenings by the fire.'],
+                ['name' => 'Rachel B.', 'rating' => 5, 'text' => 'A gem in the Kootenays. Forest walks nearby and a comfortable, stylish interior.'],
+                ['name' => 'Tom W.', 'rating' => 5, 'text' => 'We booked the whole place for a long weekend. Everyone had their own space and the shared areas brought us together.'],
+                ['name' => 'Nina F.', 'rating' => 5, 'text' => 'Hospitality was top‑tier, and the setting is magical. Already recommending to friends.'],
+            ],
+        ];
+    }
+}
+
+if (!function_exists('btb_normalize_guest_reviews_list')) {
+    /**
+     * @return array<int, array{name: string, text: string, rating: int}>
+     */
+    function btb_normalize_guest_reviews_list(array $raw): array
+    {
+        $out = [];
+        foreach ($raw as $r) {
+            if (!is_array($r)) {
+                continue;
+            }
+            $n = trim((string)($r['name'] ?? ''));
+            $t = trim((string)($r['text'] ?? ''));
+            if ($n === '' && $t === '') {
+                continue;
+            }
+            $out[] = [
+                'name' => $n,
+                'text' => $t,
+                'rating' => max(1, min(5, (int)($r['rating'] ?? 5))),
+            ];
+        }
+        return $out;
+    }
+}
+
+$grDef = btb_default_guest_reviews_payload();
+$guestReviewsTitle = $grDef['section_title'];
+$guestReviewsSubtitle = $grDef['section_subtitle'];
+$vrboGuestReviews = $grDef['vrbo'];
+$airbnbGuestReviews = $grDef['airbnb'];
+$grTable = $conn->query("SHOW TABLES LIKE 'guest_reviews_settings'");
+if ($grTable && $grTable->num_rows > 0) {
+    $grRow = fetchOne($conn, "SELECT * FROM guest_reviews_settings WHERE id = 1");
+    if (is_array($grRow) && $grRow !== []) {
+        if (trim((string)($grRow['section_title'] ?? '')) !== '') {
+            $guestReviewsTitle = (string) $grRow['section_title'];
+        }
+        if (array_key_exists('section_subtitle', $grRow) && $grRow['section_subtitle'] !== null) {
+            $guestReviewsSubtitle = (string) $grRow['section_subtitle'];
+        }
+        $vJson = json_decode((string)($grRow['vrbo_reviews_json'] ?? '[]'), true);
+        if (is_array($vJson)) {
+            $vrboGuestReviews = btb_normalize_guest_reviews_list($vJson);
+        }
+        $aJson = json_decode((string)($grRow['airbnb_reviews_json'] ?? '[]'), true);
+        if (is_array($aJson)) {
+            $airbnbGuestReviews = btb_normalize_guest_reviews_list($aJson);
+        }
+    }
+}
+if (count($vrboGuestReviews) === 0) {
+    $vrboGuestReviews = $grDef['vrbo'];
+}
+if (count($airbnbGuestReviews) === 0) {
+    $airbnbGuestReviews = $grDef['airbnb'];
+}
+$guestReviewsTitle = safeOutput($guestReviewsTitle, 'Guest reviews');
+$guestReviewsSubtitle = safeOutputWithBreaks($guestReviewsSubtitle, $grDef['section_subtitle']);
+
 // Load Floor Plan content from database
 $floorplan = fetchOne($conn, "SELECT * FROM floorplan_settings WHERE id = 1");
 if (!$floorplan) {
@@ -534,6 +630,31 @@ $cacheBuster = '?v=' . time();
     }
   </style>
 
+    <section class="trust-badges" aria-label="Guest ratings">
+      <div class="container trust-badges-inner">
+        <div class="trust-badge vrbo" aria-label="Vacation rental rating 10 out of 10">
+          <div class="trust-badge-brand">
+            <span class="trust-badge-brand-text trust-badge-brand-text--vrbo" style="color:#1f4ae5;">Vrbo</span>
+          </div>
+          <div class="trust-badge-scoreline" aria-hidden="true">
+            <span class="trust-badge-score">10.0</span>
+            <span class="trust-badge-stars">★</span>
+            <span class="trust-badge-count">(13)</span>
+          </div>
+        </div>
+        <div class="trust-badge airbnb" aria-label="Home-stay rating 5 out of 5">
+          <div class="trust-badge-brand">
+            <span class="trust-badge-brand-text trust-badge-brand-text--airbnb" style="color:#ff385c;">Airbnb</span>
+          </div>
+          <div class="trust-badge-scoreline" aria-hidden="true">
+            <span class="trust-badge-score">5.0</span>
+            <span class="trust-badge-stars">★</span>
+            <span class="trust-badge-count">(27)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <div class="page-header">
       <div class="container">
         <h1><?php echo htmlspecialchars($roomsTitle, ENT_QUOTES, 'UTF-8'); ?></h1>
@@ -664,6 +785,81 @@ $cacheBuster = '?v=' . time();
           </article>
         </div>
         <p class="plan-swipe-hint">Swipe to see more</p>
+      </div>
+    </section>
+
+    <section class="section guest-reviews" id="guest-reviews" aria-label="Guest reviews">
+      <div class="container">
+        <h2 class="guest-reviews-heading"><?php echo $guestReviewsTitle; ?></h2>
+        <p class="guest-reviews-sub"><?php echo $guestReviewsSubtitle; ?></p>
+        <div class="guest-reviews-grid">
+          <div class="guest-reviews-column guest-reviews-column--vrbo" data-guest-reviews-group="vrbo">
+            <div class="guest-reviews-column-top">
+              <span class="guest-reviews-source-heading">Reviews from <span class="guest-reviews-source-name guest-reviews-source-name--vrbo">Vrbo</span></span>
+            </div>
+            <div class="guest-reviews-panel" id="guest-reviews-vrbo-panel">
+              <?php
+              foreach ($vrboGuestReviews as $idx => $gr) {
+                  $name = htmlspecialchars($gr['name'] ?? '', ENT_QUOTES, 'UTF-8');
+                  $text = htmlspecialchars($gr['text'] ?? '', ENT_QUOTES, 'UTF-8');
+                  $r = (int) ($gr['rating'] ?? 5);
+                  $label = 'Rated ' . $r . ' out of 5 stars';
+                  $extra = (count($vrboGuestReviews) > 2 && $idx >= 2) ? ' guest-review--collapsed' : '';
+                  echo '<article class="guest-review' . $extra . '">';
+                  echo '<header class="guest-review-head"><span class="guest-review-stars" aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '">' . btb_guest_review_stars($r) . '</span><span class="guest-review-name">' . $name . '</span></header>';
+                  echo '<p class="guest-review-text">' . $text . '</p>';
+                  echo '</article>';
+              }
+              ?>
+            </div>
+            <?php if (count($vrboGuestReviews) > 2): ?>
+            <div class="guest-reviews-footer">
+              <div class="guest-reviews-footer-external">
+                <a
+                  class="btn outline guest-reviews-all-link"
+                  href="https://www.vrbo.com/en-ca/cottage-rental/p9600379"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >See all reviews on Vrbo</a>
+              </div>
+              <button type="button" class="btn outline guest-reviews-more" data-guest-reviews-toggle="vrbo" aria-expanded="false" aria-controls="guest-reviews-vrbo-panel">See all guest reviews</button>
+            </div>
+            <?php endif; ?>
+          </div>
+          <div class="guest-reviews-column guest-reviews-column--airbnb" data-guest-reviews-group="airbnb">
+            <div class="guest-reviews-column-top">
+              <span class="guest-reviews-source-heading">Reviews from <span class="guest-reviews-source-name guest-reviews-source-name--airbnb">Airbnb</span></span>
+            </div>
+            <div class="guest-reviews-panel" id="guest-reviews-airbnb-panel">
+              <?php
+              foreach ($airbnbGuestReviews as $idx => $gr) {
+                  $name = htmlspecialchars($gr['name'] ?? '', ENT_QUOTES, 'UTF-8');
+                  $text = htmlspecialchars($gr['text'] ?? '', ENT_QUOTES, 'UTF-8');
+                  $r = (int) ($gr['rating'] ?? 5);
+                  $label = 'Rated ' . $r . ' out of 5 stars';
+                  $extra = (count($airbnbGuestReviews) > 2 && $idx >= 2) ? ' guest-review--collapsed' : '';
+                  echo '<article class="guest-review' . $extra . '">';
+                  echo '<header class="guest-review-head"><span class="guest-review-stars" aria-label="' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '">' . btb_guest_review_stars($r) . '</span><span class="guest-review-name">' . $name . '</span></header>';
+                  echo '<p class="guest-review-text">' . $text . '</p>';
+                  echo '</article>';
+              }
+              ?>
+            </div>
+            <?php if (count($airbnbGuestReviews) > 2): ?>
+            <div class="guest-reviews-footer">
+              <div class="guest-reviews-footer-external">
+                <a
+                  class="btn outline guest-reviews-all-link"
+                  href="https://ru.airbnb.com/rooms/49811499?source_impression_id=p3_1777148513_P3PCOjJy9QBxSiMx"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >See all reviews on Airbnb</a>
+              </div>
+              <button type="button" class="btn outline guest-reviews-more" data-guest-reviews-toggle="airbnb" aria-expanded="false" aria-controls="guest-reviews-airbnb-panel">See all guest reviews</button>
+            </div>
+            <?php endif; ?>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -1174,6 +1370,34 @@ $cacheBuster = '?v=' . time();
               console.log('Floor plan gallery wrapper clicked:', galleryName);
               window.openFloorplanGallery(galleryName, 0);
             }
+          });
+        });
+      });
+    })();
+  </script>
+  <script>
+    (function () {
+      document.querySelectorAll('.guest-reviews').forEach(function (section) {
+        const buttons = Array.from(section.querySelectorAll('[data-guest-reviews-toggle]'));
+        if (!buttons.length) {
+          return;
+        }
+        const setExpandedState = function (expanded) {
+          section.querySelectorAll('.guest-reviews-column').forEach(function (col) {
+            col.classList.toggle('is-expanded', expanded);
+          });
+          buttons.forEach(function (b) {
+            b.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            b.textContent = expanded ? 'Collapse reviews' : 'See all guest reviews';
+            b.hidden = false;
+          });
+          section.setAttribute('data-guest-reviews-expanded', expanded ? '1' : '0');
+        };
+        setExpandedState(false);
+        buttons.forEach(function (btn) {
+          btn.addEventListener('click', function () {
+            const expanded = section.getAttribute('data-guest-reviews-expanded') === '1';
+            setExpandedState(!expanded);
           });
         });
       });

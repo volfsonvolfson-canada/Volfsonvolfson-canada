@@ -444,6 +444,219 @@ html { scroll-behavior: smooth; }
 .section h2 { margin: 0 0 8px; font-size: clamp(22px, 4vw, 32px); }
 .section-lead { margin: 0 0 24px; color: var(--muted); }
 
+/* Homepage trust badges before rooms section */
+.trust-badges {
+  padding: 20px 0 8px;
+}
+.trust-badges-inner {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, max-content));
+  justify-content: center;
+  align-items: start;
+  column-gap: 40px;
+  row-gap: 12px;
+}
+.trust-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+.trust-badge-brand {
+  display: inline-flex;
+  align-items: center;
+}
+.trust-badge-logo-img {
+  width: 180px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+.trust-badge-scoreline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.trust-badge-score {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: #111827;
+}
+.trust-badge-stars {
+  color: #f4c430 !important;
+  font-size: 24px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+.trust-badge-count {
+  font-size: 20px;
+  line-height: 1;
+  color: #6b7280;
+}
+[data-theme="dark"] .trust-badge-score {
+  color: #f8fafc;
+}
+@media (max-width: 767px) {
+  .trust-badges-inner {
+    grid-template-columns: 1fr;
+    row-gap: 14px;
+  }
+  .trust-badge-logo-img {
+    width: 150px;
+    height: 34px;
+  }
+  .trust-badge-score {
+    font-size: 24px;
+  }
+  .trust-badge-stars {
+    font-size: 18px;
+  }
+  .trust-badge-count {
+    font-size: 16px;
+  }
+}
+
+/* Guest reviews (Vrbo / Airbnb) */
+.guest-reviews {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.guest-reviews .container {
+  max-width: 72rem;
+}
+.guest-reviews-heading {
+  margin: 0 0 6px;
+  font-size: clamp(22px, 4vw, 32px);
+  text-align: center;
+}
+.guest-reviews-sub {
+  margin: 0 0 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 40rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+.guest-reviews-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.guest-reviews-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 0;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+.guest-reviews-column--vrbo {
+  border: 1px solid rgba(31, 74, 229, 0.38);
+  box-shadow: 0 0 0 1px rgba(31, 74, 229, 0.1);
+}
+.guest-reviews-column--airbnb {
+  border: 1px solid rgba(255, 56, 92, 0.38);
+  box-shadow: 0 0 0 1px rgba(255, 56, 92, 0.1);
+}
+.guest-reviews-column-top {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 18px 16px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .guest-reviews-column-top {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+.guest-reviews-logo {
+  width: min(200px, 100%);
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+.guest-reviews-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 16px 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.guest-review {
+  margin: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.guest-review:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 8px;
+}
+.guest-review-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 12px;
+  margin-bottom: 8px;
+}
+.guest-review-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+}
+.guest-review-stars {
+  color: #f4c430;
+  font-size: 0.9rem;
+  letter-spacing: 0.1em;
+  line-height: 1;
+  flex-shrink: 0;
+}
+.guest-review-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+.guest-review--collapsed {
+  display: none;
+}
+.guest-reviews-column.is-expanded .guest-review--collapsed {
+  display: block;
+}
+.guest-reviews-footer {
+  margin-top: auto;
+  padding: 12px 16px 16px;
+  display: flex;
+  justify-content: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .guest-reviews-footer {
+  border-top-color: rgba(15, 23, 42, 0.08);
+}
+.guest-reviews-column.is-expanded .guest-reviews-footer {
+  display: none;
+}
+@media (max-width: 900px) {
+  .guest-reviews-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 901px) {
+  .guest-reviews-column--vrbo,
+  .guest-reviews-column--airbnb {
+    min-height: 100%;
+  }
+}
+
 .plan-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .plan-card { background: var(--card); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 18px; }
 .plan-card h3 { margin: 0 0 4px; }
@@ -1589,6 +1802,7 @@ select:-webkit-autofill:focus {
 [data-theme="twilight"] .card h4 {
   color: #d4af37;
 }
+
 
 /* Room features list - plain text, not interactive */
 .massage-list li {

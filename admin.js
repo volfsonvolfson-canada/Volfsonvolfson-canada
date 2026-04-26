@@ -43,6 +43,7 @@ const ADMIN_GLOBAL_SECTION_LABELS = {
   contact: 'Contact',
   'homepage-rooms': 'Homepage — rooms',
   floorplan: 'Floor plan',
+  'guest-reviews': 'Guest reviews',
   wellness: 'Wellness',
   massage: 'Massage'
 };
@@ -74,6 +75,25 @@ function hideAdminGlobalSaveBar() {
   }
   clearAdminGlobalSaveBarAutoHide();
   document.body.classList.remove('admin-global-save-banner-padded');
+}
+
+function localizeLegacyRussianAdminLabels() {
+  const map = new Map([
+    ['Изменить', 'Edit'],
+    ['Заменить', 'Replace']
+  ]);
+  document.querySelectorAll('.image-edit-btn').forEach((btn) => {
+    const current = (btn.textContent || '').trim();
+    if (map.has(current)) {
+      btn.textContent = map.get(current);
+    }
+  });
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', localizeLegacyRussianAdminLabels);
+} else {
+  localizeLegacyRussianAdminLabels();
 }
 
 /**
@@ -166,14 +186,14 @@ function updateAdminGlobalRetreatSaveBar(text, icon) {
   msgEl.textContent = raw;
   const ic = (icon == null) ? '' : String(icon);
   iconEl.textContent = ic;
-  if (trimmed === 'Сохранение...') {
+  if (trimmed === 'Saving...') {
     el.setAttribute('data-state', 'saving');
     if (!ic) {
       iconEl.textContent = '⏳';
     }
     return;
   }
-  if (trimmed === 'Сохранено') {
+  if (trimmed === 'Saved') {
     el.setAttribute('data-state', 'saved');
     if (!ic) {
       iconEl.textContent = '✓';
@@ -181,7 +201,7 @@ function updateAdminGlobalRetreatSaveBar(text, icon) {
     adminGlobalSaveBarAutoHideTimer = setTimeout(hideAdminGlobalSaveBar, ADMIN_GLOBAL_SAVED_AUTO_HIDE_MS);
     return;
   }
-  const isRetry = /Повтор/i.test(trimmed) && /Ошибка/i.test(trimmed);
+  const isRetry = /Retry/i.test(trimmed) && /Error/i.test(trimmed);
   if (isRetry) {
     el.setAttribute('data-state', 'saving');
     if (!ic) {
@@ -190,7 +210,7 @@ function updateAdminGlobalRetreatSaveBar(text, icon) {
     return;
   }
   const isError =
-    /Ошибка|ошибка/i.test(trimmed) || /^Не\s+сохранено/i.test(trimmed) || /^не\s+сохранено/i.test(trimmed) || ic === '❌';
+    /Error|error/i.test(trimmed) || /^Not\s+saved/i.test(trimmed) || /^not\s+saved/i.test(trimmed) || ic === '❌';
   if (isError) {
     el.setAttribute('data-state', 'error');
     if (!ic) {
@@ -594,6 +614,9 @@ function loadSectionData(sectionName) {
       console.log('loadSectionData: Initializing floorplan editor');
       initContentEditor('floorplan');
       break;
+    case 'guest-reviews':
+      initContentEditor('guest-reviews');
+      break;
     case 'room-basement':
       initContentEditor('room-basement');
       break;
@@ -955,7 +978,7 @@ async function saveFloorplanContent() {
     if (!contentType || !contentType.includes('application/json')) {
       console.error('Floorplan save failed: Server returned non-JSON response:', rawText.substring(0, 200));
       updateFloorplanSaveStatus('error', 'Server did not return JSON. Run add_floorplan_title_fields.php?');
-      alert('Ошибка сохранения: Сервер вернул неверный формат ответа. Возможно, в базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php');
+      alert('Save error: Server returned an invalid response format. Required database columns may be missing. Please run add_floorplan_title_fields.php.');
       return;
     }
     const result = parseJsonFromText(rawText);
@@ -970,14 +993,14 @@ async function saveFloorplanContent() {
       console.error('Floorplan save failed:', errorMsg);
       updateFloorplanSaveStatus('error', errorMsg);
       if (errorMsg.includes('columns missing') || errorMsg.includes('floorplan_title') || errorMsg.includes('floorplan_subtitle')) {
-        alert('Ошибка: В базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php на сервере.');
+        alert('Error: Required database columns are missing. Please run add_floorplan_title_fields.php on the server.');
       }
     }
   } catch (error) {
     console.error('Error saving floorplan content:', error);
     updateFloorplanSaveStatus('error', (error && error.message) || 'Save failed');
     if (error.message && error.message.includes('JSON')) {
-      alert('Ошибка сохранения: Сервер вернул неверный формат ответа. Возможно, в базе данных отсутствуют необходимые колонки. Пожалуйста, запустите add_floorplan_title_fields.php');
+      alert('Save error: Server returned an invalid response format. Required database columns may be missing. Please run add_floorplan_title_fields.php.');
     }
   }
 }
@@ -1579,7 +1602,7 @@ async function loadMassageData() {
         if (deepTissueDescField) deepTissueDescField.value = data.massageDeepTissueDescription || '';
         if (deepTissueTitlePreview) deepTissueTitlePreview.textContent = data.massageDeepTissueTitle || 'Deep Tissue Massage';
         if (deepTissueDescPreview) {
-          const deepText = data.massageDeepTissueDescription || 'For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort в deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.';
+          const deepText = data.massageDeepTissueDescription || 'For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.';
           deepTissueDescPreview.textContent = deepText;
         }
         
@@ -1854,7 +1877,7 @@ function initMassageImageUpload() {
             },
             onError: (error) => {
               console.error(`Upload error for ${config.imageType}:`, error);
-              alert(`Ошибка загрузки изображения для ${config.imageType}: ${error}`);
+              alert(`Image upload error for ${config.imageType}: ${error}`);
             }
           });
         } else {
@@ -1985,12 +2008,14 @@ async function loadContentData() {
         
         document.getElementById('homepage-description').value = content.homepageDescription || '';
         document.getElementById('homepage-subtitle').value = content.homepageSubtitle || '';
+        // Do not inject HTML defaults into inputs when DB value is empty — that looked like "saved text reverted"
+        // and combined with saveContentToServer could overwrite real DB data with placeholders.
         document.getElementById('contact-phone').value =
-          (content.contactPhone && String(content.contactPhone).trim()) || DEFAULT_CONTACT_PHONE;
+          content.contactPhone != null ? String(content.contactPhone) : '';
         document.getElementById('contact-email').value =
-          (content.contactEmail && String(content.contactEmail).trim()) || DEFAULT_CONTACT_EMAIL;
+          content.contactEmail != null ? String(content.contactEmail) : '';
         document.getElementById('contact-address').value =
-          (content.contactAddress && String(content.contactAddress).trim()) || DEFAULT_CONTACT_ADDRESS;
+          content.contactAddress != null ? String(content.contactAddress) : '';
         return;
       }
     }
@@ -2004,11 +2029,11 @@ async function loadContentData() {
   document.getElementById('homepage-description').value = content.homepageDescription || '';
   document.getElementById('homepage-subtitle').value = content.homepageSubtitle || '';
   document.getElementById('contact-phone').value =
-    (content.contactPhone && String(content.contactPhone).trim()) || DEFAULT_CONTACT_PHONE;
+    content.contactPhone != null ? String(content.contactPhone) : '';
   document.getElementById('contact-email').value =
-    (content.contactEmail && String(content.contactEmail).trim()) || DEFAULT_CONTACT_EMAIL;
+    content.contactEmail != null ? String(content.contactEmail) : '';
   document.getElementById('contact-address').value =
-    (content.contactAddress && String(content.contactAddress).trim()) || DEFAULT_CONTACT_ADDRESS;
+    content.contactAddress != null ? String(content.contactAddress) : '';
 }
 
 function getDefaultContent() {
@@ -2143,17 +2168,24 @@ function initAdminForms() {
   const saveContentBtn = document.getElementById('save-content');
   if (saveContentBtn) {
     saveContentBtn.addEventListener('click', async () => {
-      const currentContent = getStoredData('btb_content') || getDefaultContent();
+      // Read only fields on this form — do not merge getDefaultContent() (would overwrite DB with demo text/contact).
       const content = {
-        ...currentContent,
         homepageDescription: document.getElementById('homepage-description').value,
-        homepageSubtitle: document.getElementById('homepage-subtitle').value
+        homepageSubtitle: document.getElementById('homepage-subtitle').value,
+        contactPhone: document.getElementById('contact-phone').value,
+        contactEmail: document.getElementById('contact-email').value,
+        contactAddress: document.getElementById('contact-address').value
       };
       
       // Try to save to server first
       try {
-        const saved = await saveContentToServer(content);
+        const saved = await saveContentToServer(content, {
+          includeHomepageFields: true,
+          includeContactFields: true,
+          includeHeroUrls: false
+        });
         if (saved) {
+          setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
           showStatus('Content saved successfully!');
           return;
         }
@@ -2162,7 +2194,7 @@ function initAdminForms() {
       }
       
       // Fallback to localStorage
-      setStoredData('btb_content', content);
+      setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
       showStatus('Content saved successfully!');
     });
   }
@@ -2171,15 +2203,21 @@ function initAdminForms() {
   const saveContactBtn = document.getElementById('save-contact');
   if (saveContactBtn) {
     saveContactBtn.addEventListener('click', async () => {
-      const content = getStoredData('btb_content') || getDefaultContent();
-      content.contactPhone = document.getElementById('contact-phone').value;
-      content.contactEmail = document.getElementById('contact-email').value;
-      content.contactAddress = document.getElementById('contact-address').value;
+      const content = {
+        contactPhone: document.getElementById('contact-phone').value,
+        contactEmail: document.getElementById('contact-email').value,
+        contactAddress: document.getElementById('contact-address').value
+      };
       
       // Try to save to server first
       try {
-        const saved = await saveContentToServer(content);
+        const saved = await saveContentToServer(content, {
+          includeHomepageFields: false,
+          includeContactFields: true,
+          includeHeroUrls: false
+        });
         if (saved) {
+          setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
           showStatus('Contact information saved successfully!');
           return;
         }
@@ -2188,24 +2226,36 @@ function initAdminForms() {
       }
       
       // Fallback to localStorage
-      setStoredData('btb_content', content);
+      setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
       showStatus('Contact information saved successfully!');
     });
   }
 }
 
-// Save content to server via API
-async function saveContentToServer(content) {
+// Save content to server via API.
+// By default only send homepage + contact; omit hero URLs unless includeHeroUrls (avoids wiping hero when saving contact).
+async function saveContentToServer(content, options = {}) {
+  const {
+    includeHomepageFields = true,
+    includeContactFields = true,
+    includeHeroUrls = false
+  } = options;
   try {
     const formData = new FormData();
     formData.append('action', 'save_content');
-    formData.append('homepage_description', content.homepageDescription || '');
-    formData.append('homepage_subtitle', content.homepageSubtitle || '');
-    formData.append('contact_phone', content.contactPhone || '');
-    formData.append('contact_email', content.contactEmail || '');
-    formData.append('contact_address', content.contactAddress || '');
-    formData.append('hero_image_url', content.heroImageUrl || '');
-    formData.append('hero2_image_url', content.hero2ImageUrl || '');
+    if (includeHomepageFields) {
+      formData.append('homepage_description', content.homepageDescription ?? '');
+      formData.append('homepage_subtitle', content.homepageSubtitle ?? '');
+    }
+    if (includeContactFields) {
+      formData.append('contact_phone', content.contactPhone ?? '');
+      formData.append('contact_email', content.contactEmail ?? '');
+      formData.append('contact_address', content.contactAddress ?? '');
+    }
+    if (includeHeroUrls) {
+      formData.append('hero_image_url', content.heroImageUrl ?? '');
+      formData.append('hero2_image_url', content.hero2ImageUrl ?? '');
+    }
     
     const response = await fetch('api.php', {
       method: 'POST',
@@ -2801,6 +2851,9 @@ async function uploadHomepageImage(file, imageType, previewElement, pathElement)
 // ROOM PAGES MANAGEMENT
 // ==========================================
 
+/** Max images per gallery (room photos + common areas) on room detail CMS sections. */
+const ROOM_PAGE_GALLERY_MAX_PHOTOS = 30;
+
 /** DB may store HTML (<strong>Price:</strong> …); admin editors need plain text + formatted preview. */
 function stripHtmlToPlainText(value) {
   if (value == null) return '';
@@ -3062,6 +3115,31 @@ async function loadRoomBasementData() {
         updateRoomBasementGalleryPreview(gallery);
         const galleryField = document.getElementById('room-basement-gallery');
         if (galleryField) galleryField.value = JSON.stringify(gallery);
+
+        const roomGalTitleEl = document.getElementById('room-basement-gallery-section-title');
+        const commonGalTitleEl = document.getElementById('room-basement-common-gallery-section-title');
+        if (roomGalTitleEl) {
+          roomGalTitleEl.value =
+            data.roomBasementGallerySectionTitle != null && String(data.roomBasementGallerySectionTitle).trim() !== ''
+              ? String(data.roomBasementGallerySectionTitle)
+              : 'Room photos';
+        }
+        if (commonGalTitleEl) {
+          commonGalTitleEl.value =
+            data.roomBasementCommonGallerySectionTitle != null &&
+            String(data.roomBasementCommonGallerySectionTitle).trim() !== ''
+              ? String(data.roomBasementCommonGallerySectionTitle)
+              : 'Common areas photos';
+        }
+        let commonGallery = [];
+        try {
+          commonGallery = JSON.parse(data.roomBasementCommonGallery || '[]');
+        } catch (e) {
+          console.error('Failed to parse common gallery:', e);
+        }
+        updateRoomBasementCommonGalleryPreview(commonGallery);
+        const commonGalleryField = document.getElementById('room-basement-common-gallery');
+        if (commonGalleryField) commonGalleryField.value = JSON.stringify(commonGallery);
         
         // Booking card
         const capacityField = document.getElementById('room-basement-capacity');
@@ -3103,7 +3181,7 @@ function updateRoomBasementGalleryPreview(gallery) {
     img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
     
     const replaceBtn = document.createElement('button');
-    replaceBtn.textContent = 'Заменить';
+    replaceBtn.textContent = 'Replace';
     replaceBtn.className = 'admin-btn admin-btn-secondary';
     replaceBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
     replaceBtn.onclick = (e) => {
@@ -3125,13 +3203,156 @@ function updateRoomBasementGalleryPreview(gallery) {
     galleryPreview.appendChild(galleryItem);
   });
   
-  // Show add button if less than 10 photos
-  if (gallery.length < 10) {
+  // Show add button if below max (room pages)
+  if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
     const addItem = document.createElement('div');
     addItem.style.cssText = 'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
     addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
     addItem.onclick = () => document.getElementById('room-basement-gallery-upload').click();
     galleryPreview.appendChild(addItem);
+  }
+}
+
+function updateRoomBasementCommonGalleryPreview(gallery) {
+  const galleryPreview = document.getElementById('room-basement-common-gallery-preview');
+  if (!galleryPreview) return;
+
+  galleryPreview.innerHTML = '';
+
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText =
+      'position: relative; width: 120px; height: 120px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Replace';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText =
+      'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceBasementCommonGalleryImage(index);
+    };
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText =
+      'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; font-size: 1.2rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteBasementCommonGalleryImage(index);
+    };
+
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+
+  if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText =
+      'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
+    addItem.onclick = () => document.getElementById('room-basement-common-gallery-upload').click();
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+window.replaceBasementCommonGalleryImage = function (index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadBasementCommonGalleryImage(file, index);
+    }
+  };
+  input.click();
+};
+
+window.deleteBasementCommonGalleryImage = function (index) {
+  const galleryField = document.getElementById('room-basement-common-gallery');
+  if (!galleryField) return;
+
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse common gallery:', e);
+    return;
+  }
+
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateRoomBasementCommonGalleryPreview(gallery);
+
+  if (typeof window.scheduleRoomBasementAutoSave === 'function') {
+    if (typeof roomBasementHasUnsavedChanges !== 'undefined') {
+      roomBasementHasUnsavedChanges = true;
+    }
+    window.scheduleRoomBasementAutoSave();
+  }
+};
+
+async function uploadBasementCommonGalleryImage(file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', 'room-basement-common-gallery');
+    formData.append('image', file);
+
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl
+        ? payload.imageUrl
+        : payload && payload.filepath
+          ? payload.filepath
+          : result.imageUrl || result.filepath || '';
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById('room-basement-common-gallery');
+        if (!galleryField) return;
+
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse common gallery:', e);
+        }
+
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
+          gallery.push(imageUrl);
+        } else {
+          alert(`Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed in gallery`);
+          return;
+        }
+
+        galleryField.value = JSON.stringify(gallery);
+        updateRoomBasementCommonGalleryPreview(gallery);
+
+        if (typeof window.scheduleRoomBasementAutoSave === 'function') {
+          if (typeof roomBasementHasUnsavedChanges !== 'undefined') {
+            roomBasementHasUnsavedChanges = true;
+          }
+          window.scheduleRoomBasementAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading common gallery image:', error);
   }
 }
 
@@ -3208,10 +3429,10 @@ async function uploadBasementGalleryImage(file, replaceIndex = null) {
         if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
           gallery[replaceIndex] = imageUrl;
         } else {
-          if (gallery.length < 10) {
+          if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
             gallery.push(imageUrl);
           } else {
-            alert('Maximum 10 photos allowed in gallery');
+            alert(`Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed in gallery`);
             return;
           }
         }
@@ -3295,9 +3516,9 @@ function initRoomBasementImageUpload() {
         console.error('Failed to parse gallery:', e);
       }
       
-      const remainingSlots = 10 - gallery.length;
+      const remainingSlots = ROOM_PAGE_GALLERY_MAX_PHOTOS - gallery.length;
       if (files.length > remainingSlots) {
-        alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed.`);
         files.splice(remainingSlots);
       }
       
@@ -3308,6 +3529,55 @@ function initRoomBasementImageUpload() {
       e.target.value = ''; // Reset input
     });
   }
+
+  const commonGalleryInput = document.getElementById('room-basement-common-gallery-upload');
+  const addCommonGalleryBtn = document.getElementById('room-basement-add-common-gallery-photo');
+  if (addCommonGalleryBtn) {
+    addCommonGalleryBtn.addEventListener('click', () => {
+      if (commonGalleryInput) commonGalleryInput.click();
+    });
+  }
+  if (commonGalleryInput) {
+    commonGalleryInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      const galleryField = document.getElementById('room-basement-common-gallery');
+      if (!galleryField) return;
+
+      let gallery = [];
+      try {
+        gallery = JSON.parse(galleryField.value || '[]');
+      } catch (err) {
+        console.error('Failed to parse common gallery:', err);
+      }
+
+      const remainingSlots = ROOM_PAGE_GALLERY_MAX_PHOTOS - gallery.length;
+      if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed.`);
+        files.splice(remainingSlots);
+      }
+
+      for (const file of files) {
+        await uploadBasementCommonGalleryImage(file);
+      }
+
+      e.target.value = '';
+    });
+  }
+
+  ['room-basement-gallery-section-title', 'room-basement-common-gallery-section-title'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    ['input', 'change'].forEach((evt) => {
+      el.addEventListener(evt, () => {
+        if (typeof roomBasementHasUnsavedChanges !== 'undefined') {
+          roomBasementHasUnsavedChanges = true;
+        }
+        if (typeof window.scheduleRoomBasementAutoSave === 'function') {
+          window.scheduleRoomBasementAutoSave();
+        }
+      });
+    });
+  });
 }
 
 // Load room ground queen data
@@ -3367,6 +3637,32 @@ async function loadRoomGroundQueenData() {
         updateRoomGroundQueenGalleryPreview(gallery);
         const galleryField = document.getElementById('room-ground-queen-gallery');
         if (galleryField) galleryField.value = JSON.stringify(gallery);
+
+        const roomGalTitleEl = document.getElementById('room-ground-queen-gallery-section-title');
+        const commonGalTitleEl = document.getElementById('room-ground-queen-common-gallery-section-title');
+        if (roomGalTitleEl) {
+          roomGalTitleEl.value =
+            data.roomGroundQueenGallerySectionTitle != null &&
+            String(data.roomGroundQueenGallerySectionTitle).trim() !== ''
+              ? String(data.roomGroundQueenGallerySectionTitle)
+              : 'Room photos';
+        }
+        if (commonGalTitleEl) {
+          commonGalTitleEl.value =
+            data.roomGroundQueenCommonGallerySectionTitle != null &&
+            String(data.roomGroundQueenCommonGallerySectionTitle).trim() !== ''
+              ? String(data.roomGroundQueenCommonGallerySectionTitle)
+              : 'Common areas photos';
+        }
+        let commonGallery = [];
+        try {
+          commonGallery = JSON.parse(data.roomGroundQueenCommonGallery || '[]');
+        } catch (e) {
+          console.error('Failed to parse common gallery:', e);
+        }
+        updateRoomGroundQueenCommonGalleryPreview(commonGallery);
+        const commonGalleryField = document.getElementById('room-ground-queen-common-gallery');
+        if (commonGalleryField) commonGalleryField.value = JSON.stringify(commonGallery);
         
         // Booking card
         const capacityField = document.getElementById('room-ground-queen-capacity');
@@ -3408,7 +3704,7 @@ function updateRoomGroundQueenGalleryPreview(gallery) {
     img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
     
     const replaceBtn = document.createElement('button');
-    replaceBtn.textContent = 'Заменить';
+    replaceBtn.textContent = 'Replace';
     replaceBtn.className = 'admin-btn admin-btn-secondary';
     replaceBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
     replaceBtn.onclick = (e) => {
@@ -3430,13 +3726,156 @@ function updateRoomGroundQueenGalleryPreview(gallery) {
     galleryPreview.appendChild(galleryItem);
   });
   
-  // Show add button if less than 10 photos
-  if (gallery.length < 10) {
+  // Show add button if below max (room pages)
+  if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
     const addItem = document.createElement('div');
     addItem.style.cssText = 'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
     addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
     addItem.onclick = () => document.getElementById('room-ground-queen-gallery-upload').click();
     galleryPreview.appendChild(addItem);
+  }
+}
+
+function updateRoomGroundQueenCommonGalleryPreview(gallery) {
+  const galleryPreview = document.getElementById('room-ground-queen-common-gallery-preview');
+  if (!galleryPreview) return;
+
+  galleryPreview.innerHTML = '';
+
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText =
+      'position: relative; width: 120px; height: 120px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Replace';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText =
+      'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceGroundQueenCommonGalleryImage(index);
+    };
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText =
+      'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; font-size: 1.2rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteGroundQueenCommonGalleryImage(index);
+    };
+
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+
+  if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText =
+      'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
+    addItem.onclick = () => document.getElementById('room-ground-queen-common-gallery-upload').click();
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+window.replaceGroundQueenCommonGalleryImage = function (index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadGroundQueenCommonGalleryImage(file, index);
+    }
+  };
+  input.click();
+};
+
+window.deleteGroundQueenCommonGalleryImage = function (index) {
+  const galleryField = document.getElementById('room-ground-queen-common-gallery');
+  if (!galleryField) return;
+
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse common gallery:', e);
+    return;
+  }
+
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateRoomGroundQueenCommonGalleryPreview(gallery);
+
+  if (typeof window.scheduleRoomGroundQueenAutoSave === 'function') {
+    if (typeof roomGroundQueenHasUnsavedChanges !== 'undefined') {
+      roomGroundQueenHasUnsavedChanges = true;
+    }
+    window.scheduleRoomGroundQueenAutoSave();
+  }
+};
+
+async function uploadGroundQueenCommonGalleryImage(file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', 'room-ground-queen-common-gallery');
+    formData.append('image', file);
+
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl
+        ? payload.imageUrl
+        : payload && payload.filepath
+          ? payload.filepath
+          : result.imageUrl || result.filepath || '';
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById('room-ground-queen-common-gallery');
+        if (!galleryField) return;
+
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse common gallery:', e);
+        }
+
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
+          gallery.push(imageUrl);
+        } else {
+          alert(`Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed in gallery`);
+          return;
+        }
+
+        galleryField.value = JSON.stringify(gallery);
+        updateRoomGroundQueenCommonGalleryPreview(gallery);
+
+        if (typeof window.scheduleRoomGroundQueenAutoSave === 'function') {
+          if (typeof roomGroundQueenHasUnsavedChanges !== 'undefined') {
+            roomGroundQueenHasUnsavedChanges = true;
+          }
+          window.scheduleRoomGroundQueenAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading common gallery image:', error);
   }
 }
 
@@ -3513,10 +3952,10 @@ async function uploadGroundQueenGalleryImage(file, replaceIndex = null) {
         if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
           gallery[replaceIndex] = imageUrl;
         } else {
-          if (gallery.length < 10) {
+          if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
             gallery.push(imageUrl);
           } else {
-            alert('Maximum 10 photos allowed in gallery');
+            alert(`Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed in gallery`);
             return;
           }
         }
@@ -3600,9 +4039,9 @@ function initRoomGroundQueenImageUpload() {
         console.error('Failed to parse gallery:', e);
       }
       
-      const remainingSlots = 10 - gallery.length;
+      const remainingSlots = ROOM_PAGE_GALLERY_MAX_PHOTOS - gallery.length;
       if (files.length > remainingSlots) {
-        alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed.`);
         files.splice(remainingSlots);
       }
       
@@ -3613,6 +4052,55 @@ function initRoomGroundQueenImageUpload() {
       e.target.value = ''; // Reset input
     });
   }
+
+  const commonGalleryInput = document.getElementById('room-ground-queen-common-gallery-upload');
+  const addCommonGalleryBtn = document.getElementById('room-ground-queen-add-common-gallery-photo');
+  if (addCommonGalleryBtn) {
+    addCommonGalleryBtn.addEventListener('click', () => {
+      if (commonGalleryInput) commonGalleryInput.click();
+    });
+  }
+  if (commonGalleryInput) {
+    commonGalleryInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      const galleryField = document.getElementById('room-ground-queen-common-gallery');
+      if (!galleryField) return;
+
+      let gallery = [];
+      try {
+        gallery = JSON.parse(galleryField.value || '[]');
+      } catch (err) {
+        console.error('Failed to parse common gallery:', err);
+      }
+
+      const remainingSlots = ROOM_PAGE_GALLERY_MAX_PHOTOS - gallery.length;
+      if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed.`);
+        files.splice(remainingSlots);
+      }
+
+      for (const file of files) {
+        await uploadGroundQueenCommonGalleryImage(file);
+      }
+
+      e.target.value = '';
+    });
+  }
+
+  ['room-ground-queen-gallery-section-title', 'room-ground-queen-common-gallery-section-title'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    ['input', 'change'].forEach((evt) => {
+      el.addEventListener(evt, () => {
+        if (typeof roomGroundQueenHasUnsavedChanges !== 'undefined') {
+          roomGroundQueenHasUnsavedChanges = true;
+        }
+        if (typeof window.scheduleRoomGroundQueenAutoSave === 'function') {
+          window.scheduleRoomGroundQueenAutoSave();
+        }
+      });
+    });
+  });
 }
 
 // Load room ground twin data (text, banner, gallery)
@@ -3671,6 +4159,32 @@ async function loadRoomGroundTwinData() {
         updateRoomGroundTwinGalleryPreview(gallery);
         const galleryField = document.getElementById('room-ground-twin-gallery');
         if (galleryField) galleryField.value = JSON.stringify(gallery);
+
+        const roomGalTitleEl = document.getElementById('room-ground-twin-gallery-section-title');
+        const commonGalTitleEl = document.getElementById('room-ground-twin-common-gallery-section-title');
+        if (roomGalTitleEl) {
+          roomGalTitleEl.value =
+            data.roomGroundTwinGallerySectionTitle != null &&
+            String(data.roomGroundTwinGallerySectionTitle).trim() !== ''
+              ? String(data.roomGroundTwinGallerySectionTitle)
+              : 'Room photos';
+        }
+        if (commonGalTitleEl) {
+          commonGalTitleEl.value =
+            data.roomGroundTwinCommonGallerySectionTitle != null &&
+            String(data.roomGroundTwinCommonGallerySectionTitle).trim() !== ''
+              ? String(data.roomGroundTwinCommonGallerySectionTitle)
+              : 'Common areas photos';
+        }
+        let commonGallery = [];
+        try {
+          commonGallery = JSON.parse(data.roomGroundTwinCommonGallery || '[]');
+        } catch (e) {
+          console.error('Failed to parse common gallery:', e);
+        }
+        updateRoomGroundTwinCommonGalleryPreview(commonGallery);
+        const commonGalleryField = document.getElementById('room-ground-twin-common-gallery');
+        if (commonGalleryField) commonGalleryField.value = JSON.stringify(commonGallery);
         
         // Booking card
         const capacityField = document.getElementById('room-ground-twin-capacity');
@@ -3712,7 +4226,7 @@ function updateRoomGroundTwinGalleryPreview(gallery) {
     img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
     
     const replaceBtn = document.createElement('button');
-    replaceBtn.textContent = 'Заменить';
+    replaceBtn.textContent = 'Replace';
     replaceBtn.className = 'admin-btn admin-btn-secondary';
     replaceBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
     replaceBtn.onclick = (e) => {
@@ -3734,13 +4248,156 @@ function updateRoomGroundTwinGalleryPreview(gallery) {
     galleryPreview.appendChild(galleryItem);
   });
   
-  // Show add button if less than 10 photos
-  if (gallery.length < 10) {
+  // Show add button if below max (room pages)
+  if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
     const addItem = document.createElement('div');
     addItem.style.cssText = 'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
     addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
     addItem.onclick = () => document.getElementById('room-ground-twin-gallery-upload').click();
     galleryPreview.appendChild(addItem);
+  }
+}
+
+function updateRoomGroundTwinCommonGalleryPreview(gallery) {
+  const galleryPreview = document.getElementById('room-ground-twin-common-gallery-preview');
+  if (!galleryPreview) return;
+
+  galleryPreview.innerHTML = '';
+
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText =
+      'position: relative; width: 120px; height: 120px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Replace';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText =
+      'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceGroundTwinCommonGalleryImage(index);
+    };
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText =
+      'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; font-size: 1.2rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteGroundTwinCommonGalleryImage(index);
+    };
+
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+
+  if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText =
+      'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
+    addItem.onclick = () => document.getElementById('room-ground-twin-common-gallery-upload').click();
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+window.replaceGroundTwinCommonGalleryImage = function (index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadGroundTwinCommonGalleryImage(file, index);
+    }
+  };
+  input.click();
+};
+
+window.deleteGroundTwinCommonGalleryImage = function (index) {
+  const galleryField = document.getElementById('room-ground-twin-common-gallery');
+  if (!galleryField) return;
+
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse common gallery:', e);
+    return;
+  }
+
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateRoomGroundTwinCommonGalleryPreview(gallery);
+
+  if (typeof window.scheduleRoomGroundTwinAutoSave === 'function') {
+    if (typeof roomGroundTwinHasUnsavedChanges !== 'undefined') {
+      roomGroundTwinHasUnsavedChanges = true;
+    }
+    window.scheduleRoomGroundTwinAutoSave();
+  }
+};
+
+async function uploadGroundTwinCommonGalleryImage(file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', 'room-ground-twin-common-gallery');
+    formData.append('image', file);
+
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl
+        ? payload.imageUrl
+        : payload && payload.filepath
+          ? payload.filepath
+          : result.imageUrl || result.filepath || '';
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById('room-ground-twin-common-gallery');
+        if (!galleryField) return;
+
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse common gallery:', e);
+        }
+
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
+          gallery.push(imageUrl);
+        } else {
+          alert(`Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed in gallery`);
+          return;
+        }
+
+        galleryField.value = JSON.stringify(gallery);
+        updateRoomGroundTwinCommonGalleryPreview(gallery);
+
+        if (typeof window.scheduleRoomGroundTwinAutoSave === 'function') {
+          if (typeof roomGroundTwinHasUnsavedChanges !== 'undefined') {
+            roomGroundTwinHasUnsavedChanges = true;
+          }
+          window.scheduleRoomGroundTwinAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading common gallery image:', error);
   }
 }
 
@@ -3817,10 +4474,10 @@ async function uploadGroundTwinGalleryImage(file, replaceIndex = null) {
         if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
           gallery[replaceIndex] = imageUrl;
         } else {
-          if (gallery.length < 10) {
+          if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
             gallery.push(imageUrl);
           } else {
-            alert('Maximum 10 photos allowed in gallery');
+            alert(`Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed in gallery`);
             return;
           }
         }
@@ -3904,9 +4561,9 @@ function initRoomGroundTwinImageUpload() {
         console.error('Failed to parse gallery:', e);
       }
       
-      const remainingSlots = 10 - gallery.length;
+      const remainingSlots = ROOM_PAGE_GALLERY_MAX_PHOTOS - gallery.length;
       if (files.length > remainingSlots) {
-        alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed.`);
         files.splice(remainingSlots);
       }
       
@@ -3917,6 +4574,55 @@ function initRoomGroundTwinImageUpload() {
       e.target.value = ''; // Reset input
     });
   }
+
+  const commonGalleryInput = document.getElementById('room-ground-twin-common-gallery-upload');
+  const addCommonGalleryBtn = document.getElementById('room-ground-twin-add-common-gallery-photo');
+  if (addCommonGalleryBtn) {
+    addCommonGalleryBtn.addEventListener('click', () => {
+      if (commonGalleryInput) commonGalleryInput.click();
+    });
+  }
+  if (commonGalleryInput) {
+    commonGalleryInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      const galleryField = document.getElementById('room-ground-twin-common-gallery');
+      if (!galleryField) return;
+
+      let gallery = [];
+      try {
+        gallery = JSON.parse(galleryField.value || '[]');
+      } catch (err) {
+        console.error('Failed to parse common gallery:', err);
+      }
+
+      const remainingSlots = ROOM_PAGE_GALLERY_MAX_PHOTOS - gallery.length;
+      if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed.`);
+        files.splice(remainingSlots);
+      }
+
+      for (const file of files) {
+        await uploadGroundTwinCommonGalleryImage(file);
+      }
+
+      e.target.value = '';
+    });
+  }
+
+  ['room-ground-twin-gallery-section-title', 'room-ground-twin-common-gallery-section-title'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    ['input', 'change'].forEach((evt) => {
+      el.addEventListener(evt, () => {
+        if (typeof roomGroundTwinHasUnsavedChanges !== 'undefined') {
+          roomGroundTwinHasUnsavedChanges = true;
+        }
+        if (typeof window.scheduleRoomGroundTwinAutoSave === 'function') {
+          window.scheduleRoomGroundTwinAutoSave();
+        }
+      });
+    });
+  });
 }
 
 // Load room second data (text, banner, gallery)
@@ -3975,6 +4681,31 @@ async function loadRoomSecondData() {
         updateRoomSecondGalleryPreview(gallery);
         const galleryField = document.getElementById('room-second-gallery');
         if (galleryField) galleryField.value = JSON.stringify(gallery);
+
+        const roomGalTitleEl = document.getElementById('room-second-gallery-section-title');
+        const commonGalTitleEl = document.getElementById('room-second-common-gallery-section-title');
+        if (roomGalTitleEl) {
+          roomGalTitleEl.value =
+            data.roomSecondGallerySectionTitle != null && String(data.roomSecondGallerySectionTitle).trim() !== ''
+              ? String(data.roomSecondGallerySectionTitle)
+              : 'Room photos';
+        }
+        if (commonGalTitleEl) {
+          commonGalTitleEl.value =
+            data.roomSecondCommonGallerySectionTitle != null &&
+            String(data.roomSecondCommonGallerySectionTitle).trim() !== ''
+              ? String(data.roomSecondCommonGallerySectionTitle)
+              : 'Common areas photos';
+        }
+        let commonGallery = [];
+        try {
+          commonGallery = JSON.parse(data.roomSecondCommonGallery || '[]');
+        } catch (e) {
+          console.error('Failed to parse common gallery:', e);
+        }
+        updateRoomSecondCommonGalleryPreview(commonGallery);
+        const commonGalleryField = document.getElementById('room-second-common-gallery');
+        if (commonGalleryField) commonGalleryField.value = JSON.stringify(commonGallery);
         
         // Booking card
         const capacityField = document.getElementById('room-second-capacity');
@@ -4016,7 +4747,7 @@ function updateRoomSecondGalleryPreview(gallery) {
     img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
     
     const replaceBtn = document.createElement('button');
-    replaceBtn.textContent = 'Заменить';
+    replaceBtn.textContent = 'Replace';
     replaceBtn.className = 'admin-btn admin-btn-secondary';
     replaceBtn.style.cssText = 'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
     replaceBtn.onclick = (e) => {
@@ -4038,13 +4769,156 @@ function updateRoomSecondGalleryPreview(gallery) {
     galleryPreview.appendChild(galleryItem);
   });
   
-  // Show add button if less than 10 photos
-  if (gallery.length < 10) {
+  // Show add button if below max (room pages)
+  if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
     const addItem = document.createElement('div');
     addItem.style.cssText = 'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
     addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
     addItem.onclick = () => document.getElementById('room-second-gallery-upload').click();
     galleryPreview.appendChild(addItem);
+  }
+}
+
+function updateRoomSecondCommonGalleryPreview(gallery) {
+  const galleryPreview = document.getElementById('room-second-common-gallery-preview');
+  if (!galleryPreview) return;
+
+  galleryPreview.innerHTML = '';
+
+  gallery.forEach((imageUrl, index) => {
+    const galleryItem = document.createElement('div');
+    galleryItem.style.cssText =
+      'position: relative; width: 120px; height: 120px; border: 2px solid #e5e7eb; border-radius: 8px; overflow: hidden; background: #f3f4f6;';
+
+    const img = document.createElement('img');
+    img.src = imageUrl + '?v=' + Date.now();
+    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
+
+    const replaceBtn = document.createElement('button');
+    replaceBtn.textContent = 'Replace';
+    replaceBtn.className = 'admin-btn admin-btn-secondary';
+    replaceBtn.style.cssText =
+      'position: absolute; top: 4px; left: 4px; padding: 4px 8px; font-size: 0.75rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
+    replaceBtn.onclick = (e) => {
+      e.stopPropagation();
+      replaceRoomSecondCommonGalleryImage(index);
+    };
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = '×';
+    deleteBtn.style.cssText =
+      'position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; padding: 0; font-size: 1.2rem; line-height: 1; z-index: 10; background: rgba(239, 68, 68, 0.9); color: white; border: none; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;';
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      deleteRoomSecondCommonGalleryImage(index);
+    };
+
+    galleryItem.appendChild(img);
+    galleryItem.appendChild(replaceBtn);
+    galleryItem.appendChild(deleteBtn);
+    galleryPreview.appendChild(galleryItem);
+  });
+
+  if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
+    const addItem = document.createElement('div');
+    addItem.style.cssText =
+      'width: 120px; height: 120px; border: 2px dashed #9ca3af; border-radius: 8px; display: flex; align-items: center; justify-content: center; cursor: pointer; background: #f9fafb;';
+    addItem.innerHTML = '<span style="color: #9ca3af; font-size: 2rem;">+</span>';
+    addItem.onclick = () => document.getElementById('room-second-common-gallery-upload').click();
+    galleryPreview.appendChild(addItem);
+  }
+}
+
+window.replaceRoomSecondCommonGalleryImage = function (index) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = async (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      await uploadRoomSecondCommonGalleryImage(file, index);
+    }
+  };
+  input.click();
+};
+
+window.deleteRoomSecondCommonGalleryImage = function (index) {
+  const galleryField = document.getElementById('room-second-common-gallery');
+  if (!galleryField) return;
+
+  let gallery = [];
+  try {
+    gallery = JSON.parse(galleryField.value || '[]');
+  } catch (e) {
+    console.error('Failed to parse common gallery:', e);
+    return;
+  }
+
+  gallery.splice(index, 1);
+  galleryField.value = JSON.stringify(gallery);
+  updateRoomSecondCommonGalleryPreview(gallery);
+
+  if (typeof window.scheduleRoomSecondAutoSave === 'function') {
+    if (typeof roomSecondHasUnsavedChanges !== 'undefined') {
+      roomSecondHasUnsavedChanges = true;
+    }
+    window.scheduleRoomSecondAutoSave();
+  }
+};
+
+async function uploadRoomSecondCommonGalleryImage(file, replaceIndex = null) {
+  try {
+    const formData = new FormData();
+    formData.append('action', 'upload_image');
+    formData.append('image_type', 'room-second-common-gallery');
+    formData.append('image', file);
+
+    const response = await fetch('upload_image.php', {
+      method: 'POST',
+      body: formData
+    });
+
+    if (response.ok) {
+      const result = await response.json();
+      const payload = result && result.data ? result.data : result;
+      const imageUrl = payload && payload.imageUrl
+        ? payload.imageUrl
+        : payload && payload.filepath
+          ? payload.filepath
+          : result.imageUrl || result.filepath || '';
+      if (result.success && imageUrl) {
+        const galleryField = document.getElementById('room-second-common-gallery');
+        if (!galleryField) return;
+
+        let gallery = [];
+        try {
+          gallery = JSON.parse(galleryField.value || '[]');
+        } catch (e) {
+          console.error('Failed to parse common gallery:', e);
+        }
+
+        if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
+          gallery[replaceIndex] = imageUrl;
+        } else if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
+          gallery.push(imageUrl);
+        } else {
+          alert(`Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed in gallery`);
+          return;
+        }
+
+        galleryField.value = JSON.stringify(gallery);
+        updateRoomSecondCommonGalleryPreview(gallery);
+
+        if (typeof window.scheduleRoomSecondAutoSave === 'function') {
+          if (typeof roomSecondHasUnsavedChanges !== 'undefined') {
+            roomSecondHasUnsavedChanges = true;
+          }
+          window.scheduleRoomSecondAutoSave();
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error uploading common gallery image:', error);
   }
 }
 
@@ -4121,10 +4995,10 @@ async function uploadGalleryImage(file, replaceIndex = null) {
         if (replaceIndex !== null && replaceIndex >= 0 && replaceIndex < gallery.length) {
           gallery[replaceIndex] = imageUrl;
         } else {
-          if (gallery.length < 10) {
+          if (gallery.length < ROOM_PAGE_GALLERY_MAX_PHOTOS) {
             gallery.push(imageUrl);
           } else {
-            alert('Maximum 10 photos allowed in gallery');
+            alert(`Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed in gallery`);
             return;
           }
         }
@@ -4200,9 +5074,9 @@ function initRoomSecondImageUpload() {
         console.error('Failed to parse gallery:', e);
       }
       
-      const remainingSlots = 10 - gallery.length;
+      const remainingSlots = ROOM_PAGE_GALLERY_MAX_PHOTOS - gallery.length;
       if (files.length > remainingSlots) {
-        alert(`You can only add ${remainingSlots} more photo(s). Maximum 10 photos allowed.`);
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed.`);
         files.splice(remainingSlots);
       }
       
@@ -4213,6 +5087,55 @@ function initRoomSecondImageUpload() {
       e.target.value = ''; // Reset input
     });
   }
+
+  const commonGalleryInput = document.getElementById('room-second-common-gallery-upload');
+  const addCommonGalleryBtn = document.getElementById('room-second-add-common-gallery-photo');
+  if (addCommonGalleryBtn) {
+    addCommonGalleryBtn.addEventListener('click', () => {
+      if (commonGalleryInput) commonGalleryInput.click();
+    });
+  }
+  if (commonGalleryInput) {
+    commonGalleryInput.addEventListener('change', async (e) => {
+      const files = Array.from(e.target.files);
+      const galleryField = document.getElementById('room-second-common-gallery');
+      if (!galleryField) return;
+
+      let gallery = [];
+      try {
+        gallery = JSON.parse(galleryField.value || '[]');
+      } catch (err) {
+        console.error('Failed to parse common gallery:', err);
+      }
+
+      const remainingSlots = ROOM_PAGE_GALLERY_MAX_PHOTOS - gallery.length;
+      if (files.length > remainingSlots) {
+        alert(`You can only add ${remainingSlots} more photo(s). Maximum ${ROOM_PAGE_GALLERY_MAX_PHOTOS} photos allowed.`);
+        files.splice(remainingSlots);
+      }
+
+      for (const file of files) {
+        await uploadRoomSecondCommonGalleryImage(file);
+      }
+
+      e.target.value = '';
+    });
+  }
+
+  ['room-second-gallery-section-title', 'room-second-common-gallery-section-title'].forEach((id) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    ['input', 'change'].forEach((evt) => {
+      el.addEventListener(evt, () => {
+        if (typeof roomSecondHasUnsavedChanges !== 'undefined') {
+          roomSecondHasUnsavedChanges = true;
+        }
+        if (typeof window.scheduleRoomSecondAutoSave === 'function') {
+          window.scheduleRoomSecondAutoSave();
+        }
+      });
+    });
+  });
 }
 
 // ==========================================
@@ -7796,7 +8719,7 @@ function updateAboutAttractionGalleryPreview(attractionName, gallery) {
     img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
     
     const replaceBtn = document.createElement('button');
-    replaceBtn.textContent = 'Заменить';
+    replaceBtn.textContent = 'Replace';
     replaceBtn.className = 'admin-btn admin-btn-secondary';
     replaceBtn.style.cssText = 'position: absolute; top: 2px; left: 2px; padding: 2px 6px; font-size: 0.7rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
     replaceBtn.onclick = (e) => {
@@ -8016,7 +8939,7 @@ function updateFloorplanGalleryPreview(floorName, gallery) {
     img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
     
     const replaceBtn = document.createElement('button');
-    replaceBtn.textContent = 'Заменить';
+    replaceBtn.textContent = 'Replace';
     replaceBtn.className = 'admin-btn admin-btn-secondary';
     replaceBtn.style.cssText = 'position: absolute; top: 2px; left: 2px; padding: 2px 6px; font-size: 0.7rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
     replaceBtn.onclick = (e) => {
@@ -8278,7 +9201,7 @@ function saveFloorplanGalleries() {
     }
   }).catch(error => {
     console.error('Error saving floor plan galleries:', error);
-    alert('Ошибка при сохранении галерей: ' + error.message);
+    alert('Error saving galleries: ' + error.message);
   });
 }
 
@@ -8303,7 +9226,7 @@ function updateRetreatLocationGalleryPreview(locationName, gallery) {
     img.style.cssText = 'width: 100%; height: 100%; object-fit: cover;';
     
     const replaceBtn = document.createElement('button');
-    replaceBtn.textContent = 'Заменить';
+    replaceBtn.textContent = 'Replace';
     replaceBtn.className = 'admin-btn admin-btn-secondary';
     replaceBtn.style.cssText = 'position: absolute; top: 2px; left: 2px; padding: 2px 6px; font-size: 0.7rem; z-index: 10; background: rgba(59, 130, 246, 0.9); color: white; border: none; border-radius: 4px; cursor: pointer;';
     replaceBtn.onclick = (e) => {
@@ -8751,18 +9674,9 @@ async function loadContactData() {
       const result = await response.json();
       if (result.success && result.data) {
         const data = result.data;
-        const phoneVal =
-          data.contactPhone != null && String(data.contactPhone).trim() !== ''
-            ? String(data.contactPhone).trim()
-            : DEFAULT_CONTACT_PHONE;
-        const emailVal =
-          data.contactEmail != null && String(data.contactEmail).trim() !== ''
-            ? String(data.contactEmail).trim()
-            : DEFAULT_CONTACT_EMAIL;
-        const addressVal =
-          data.contactAddress != null && String(data.contactAddress).trim() !== ''
-            ? String(data.contactAddress).trim()
-            : DEFAULT_CONTACT_ADDRESS;
+        const phoneVal = data.contactPhone != null ? String(data.contactPhone) : '';
+        const emailVal = data.contactEmail != null ? String(data.contactEmail) : '';
+        const addressVal = data.contactAddress != null ? String(data.contactAddress) : '';
         applyContactValues(phoneVal, emailVal, addressVal);
         console.log('Contact data loaded successfully');
       } else {
@@ -8861,6 +9775,15 @@ async function saveRoomSecondContent() {
     formData.append('room_second_capacity', document.getElementById('room-second-capacity')?.value || '');
     formData.append('room_second_note', document.getElementById('room-second-note')?.value || '');
     formData.append('room_second_gallery', document.getElementById('room-second-gallery')?.value || '[]');
+    formData.append(
+      'room_second_gallery_section_title',
+      document.getElementById('room-second-gallery-section-title')?.value || ''
+    );
+    formData.append('room_second_common_gallery', document.getElementById('room-second-common-gallery')?.value || '[]');
+    formData.append(
+      'room_second_common_gallery_section_title',
+      document.getElementById('room-second-common-gallery-section-title')?.value || ''
+    );
     
     const { ok } = await postApiFormDataAndUpdateStatus('room-second', formData);
     if (ok) {
@@ -8916,6 +9839,15 @@ async function saveRoomGroundTwinContent() {
     formData.append('room_ground_twin_capacity', document.getElementById('room-ground-twin-capacity')?.value || '');
     formData.append('room_ground_twin_note', document.getElementById('room-ground-twin-note')?.value || '');
     formData.append('room_ground_twin_gallery', document.getElementById('room-ground-twin-gallery')?.value || '[]');
+    formData.append(
+      'room_ground_twin_gallery_section_title',
+      document.getElementById('room-ground-twin-gallery-section-title')?.value || ''
+    );
+    formData.append('room_ground_twin_common_gallery', document.getElementById('room-ground-twin-common-gallery')?.value || '[]');
+    formData.append(
+      'room_ground_twin_common_gallery_section_title',
+      document.getElementById('room-ground-twin-common-gallery-section-title')?.value || ''
+    );
     
     const { ok } = await postApiFormDataAndUpdateStatus('room-ground-twin', formData);
     if (ok) {
@@ -8971,6 +9903,15 @@ async function saveRoomGroundQueenContent() {
     formData.append('room_ground_queen_capacity', document.getElementById('room-ground-queen-capacity')?.value || '');
     formData.append('room_ground_queen_note', document.getElementById('room-ground-queen-note')?.value || '');
     formData.append('room_ground_queen_gallery', document.getElementById('room-ground-queen-gallery')?.value || '[]');
+    formData.append(
+      'room_ground_queen_gallery_section_title',
+      document.getElementById('room-ground-queen-gallery-section-title')?.value || ''
+    );
+    formData.append('room_ground_queen_common_gallery', document.getElementById('room-ground-queen-common-gallery')?.value || '[]');
+    formData.append(
+      'room_ground_queen_common_gallery_section_title',
+      document.getElementById('room-ground-queen-common-gallery-section-title')?.value || ''
+    );
     
     const { ok } = await postApiFormDataAndUpdateStatus('room-ground-queen', formData);
     if (ok) {
@@ -9026,6 +9967,15 @@ async function saveRoomBasementContent() {
     formData.append('room_basement_capacity', document.getElementById('room-basement-capacity')?.value || '');
     formData.append('room_basement_note', document.getElementById('room-basement-note')?.value || '');
     formData.append('room_basement_gallery', document.getElementById('room-basement-gallery')?.value || '[]');
+    formData.append(
+      'room_basement_gallery_section_title',
+      document.getElementById('room-basement-gallery-section-title')?.value || ''
+    );
+    formData.append('room_basement_common_gallery', document.getElementById('room-basement-common-gallery')?.value || '[]');
+    formData.append(
+      'room_basement_common_gallery_section_title',
+      document.getElementById('room-basement-common-gallery-section-title')?.value || ''
+    );
     
     const { ok } = await postApiFormDataAndUpdateStatus('room-basement', formData);
     if (ok) {
@@ -9793,7 +10743,7 @@ function initPageContentSaveHandlers() {
               retreatHasUnsavedChanges = false;
             }
             if (typeof updateRetreatSaveStatus === 'function') {
-              updateRetreatSaveStatus('Сохранено', '✓');
+              updateRetreatSaveStatus('Saved', '✓');
               setTimeout(() => {
                 if (typeof retreatHasUnsavedChanges !== 'undefined' && !retreatHasUnsavedChanges) {
                   updateRetreatSaveStatus('', '');
@@ -9825,7 +10775,7 @@ function initPageContentSaveHandlers() {
           } else {
             showStatus('Failed to save: ' + (result.error || 'Unknown error'), 'error');
             if (typeof updateRetreatSaveStatus === 'function') {
-              updateRetreatSaveStatus('Ошибка сохранения', '❌');
+              updateRetreatSaveStatus('Save error', '❌');
             }
             if (typeof retreatHasUnsavedChanges !== 'undefined') {
               retreatHasUnsavedChanges = true;
@@ -9834,7 +10784,7 @@ function initPageContentSaveHandlers() {
         } else {
           showStatus('Failed to save retreat content', 'error');
           if (typeof updateRetreatSaveStatus === 'function') {
-            updateRetreatSaveStatus('Ошибка сохранения', '❌');
+            updateRetreatSaveStatus('Save error', '❌');
           }
           if (typeof retreatHasUnsavedChanges !== 'undefined') {
             retreatHasUnsavedChanges = true;
@@ -9844,7 +10794,7 @@ function initPageContentSaveHandlers() {
         console.error('Error saving retreat content:', error);
         showStatus('Error saving retreat content: ' + error.message, 'error');
         if (typeof updateRetreatSaveStatus === 'function') {
-          updateRetreatSaveStatus('Ошибка сохранения', '❌');
+          updateRetreatSaveStatus('Save error', '❌');
         }
         if (typeof retreatHasUnsavedChanges !== 'undefined') {
           retreatHasUnsavedChanges = true;
@@ -9878,7 +10828,7 @@ function scheduleRetreatAutoSave() {
   // Update status to show pending save
   const updateStatus = window.updateRetreatSaveStatus || updateRetreatSaveStatus;
   if (typeof updateStatus === 'function') {
-    updateStatus('Изменения не сохранены', '⏳');
+    updateStatus('Unsaved changes', '⏳');
   } else {
     console.warn('updateRetreatSaveStatus is not defined');
   }
@@ -9959,7 +10909,7 @@ function initRetreatAutoSave() {
     window.addEventListener('beforeunload', (e) => {
       if (retreatHasUnsavedChanges && !retreatIsSaving) {
         e.preventDefault();
-        e.returnValue = 'У вас есть несохраненные изменения. Вы уверены, что хотите покинуть страницу?';
+        e.returnValue = 'You have unsaved changes. Are you sure you want to leave this page?';
         return e.returnValue;
       }
     });
@@ -9996,7 +10946,7 @@ async function autoSaveRetreatContent() {
   retreatSaveRetryCount = 0;
   const updateStatus = window.updateRetreatSaveStatus || updateRetreatSaveStatus;
   if (typeof updateStatus === 'function') {
-    updateStatus('Сохранение...', '⏳');
+    updateStatus('Saving...', '⏳');
   }
   
   await saveRetreatContentWithRetry();
@@ -10123,7 +11073,7 @@ async function saveRetreatContentWithRetry() {
       };
       localStorage.setItem('btb_retreat_workshop_content', JSON.stringify(retreatContent));
       if (typeof updateRetreatSaveStatus === 'function') {
-        updateRetreatSaveStatus('Сохранено', '✓');
+        updateRetreatSaveStatus('Saved', '✓');
         setTimeout(() => {
           if (!retreatHasUnsavedChanges) {
             updateRetreatSaveStatus('', '');
@@ -10138,15 +11088,15 @@ async function saveRetreatContentWithRetry() {
   } catch (error) {
     console.error('Auto-save error:', error);
     retreatSaveRetryCount++;
-    const errDetail = (error && error.message) ? String(error.message) : 'Ошибка сохранения';
+    const errDetail = (error && error.message) ? String(error.message) : 'Save error';
     if (retreatSaveRetryCount < RETREAT_MAX_RETRIES) {
       const short = errDetail.length > 60 ? errDetail.slice(0, 60) + '…' : errDetail;
-      updateRetreatSaveStatus(`Ошибка. Повтор… (${retreatSaveRetryCount}/${RETREAT_MAX_RETRIES}) ` + short, '⚠️');
+      updateRetreatSaveStatus(`Error. Retry… (${retreatSaveRetryCount}/${RETREAT_MAX_RETRIES}) ` + short, '⚠️');
       setTimeout(() => {
         saveRetreatContentWithRetry();
       }, 1000);
     } else {
-      const finalMsg = 'Не сохранено: ' + errDetail;
+      const finalMsg = 'Not saved: ' + errDetail;
       const show = finalMsg.length > 120 ? finalMsg.slice(0, 120) + '…' : finalMsg;
       updateRetreatSaveStatus(show, '❌');
       retreatHasUnsavedChanges = true;
@@ -10182,11 +11132,11 @@ function updateRetreatSaveStatus(text, icon) {
     console.warn('retreat-save-status-icon element not found!');
   }
   statusText.textContent = text;
-  if (text === 'Сохранено') {
+  if (text === 'Saved') {
     statusText.style.color = '#10b981';
-  } else if (String(text).includes('Ошибка')) {
+  } else if (String(text).includes('Error')) {
     statusText.style.color = '#ef4444';
-  } else if (text === 'Сохранение...') {
+  } else if (text === 'Saving...') {
     statusText.style.color = '#3b82f6';
   } else {
     statusText.style.color = '#6b7280';
@@ -10326,7 +11276,7 @@ async function saveHomepageRoomsContent() {
       console.log('Homepage rooms content saved successfully:', result);
       if (result && result.warning) {
         console.warn('Warning:', result.warning);
-        alert('Внимание: ' + result.warning + '\n\nПожалуйста, запустите скрипт add_rooms_title_fields.php на сервере для добавления необходимых колонок в базу данных.');
+        alert('Warning: ' + result.warning + '\n\nPlease run add_rooms_title_fields.php on the server to add required database columns.');
       }
       const stored = localStorage.getItem('btb_content') || '{}';
       const cj = JSON.parse(stored);
@@ -10334,17 +11284,17 @@ async function saveHomepageRoomsContent() {
       cj.roomsSubtitle = roomsSubtitle;
       localStorage.setItem('btb_content', JSON.stringify(cj));
     } else {
-      const errorMessage = saveErr || 'Неизвестная ошибка при сохранении';
+      const errorMessage = saveErr || 'Unknown save error';
       if (errorMessage.includes('Database columns missing') || errorMessage.includes('rooms_title') || errorMessage.includes('rooms_subtitle')) {
-        alert('Ошибка: отсутствуют необходимые колонки в базе данных. Пожалуйста, запустите add_rooms_title_fields.php для их создания.');
+        alert('Error: Required database columns are missing. Please run add_rooms_title_fields.php to create them.');
       } else {
-        alert('Ошибка при сохранении: ' + errorMessage);
+        alert('Save error: ' + errorMessage);
       }
     }
   } catch (error) {
     console.error('Error saving homepage rooms content:', error);
     updateHomepageRoomsSaveStatus('error', (error && error.message) || 'Save failed');
-    alert('Ошибка при сохранении: ' + (error && error.message));
+    alert('Save error: ' + (error && error.message));
   }
 }
 
@@ -10453,6 +11403,184 @@ registerContentEditor('room-basement', () => {
   initRoomBasementAutoSave();
 });
 
+let guestReviewsSaveTimer = null;
+
+const GUEST_REVIEWS_FIELDS_DOM_VER = '2';
+
+function ensureGuestReviewsFieldsDom() {
+  const vr = document.getElementById('guest-reviews-vrbo-fields');
+  const ar = document.getElementById('guest-reviews-airbnb-fields');
+  if (!vr || !ar) {
+    return;
+  }
+  if (vr.getAttribute('data-btb-built') === GUEST_REVIEWS_FIELDS_DOM_VER) {
+    return;
+  }
+  vr.innerHTML = '';
+  ar.innerHTML = '';
+  function makeBlock(prefix, i) {
+    const w = document.createElement('div');
+    w.className = 'guest-reviews-review-card';
+    w.style.cssText =
+      'margin-bottom:12px;padding:12px;background:#f8fafc;border:1px solid #d1d5db;border-radius:8px;';
+    const idBase = 'guest-review-' + prefix;
+    const src = prefix === 'vrbo' ? 'Vrbo' : 'Airbnb';
+    const n = i + 1;
+    w.innerHTML =
+      '<div class="guest-reviews-review-index" aria-hidden="true">' +
+      'Review ' +
+      n +
+      '</div>' +
+      '<div style="display:flex;flex-direction:column;gap:8px;">' +
+      '<input type="text" id="' +
+      idBase +
+      '-name-' +
+      i +
+      '" class="retreat-text-input" autocomplete="off" ' +
+      'aria-label="' +
+      src +
+      ' review ' +
+      n +
+      ' — name" ' +
+      'placeholder="" />' +
+      '<select id="' +
+      idBase +
+      '-rating-' +
+      i +
+      '" class="retreat-text-input" style="max-width:6rem;" ' +
+      'aria-label="' +
+      src +
+      ' review ' +
+      n +
+      ' — star rating 1 to 5">' +
+      [1, 2, 3, 4, 5]
+        .map(
+          (rv) =>
+            '<option value="' + rv + '"' + (rv === 5 ? ' selected' : '') + '>' + rv + '</option>',
+        )
+        .join('') +
+      '</select>' +
+      '<textarea id="' +
+      idBase +
+      '-text-' +
+      i +
+      '" rows="3" class="retreat-text-input" style="min-height:4rem;resize:vertical;" ' +
+      'aria-label="' +
+      src +
+      ' review ' +
+      n +
+      ' — text" placeholder=""></textarea>' +
+      '</div>';
+    return w;
+  }
+  for (let i = 0; i < 5; i++) {
+    vr.appendChild(makeBlock('vrbo', i));
+    ar.appendChild(makeBlock('airbnb', i));
+  }
+  vr.setAttribute('data-btb-built', GUEST_REVIEWS_FIELDS_DOM_VER);
+  ar.setAttribute('data-btb-built', GUEST_REVIEWS_FIELDS_DOM_VER);
+}
+
+async function loadGuestReviewsData() {
+  ensureGuestReviewsFieldsDom();
+  try {
+    const res = await fetch('api.php?action=get_guest_reviews');
+    const json = await res.json();
+    if (!json.success || !json.data) {
+      updateAdminSectionSaveStatus('guest-reviews', 'error', (json && json.error) || 'Load failed');
+      return;
+    }
+    const d = json.data;
+    const titleEl = document.getElementById('guest-reviews-title');
+    const subEl = document.getElementById('guest-reviews-subtitle');
+    if (titleEl) {
+      titleEl.value = d.section_title || '';
+    }
+    if (subEl) {
+      subEl.value = d.section_subtitle || '';
+    }
+    ['vrbo', 'airbnb'].forEach((prefix) => {
+      const list = d[prefix] || [];
+      for (let i = 0; i < 5; i++) {
+        const item = list[i] || {};
+        const n = document.getElementById('guest-review-' + prefix + '-name-' + i);
+        const t = document.getElementById('guest-review-' + prefix + '-text-' + i);
+        const r = document.getElementById('guest-review-' + prefix + '-rating-' + i);
+        if (n) {
+          n.value = item.name || '';
+        }
+        if (t) {
+          t.value = item.text || '';
+        }
+        if (r) {
+          r.value = String(item.rating != null ? item.rating : 5);
+        }
+      }
+    });
+  } catch (e) {
+    updateAdminSectionSaveStatus('guest-reviews', 'error', (e && e.message) || 'Error');
+  }
+}
+
+function collectGuestReviewsList(prefix) {
+  const a = [];
+  for (let i = 0; i < 5; i++) {
+    const n = document.getElementById('guest-review-' + prefix + '-name-' + i);
+    const t = document.getElementById('guest-review-' + prefix + '-text-' + i);
+    const r = document.getElementById('guest-review-' + prefix + '-rating-' + i);
+    a.push({
+      name: n && n.value ? n.value.trim() : '',
+      text: t && t.value ? t.value.trim() : '',
+      rating: Math.max(1, Math.min(5, parseInt((r && r.value) || '5', 10) || 5)),
+    });
+  }
+  return a;
+}
+
+async function saveGuestReviewsContent() {
+  updateAdminSectionSaveStatus('guest-reviews', 'saving');
+  const formData = new FormData();
+  formData.append('action', 'save_guest_reviews');
+  formData.append('section_title', document.getElementById('guest-reviews-title')?.value || '');
+  formData.append('section_subtitle', document.getElementById('guest-reviews-subtitle')?.value || '');
+  formData.append('vrbo_reviews', JSON.stringify(collectGuestReviewsList('vrbo')));
+  formData.append('airbnb_reviews', JSON.stringify(collectGuestReviewsList('airbnb')));
+  try {
+    const response = await fetch('api.php', { method: 'POST', body: formData });
+    const raw = await response.text();
+    const result = parseJsonFromText(raw);
+    if (response.ok && result && result.success) {
+      updateAdminSectionSaveStatus('guest-reviews', 'saved');
+    } else {
+      updateAdminSectionSaveStatus(
+        'guest-reviews',
+        'error',
+        (result && (result.error || result.message)) || 'Save failed',
+      );
+    }
+  } catch (e) {
+    updateAdminSectionSaveStatus('guest-reviews', 'error', (e && e.message) || 'Error');
+  }
+}
+
+function initGuestReviewsAutoSave() {
+  const root = document.getElementById('guest-reviews-section');
+  if (!root || root.getAttribute('data-btb-guest-reviews-autosave') === '1') {
+    return;
+  }
+  root.setAttribute('data-btb-guest-reviews-autosave', '1');
+  const schedule = () => {
+    if (guestReviewsSaveTimer) {
+      clearTimeout(guestReviewsSaveTimer);
+    }
+    guestReviewsSaveTimer = setTimeout(() => {
+      saveGuestReviewsContent();
+    }, 1800);
+  };
+  root.addEventListener('input', schedule, true);
+  root.addEventListener('change', schedule, true);
+}
+
 registerContentEditor('floorplan', () => {
   console.log('registerContentEditor: floorplan initializer called');
   // Reset initialization flag when switching to floorplan section
@@ -10466,6 +11594,11 @@ registerContentEditor('floorplan', () => {
       initFloorplanGalleries();
     }
   }, 200);
+});
+
+registerContentEditor('guest-reviews', () => {
+  loadGuestReviewsData();
+  initGuestReviewsAutoSave();
 });
 
 registerContentEditor('wellness-experiences', () => {
@@ -10616,29 +11749,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   
-  // Initialize save contact button
-  const saveContactBtn = document.getElementById('save-contact');
-  if (saveContactBtn) {
-    saveContactBtn.addEventListener('click', async () => {
-      const content = getStoredData('btb_content') || getDefaultContent();
-      content.contactPhone = document.getElementById('contact-phone').value;
-      content.contactEmail = document.getElementById('contact-email').value;
-      content.contactAddress = document.getElementById('contact-address').value;
-      
-      try {
-        const saved = await saveContentToServer(content);
-        if (saved) {
-          showStatus('Contact information saved successfully!');
-          return;
-        }
-      } catch (error) {
-        console.log('Server save failed, saving to localStorage');
-      }
-      
-      setStoredData('btb_content', content);
-      showStatus('Contact information saved successfully!');
-    });
-  }
+  // save-contact is registered in initAdminForms() only (avoid duplicate listeners).
 
   // Initialize save buttons for room pages
   initRoomPageSaveHandlers();

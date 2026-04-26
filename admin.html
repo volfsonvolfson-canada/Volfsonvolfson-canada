@@ -510,15 +510,15 @@
         flex-wrap: wrap;
       }
       
-      /* Content Management - three rows layout */
+      /* Content Management — four rows: (1) site blocks (2) four room tabs on one line (3) other pages (4) Contact */
       .admin-nav-tabs-secondary[data-primary="content"] {
         display: grid;
         grid-template-columns: repeat(5, 1fr);
-        grid-template-rows: repeat(3, auto);
+        grid-template-rows: repeat(4, auto);
         gap: 8px;
       }
       
-      /* First row: Main page, Rooms Cards, Common areas, Wellness */
+      /* Row 1: Main page, Rooms Cards, Common areas, Guest reviews, Wellness */
       .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(1) {
         grid-column: 1;
         grid-row: 1;
@@ -539,51 +539,62 @@
         grid-row: 1;
       }
       
-      /* Second row: Loki Suite, The Nouk, Vrienden, Kelder (room content subsections) */
       .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(5) {
-        grid-column: 1;
-        grid-row: 2;
+        grid-column: 5;
+        grid-row: 1;
       }
       
+      /* Row 2: Loki Suite, The Nouk, Vrienden, Kelder — one line, first four columns */
       .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(6) {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 2;
       }
       
       .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(7) {
-        grid-column: 3;
+        grid-column: 2;
         grid-row: 2;
       }
       
       .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(8) {
+        grid-column: 3;
+        grid-row: 2;
+      }
+      
+      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(9) {
         grid-column: 4;
         grid-row: 2;
       }
       
-      /* Third row: Wellness Experiences (page), Retreats and Workshops, Specials, About us, Contact Information */
-      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(9) {
+      /* Row 3: Wellness (page), Retreats, Explore, Specials, About us */
+      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(10) {
         grid-column: 1;
         grid-row: 3;
       }
       
-      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(10) {
+      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(11) {
         grid-column: 2;
         grid-row: 3;
       }
       
-      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(11) {
+      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(12) {
         grid-column: 3;
         grid-row: 3;
       }
       
-      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(12) {
+      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(13) {
         grid-column: 4;
         grid-row: 3;
       }
       
-      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(13) {
+      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(14) {
         grid-column: 5;
         grid-row: 3;
+      }
+      
+      /* Row 4: Contact Information */
+      .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary:nth-child(15) {
+        grid-column: 1;
+        grid-row: 4;
       }
       
       .admin-nav-tab-secondary {
@@ -1037,22 +1048,24 @@
       
       <!-- Secondary level tabs (subsections) - Content Management -->
       <div class="admin-nav-tabs-secondary hidden" data-primary="content">
-        <!-- First row -->
+        <!-- Nav row 1 -->
         <button class="admin-nav-tab-secondary active" data-section="homepage">Main page</button>
         <button class="admin-nav-tab-secondary" data-section="homepage-rooms">Rooms Cards</button>
         <button class="admin-nav-tab-secondary" data-section="floorplan">Common areas</button>
+        <button class="admin-nav-tab-secondary" data-section="guest-reviews">Guest reviews</button>
         <button class="admin-nav-tab-secondary admin-nav-tab-secondary--stacked" data-section="wellness-experiences">Wellness<span class="admin-nav-tab-sub">(a short description)</span></button>
-        <!-- Second row -->
+        <!-- Nav row 2: room content (one line) -->
         <button class="admin-nav-tab-secondary" data-section="room-basement">Loki Suite</button>
         <button class="admin-nav-tab-secondary" data-section="room-ground-queen">The Nouk</button>
         <button class="admin-nav-tab-secondary" data-section="room-ground-twin">Vrienden</button>
         <button class="admin-nav-tab-secondary" data-section="room-second">Kelder</button>
-        <!-- Third row -->
+        <!-- Nav row 3 -->
         <button class="admin-nav-tab-secondary" data-section="massage">Wellness Experiences (page)</button>
         <button class="admin-nav-tab-secondary" data-section="retreat-workshop">Retreats and Workshops</button>
         <button class="admin-nav-tab-secondary" data-section="explore">Explore</button>
         <button class="admin-nav-tab-secondary" data-section="special">Specials</button>
         <button class="admin-nav-tab-secondary" data-section="about">About us</button>
+        <!-- Nav row 4 -->
         <button class="admin-nav-tab-secondary" data-section="contact">Contact Information</button>
       </div>
       
@@ -1738,6 +1751,7 @@
         <input type="hidden" id="room-basement-capacity">
         <textarea id="room-basement-note"></textarea>
         <input type="hidden" id="room-basement-gallery" value="[]">
+        <input type="hidden" id="room-basement-common-gallery" value="[]">
         <input type="hidden" id="room-basement-banner-image-url">
         <input type="file" id="room-basement-banner-upload" accept="image/*" style="display: none;">
       </div>
@@ -1759,16 +1773,29 @@
           </div>
         </div>
         
-        <!-- Gallery Block -->
+        <!-- Gallery blocks (room + common areas) -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="admin-form-group" style="margin-bottom: 12px;">
+            <input type="text" id="room-basement-gallery-section-title" class="retreat-text-input" autocomplete="off" aria-label="Room gallery heading" placeholder="Room photos" style="width:100%;max-width:520px;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#0f172a;" />
+          </div>
           <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <span style="font-weight: 600; color: #374151;">Loki Suite — photo gallery (max 10)</span>
+            <span style="font-weight: 600; color: #374151;">Loki Suite — room photos (max 30)</span>
             <button type="button" id="room-basement-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
           </div>
           <div id="room-basement-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
             <!-- Gallery images will be dynamically inserted here -->
           </div>
           <input type="file" id="room-basement-gallery-upload" accept="image/*" multiple style="display: none;">
+          <div class="admin-form-group" style="margin-top: 20px; margin-bottom: 12px;">
+            <input type="text" id="room-basement-common-gallery-section-title" class="retreat-text-input" autocomplete="off" aria-label="Common areas gallery heading" placeholder="Common areas photos" style="width:100%;max-width:520px;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#0f172a;" />
+          </div>
+          <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Loki Suite — common areas photos (max 30)</span>
+            <button type="button" id="room-basement-add-common-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
+          </div>
+          <div id="room-basement-common-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+          </div>
+          <input type="file" id="room-basement-common-gallery-upload" accept="image/*" multiple style="display: none;">
         </div>
         
         <!-- Booking Card Block -->
@@ -1821,6 +1848,7 @@
         <input type="hidden" id="room-ground-queen-capacity">
         <textarea id="room-ground-queen-note"></textarea>
         <input type="hidden" id="room-ground-queen-gallery" value="[]">
+        <input type="hidden" id="room-ground-queen-common-gallery" value="[]">
         <input type="hidden" id="room-ground-queen-banner-image-url">
         <input type="file" id="room-ground-queen-banner-upload" accept="image/*" style="display: none;">
       </div>
@@ -1842,16 +1870,29 @@
           </div>
         </div>
         
-        <!-- Gallery Block -->
+        <!-- Gallery blocks (room + common areas) -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="admin-form-group" style="margin-bottom: 12px;">
+            <input type="text" id="room-ground-queen-gallery-section-title" class="retreat-text-input" autocomplete="off" aria-label="Room gallery heading" placeholder="Room photos" style="width:100%;max-width:520px;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#0f172a;" />
+          </div>
           <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <span style="font-weight: 600; color: #374151;">The Nouk — photo gallery (max 10)</span>
+            <span style="font-weight: 600; color: #374151;">The Nouk — room photos (max 30)</span>
             <button type="button" id="room-ground-queen-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
           </div>
           <div id="room-ground-queen-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
             <!-- Gallery images will be dynamically inserted here -->
           </div>
           <input type="file" id="room-ground-queen-gallery-upload" accept="image/*" multiple style="display: none;">
+          <div class="admin-form-group" style="margin-top: 20px; margin-bottom: 12px;">
+            <input type="text" id="room-ground-queen-common-gallery-section-title" class="retreat-text-input" autocomplete="off" aria-label="Common areas gallery heading" placeholder="Common areas photos" style="width:100%;max-width:520px;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#0f172a;" />
+          </div>
+          <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">The Nouk — common areas photos (max 30)</span>
+            <button type="button" id="room-ground-queen-add-common-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
+          </div>
+          <div id="room-ground-queen-common-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+          </div>
+          <input type="file" id="room-ground-queen-common-gallery-upload" accept="image/*" multiple style="display: none;">
         </div>
         
         <!-- Booking Card Block -->
@@ -1904,6 +1945,7 @@
         <input type="hidden" id="room-ground-twin-capacity">
         <textarea id="room-ground-twin-note"></textarea>
         <input type="hidden" id="room-ground-twin-gallery" value="[]">
+        <input type="hidden" id="room-ground-twin-common-gallery" value="[]">
         <input type="hidden" id="room-ground-twin-banner-image-url">
         <input type="file" id="room-ground-twin-banner-upload" accept="image/*" style="display: none;">
       </div>
@@ -1925,16 +1967,29 @@
           </div>
         </div>
         
-        <!-- Gallery Block -->
+        <!-- Gallery blocks (room + common areas) -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="admin-form-group" style="margin-bottom: 12px;">
+            <input type="text" id="room-ground-twin-gallery-section-title" class="retreat-text-input" autocomplete="off" aria-label="Room gallery heading" placeholder="Room photos" style="width:100%;max-width:520px;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#0f172a;" />
+          </div>
           <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <span style="font-weight: 600; color: #374151;">Vrienden — photo gallery (max 10)</span>
+            <span style="font-weight: 600; color: #374151;">Vrienden — room photos (max 30)</span>
             <button type="button" id="room-ground-twin-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
           </div>
           <div id="room-ground-twin-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
             <!-- Gallery images will be dynamically inserted here -->
           </div>
           <input type="file" id="room-ground-twin-gallery-upload" accept="image/*" multiple style="display: none;">
+          <div class="admin-form-group" style="margin-top: 20px; margin-bottom: 12px;">
+            <input type="text" id="room-ground-twin-common-gallery-section-title" class="retreat-text-input" autocomplete="off" aria-label="Common areas gallery heading" placeholder="Common areas photos" style="width:100%;max-width:520px;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#0f172a;" />
+          </div>
+          <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Vrienden — common areas photos (max 30)</span>
+            <button type="button" id="room-ground-twin-add-common-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
+          </div>
+          <div id="room-ground-twin-common-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+          </div>
+          <input type="file" id="room-ground-twin-common-gallery-upload" accept="image/*" multiple style="display: none;">
         </div>
         
         <!-- Booking Card Block -->
@@ -1987,6 +2042,7 @@
         <input type="hidden" id="room-second-capacity">
         <textarea id="room-second-note"></textarea>
         <input type="hidden" id="room-second-gallery" value="[]">
+        <input type="hidden" id="room-second-common-gallery" value="[]">
         <input type="hidden" id="room-second-banner-image-url">
         <input type="file" id="room-second-banner-upload" accept="image/*" style="display: none;">
       </div>
@@ -2008,16 +2064,29 @@
           </div>
         </div>
         
-        <!-- Gallery Block -->
+        <!-- Gallery blocks (room + common areas) -->
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="admin-form-group" style="margin-bottom: 12px;">
+            <input type="text" id="room-second-gallery-section-title" class="retreat-text-input" autocomplete="off" aria-label="Room gallery heading" placeholder="Room photos" style="width:100%;max-width:520px;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#0f172a;" />
+          </div>
           <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
-            <span style="font-weight: 600; color: #374151;">Kelder — photo gallery (max 10)</span>
+            <span style="font-weight: 600; color: #374151;">Kelder — room photos (max 30)</span>
             <button type="button" id="room-second-add-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
           </div>
           <div id="room-second-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
             <!-- Gallery images will be dynamically inserted here -->
           </div>
           <input type="file" id="room-second-gallery-upload" accept="image/*" multiple style="display: none;">
+          <div class="admin-form-group" style="margin-top: 20px; margin-bottom: 12px;">
+            <input type="text" id="room-second-common-gallery-section-title" class="retreat-text-input" autocomplete="off" aria-label="Common areas gallery heading" placeholder="Common areas photos" style="width:100%;max-width:520px;box-sizing:border-box;background:#fff;border:1px solid #e2e8f0;border-radius:6px;padding:8px;color:#0f172a;" />
+          </div>
+          <div class="preview-block-header" style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding-bottom: 12px; border-bottom: 1px solid #e5e7eb;">
+            <span style="font-weight: 600; color: #374151;">Kelder — common areas photos (max 30)</span>
+            <button type="button" id="room-second-add-common-gallery-photo" class="admin-btn admin-btn-secondary" style="font-size: 0.875rem; padding: 6px 12px;">+ Add Photo</button>
+          </div>
+          <div id="room-second-common-gallery-preview" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px;">
+          </div>
+          <input type="file" id="room-second-common-gallery-upload" accept="image/*" multiple style="display: none;">
         </div>
         
         <!-- Booking Card Block -->
@@ -2677,8 +2746,8 @@ We'll be happy to help you plan your stay and answer any questions!</div>
     <section id="homepage-rooms-section" class="admin-section" style="display: none;">
       <h2>Rooms Cards</h2>
       <p style="margin: 0 0 16px 0; max-width: 52rem; font-size: 0.9rem; line-height: 1.5; color: #475569;">
-        Цена на главной в блоке «Choose your room» берётся только из вкладок комнат (Basement / First floor — Queen / First floor — Twin / Second floor).
-        Здесь строка «From … CAD/night» — это лишь превью для сайта, без отдельного поля редактирования.
+        The price on the homepage in the "Choose your room" block is taken only from the room tabs (Basement / First floor — Queen / First floor — Twin / Second floor).
+        The "From … CAD/night" line here is just a site preview and does not have a separate edit field.
       </p>
       <div class="retreat-status-bar">
         <div class="retreat-live-status" id="homepage-rooms-auto-save-status" aria-live="polite">
@@ -2893,6 +2962,38 @@ We'll be happy to help you plan your stay and answer any questions!</div>
               <!-- Gallery images will be dynamically inserted here -->
             </div>
             <input type="file" id="floorplan-loft-gallery-upload" accept="image/*" multiple style="display: none;">
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Guest reviews (homepage block) — same shell as Common areas: status bar + Page Preview card -->
+    <section id="guest-reviews-section" class="admin-section" style="display: none;" aria-label="Guest reviews">
+      <div class="retreat-status-bar">
+        <div class="retreat-live-status" id="guest-reviews-auto-save-status" aria-live="polite">
+          <span id="guest-reviews-save-status-text"></span>
+          <span id="guest-reviews-save-status-icon"></span>
+        </div>
+      </div>
+
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin-top: 0; margin-bottom: 20px; color: #374151; font-size: 1.1rem;">Page Preview</h3>
+
+        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+          <div class="preview-text" style="display: flex; flex-direction: column; gap: 8px; max-width: 40rem;">
+            <input type="text" id="guest-reviews-title" class="retreat-text-input" autocomplete="off" aria-label="Section heading" placeholder="" />
+            <textarea id="guest-reviews-subtitle" rows="2" class="retreat-text-input" style="min-height: 2.5rem; resize: vertical;" aria-label="Section intro" placeholder=""></textarea>
+          </div>
+        </div>
+
+        <div class="guest-reviews-admin-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start;">
+          <div class="preview-block" style="padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+            <div style="font-weight: 600; color: #374151; font-size: 0.875rem; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">Vrbo</div>
+            <div id="guest-reviews-vrbo-fields" data-guest-reviews-vrbo></div>
+          </div>
+          <div class="preview-block" style="padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px;">
+            <div style="font-weight: 600; color: #374151; font-size: 0.875rem; margin: 0 0 12px; padding-bottom: 8px; border-bottom: 1px solid #e5e7eb;">Airbnb</div>
+            <div id="guest-reviews-airbnb-fields" data-guest-reviews-airbnb></div>
           </div>
         </div>
       </div>

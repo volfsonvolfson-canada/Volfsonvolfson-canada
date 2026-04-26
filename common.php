@@ -341,6 +341,22 @@ function safeOutput($value, $fallback = '') {
 }
 
 /**
+ * Room / JSON gallery arrays: return ordered non-empty URL strings (same rules as front-end filters).
+ *
+ * @param array<int|string, mixed> $gallery
+ * @return list<string>
+ */
+function btb_room_gallery_valid_urls(array $gallery): array {
+    $out = [];
+    foreach ($gallery as $u) {
+        if (is_string($u) && trim($u) !== '') {
+            $out[] = trim($u);
+        }
+    }
+    return $out;
+}
+
+/**
  * Render multi-line CMS text: escapes HTML; newlines → <br>; each line starting with "-" (after optional spaces) becomes a list item.
  */
 function safeOutputWithBreaks($value, $fallback = '') {

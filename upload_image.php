@@ -150,24 +150,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                 $fieldName = 'room_' . str_replace('-', '_', $bannerType) . '_banner_image_url';
                 $tableName = 'content_settings';
                 $isHomepage = true;
-            } elseif ($imageType === 'room-second-gallery') {
-                // Room second gallery images - just upload, don't save to DB (gallery is stored as JSON array)
-                $fieldName = null; // No direct DB field
-                $tableName = null;
-                $isHomepage = false;
-            } elseif ($imageType === 'room-ground-twin-gallery') {
-                // Room ground twin gallery images - just upload, don't save to DB (gallery is stored as JSON array)
-                $fieldName = null; // No direct DB field
-                $tableName = null;
-                $isHomepage = false;
-            } elseif ($imageType === 'room-ground-queen-gallery') {
-                // Room ground queen gallery images - just upload, don't save to DB (gallery is stored as JSON array)
-                $fieldName = null; // No direct DB field
-                $tableName = null;
-                $isHomepage = false;
-            } elseif ($imageType === 'room-basement-gallery') {
-                // Room basement gallery images - just upload, don't save to DB (gallery is stored as JSON array)
-                $fieldName = null; // No direct DB field
+            } elseif (in_array($imageType, [
+                'room-second-gallery',
+                'room-second-common-gallery',
+                'room-ground-twin-gallery',
+                'room-ground-twin-common-gallery',
+                'room-ground-queen-gallery',
+                'room-ground-queen-common-gallery',
+                'room-basement-gallery',
+                'room-basement-common-gallery',
+            ], true)) {
+                // Room page gallery JSON — upload file only; URLs are saved via save_content.
+                $fieldName = null;
                 $tableName = null;
                 $isHomepage = false;
             } elseif ($imageType === 'massage-hero') {
@@ -360,9 +354,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
             error_log("Field name determined: $fieldName, table: $tableName");
             
             // Update database (skip for gallery images - they're stored as JSON array)
-            if ($imageType === 'room-second-gallery' || $imageType === 'room-ground-twin-gallery' || $imageType === 'room-ground-queen-gallery' || $imageType === 'room-basement-gallery') {
-                // Gallery images are stored as JSON array in room_second_gallery field
-                // Don't update DB here - it will be updated when content is saved
+            if (in_array($imageType, [
+                'room-second-gallery',
+                'room-second-common-gallery',
+                'room-ground-twin-gallery',
+                'room-ground-twin-common-gallery',
+                'room-ground-queen-gallery',
+                'room-ground-queen-common-gallery',
+                'room-basement-gallery',
+                'room-basement-common-gallery',
+            ], true)) {
+                // Gallery images are stored as JSON arrays; save_content persists them.
                 sendSuccess([
                     'message' => 'Image uploaded successfully',
                     'filepath' => $filepath,

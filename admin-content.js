@@ -535,9 +535,12 @@ async function loadContentData() {
         
         document.getElementById('homepage-description').value = content.homepageDescription || '';
         document.getElementById('homepage-subtitle').value = content.homepageSubtitle || '';
-        document.getElementById('contact-phone').value = content.contactPhone || '+1 (555) 123‑4567';
-        document.getElementById('contact-email').value = content.contactEmail || 'hello@backtobase.example';
-        document.getElementById('contact-address').value = content.contactAddress || 'British Columbia, Canada';
+        document.getElementById('contact-phone').value =
+          content.contactPhone != null ? String(content.contactPhone) : '';
+        document.getElementById('contact-email').value =
+          content.contactEmail != null ? String(content.contactEmail) : '';
+        document.getElementById('contact-address').value =
+          content.contactAddress != null ? String(content.contactAddress) : '';
         return;
       }
     }
@@ -550,9 +553,12 @@ async function loadContentData() {
   
   document.getElementById('homepage-description').value = content.homepageDescription || '';
   document.getElementById('homepage-subtitle').value = content.homepageSubtitle || '';
-  document.getElementById('contact-phone').value = content.contactPhone || '+1 (555) 123‑4567';
-  document.getElementById('contact-email').value = content.contactEmail || 'hello@backtobase.example';
-  document.getElementById('contact-address').value = content.contactAddress || 'British Columbia, Canada';
+  document.getElementById('contact-phone').value =
+    content.contactPhone != null ? String(content.contactPhone) : '';
+  document.getElementById('contact-email').value =
+    content.contactEmail != null ? String(content.contactEmail) : '';
+  document.getElementById('contact-address').value =
+    content.contactAddress != null ? String(content.contactAddress) : '';
 }
 
 function getDefaultContent() {
@@ -631,17 +637,28 @@ function showStatus(message, type = 'success') {
 }
 
 // Save content to server via API
-async function saveContentToServer(content) {
+async function saveContentToServer(content, options = {}) {
+  const {
+    includeHomepageFields = true,
+    includeContactFields = true,
+    includeHeroUrls = false
+  } = options;
   try {
     const formData = new FormData();
     formData.append('action', 'save_content');
-    formData.append('homepage_description', content.homepageDescription || '');
-    formData.append('homepage_subtitle', content.homepageSubtitle || '');
-    formData.append('contact_phone', content.contactPhone || '');
-    formData.append('contact_email', content.contactEmail || '');
-    formData.append('contact_address', content.contactAddress || '');
-    formData.append('hero_image_url', content.heroImageUrl || '');
-    formData.append('hero2_image_url', content.hero2ImageUrl || '');
+    if (includeHomepageFields) {
+      formData.append('homepage_description', content.homepageDescription ?? '');
+      formData.append('homepage_subtitle', content.homepageSubtitle ?? '');
+    }
+    if (includeContactFields) {
+      formData.append('contact_phone', content.contactPhone ?? '');
+      formData.append('contact_email', content.contactEmail ?? '');
+      formData.append('contact_address', content.contactAddress ?? '');
+    }
+    if (includeHeroUrls) {
+      formData.append('hero_image_url', content.heroImageUrl ?? '');
+      formData.append('hero2_image_url', content.hero2ImageUrl ?? '');
+    }
     
     const response = await fetch('api.php', {
       method: 'POST',
@@ -791,17 +808,23 @@ function initAdminForms() {
   const saveContentBtn = document.getElementById('save-content');
   if (saveContentBtn) {
     saveContentBtn.addEventListener('click', async () => {
-      const currentContent = getStoredData('btb_content') || getDefaultContent();
       const content = {
-        ...currentContent,
         homepageDescription: document.getElementById('homepage-description').value,
-        homepageSubtitle: document.getElementById('homepage-subtitle').value
+        homepageSubtitle: document.getElementById('homepage-subtitle').value,
+        contactPhone: document.getElementById('contact-phone').value,
+        contactEmail: document.getElementById('contact-email').value,
+        contactAddress: document.getElementById('contact-address').value
       };
       
       // Try to save to server first
       try {
-        const saved = await saveContentToServer(content);
+        const saved = await saveContentToServer(content, {
+          includeHomepageFields: true,
+          includeContactFields: true,
+          includeHeroUrls: false
+        });
         if (saved) {
+          setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
           showStatus('Content saved successfully!');
           return;
         }
@@ -810,7 +833,7 @@ function initAdminForms() {
       }
       
       // Fallback to localStorage
-      setStoredData('btb_content', content);
+      setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
       showStatus('Content saved successfully!');
     });
   }
@@ -819,15 +842,21 @@ function initAdminForms() {
   const saveContactBtn = document.getElementById('save-contact');
   if (saveContactBtn) {
     saveContactBtn.addEventListener('click', async () => {
-      const content = getStoredData('btb_content') || getDefaultContent();
-      content.contactPhone = document.getElementById('contact-phone').value;
-      content.contactEmail = document.getElementById('contact-email').value;
-      content.contactAddress = document.getElementById('contact-address').value;
+      const content = {
+        contactPhone: document.getElementById('contact-phone').value,
+        contactEmail: document.getElementById('contact-email').value,
+        contactAddress: document.getElementById('contact-address').value
+      };
       
       // Try to save to server first
       try {
-        const saved = await saveContentToServer(content);
+        const saved = await saveContentToServer(content, {
+          includeHomepageFields: false,
+          includeContactFields: true,
+          includeHeroUrls: false
+        });
         if (saved) {
+          setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
           showStatus('Contact information saved successfully!');
           return;
         }
@@ -836,7 +865,7 @@ function initAdminForms() {
       }
       
       // Fallback to localStorage
-      setStoredData('btb_content', content);
+      setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
       showStatus('Contact information saved successfully!');
     });
   }
@@ -876,9 +905,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const heroImageUrl = document.getElementById('hero-image-url').value;
       const hero2ImageUrl = document.getElementById('hero2-image-url').value;
       
-      const currentContent = getStoredData('btb_content') || getDefaultContent();
       const content = {
-        ...currentContent,
         homepageDescription: homepageDescription,
         homepageSubtitle: homepageSubtitle,
         heroImageUrl: heroImageUrl,
@@ -886,8 +913,13 @@ document.addEventListener('DOMContentLoaded', () => {
       };
       
       try {
-        const saved = await saveContentToServer(content);
+        const saved = await saveContentToServer(content, {
+          includeHomepageFields: true,
+          includeContactFields: false,
+          includeHeroUrls: true
+        });
         if (saved) {
+          setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
           showStatus('Homepage content saved successfully!');
           return;
         }
@@ -895,7 +927,7 @@ document.addEventListener('DOMContentLoaded', () => {
         console.log('Server save failed, saving to localStorage');
       }
       
-      setStoredData('btb_content', content);
+      setStoredData('btb_content', { ...(getStoredData('btb_content') || {}), ...content });
       showStatus('Homepage content saved successfully!');
     });
   }

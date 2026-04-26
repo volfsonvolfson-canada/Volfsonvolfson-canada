@@ -593,6 +593,9 @@ if ($action === 'get_content') {
                     'roomSecondCapacity' => $data['room_second_capacity'] ?? '',
                     'roomSecondNote' => $data['room_second_note'] ?? '',
                     'roomSecondGallery' => $data['room_second_gallery'] ?? '[]',
+                    'roomSecondGallerySectionTitle' => $data['room_second_gallery_section_title'] ?? '',
+                    'roomSecondCommonGallery' => $data['room_second_common_gallery'] ?? '[]',
+                    'roomSecondCommonGallerySectionTitle' => $data['room_second_common_gallery_section_title'] ?? '',
                     'roomSecondBannerImageUrl' => $data['room_second_banner_image_url'] ?? '',
                     // Room Ground Twin beds page content
                     'roomGroundTwinTitle' => $data['room_ground_twin_title'] ?? '',
@@ -605,6 +608,9 @@ if ($action === 'get_content') {
                     'roomGroundTwinCapacity' => $data['room_ground_twin_capacity'] ?? '',
                     'roomGroundTwinNote' => $data['room_ground_twin_note'] ?? '',
                     'roomGroundTwinGallery' => $data['room_ground_twin_gallery'] ?? '[]',
+                    'roomGroundTwinGallerySectionTitle' => $data['room_ground_twin_gallery_section_title'] ?? '',
+                    'roomGroundTwinCommonGallery' => $data['room_ground_twin_common_gallery'] ?? '[]',
+                    'roomGroundTwinCommonGallerySectionTitle' => $data['room_ground_twin_common_gallery_section_title'] ?? '',
                     'roomGroundTwinBannerImageUrl' => $data['room_ground_twin_banner_image_url'] ?? '',
                     // Room Ground Queen bed page content
                     'roomGroundQueenTitle' => $data['room_ground_queen_title'] ?? '',
@@ -617,6 +623,9 @@ if ($action === 'get_content') {
                     'roomGroundQueenCapacity' => $data['room_ground_queen_capacity'] ?? '',
                     'roomGroundQueenNote' => $data['room_ground_queen_note'] ?? '',
                     'roomGroundQueenGallery' => $data['room_ground_queen_gallery'] ?? '[]',
+                    'roomGroundQueenGallerySectionTitle' => $data['room_ground_queen_gallery_section_title'] ?? '',
+                    'roomGroundQueenCommonGallery' => $data['room_ground_queen_common_gallery'] ?? '[]',
+                    'roomGroundQueenCommonGallerySectionTitle' => $data['room_ground_queen_common_gallery_section_title'] ?? '',
                     'roomGroundQueenBannerImageUrl' => $data['room_ground_queen_banner_image_url'] ?? '',
                     // Room Basement Queen bed page content
                     'roomBasementTitle' => $data['room_basement_title'] ?? '',
@@ -629,6 +638,9 @@ if ($action === 'get_content') {
                     'roomBasementCapacity' => $data['room_basement_capacity'] ?? '',
                     'roomBasementNote' => $data['room_basement_note'] ?? '',
                     'roomBasementGallery' => $data['room_basement_gallery'] ?? '[]',
+                    'roomBasementGallerySectionTitle' => $data['room_basement_gallery_section_title'] ?? '',
+                    'roomBasementCommonGallery' => $data['room_basement_common_gallery'] ?? '[]',
+                    'roomBasementCommonGallerySectionTitle' => $data['room_basement_common_gallery_section_title'] ?? '',
                     'roomBasementBannerImageUrl' => $data['room_basement_banner_image_url'] ?? '',
                     // Wellness Experiences page content
                     'wellnessTitle' => $data['wellness_title'] ?? '',
@@ -905,6 +917,120 @@ if ($action === 'save_floorplan') {
         ]);
     }
     ob_end_flush();
+    exit;
+}
+
+if ($action === 'get_guest_reviews') {
+    header('Content-Type: application/json; charset=utf-8');
+    $defaultsV = [
+        ['name' => 'Emily R.', 'text' => 'A wonderful stay. The home is even better than the photos, surrounded by trees and so peaceful. We would happily return.', 'rating' => 5],
+        ['name' => 'James K.', 'text' => 'Spotless, spacious, and thoughtfully equipped. The hosts were warm and the location is perfect for exploring Nelson.', 'rating' => 5],
+        ['name' => 'Olivia T.', 'text' => 'Loved the quiet setting and the comfortable beds. Mornings on the deck with coffee were a highlight.', 'rating' => 5],
+        ['name' => 'Michael P.', 'text' => 'Great for a group retreat. Kitchen and common areas are ideal for cooking together. Minor wish: faster Wi‑Fi, but that is a small point in such a restful place.', 'rating' => 4],
+        ['name' => 'Anna L.', 'text' => 'Truly a place to slow down. Every detail made us feel welcome from check‑in to departure.', 'rating' => 5],
+    ];
+    $defaultsA = [
+        ['name' => 'Sofia M.', 'text' => 'The house felt like a private lodge — cozy, light‑filled, and every room had character. We did not want to leave.', 'rating' => 5],
+        ['name' => 'David C.', 'text' => 'Immaculate, relaxed vibe, and easy communication. Perfect base for ski days and evenings by the fire.', 'rating' => 5],
+        ['name' => 'Rachel B.', 'text' => 'A gem in the Kootenays. Forest walks nearby and a comfortable, stylish interior.', 'rating' => 5],
+        ['name' => 'Tom W.', 'text' => 'We booked the whole place for a long weekend. Everyone had their own space and the shared areas brought us together.', 'rating' => 5],
+        ['name' => 'Nina F.', 'text' => 'Hospitality was top‑tier, and the setting is magical. Already recommending to friends.', 'rating' => 5],
+    ];
+    $pad = function (array $list) {
+        $a = $list;
+        for ($i = 0; $i < 5; $i++) {
+            if (!isset($a[$i]) || !is_array($a[$i])) {
+                $a[$i] = ['name' => '', 'text' => '', 'rating' => 5];
+            }
+            $a[$i]['name'] = (string)($a[$i]['name'] ?? '');
+            $a[$i]['text'] = (string)($a[$i]['text'] ?? '');
+            $a[$i]['rating'] = max(1, min(5, (int)($a[$i]['rating'] ?? 5)));
+        }
+        return array_slice($a, 0, 5);
+    };
+    $title = 'Guest reviews';
+    $sub = 'What recent guests have shared on Vrbo and Airbnb.';
+    $vr = $pad($defaultsV);
+    $ar = $pad($defaultsA);
+    $tc = $conn->query("SHOW TABLES LIKE 'guest_reviews_settings'");
+    if ($tc && $tc->num_rows > 0) {
+        $row = $conn->query("SELECT * FROM guest_reviews_settings WHERE id = 1");
+        if ($row && $row->num_rows > 0) {
+            $d = $row->fetch_assoc();
+            if (!empty(trim((string)($d['section_title'] ?? '')))) {
+                $title = (string) $d['section_title'];
+            }
+            if (array_key_exists('section_subtitle', $d) && $d['section_subtitle'] !== null) {
+                $sub = (string) $d['section_subtitle'];
+            }
+            $jV = json_decode((string)($d['vrbo_reviews_json'] ?? '[]'), true);
+            $jA = json_decode((string)($d['airbnb_reviews_json'] ?? '[]'), true);
+            if (is_array($jV)) {
+                $vr = $pad($jV);
+            }
+            if (is_array($jA)) {
+                $ar = $pad($jA);
+            }
+        }
+    }
+    echo json_encode([
+        'success' => true,
+        'data' => [
+            'section_title' => $title,
+            'section_subtitle' => $sub,
+            'vrbo' => $vr,
+            'airbnb' => $ar,
+        ],
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'save_guest_reviews') {
+    header('Content-Type: application/json; charset=utf-8');
+    $create = "CREATE TABLE IF NOT EXISTS `guest_reviews_settings` (
+      `id` TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+      `section_title` VARCHAR(500) NOT NULL DEFAULT 'Guest reviews',
+      `section_subtitle` TEXT NULL,
+      `vrbo_reviews_json` LONGTEXT NULL,
+      `airbnb_reviews_json` LONGTEXT NULL
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    if (!$conn->query($create)) {
+        echo json_encode(['success' => false, 'error' => 'Could not create guest_reviews_settings: ' . $conn->error]);
+        exit;
+    }
+
+    $title = trim((string)($_POST['section_title'] ?? 'Guest reviews'));
+    if ($title === '') {
+        $title = 'Guest reviews';
+    }
+    $sub = (string)($_POST['section_subtitle'] ?? '');
+    $jVr = (string)($_POST['vrbo_reviews'] ?? '[]');
+    $jA = (string)($_POST['airbnb_reviews'] ?? '[]');
+    json_decode($jVr, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        echo json_encode(['success' => false, 'error' => 'Invalid vrbo_reviews JSON']);
+        exit;
+    }
+    json_decode($jA, true);
+    if (json_last_error() !== JSON_ERROR_NONE) {
+        echo json_encode(['success' => false, 'error' => 'Invalid airbnb_reviews JSON']);
+        exit;
+    }
+
+    $sql = "INSERT INTO `guest_reviews_settings` (`id`, `section_title`, `section_subtitle`, `vrbo_reviews_json`, `airbnb_reviews_json`) VALUES (1, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE `section_title` = VALUES(`section_title`), `section_subtitle` = VALUES(`section_subtitle`), `vrbo_reviews_json` = VALUES(`vrbo_reviews_json`), `airbnb_reviews_json` = VALUES(`airbnb_reviews_json`)";
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        echo json_encode(['success' => false, 'error' => $conn->error]);
+        exit;
+    }
+    $stmt->bind_param('ssss', $title, $sub, $jVr, $jA);
+    if ($stmt->execute()) {
+        echo json_encode(['success' => true]);
+    } else {
+        echo json_encode(['success' => false, 'error' => $stmt->error ?: 'Save failed']);
+    }
+    $stmt->close();
     exit;
 }
 
@@ -1283,7 +1409,10 @@ if ($action === 'save_content') {
         'room_second_title', 'room_second_subtitle', 'room_second_description',
         'room_second_price', 'room_second_price_prefix', 'room_second_price_amount', 'room_second_price_suffix',
         'room_second_capacity', 'room_second_note',
-        'room_second_gallery' // JSON array of image URLs
+        'room_second_gallery', // JSON array of image URLs
+        'room_second_gallery_section_title',
+        'room_second_common_gallery',
+        'room_second_common_gallery_section_title'
     ];
     
     // Room Ground Twin beds page content fields
@@ -1291,7 +1420,10 @@ if ($action === 'save_content') {
         'room_ground_twin_title', 'room_ground_twin_subtitle', 'room_ground_twin_description',
         'room_ground_twin_price', 'room_ground_twin_price_prefix', 'room_ground_twin_price_amount', 'room_ground_twin_price_suffix',
         'room_ground_twin_capacity', 'room_ground_twin_note',
-        'room_ground_twin_gallery' // JSON array of image URLs
+        'room_ground_twin_gallery', // JSON array of image URLs
+        'room_ground_twin_gallery_section_title',
+        'room_ground_twin_common_gallery',
+        'room_ground_twin_common_gallery_section_title'
     ];
     
     // Room Ground Queen bed page content fields
@@ -1299,7 +1431,10 @@ if ($action === 'save_content') {
         'room_ground_queen_title', 'room_ground_queen_subtitle', 'room_ground_queen_description',
         'room_ground_queen_price', 'room_ground_queen_price_prefix', 'room_ground_queen_price_amount', 'room_ground_queen_price_suffix',
         'room_ground_queen_capacity', 'room_ground_queen_note',
-        'room_ground_queen_gallery' // JSON array of image URLs
+        'room_ground_queen_gallery', // JSON array of image URLs
+        'room_ground_queen_gallery_section_title',
+        'room_ground_queen_common_gallery',
+        'room_ground_queen_common_gallery_section_title'
     ];
     
     // Room Basement Queen bed page content fields
@@ -1308,6 +1443,9 @@ if ($action === 'save_content') {
         'room_basement_price', 'room_basement_price_prefix', 'room_basement_price_amount', 'room_basement_price_suffix',
         'room_basement_capacity', 'room_basement_note',
         'room_basement_gallery', // JSON array of image URLs
+        'room_basement_gallery_section_title',
+        'room_basement_common_gallery',
+        'room_basement_common_gallery_section_title',
         'about_procter_gallery', // JSON array of image URLs
         'about_halcyon_gallery', // JSON array of image URLs
         'about_whitewater_gallery', // JSON array of image URLs

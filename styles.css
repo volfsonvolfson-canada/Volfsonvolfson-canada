@@ -960,6 +960,320 @@ html { scroll-behavior: smooth; }
 .section h2 { margin: 0 0 8px; font-size: clamp(22px, 4vw, 32px); }
 .section-lead { margin: 0 0 12px; color: var(--muted); font-size: 16px; line-height: 1.6; }
 
+/* Homepage trust badges before rooms section */
+.trust-badges {
+  padding: 20px 0 8px;
+}
+.trust-badges-inner {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: flex-start;
+  /* Centered as a group; wide horizontal gap between Vrbo and Airbnb */
+  gap: 12px clamp(48px, 11vw, 140px);
+  width: 100%;
+}
+.trust-badge {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  text-align: center;
+}
+.trust-badge-brand {
+  display: inline-flex;
+  align-items: center;
+}
+.trust-badge-brand-text {
+  font-size: clamp(22px, 2.6vw, 30px);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  color: var(--text);
+  text-wrap: balance;
+}
+.trust-badge-brand-text--vrbo {
+  color: #1f4ae5;
+  -webkit-text-fill-color: #1f4ae5;
+}
+.trust-badge-brand-text--airbnb {
+  color: #ff385c;
+  -webkit-text-fill-color: #ff385c;
+}
+
+/*
+ * Safari / Samsung Internet: light theme forces spans to inherit text fill (see blocks above).
+ * These badges must keep brand-like colors regardless of theme inheritance.
+ */
+[data-theme="light"] .trust-badge-brand-text.trust-badge-brand-text--vrbo,
+[data-theme="dark"] .trust-badge-brand-text.trust-badge-brand-text--vrbo,
+[data-theme="twilight"] .trust-badge-brand-text.trust-badge-brand-text--vrbo {
+  color: #1f4ae5 !important;
+  -webkit-text-fill-color: #1f4ae5 !important;
+}
+[data-theme="light"] .trust-badge-brand-text.trust-badge-brand-text--airbnb,
+[data-theme="dark"] .trust-badge-brand-text.trust-badge-brand-text--airbnb,
+[data-theme="twilight"] .trust-badge-brand-text.trust-badge-brand-text--airbnb {
+  color: #ff385c !important;
+  -webkit-text-fill-color: #ff385c !important;
+}
+
+/* Star in score line: same Safari/Samsung span inheritance issue as brand text */
+[data-theme="light"] .trust-badge-stars,
+[data-theme="dark"] .trust-badge-stars,
+[data-theme="twilight"] .trust-badge-stars {
+  color: #f4c430 !important;
+  -webkit-text-fill-color: #f4c430 !important;
+}
+.trust-badge-logo-img {
+  width: 180px;
+  height: 40px;
+  object-fit: contain;
+  display: block;
+}
+.trust-badge-scoreline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.trust-badge-score {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+  color: #111827;
+}
+.trust-badge-stars {
+  color: #f4c430 !important;
+  -webkit-text-fill-color: #f4c430;
+  font-size: 24px;
+  letter-spacing: 1px;
+  line-height: 1;
+}
+.trust-badge-count {
+  font-size: 20px;
+  line-height: 1;
+  color: #6b7280;
+}
+[data-theme="dark"] .trust-badge-score {
+  color: #f8fafc;
+}
+@media (max-width: 767px) {
+  .trust-badges-inner {
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    row-gap: 22px;
+    column-gap: 0;
+  }
+  .trust-badge-logo-img {
+    width: 150px;
+    height: 34px;
+  }
+  .trust-badge-brand-text {
+    font-size: clamp(18px, 6vw, 24px);
+  }
+  .trust-badge-score {
+    font-size: 24px;
+  }
+  .trust-badge-stars {
+    font-size: 18px;
+  }
+  .trust-badge-count {
+    font-size: 16px;
+  }
+}
+
+/* Guest reviews (Vrbo / Airbnb) */
+.guest-reviews {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.guest-reviews .container {
+  max-width: 72rem;
+}
+.guest-reviews-heading {
+  margin: 0 0 6px;
+  font-size: clamp(22px, 4vw, 32px);
+  text-align: center;
+}
+.guest-reviews-sub {
+  margin: 0 0 20px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  max-width: 40rem;
+  margin-left: auto;
+  margin-right: auto;
+}
+.guest-reviews-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: stretch;
+}
+.guest-reviews-column {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--card);
+  border-radius: 14px;
+  padding: 0;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+}
+.guest-reviews-column--vrbo {
+  border: 2px solid rgba(31, 74, 229, 0.75);
+  box-shadow: 0 0 0 2px rgba(31, 74, 229, 0.25);
+}
+.guest-reviews-column--airbnb {
+  border: 2px solid rgba(255, 56, 92, 0.75);
+  box-shadow: 0 0 0 2px rgba(255, 56, 92, 0.25);
+}
+.guest-reviews-column-top {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 18px 16px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-theme="light"] .guest-reviews-column-top {
+  border-bottom-color: rgba(15, 23, 42, 0.08);
+}
+.guest-reviews-source-heading {
+  display: inline-block;
+  font-size: clamp(1rem, 2.4vw, 1.2rem);
+  font-weight: 600;
+  color: var(--text);
+  letter-spacing: 0.01em;
+  text-align: center;
+  line-height: 1.25;
+}
+.guest-reviews-source-name {
+  font-weight: 700;
+}
+.guest-reviews-source-name--vrbo {
+  color: #1f4ae5;
+  -webkit-text-fill-color: #1f4ae5;
+}
+.guest-reviews-source-name--airbnb {
+  color: #ff385c;
+  -webkit-text-fill-color: #ff385c;
+}
+/* Safari / Samsung: [data-theme="light"] span { inherit } — keep brand names visible */
+[data-theme="light"] .guest-reviews .guest-reviews-source-name--vrbo,
+[data-theme="dark"] .guest-reviews .guest-reviews-source-name--vrbo,
+[data-theme="twilight"] .guest-reviews .guest-reviews-source-name--vrbo {
+  color: #1f4ae5 !important;
+  -webkit-text-fill-color: #1f4ae5 !important;
+}
+[data-theme="light"] .guest-reviews .guest-reviews-source-name--airbnb,
+[data-theme="dark"] .guest-reviews .guest-reviews-source-name--airbnb,
+[data-theme="twilight"] .guest-reviews .guest-reviews-source-name--airbnb {
+  color: #ff385c !important;
+  -webkit-text-fill-color: #ff385c !important;
+}
+.guest-reviews-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  padding: 4px 16px 8px;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+.guest-review {
+  margin: 0;
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.guest-review:last-of-type {
+  border-bottom: 0;
+  padding-bottom: 8px;
+}
+.guest-review-head {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  margin-bottom: 8px;
+}
+.guest-review-name {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+}
+.guest-review-stars {
+  color: #f4c430 !important;
+  -webkit-text-fill-color: #f4c430;
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+[data-theme="light"] .guest-reviews .guest-review-stars,
+[data-theme="dark"] .guest-reviews .guest-review-stars,
+[data-theme="twilight"] .guest-reviews .guest-review-stars {
+  color: #f4c430 !important;
+  -webkit-text-fill-color: #f4c430 !important;
+}
+.guest-review-text {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+.guest-review--collapsed {
+  display: none;
+}
+.guest-reviews-column.is-expanded .guest-review--collapsed {
+  display: block;
+}
+.guest-reviews-footer {
+  margin-top: auto;
+  padding: 12px 16px 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  justify-content: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+.guest-reviews-footer-external {
+  display: none;
+  width: 100%;
+  justify-content: center;
+}
+.guest-reviews[data-guest-reviews-expanded="1"] .guest-reviews-footer-external {
+  display: flex;
+}
+.guest-reviews-all-link {
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  text-align: center;
+  text-wrap: balance;
+}
+[data-theme="light"] .guest-reviews-footer {
+  border-top-color: rgba(15, 23, 42, 0.08);
+}
+.guest-reviews-column.is-expanded .guest-reviews-footer {
+  display: flex;
+}
+@media (max-width: 900px) {
+  .guest-reviews-grid {
+    grid-template-columns: 1fr;
+  }
+}
+@media (min-width: 901px) {
+  .guest-reviews-column--vrbo {
+    min-height: 100%;
+  }
+  .guest-reviews-column--airbnb {
+    min-height: 100%;
+  }
+}
+
 /* Add margin for section-lead in page-header to create spacing before floor plan cards */
 .page-header .section-lead {
   margin-bottom: 44px;
@@ -1154,6 +1468,16 @@ select:-webkit-autofill:focus {
 .check-in-out p { margin: 8px 0; color: var(--text); }
 
 .room-hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 18px; align-items: start; padding: 24px 0 0; }
+.room-gallery-section-heading {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem;
+  color: var(--text);
+}
+.room-gallery-section-heading--below {
+  margin-top: 1.75rem;
+}
+
 .gallery { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .gallery img { width: 100%; height: 220px; object-fit: cover; border-radius: 10px; }
 
@@ -2118,6 +2442,36 @@ body.home .home-intro.is-revealed .home-main-subtitle {
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
 }
 
+.gallery .gallery-view-all-tile {
+  width: 100%;
+  height: 200px;
+  border-radius: 12px;
+  border: 2px dashed rgba(128, 128, 128, 0.45);
+  background: rgba(128, 128, 128, 0.12);
+  color: var(--text, inherit);
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.35;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 12px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease, background-color 0.2s ease;
+}
+
+.gallery .gallery-view-all-tile:hover {
+  transform: scale(1.05);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  background: rgba(128, 128, 128, 0.2);
+}
+
+.gallery .gallery-view-all-tile:focus-visible {
+  outline: 2px solid var(--brand, #3b82f6);
+  outline-offset: 2px;
+}
+
 /* Gallery Modal */
 .gallery-modal {
   position: fixed;
@@ -2221,6 +2575,11 @@ body.home .home-intro.is-revealed .home-main-subtitle {
   
   .gallery img {
     height: 150px;
+  }
+
+  .gallery .gallery-view-all-tile {
+    height: 150px;
+    font-size: 0.95rem;
   }
   
   .gallery-modal-content {
@@ -2478,6 +2837,7 @@ body.home .home-intro.is-revealed .home-main-subtitle {
 [data-theme="twilight"] .card h4 {
   color: #d4b86e;
 }
+
 
 /* Room features list - plain text, not interactive */
 .massage-list li {
