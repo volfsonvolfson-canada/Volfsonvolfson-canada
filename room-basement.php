@@ -9,16 +9,26 @@ if (basename($_SERVER['PHP_SELF']) === 'room-basement.html' ||
     exit;
 }
 
-// Prevent caching
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Pragma: no-cache');
-header('Expires: 0');
+if (function_exists('btb_public_cms_cache_headers')) {
+    btb_public_cms_cache_headers(120);
+} else {
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
 
 // Load content from database
 $content = fetchOne($conn, "SELECT * FROM content_settings WHERE id = 1");
 if (!$content) {
     $content = []; // Ensure $content is always an array
 }
+btb_merge_phase1_canonical_into_content_row($conn, $content);
+
+$roomBookNowButtonLabel = trim((string)($content['room_book_now_button_label'] ?? ''));
+if ($roomBookNowButtonLabel === '') {
+    $roomBookNowButtonLabel = 'Book now';
+}
+$roomBookNowButtonLabel = htmlspecialchars($roomBookNowButtonLabel, ENT_QUOTES, 'UTF-8');
 
 // Load wellness images from dedicated table if available
 $wellnessImages = [];
@@ -34,11 +44,23 @@ if ($wellnessTableCheck && $wellnessTableCheck->num_rows > 0) {
 }
 
 // Extract Wellness Experiences content with fallback values
-$wellnessTitle = safeOutput($content['wellness_title'] ?? '', 'Wellness Experiences');
-$wellnessDescription = safeOutputWithBreaks($content['wellness_description'] ?? '', 'Enhance your stay with optional massage: relaxing or deep tissue sessions with an experienced therapist — an easy way to make your time in the mountains feel even more restorative.');
+$wellnessTitle = safeOutput(
+    btb_field_or_default($content, 'wellness_title', 'content_settings.wellness_title', 'Wellness Experiences'),
+    ''
+);
+$wellnessDescription = safeOutputWithBreaks(
+    btb_field_or_default($content, 'wellness_description', 'content_settings.wellness_description', 'Enhance your stay with optional massage: relaxing or deep tissue sessions with an experienced therapist — an easy way to make your time in the mountains feel even more restorative.'),
+    ''
+);
 
-$wellnessMassageTitle = safeOutput($content['wellness_massage_title'] ?? '', 'Wellness');
-$wellnessMassageDescription = safeOutputWithBreaks($content['wellness_massage_description'] ?? '', 'Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.');
+$wellnessMassageTitle = safeOutput(
+    btb_field_or_default($content, 'wellness_massage_title', 'content_settings.wellness_massage_title', 'Wellness'),
+    ''
+);
+$wellnessMassageDescription = safeOutputWithBreaks(
+    btb_field_or_default($content, 'wellness_massage_description', 'content_settings.wellness_massage_description', 'Our guesthouse has a massage room with an experienced therapist who will be happy to make your stay even more enjoyable. Whether you prefer a relaxing massage or a therapeutic deep tissue session — the choice is yours.'),
+    ''
+);
 $wellnessMassageImageUrl = '';
 if ($wellnessImagesEnabled && !empty(trim($wellnessImages['wellness_massage_image_url'] ?? ''))) {
     $wellnessMassageImageUrl = safeOutput($wellnessImages['wellness_massage_image_url'], '');
@@ -47,13 +69,22 @@ if ($wellnessImagesEnabled && !empty(trim($wellnessImages['wellness_massage_imag
 }
 
 // Extract content with fallback values
-$title = safeOutput($content['room_basement_title'] ?? '', 'Loki Suite');
+$title = safeOutput(
+    btb_field_or_default($content, 'room_basement_title', 'content_settings.room_basement_title', 'Loki Suite'),
+    ''
+);
 $roomGalleryTitlePlain = trim((string) ($content['room_basement_title'] ?? ''));
 if ($roomGalleryTitlePlain === '') {
-    $roomGalleryTitlePlain = 'Loki Suite';
+    $roomGalleryTitlePlain = btb_default_text('content_settings.room_basement_title', 'Loki Suite');
 }
-$subtitle = safeOutputWithBreaks($content['room_basement_subtitle'] ?? '', 'A cozy room next to the home cinema and sauna. Ideal for two.');
-$description = safeOutputWithBreaks($content['room_basement_description'] ?? '', 'Next to this room there is a home theater lounge with a wood-burning stove and a large shower area with a sauna. The floor has a private exit from the house and a passage to the shared lounge on the first floor.');
+$subtitle = safeOutputWithBreaks(
+    btb_field_or_default($content, 'room_basement_subtitle', 'content_settings.room_basement_subtitle', 'A cozy room next to the home cinema and sauna. Ideal for two.'),
+    ''
+);
+$description = safeOutputWithBreaks(
+    btb_field_or_default($content, 'room_basement_description', 'content_settings.room_basement_description', 'Next to this room there is a home theater lounge with a wood-burning stove and a large shower area with a sauna. The floor has a private exit from the house and a passage to the shared lounge on the first floor.'),
+    ''
+);
 // Helper function for safe HTML output (allows specific tags like <strong>)
 function safeHtmlOutput($value, $fallback = '') {
     if (empty($value)) return $fallback;
@@ -62,52 +93,45 @@ function safeHtmlOutput($value, $fallback = '') {
     return strip_tags($value, $allowedTags);
 }
 
-$price = btb_room_price_line_html($content, 'basement', btb_room_price_default_line_html('basement'));
+$price = btb_room_price_line_html_stored_only($content, 'basement');
 $capacity = isset($content['room_basement_capacity']) && !empty(trim($content['room_basement_capacity'])) 
     ? safeHtmlOutput($content['room_basement_capacity']) 
     : '<strong>Capacity:</strong> up to 2 guests';
-$note = safeOutputWithBreaks($content['room_basement_note'] ?? '', '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.');
+$note = safeOutputWithBreaks(
+    btb_field_or_default($content, 'room_basement_note', 'content_settings.room_basement_note', '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.'),
+    ''
+);
 
 // Banner image
 $bannerImageUrl = isset($content['room_basement_banner_image_url']) && !empty(trim($content['room_basement_banner_image_url'])) 
     ? safeOutput($content['room_basement_banner_image_url'], '') 
     : '';
 
-// Gallery
+// Gallery (supports string URLs, object rows, double-encoded JSON)
 $galleryJson = $content['room_basement_gallery'] ?? '[]';
-$gallery = [];
-try {
-    $gallery = json_decode($galleryJson, true);
-    if (!is_array($gallery)) {
-        $gallery = [];
-    }
-} catch (Exception $e) {
-    $gallery = [];
-}
 
 $tRoomGalH = trim((string) ($content['room_basement_gallery_section_title'] ?? ''));
-$roomGallerySectionHeading = htmlspecialchars($tRoomGalH !== '' ? $tRoomGalH : 'Room photos', ENT_QUOTES, 'UTF-8');
+$roomGallerySectionHeading = htmlspecialchars(
+    $tRoomGalH !== '' ? $tRoomGalH : btb_default_text('content_settings.room_basement_gallery_section_title', 'Room photos'),
+    ENT_QUOTES,
+    'UTF-8'
+);
 $tCommonGalH = trim((string) ($content['room_basement_common_gallery_section_title'] ?? ''));
-$commonGallerySectionHeading = htmlspecialchars($tCommonGalH !== '' ? $tCommonGalH : 'Common areas photos', ENT_QUOTES, 'UTF-8');
+$commonGallerySectionHeading = htmlspecialchars(
+    $tCommonGalH !== '' ? $tCommonGalH : btb_default_text('content_settings.room_basement_common_gallery_section_title', 'Common areas photos'),
+    ENT_QUOTES,
+    'UTF-8'
+);
 $commonGalleryJson = $content['room_basement_common_gallery'] ?? '[]';
-$commonGallery = [];
-try {
-    $commonGallery = json_decode($commonGalleryJson, true);
-    if (!is_array($commonGallery)) {
-        $commonGallery = [];
-    }
-} catch (Exception $e) {
-    $commonGallery = [];
-}
 $commonGalleryAltPlain = trim((string) ($content['room_basement_common_gallery_section_title'] ?? ''));
 if ($commonGalleryAltPlain === '') {
-    $commonGalleryAltPlain = 'Common areas';
+    $commonGalleryAltPlain = btb_default_text('content_settings.room_basement_common_gallery_section_title', 'Common areas');
 }
 
-$roomGalleryUrls = btb_room_gallery_valid_urls($gallery);
+$roomGalleryUrls = btb_room_gallery_urls_from_cms_json($galleryJson);
 $roomGalleryTotal = count($roomGalleryUrls);
 $roomGalleryPreview = $roomGalleryTotal > 5 ? array_slice($roomGalleryUrls, 0, 5) : $roomGalleryUrls;
-$commonGalleryUrls = btb_room_gallery_valid_urls($commonGallery);
+$commonGalleryUrls = btb_room_gallery_urls_from_cms_json($commonGalleryJson);
 $commonGalleryTotal = count($commonGalleryUrls);
 $commonGalleryPreview = $commonGalleryTotal > 5 ? array_slice($commonGalleryUrls, 0, 5) : $commonGalleryUrls;
 
@@ -122,6 +146,16 @@ $cacheBuster = '?v=' . time();
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>Loki Suite | Back to Base</title>
+  <?php
+  $__seo_title = 'Loki Suite | Back to Base';
+  $__seo_desc = 'Loki Suite at Back to Base — guest room near Nelson, BC next to home cinema and sauna; book your countryside stay.';
+  ?>
+  <meta name="description" content="<?php echo htmlspecialchars($__seo_desc, ENT_QUOTES, 'UTF-8'); ?>">
+  <?php
+  btb_seo_emit_link_and_meta('/room-basement.php', $__seo_title, $__seo_desc, [
+      'og_image' => '/assets/deer.jpg',
+  ]);
+  ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet" onerror="this.onerror=null; this.href='';">
@@ -329,16 +363,17 @@ $cacheBuster = '?v=' . time();
               </select>
             </div>
             <div>
-              <label for="pets">Pets</label>
+              <label for="pets">Dogs</label>
               <select id="pets" name="pets" required>
                 <option value="" disabled selected hidden>—</option>
-                <option value="add">Add pets</option>
-                <option value="no">No pets</option>
+                <option value="0">No dogs</option>
+                <option value="1">1 dog</option>
+                <option value="2">2 dogs</option>
               </select>
             </div>
           </div>
 
-          <button class="btn primary" type="submit">Book now</button>
+          <button class="btn primary" type="submit"><?php echo $roomBookNowButtonLabel; ?></button>
           <p class="notice" style="margin-bottom: 0;">Prices are approximate. Confirmation will be sent by email.</p>
           <p class="notice" style="margin-top: 0;"><a href="#" id="checkin-conditions-link" style="color: var(--brand); text-decoration: underline; cursor: pointer;">Check-in conditions</a></p>
         </form>
@@ -392,8 +427,10 @@ $cacheBuster = '?v=' . time();
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -542,7 +579,7 @@ $cacheBuster = '?v=' . time();
       
       if (!modalImage || images.length === 0) return;
       
-      // Добавляем плавный переход
+      // Adding a smooth transition
       modalImage.style.opacity = '0';
       
       setTimeout(() => {
@@ -551,7 +588,7 @@ $cacheBuster = '?v=' . time();
         modalImage.alt = altPrefix + ' — slide ' + (currentImageIndex + 1) + ' of ' + images.length;
         if (counter) counter.textContent = `${currentImageIndex + 1} / ${images.length}`;
         
-        // Показываем изображение с плавным появлением
+        // Showing the image with a smooth fade in
         modalImage.style.opacity = '1';
       }, 150);
     }
@@ -593,7 +630,7 @@ $cacheBuster = '?v=' . time();
       });
     });
   </script>
-  <!-- Flatpickr для визуальной блокировки занятых дат в календаре -->
+  <!-- Flatpickr for visually blocking busy dates in your calendar -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" onerror="this.onerror=null; this.href='';">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js" onerror="console.warn('Flatpickr failed to load, date inputs will use native browser picker');"></script>
   <script src="auth-menu.js"></script>

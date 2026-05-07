@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
     
     $uploadDir = 'assets/';
     $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-    $maxFileSize = 5 * 1024 * 1024; // 5MB
+    $maxFileSize = btb_upload_image_max_file_bytes();
     
     $file = $_FILES['image'];
     $imageType = $_POST['image_type'] ?? ''; // basement, ground, loft
@@ -41,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
     }
     
     if ($file['size'] > $maxFileSize) {
-        sendError('File too large. Maximum size is 5MB.');
+        $mb = max(1, (int) round($maxFileSize / (1024 * 1024)));
+        sendError('File too large. Maximum size is ' . $mb . ' MB (server will resize after upload).');
         exit;
     }
     
@@ -77,7 +78,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
         }
         
         error_log('File verified: exists and readable');
-        
+
+        if (!btb_optimize_uploaded_image($filepath, $imageType)) {
+            error_log('upload_image: GD optimize failed for ' . $filepath . ', keeping original file');
+        }
+
         // Update database with new image path
         try {
             error_log('Connecting to database...');
@@ -228,7 +233,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                     $tableName = 'content_settings';
                     $isHomepage = true;
                 }
-            } elseif (in_array($imageType, ['special-hero', 'special-pools', 'special-dining', 'special-extra'])) {
+            } elseif (in_array($imageType, ['special-hero', 'special-pools', 'special-dining', 'special-extra', 'special-b2-pools', 'special-b2-dining', 'special-b2-extra'], true)) {
                 $specialType = str_replace('special-', '', $imageType);
                 $fieldName = 'special_' . str_replace('-', '_', $specialType) . '_image_url';
                 $ssTbl = $conn->query("SHOW TABLES LIKE 'special_settings'");
@@ -346,6 +351,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                     'imageUrl' => $filepath
                 ]);
                 exit;
+            } elseif ($imageType === 'special-addon-image') {
+                // Specials extra panels: URLs live in special_addon_panels_json (save_content).
+                sendSuccess([
+                    'message' => 'Image uploaded successfully',
+                    'filepath' => $filepath,
+                    'imageUrl' => $filepath
+                ]);
+                exit;
+            } elseif (preg_match('/^massage-service-card-(\d+)-hero$/', (string) $imageType, $mSvcCard) && (int) $mSvcCard[1] >= 1 && (int) $mSvcCard[1] <= 30) {
+                // Wellness Experiences dynamic cards: URL stored in massage_service_cards_json on save.
+                sendSuccess([
+                    'message' => 'Image uploaded successfully',
+                    'filepath' => $filepath,
+                    'imageUrl' => $filepath
+                ]);
+                exit;
             } else {
                 sendError('Invalid image type: ' . $imageType);
                 exit;
@@ -401,6 +422,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                 }
                 
                 error_log('Record with id=1 exists');
+                if (!empty($fieldName) && strpos((string) $fieldName, 'special_b2_') === 0 && function_exists('btb_ensure_special_block2_columns')) {
+                    btb_ensure_special_block2_columns($conn);
+                }
                 // Check if column exists (for dynamic columns like wellness images)
                 $columnExists = false;
                 
@@ -480,7 +504,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                     if ($columnExists) {
                         error_log("Column $fieldName exists in $tableName");
                     }
-                } elseif ($fieldName && $tableName && $isHomepage && in_array($imageType, ['hero', 'hero2', 'homepage-hero', 'homepage-hero2', 'wellness-massage', 'wellness-yoga', 'basement-banner', 'ground-queen-banner', 'ground-twin-banner', 'second-banner', 'mini-hotel', 'retreat-hero', 'retreat-forest', 'retreat-indoor', 'retreat-theatre', 'retreat-collaboration', 'special-hero', 'special-pools', 'special-dining', 'special-extra', 'about-hero', 'about-founder', 'about-procter', 'explore-hero', 'massage-hero'])) {
+                } elseif ($fieldName && $tableName && $isHomepage && in_array($imageType, ['hero', 'hero2', 'homepage-hero', 'homepage-hero2', 'wellness-massage', 'wellness-yoga', 'basement-banner', 'ground-queen-banner', 'ground-twin-banner', 'second-banner', 'mini-hotel', 'retreat-hero', 'retreat-forest', 'retreat-indoor', 'retreat-theatre', 'retreat-collaboration', 'special-hero', 'special-pools', 'special-dining', 'special-extra', 'special-b2-pools', 'special-b2-dining', 'special-b2-extra', 'about-hero', 'about-founder', 'about-procter', 'explore-hero', 'massage-hero'], true)) {
                     // For content_settings, check if column exists
                     // DO NOT create column automatically to avoid "Row size too large" errors
                     $columnCheck = $conn->query("SHOW COLUMNS FROM $tableName LIKE '$fieldName'");
@@ -604,7 +628,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                     $result = $verifyStmt->get_result();
                     $row = $result->fetch_assoc();
                     error_log("Verification: field value = " . ($row[$verifyFieldName] ?? 'NULL'));
-                    
+
+                    // Room hero banners: merged content prefers room_page_settings over content_settings.
+                    // Without this sync, loadRoom*Data() after upload shows the old banner from room_page_settings.
+                    $roomBannerRoomKeys = [
+                        'basement-banner' => 'room-basement',
+                        'ground-queen-banner' => 'room-ground-queen',
+                        'ground-twin-banner' => 'room-ground-twin',
+                        'second-banner' => 'room-second',
+                    ];
+                    if (isset($roomBannerRoomKeys[$imageType]) && function_exists('btb_db_table_exists') && btb_db_table_exists($conn, 'room_page_settings')) {
+                        $rpsCols = btb_room_page_settings_existing_columns($conn);
+                        if (!empty($rpsCols['banner_image_url'])) {
+                            $roomKey = $roomBannerRoomKeys[$imageType];
+                            $rkEsc = $conn->real_escape_string($roomKey);
+                            @$conn->query("INSERT IGNORE INTO room_page_settings (room_key) VALUES ('{$rkEsc}')");
+                            $stmtRps = $conn->prepare('UPDATE room_page_settings SET banner_image_url = ? WHERE room_key = ?');
+                            if ($stmtRps) {
+                                $stmtRps->bind_param('ss', $filepath, $roomKey);
+                                if (!$stmtRps->execute()) {
+                                    error_log('upload_image: room_page_settings banner sync failed: ' . $stmtRps->error);
+                                    sendError('Image file saved but room page banner row could not be updated. Check database permissions.');
+                                    exit;
+                                }
+                                $stmtRps->close();
+                            } else {
+                                error_log('upload_image: prepare room_page_settings banner sync failed: ' . $conn->error);
+                                sendError('Image file saved but could not prepare room page banner update.');
+                                exit;
+                            }
+                        }
+                    }
+
+                    // Homepage hero URLs: get_content / index.php merge homepage_settings over content_settings.
+                    // Upload previously updated only content_settings, so admin reload showed the old canonical URL.
+                    if (in_array($imageType, ['hero', 'hero2', 'homepage-hero', 'homepage-hero2'], true)
+                        && $tableName === 'content_settings'
+                        && ($fieldName === 'hero_image_url' || $fieldName === 'hero2_image_url')
+                        && function_exists('btb_db_table_exists')
+                        && function_exists('dbTableHasColumn')
+                        && btb_db_table_exists($conn, 'homepage_settings')
+                        && dbTableHasColumn($conn, 'homepage_settings', $fieldName)
+                    ) {
+                        @$conn->query('INSERT IGNORE INTO homepage_settings (id) VALUES (1)');
+                        $stmtHp = $conn->prepare('UPDATE homepage_settings SET `' . $fieldName . '` = ? WHERE id = 1');
+                        if ($stmtHp) {
+                            $stmtHp->bind_param('s', $filepath);
+                            if (!$stmtHp->execute()) {
+                                error_log('upload_image: homepage_settings hero sync failed: ' . $stmtHp->error);
+                            }
+                            $stmtHp->close();
+                        } else {
+                            error_log('upload_image: prepare homepage_settings hero sync failed: ' . $conn->error);
+                        }
+                    }
+
                     sendSuccess([
                         'message' => 'Image uploaded successfully',
                         'filepath' => $filepath,

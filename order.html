@@ -5,6 +5,8 @@
   <link rel="stylesheet" href="cookie-consent.css">
   <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://backtobase.ca/order.html">
   <title>My Account — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -18,6 +20,254 @@
     })();
   </script>
   <link rel="stylesheet" href="styles.css">
+  <style>
+    @keyframes btb-ocm-overlay-in {
+      from {
+        opacity: 0;
+      }
+      to {
+        opacity: 1;
+      }
+    }
+    @keyframes btb-ocm-panel-in {
+      from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    .btb-order-clear-modal-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100050;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      box-sizing: border-box;
+      background: rgba(15, 23, 42, 0.72);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      animation: btb-ocm-overlay-in 0.22s ease-out;
+    }
+
+    .btb-order-clear-modal {
+      position: relative;
+      max-width: 26rem;
+      width: 100%;
+      padding: 1.35rem 1.4rem 1.25rem;
+      border-radius: 14px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+        0 24px 64px rgba(0, 0, 0, 0.45),
+        0 0 40px -12px rgba(44, 123, 229, 0.35);
+      animation: btb-ocm-panel-in 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+      overflow: hidden;
+    }
+
+    .btb-order-clear-modal::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      right: 0;
+      top: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--brand), var(--accent, var(--brand-600)));
+      opacity: 0.95;
+    }
+
+    [data-theme='light'] .btb-order-clear-modal {
+      border: 1px solid rgba(15, 23, 42, 0.1);
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.8) inset,
+        0 20px 50px rgba(15, 23, 42, 0.12),
+        0 0 36px -10px rgba(37, 99, 235, 0.2);
+    }
+
+    [data-theme='twilight'] .btb-order-clear-modal {
+      box-shadow:
+        0 0 0 1px rgba(255, 255, 255, 0.06) inset,
+        0 24px 64px rgba(0, 0, 0, 0.35),
+        0 0 48px -12px rgba(212, 175, 55, 0.25);
+    }
+
+    .btb-order-clear-modal__header {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding-top: 4px;
+    }
+
+    .btb-order-clear-modal__icon {
+      flex: 0 0 auto;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(44, 123, 229, 0.15);
+      color: var(--brand);
+      border: 1px solid rgba(44, 123, 229, 0.28);
+    }
+
+    [data-theme='twilight'] .btb-order-clear-modal__icon {
+      background: rgba(212, 175, 55, 0.12);
+      color: var(--brand);
+      border-color: rgba(212, 175, 55, 0.35);
+    }
+
+    [data-theme='light'] .btb-order-clear-modal__icon {
+      background: rgba(37, 99, 235, 0.1);
+      border-color: rgba(37, 99, 235, 0.22);
+    }
+
+    .btb-order-clear-modal__icon svg {
+      display: block;
+    }
+
+    .btb-order-clear-modal__title {
+      margin: 0;
+      font-size: 1.15rem;
+      font-weight: 700;
+      line-height: 1.35;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+
+    .btb-order-clear-modal__body {
+      margin: 0 0 4px;
+      font-size: 0.94rem;
+      line-height: 1.55;
+      color: var(--muted);
+    }
+
+    .btb-order-clear-modal-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 1.15rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      justify-content: flex-end;
+    }
+
+    [data-theme='light'] .btb-order-clear-modal-actions {
+      border-top-color: rgba(15, 23, 42, 0.08);
+    }
+
+    .btb-order-clear-modal label.btb-order-clear-never {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 0.875rem;
+      line-height: 1.45;
+      cursor: pointer;
+      user-select: none;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      transition: background 0.15s ease, border-color 0.15s ease;
+    }
+
+    [data-theme='light'] label.btb-order-clear-never {
+      background: rgba(15, 23, 42, 0.04);
+      border-color: rgba(15, 23, 42, 0.08);
+    }
+
+    label.btb-order-clear-never:hover {
+      background: rgba(255, 255, 255, 0.07);
+      border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    [data-theme='light'] label.btb-order-clear-never:hover {
+      background: rgba(15, 23, 42, 0.06);
+      border-color: rgba(15, 23, 42, 0.12);
+    }
+
+    .btb-order-clear-never input[type='checkbox'] {
+      width: 1.125rem;
+      height: 1.125rem;
+      margin: 2px 0 0;
+      flex-shrink: 0;
+      accent-color: var(--brand);
+      cursor: pointer;
+    }
+
+    .btb-order-clear-modal-actions .btn {
+      min-width: 6.5rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .btb-order-clear-modal-overlay,
+      .btb-order-clear-modal {
+        animation: none;
+      }
+    }
+
+    /* My Bookings: room card price breakdown (nights + cleaning + pets) */
+    .btb-order-price-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      line-height: 1.62;
+      margin-top: 0.35rem;
+    }
+    .btb-order-price-stack > div {
+      line-height: 1.62;
+    }
+    .btb-order-price-stack .btb-order-price-muted {
+      color: var(--muted);
+    }
+
+    /* My Bookings: payment column (subtotal, taxes, total) */
+    .btb-order-payment-totals {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 0.55rem;
+      line-height: 1.58;
+      padding-top: 2px;
+      min-width: 260px;
+      text-align: right;
+    }
+    .btb-order-payment-totals .btb-order-payment-row {
+      margin: 0;
+      font-size: 0.9375rem;
+      color: var(--muted);
+    }
+    .btb-order-payment-totals .btb-order-payment-hint {
+      margin: 0;
+      font-size: 0.8125rem;
+      line-height: 1.52;
+      color: var(--muted);
+      max-width: 22rem;
+      text-align: right;
+      opacity: 0.92;
+    }
+    .btb-order-payment-totals .btb-order-payment-total {
+      margin: 0.25rem 0 0;
+      font-size: 1.375rem;
+      line-height: 1.4;
+      font-weight: 700;
+    }
+
+    #orders-list .notice.price {
+      line-height: 1.62;
+    }
+  </style>
 </head>
 <body>
   <header class="site-header">
@@ -34,6 +284,9 @@
         <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-label="Toggle mobile menu">
+        ☰
+      </button>
       <div class="header-actions">
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
           <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -45,6 +298,23 @@
       </div>
     </div>
   </header>
+
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+  <nav class="mobile-nav" id="mobile-nav">
+    <a href="index.html#rooms">Rooms</a>
+    <a href="massage.php">Wellness</a>
+    <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
+    <a href="about.php">About us</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
+    <button class="theme-toggle" id="mobile-theme-toggle" type="button" aria-label="Toggle theme">
+      <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="mobile-theme-text">Light</span>
+    </button>
+  </nav>
 
   <div class="page-header">
     <div class="container">
@@ -60,6 +330,9 @@
         <h2>My Bookings</h2>
         <div id="order-empty" class="notice">No order saved yet. Please book a room or a massage first.</div>
         <div id="orders-list"></div>
+        <p id="btb-order-clear-reset-wrap" class="notice" style="display: none; margin-top: 12px;">
+          <button type="button" class="btn secondary" id="btb-order-clear-reset-prefs">Show confirmation again when removing a booking</button>
+        </p>
       </section>
 
       <section class="card" id="payment-card" style="margin-top:16px; display:none;">
@@ -69,8 +342,12 @@
             <p class="notice">Payment becomes available after host confirms your booking. You will receive an email confirmation.</p>
             <button class="btn primary" disabled>Pay now</button>
           </div>
-          <div style="flex:0 0 auto; text-align:right; min-width:220px;">
-            <h2 id="orders-total" style="margin-top:10px; font-size:22px;">Total: 0 CAD</h2>
+          <div id="orders-total-wrap" class="btb-order-payment-totals" style="flex:0 0 auto;">
+            <div id="orders-subtotal-line" class="btb-order-payment-row"></div>
+            <div id="orders-tax-base-hint" class="btb-order-payment-hint"></div>
+            <div id="orders-tax1-line" class="btb-order-payment-row" style="display:none;"></div>
+            <div id="orders-tax2-line" class="btb-order-payment-row" style="display:none;"></div>
+            <h2 id="orders-total" class="btb-order-payment-total">Total: 0.00 CAD</h2>
           </div>
         </div>
       </section>
@@ -99,8 +376,10 @@
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -108,12 +387,351 @@
 
   <script src="script.js"></script>
   <script>
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      function btbMyBookingsPricingDefaults() {
+        return {
+          cleaning_label: 'Cleaning fee',
+          cleaning_amount_cad: 60,
+          cleaning_kelder_amount_cad: 100,
+          pets_label: 'Dogs',
+          pets_max_qty: 2,
+          pets_amount_per_dog_cad: 75,
+          tax1_label: 'GST',
+          tax1_percent: 0,
+          tax2_label: 'PST',
+          tax2_percent: 0,
+        };
+      }
+      let btbMyBookingsPricing = null;
+      async function btbFetchMyBookingsPricing() {
+        try {
+          const r = await fetch('api.php?action=get_my_bookings_pricing', { cache: 'no-store' });
+          const j = await r.json();
+          if (j.success && j.data) {
+            btbMyBookingsPricing = j.data;
+            return;
+          }
+        } catch (_) {}
+        btbMyBookingsPricing = btbMyBookingsPricingDefaults();
+      }
+      await btbFetchMyBookingsPricing();
+
+      const notifyOrdersChanged = () => {
+        try {
+          document.dispatchEvent(new CustomEvent('btb:orders:changed'));
+        } catch (_) {}
+      };
+
+      const BTB_ORDER_CLEAR_SKIP_LS = 'btb_orders_clear_skip_confirm';
+
+      function btbOrderClearSkipEnabled() {
+        try {
+          return localStorage.getItem(BTB_ORDER_CLEAR_SKIP_LS) === '1';
+        } catch (_) {
+          return false;
+        }
+      }
+
+      function btbOrderClearUpdateResetLinkVisibility() {
+        const wrap = document.getElementById('btb-order-clear-reset-wrap');
+        if (wrap) {
+          wrap.style.display = btbOrderClearSkipEnabled() ? 'block' : 'none';
+        }
+      }
+
+      /** Remove overlays / bubbles that can block clicks (Save, etc.) after modals or validation. */
+      function btbOrderCleanupInteractionBlockers() {
+        try {
+          document.body.style.overflow = '';
+        } catch (_) {}
+        try {
+          document.getElementById('btb-order-clear-modal-overlay')?.remove();
+        } catch (_) {}
+        try {
+          document.getElementById('mobile-nav-overlay')?.classList.remove('active');
+          document.getElementById('mobile-nav')?.classList.remove('active');
+          document.getElementById('mobile-menu-toggle')?.classList.remove('active');
+        } catch (_) {}
+        try {
+          if (window.hideValidationBubble) {
+            window.hideValidationBubble();
+          }
+          document.querySelectorAll('.btb-bubble').forEach((n) => n.remove());
+        } catch (_) {}
+      }
+
+      function btbOrderApplyClosedCardUi(order, summary, saveBtn, editBtn, clearBtn, priceEl) {
+        summary.innerHTML = renderSummary(order, false);
+        saveBtn.style.display = 'none';
+        editBtn.style.display = 'inline-block';
+        clearBtn.style.display = 'inline-block';
+        if (order.kind === 'massage') {
+          priceEl.innerHTML = `<div class="btb-order-price-stack"><div>Price: ${calcMassagePrice(order)} CAD</div></div>`;
+        } else {
+          const pr = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
+          const rate = getRoomNightRate(order);
+          const nights = nightsBetween(order.checkin, order.checkout);
+          const total = calcRoomPrice(order);
+          const cleaningFee = btbCleaningFeeCAD(order);
+          const petsFee = btbRoomDogFeeCAD(order);
+          const cLab = escapeHtml(pr.cleaning_label || 'Cleaning fee');
+          const pLab = escapeHtml(pr.pets_label || 'Dogs');
+          const lineMain = rate > 0
+            ? `Price: ${rate} CAD/night × ${nights} night${nights === 1 ? '' : 's'} = ${total} CAD`
+            : 'Nightly rate is not stored for this booking on this device — see your confirmation email for the amount charged.';
+          priceEl.innerHTML = `
+            <div class="btb-order-price-stack">
+              <div>${lineMain}</div>
+              <div class="btb-order-price-muted">${cLab}: +${cleaningFee} CAD</div>
+              ${petsFee > 0 ? `<div class="btb-order-price-muted">${pLab}: +${petsFee} CAD (${btbRoomDogCount(order)} dog${btbRoomDogCount(order) === 1 ? '' : 's'})</div>` : ''}
+            </div>`;
+        }
+        priceEl.style.display = 'block';
+        updateTotal();
+        const payBtn2 = elPayment.querySelector('button');
+        const rawPay = localStorage.getItem('btb_orders');
+        let arrPay = [];
+        try {
+          arrPay = JSON.parse(rawPay || '[]');
+        } catch (_) {}
+        const isConfirmed2 = Array.isArray(arrPay) && arrPay.some((o) => o && o.confirmed === true);
+        if (payBtn2) payBtn2.disabled = !isConfirmed2;
+      }
+
+      function btbOrderApiAuthHeaders() {
+        const adminTok = localStorage.getItem('btb_admin_token');
+        if (adminTok) {
+          return { Authorization: 'Bearer ' + adminTok };
+        }
+        return {};
+      }
+
+      function btbOrderFormatSaveFailureMessage(res, json, rawText) {
+        const fromJson = [json && json.error, json && json.message].filter(Boolean).join('\n').trim();
+        if (fromJson) {
+          return fromJson;
+        }
+        const t = (rawText || '').trim();
+        if (t && t.charAt(0) === '<') {
+          return `Server error (HTTP ${res.status}). The response was not JSON — often a PHP error on the host. Check server logs.`;
+        }
+        if (t) {
+          return `Server response (HTTP ${res.status}):\n${t.slice(0, 500)}`;
+        }
+        return `Could not save changes on the server (HTTP ${res.status}).`;
+      }
+
+      async function btbOrderPostApi(fd, headers) {
+        const ac = new AbortController();
+        const ms = 35000;
+        const t = setTimeout(() => ac.abort(), ms);
+        try {
+          const res = await fetch('api.php', {
+            method: 'POST',
+            body: fd,
+            headers,
+            credentials: 'same-origin',
+            signal: ac.signal,
+          });
+          const rawText = await res.text();
+          let json = {};
+          try {
+            json = rawText ? JSON.parse(rawText) : {};
+          } catch (_) {
+            json = {};
+          }
+          return { res, json, rawText };
+        } catch (e) {
+          if (e && e.name === 'AbortError') {
+            throw new Error('Request timed out. Check your connection and try again.');
+          }
+          throw e;
+        } finally {
+          clearTimeout(t);
+        }
+      }
+
+      /**
+       * @returns {Promise<{ confirmed: boolean, neverAgain: boolean }>}
+       */
+      function btbOrderClearConfirmModalShow() {
+        return new Promise((resolve) => {
+          const existing = document.getElementById('btb-order-clear-modal-overlay');
+          if (existing) {
+            existing.remove();
+          }
+          let settled = false;
+          const finish = (confirmed, neverAgain) => {
+            if (settled) {
+              return;
+            }
+            settled = true;
+            try {
+              document.body.style.overflow = '';
+            } catch (_) {}
+            const el = document.getElementById('btb-order-clear-modal-overlay');
+            if (el) {
+              el.remove();
+            }
+            window.removeEventListener('keydown', onKey);
+            resolve({ confirmed, neverAgain });
+          };
+
+          const overlay = document.createElement('div');
+          overlay.id = 'btb-order-clear-modal-overlay';
+          overlay.className = 'btb-order-clear-modal-overlay';
+          overlay.setAttribute('role', 'dialog');
+          overlay.setAttribute('aria-modal', 'true');
+          overlay.setAttribute('aria-labelledby', 'btb-order-clear-modal-title');
+
+          const box = document.createElement('div');
+          box.className = 'btb-order-clear-modal';
+
+          const header = document.createElement('div');
+          header.className = 'btb-order-clear-modal__header';
+
+          const iconWrap = document.createElement('div');
+          iconWrap.className = 'btb-order-clear-modal__icon';
+          iconWrap.setAttribute('aria-hidden', 'true');
+          iconWrap.innerHTML =
+            '<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>';
+
+          const title = document.createElement('h3');
+          title.id = 'btb-order-clear-modal-title';
+          title.className = 'btb-order-clear-modal__title';
+          title.textContent = 'Remove this booking from your list?';
+
+          header.appendChild(iconWrap);
+          header.appendChild(title);
+
+          const p = document.createElement('p');
+          p.className = 'btb-order-clear-modal__body';
+          p.textContent =
+            'This only removes the entry from this device (My Bookings). It does not cancel a confirmed reservation on the server by itself.';
+
+          const label = document.createElement('label');
+          label.className = 'btb-order-clear-never';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.id = 'btb-order-clear-never-checkbox';
+          const span = document.createElement('span');
+          span.textContent = "Don't show this confirmation again";
+          label.appendChild(cb);
+          label.appendChild(span);
+
+          const actions = document.createElement('div');
+          actions.className = 'btb-order-clear-modal-actions';
+          const btnCancel = document.createElement('button');
+          btnCancel.type = 'button';
+          btnCancel.className = 'btn outline';
+          btnCancel.textContent = 'Cancel';
+          const btnRemove = document.createElement('button');
+          btnRemove.type = 'button';
+          btnRemove.className = 'btn primary';
+          btnRemove.textContent = 'Remove';
+          actions.appendChild(btnCancel);
+          actions.appendChild(btnRemove);
+
+          box.appendChild(header);
+          box.appendChild(p);
+          box.appendChild(label);
+          box.appendChild(actions);
+          overlay.appendChild(box);
+
+          const onKey = (e) => {
+            if (e.key === 'Escape') {
+              finish(false, false);
+            }
+          };
+
+          btnCancel.addEventListener('click', () => finish(false, false));
+          btnRemove.addEventListener('click', () => finish(true, cb.checked));
+          overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+              finish(false, false);
+            }
+          });
+
+          document.body.appendChild(overlay);
+          try {
+            document.body.style.overflow = 'hidden';
+          } catch (_) {}
+          window.addEventListener('keydown', onKey);
+          btnRemove.focus();
+        });
+      }
+
+      function btbOrderRemoveFromListById(orderId) {
+        let current = [];
+        try {
+          current = JSON.parse(localStorage.getItem('btb_orders') || '[]');
+        } catch (_) {
+          current = [];
+        }
+        if (!Array.isArray(current)) {
+          current = [];
+        }
+        const next = current.filter((a) => a && a.id !== orderId);
+        localStorage.setItem('btb_orders', JSON.stringify(next));
+        notifyOrdersChanged();
+        load();
+      }
+
       const elEmpty = document.getElementById('order-empty');
       const list = document.getElementById('orders-list');
       const elPayment = document.getElementById('payment-card');
       const KELDER_ROOM_NAMES = ['Kelder','Second floor — Loft suite','Second floor — Loft suite (entire)','Second floor (entire) — Queen bed'];
       const isKelderRoomName = (room) => KELDER_ROOM_NAMES.includes(room);
+      function btbDogSelectMax() {
+        const p = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
+        return Math.min(9, Math.max(1, parseInt(String(p.pets_max_qty), 10) || 2));
+      }
+      function btbDogSelectOptionsHtml(order) {
+        const max = btbDogSelectMax();
+        const cur = btbRoomDogStoredValue(order);
+        let html = '';
+        for (let i = 0; i <= max; i++) {
+          const sel = String(i) === cur ? ' selected' : '';
+          let lab = 'No dogs';
+          if (i === 1) lab = '1 dog';
+          else if (i > 1) lab = `${i} dogs`;
+          html += `<option value="${i}"${sel}>${lab}</option>`;
+        }
+        return html;
+      }
+      function btbCleaningFeeCAD(order) {
+        const pr = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
+        if (isKelderRoomName(order.room)) {
+          const k = parseFloat(pr.cleaning_kelder_amount_cad);
+          return Number.isFinite(k) ? k : 0;
+        }
+        const s = parseFloat(pr.cleaning_amount_cad);
+        return Number.isFinite(s) ? s : 0;
+      }
+      function btbRoomDogCount(order) {
+        if (!order) return 0;
+        const p = order.pets;
+        if (p === 'add' || p === true) return 1;
+        const n = parseInt(String(p), 10);
+        if (Number.isFinite(n)) return Math.min(btbDogSelectMax(), Math.max(0, n));
+        return 0;
+      }
+      function btbRoomDogFeeCAD(order) {
+        const pr = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
+        const per = parseFloat(pr.pets_amount_per_dog_cad);
+        const rate = Number.isFinite(per) ? per : 75;
+        const n = btbRoomDogCount(order);
+        return Math.round(n * rate * 100) / 100;
+      }
+      function btbRoomDogLabel(order) {
+        const c = btbRoomDogCount(order);
+        if (c === 0) return 'No dogs';
+        if (c === 1) return '1 dog';
+        return `${c} dogs`;
+      }
+      function btbRoomDogStoredValue(order) {
+        return String(btbRoomDogCount(order));
+      }
       const renderSummary = (order, editable) => {
         const esc = escapeHtml; const at = escapeAttr;
         if (order.kind === 'massage') {
@@ -136,7 +754,7 @@
              <p><span class="label-muted">Check‑in:</span> <input data-field="checkin" type="date" value="${at(order.checkin||'')}" style="margin-left:6px;" /></p>
              <p><span class="label-muted">Check‑out:</span> <input data-field="checkout" type="date" value="${at(order.checkout||'')}" style="margin-left:6px;" /></p>
              <p><span class="label-muted">Guests:</span> <select><option value="1"${String(order.guests)==='1'?' selected':''}>1</option><option value="2"${String(order.guests)==='2'?' selected':''}>2</option></select></p>
-             <p><span class="label-muted">Pets:</span> <select><option value="add"${String(order.pets)==='add'?' selected':''}>Add pets</option><option value="no"${String(order.pets)==='no'?' selected':''}>No pets</option></select></p>
+             <p><span class="label-muted">Dogs:</span> <select>${btbDogSelectOptionsHtml(order)}</select></p>
              <p><span class="label-muted">Name:</span> <input data-field="name" type="text" value="${at(order.name||'')}" style="margin-left:6px;" /></p>
              <p><span class="label-muted">Email:</span> <input data-field="email" type="email" value="${at(order.email||'')}" style="margin-left:6px;" /></p>
              <p><span class="label-muted">Phone:</span> <input data-field="phone" type="tel" value="${at(order.phone||'')}" style="margin-left:6px;" /></p>`
@@ -144,7 +762,7 @@
              <p><span class="label-muted">Check‑in:</span> ${prettyDate(order.checkin)}</p>
              <p><span class="label-muted">Check‑out:</span> ${prettyDate(order.checkout)}</p>
              <p><span class="label-muted">Guests:</span> ${esc(order.guests||'')}</p>
-             <p><span class="label-muted">Pets:</span> ${esc(order.pets==='add'?'Add pets':'No pets')}</p>
+             <p><span class="label-muted">Dogs:</span> ${esc(btbRoomDogLabel(order))}</p>
              <p><span class="label-muted">Name:</span> ${esc(order.name||'')}</p>
              <p><span class="label-muted">Email:</span> ${esc(order.email||'')}</p>
              <p><span class="label-muted">Phone:</span> ${esc(order.phone||'')}</p>`;
@@ -157,6 +775,7 @@
         if (!Array.isArray(arr) || arr.length === 0) {
           elEmpty.style.display = 'block';
           elPayment.style.display = 'none';
+          btbOrderClearUpdateResetLinkVisibility();
           return;
         }
         elEmpty.style.display = 'none';
@@ -184,14 +803,17 @@
           actions.style.alignItems = 'start';
 
           const editBtn = document.createElement('button');
+          editBtn.type = 'button';
           editBtn.className = 'btn';
           editBtn.textContent = 'Edit details';
 
           const clearBtn = document.createElement('button');
+          clearBtn.type = 'button';
           clearBtn.className = 'btn';
           clearBtn.textContent = 'Clear';
 
           const saveBtn = document.createElement('button');
+          saveBtn.type = 'button';
           saveBtn.className = 'btn primary';
           saveBtn.textContent = 'Save changes';
           saveBtn.style.display = 'none';
@@ -211,30 +833,46 @@
           priceEl.className = 'notice price';
           priceEl.style.marginTop = '8px';
           {
+            const pr = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
             const rate = getRoomNightRate(order);
             const nights = nightsBetween(order.checkin, order.checkout);
             const total = calcRoomPrice(order);
-            const cleaningFee = isKelderRoomName(order.room) ? 100 : 60;
-            const petsFee = order.pets === 'add' ? 75 : 0;
+            const cleaningFee = btbCleaningFeeCAD(order);
+            const petsFee = btbRoomDogFeeCAD(order);
+            const cLab = escapeHtml(pr.cleaning_label || 'Cleaning fee');
+            const pLab = escapeHtml(pr.pets_label || 'Dogs');
+            const lineMain = rate > 0
+              ? `Price: ${rate} CAD/night × ${nights} night${nights === 1 ? '' : 's'} = ${total} CAD`
+              : 'Nightly rate is not stored for this booking on this device — see your confirmation email for the amount charged.';
             priceEl.innerHTML = `
-              <div>Price: ${rate} CAD/night × ${nights} night${nights===1?'':'s'} = ${total} CAD</div>
-              <div style="margin-top: 4px; color: var(--muted);">Cleaning fee: +${cleaningFee} CAD</div>
-              ${petsFee > 0 ? `<div style="margin-top: 4px; color: var(--muted);">Pets fee: +${petsFee} CAD</div>` : ''}
-            `;
+              <div class="btb-order-price-stack">
+                <div>${lineMain}</div>
+                <div class="btb-order-price-muted">${cLab}: +${cleaningFee} CAD</div>
+                ${petsFee > 0 ? `<div class="btb-order-price-muted">${pLab}: +${petsFee} CAD (${btbRoomDogCount(order)} dog${btbRoomDogCount(order) === 1 ? '' : 's'})</div>` : ''}
+              </div>`;
           }
           card.appendChild(priceEl);
           list.appendChild(card);
 
-          clearBtn.addEventListener('click', () => {
-            const confirmed = confirm('Are you sure you want to cancel this booking?');
-            if (confirmed) {
-              const next = arr.filter(a => a.id !== order.id);
-              localStorage.setItem('btb_orders', JSON.stringify(next));
-              load();
+          clearBtn.addEventListener('click', async () => {
+            if (btbOrderClearSkipEnabled()) {
+              btbOrderRemoveFromListById(order.id);
+              return;
+            }
+            const r = await btbOrderClearConfirmModalShow();
+            if (r.confirmed) {
+              if (r.neverAgain) {
+                try {
+                  localStorage.setItem(BTB_ORDER_CLEAR_SKIP_LS, '1');
+                } catch (_) {}
+                btbOrderClearUpdateResetLinkVisibility();
+              }
+              btbOrderRemoveFromListById(order.id);
             }
           });
 
           editBtn.addEventListener('click', () => {
+            btbOrderCleanupInteractionBlockers();
             summary.innerHTML = renderSummary(order, true);
             editBtn.style.display = 'none';
             clearBtn.style.display = 'none';
@@ -247,94 +885,136 @@
             priceEl.style.display = 'none';
           });
 
-          saveBtn.addEventListener('click', () => {
+          saveBtn.addEventListener('click', async () => {
+            btbOrderCleanupInteractionBlockers();
             const flash = (el) => { try { if (window.flashDateField) window.flashDateField(el); else { el && el.classList.add('invalid-field'); setTimeout(() => el && el.classList.remove('invalid-field'), 600); } } catch (_) {} };
-            if (order.kind === 'massage') {
-              const selects = summary.querySelectorAll('select');
-              if (selects[0]) order.type = selects[0].value;
-              if (selects[1]) order.duration = selects[1].value;
-              const dateI = summary.querySelector('input[data-field="date"]');
-              const timeI = summary.querySelector('input[data-field="time"]');
-              const nameI = summary.querySelector('input[data-field="name"]');
-              const emailI = summary.querySelector('input[data-field="email"]');
-              const phoneI = summary.querySelector('input[type="tel"]');
-              order.date = dateI ? dateI.value : order.date;
-              order.time = timeI ? timeI.value : order.time;
-              order.name = nameI ? nameI.value : order.name;
-              order.email = emailI ? emailI.value : order.email;
-              order.phone = phoneI ? phoneI.value : order.phone;
-            } else {
-              const selects = summary.querySelectorAll('select');
-              if (selects[0]) order.room = selects[0].value;
-              if (selects[1]) order.guests = selects[1].value;
-              if (selects[2]) order.pets = selects[2].value;
-              const inI = summary.querySelector('input[data-field="checkin"]');
-              const outI = summary.querySelector('input[data-field="checkout"]');
-              const nameI = summary.querySelector('input[data-field="name"]');
-              const emailI = summary.querySelector('input[data-field="email"]');
-              const phoneI = summary.querySelector('input[data-field="phone"]');
-              const newIn = inI ? inI.value : order.checkin;
-              const newOut = outI ? outI.value : order.checkout;
-              // Required fields in specific order, mirroring room form
-              if (!newIn) { if (inI && inI.reportValidity) inI.reportValidity(); else alert('Please fill out this field.'); flash(inI); inI && inI.focus(); return; }
-              if (!newOut) { if (outI && outI.reportValidity) outI.reportValidity(); else alert('Please fill out this field.'); flash(outI); outI && outI.focus(); return; }
-              // validate dates: checkout must be after checkin
-              if (newIn && newOut) {
-                const dIn = parseLocalDate(newIn);
-                const dOut = parseLocalDate(newOut);
-                if (dOut <= dIn) {
-                  if (outI && outI.setCustomValidity) {
-                    outI.setCustomValidity(''); // ensure native bubble doesn't conflict
-                  }
-                  // Show custom two-line bubble near the visible proxy
-                  try {
-                    const proxy = outI && outI.previousElementSibling;
-                    if (window.showValidationBubble && proxy) {
-                      window.showValidationBubble(proxy, 'Check‑out cannot be earlier than Check‑in.\nPlease select a later date.');
-                    }
-                  } catch (_) {}
-                  flash(outI); outI && outI.focus();
-                  return; // keep edit mode open
-                }
-                if (window.hideValidationBubble) window.hideValidationBubble();
+            const selects = summary.querySelectorAll('select');
+            if (selects[0]) order.room = selects[0].value;
+            if (selects[1]) order.guests = selects[1].value;
+            if (selects[2]) order.pets = selects[2].value;
+            const inI = summary.querySelector('input[data-field="checkin"]');
+            const outI = summary.querySelector('input[data-field="checkout"]');
+            const nameI = summary.querySelector('input[data-field="name"]');
+            const emailI = summary.querySelector('input[data-field="email"]');
+            const phoneI = summary.querySelector('input[data-field="phone"]');
+            const newIn = inI ? inI.value : order.checkin;
+            const newOut = outI ? outI.value : order.checkout;
+            if (!newIn) { if (inI && inI.reportValidity) inI.reportValidity(); else alert('Please fill out this field.'); flash(inI); inI && inI.focus(); return; }
+            if (!newOut) { if (outI && outI.reportValidity) outI.reportValidity(); else alert('Please fill out this field.'); flash(outI); outI && outI.focus(); return; }
+            if (newIn && newOut) {
+              const dIn = parseLocalDate(newIn);
+              const dOut = parseLocalDate(newOut);
+              if (dOut <= dIn) {
                 if (outI && outI.setCustomValidity) outI.setCustomValidity('');
-                if (window.clearDateFieldFlash) window.clearDateFieldFlash(outI);
+                try {
+                  const proxy = outI && outI.previousElementSibling;
+                  if (window.showValidationBubble && proxy) {
+                    window.showValidationBubble(proxy, 'Check‑out cannot be earlier than Check‑in.\nPlease select a later date.');
+                  } else {
+                    alert('Check‑out cannot be earlier than Check‑in. Please select a later date.');
+                  }
+                } catch (_) {
+                  alert('Check‑out cannot be earlier than Check‑in. Please select a later date.');
+                }
+                flash(outI); outI && outI.focus();
+                return;
               }
-              if (!nameI || !nameI.value.trim()) { if (nameI && nameI.reportValidity) nameI.reportValidity(); else alert('Please fill out this field.'); flash(nameI); nameI && nameI.focus(); return; }
-              if (!emailI || !emailI.value.trim()) { if (emailI && emailI.reportValidity) emailI.reportValidity(); else alert('Please fill out this field.'); flash(emailI); emailI && emailI.focus(); return; }
-              if (!phoneI || !phoneI.value.trim()) { if (phoneI && phoneI.reportValidity) phoneI.reportValidity(); else alert('Please fill out this field.'); flash(phoneI); phoneI && phoneI.focus(); return; }
-              if (!selects[1] || !selects[1].value) { selects[1] && selects[1].reportValidity ? selects[1].reportValidity() : alert('Please fill out this field.'); selects[1] && selects[1].focus(); return; }
-              if (!selects[2] || !selects[2].value) { selects[2] && selects[2].reportValidity ? selects[2].reportValidity() : alert('Please fill out this field.'); selects[2] && selects[2].focus(); return; }
-              order.checkin = newIn;
-              order.checkout = newOut;
-              order.name = nameI ? nameI.value : order.name;
-              order.email = emailI ? emailI.value : order.email;
-              order.phone = phoneI ? phoneI.value : order.phone;
+              if (window.hideValidationBubble) window.hideValidationBubble();
+              if (outI && outI.setCustomValidity) outI.setCustomValidity('');
+              if (window.clearDateFieldFlash) window.clearDateFieldFlash(outI);
             }
-            arr[idx] = order;
-            localStorage.setItem('btb_orders', JSON.stringify(arr));
-            summary.innerHTML = renderSummary(order, false);
-            saveBtn.style.display = 'none';
-            editBtn.style.display = 'inline-block';
-            clearBtn.style.display = 'inline-block';
-            {
-              const rate = getRoomNightRate(order);
-              const nights = nightsBetween(order.checkin, order.checkout);
-              const total = calcRoomPrice(order);
-              const cleaningFee = isKelderRoomName(order.room) ? 100 : 60;
-              const petsFee = order.pets === 'add' ? 75 : 0;
-              priceEl.innerHTML = `
-                <div>Price: ${rate} CAD/night × ${nights} night${nights===1?'':'s'} = ${total} CAD</div>
-                <div style="margin-top: 4px; color: var(--muted);">Cleaning fee: +${cleaningFee} CAD</div>
-                ${petsFee > 0 ? `<div style="margin-top: 4px; color: var(--muted);">Pets fee: +${petsFee} CAD</div>` : ''}
-              `;
+            if (!nameI || !nameI.value.trim()) { if (nameI && nameI.reportValidity) nameI.reportValidity(); else alert('Please fill out this field.'); flash(nameI); nameI && nameI.focus(); return; }
+            if (!emailI || !emailI.value.trim()) { if (emailI && emailI.reportValidity) emailI.reportValidity(); else alert('Please fill out this field.'); flash(emailI); emailI && emailI.focus(); return; }
+            if (!phoneI || !phoneI.value.trim()) { if (phoneI && phoneI.reportValidity) phoneI.reportValidity(); else alert('Please fill out this field.'); flash(phoneI); phoneI && phoneI.focus(); return; }
+            if (!selects[1] || !selects[1].value) { selects[1] && selects[1].reportValidity ? selects[1].reportValidity() : alert('Please fill out this field.'); selects[1] && selects[1].focus(); return; }
+            if (!selects[2] || !selects[2].value) { selects[2] && selects[2].reportValidity ? selects[2].reportValidity() : alert('Please fill out this field.'); selects[2] && selects[2].focus(); return; }
+            order.checkin = newIn;
+            order.checkout = newOut;
+            order.name = nameI ? nameI.value : order.name;
+            order.email = emailI ? emailI.value : order.email;
+            order.phone = phoneI ? phoneI.value : order.phone;
+
+            const bid = Number(order.booking_id);
+            const conf = String(order.confirmation_code || '').trim();
+            if (!bid || !conf) {
+              const ixLocal = arr.findIndex((a) => a && a.id === order.id);
+              if (ixLocal >= 0) {
+                arr[ixLocal] = order;
+              }
+              try {
+                localStorage.setItem('btb_orders', JSON.stringify(arr));
+              } catch (_) {}
+              notifyOrdersChanged();
+              try {
+                load();
+              } catch (err) {
+                console.error(err);
+                btbOrderApplyClosedCardUi(order, summary, saveBtn, editBtn, clearBtn, priceEl);
+              }
+              alert('This booking has no server reference (booking id / confirmation code). Changes were saved on this device only.');
+              return;
             }
-            priceEl.style.display = 'block';
-            updateTotal();
-            // Re-evaluate payment button enabled state
-            const payBtn2 = elPayment.querySelector('button');
-            const isConfirmed2 = arr.some(o => o && o.confirmed === true);
-            if (payBtn2) payBtn2.disabled = !isConfirmed2;
+
+            saveBtn.disabled = true;
+            const saveLabelRoom = saveBtn.textContent;
+            saveBtn.textContent = 'Saving…';
+            try {
+              const fd = new FormData();
+              fd.append('action', 'update_guest_room_booking');
+              fd.append('booking_id', String(bid));
+              fd.append('confirmation_code', conf);
+              fd.append('room_name', order.room || '');
+              fd.append('checkin_date', order.checkin || '');
+              fd.append('checkout_date', order.checkout || '');
+              fd.append('guest_name', order.name || '');
+              fd.append('email', order.email || '');
+              fd.append('phone', order.phone || '');
+              fd.append('guests_count', String(order.guests || 1));
+              fd.append('pets', btbRoomDogStoredValue(order));
+              const headers = btbOrderApiAuthHeaders();
+              const { res, json, rawText } = await btbOrderPostApi(fd, headers);
+              if (!json.success) {
+                alert(btbOrderFormatSaveFailureMessage(res, json, rawText));
+                return;
+              }
+              const d = json.data && json.data.booking;
+              if (d) {
+                order.room = d.room_name || order.room;
+                order.checkin = d.checkin_date || order.checkin;
+                order.checkout = d.checkout_date || order.checkout;
+                order.guests = String(d.guests_count != null ? d.guests_count : order.guests);
+                {
+                  let pn = parseInt(String(d.pets != null ? d.pets : '0'), 10);
+                  if (!Number.isFinite(pn)) pn = 0;
+                  pn = Math.min(2, Math.max(0, pn));
+                  order.pets = String(pn);
+                }
+                order.name = d.guest_name || order.name;
+                order.email = d.email || order.email;
+                order.phone = d.phone || order.phone;
+                if (d.confirmation_code) order.confirmation_code = d.confirmation_code;
+              }
+              const nrUp = json.data && json.data.nightly_rate;
+              const nightlyUp = typeof nrUp === 'number' ? nrUp : parseFloat(String(nrUp ?? ''), 10);
+              if (Number.isFinite(nightlyUp) && nightlyUp > 0) {
+                order.nightly_rate = nightlyUp;
+              }
+              const arrIndex = arr.findIndex(a => a.id === order.id);
+              if (arrIndex >= 0) arr[arrIndex] = order;
+              localStorage.setItem('btb_orders', JSON.stringify(arr));
+              notifyOrdersChanged();
+              try {
+                load();
+              } catch (err) {
+                console.error(err);
+                btbOrderApplyClosedCardUi(order, summary, saveBtn, editBtn, clearBtn, priceEl);
+              }
+            } catch (e) {
+              alert(e && e.message ? e.message : 'Network error while saving.');
+            } finally {
+              saveBtn.disabled = false;
+              saveBtn.textContent = saveLabelRoom;
+            }
           });
         });
         if (massages.length) {
@@ -355,14 +1035,17 @@
           actions.style.alignItems = 'start';
 
           const editBtn = document.createElement('button');
+          editBtn.type = 'button';
           editBtn.className = 'btn';
           editBtn.textContent = 'Edit details';
 
           const clearBtn = document.createElement('button');
+          clearBtn.type = 'button';
           clearBtn.className = 'btn';
           clearBtn.textContent = 'Clear';
 
           const saveBtn = document.createElement('button');
+          saveBtn.type = 'button';
           saveBtn.className = 'btn primary';
           saveBtn.textContent = 'Save changes';
           saveBtn.style.display = 'none';
@@ -380,20 +1063,29 @@
           const priceEl = document.createElement('div');
           priceEl.className = 'notice price';
           priceEl.style.marginTop = '8px';
-          priceEl.textContent = `Price: ${calcMassagePrice(order)} CAD`;
+          priceEl.innerHTML = `<div class="btb-order-price-stack"><div>Price: ${calcMassagePrice(order)} CAD</div></div>`;
           card.appendChild(priceEl);
           list.appendChild(card);
 
-          clearBtn.addEventListener('click', () => {
-            const confirmed = confirm('Are you sure you want to cancel this booking?');
-            if (confirmed) {
-              const next = arr.filter(a => a.id !== order.id);
-              localStorage.setItem('btb_orders', JSON.stringify(next));
-              load();
+          clearBtn.addEventListener('click', async () => {
+            if (btbOrderClearSkipEnabled()) {
+              btbOrderRemoveFromListById(order.id);
+              return;
+            }
+            const r = await btbOrderClearConfirmModalShow();
+            if (r.confirmed) {
+              if (r.neverAgain) {
+                try {
+                  localStorage.setItem(BTB_ORDER_CLEAR_SKIP_LS, '1');
+                } catch (_) {}
+                btbOrderClearUpdateResetLinkVisibility();
+              }
+              btbOrderRemoveFromListById(order.id);
             }
           });
 
           editBtn.addEventListener('click', () => {
+            btbOrderCleanupInteractionBlockers();
             summary.innerHTML = renderSummary(order, true);
             editBtn.style.display = 'none';
             clearBtn.style.display = 'none';
@@ -405,28 +1097,115 @@
             priceEl.style.display = 'none';
           });
 
-          saveBtn.addEventListener('click', () => {
+          saveBtn.addEventListener('click', async () => {
+            btbOrderCleanupInteractionBlockers();
             const selects = summary.querySelectorAll('select');
             if (selects[0]) order.type = selects[0].value;
             if (selects[1]) order.duration = selects[1].value;
-            const [dateI, timeI, nameI, emailI] = summary.querySelectorAll('input');
+            const dateI = summary.querySelector('input[data-field="date"]');
+            const timeI = summary.querySelector('input[data-field="time"]');
+            const nameI = summary.querySelector('input[data-field="name"]');
+            const emailI = summary.querySelector('input[data-field="email"]');
             order.date = dateI ? dateI.value : order.date;
             order.time = timeI ? timeI.value : order.time;
             order.name = nameI ? nameI.value : order.name;
             order.email = emailI ? emailI.value : order.email;
-            const next = arr.map(a => a.id === order.id ? order : a);
-            localStorage.setItem('btb_orders', JSON.stringify(next));
-            summary.innerHTML = renderSummary(order, false);
-            saveBtn.style.display = 'none';
-            editBtn.style.display = 'inline-block';
-            clearBtn.style.display = 'inline-block';
-            priceEl.textContent = `Price: ${calcMassagePrice(order)} CAD`;
-            priceEl.style.display = 'block';
-            updateTotal();
+            if (!order.date || !order.time) { alert('Please choose date and time.'); return; }
+            if (!order.name || !order.name.trim() || !order.email || !order.email.trim()) { alert('Please fill name and email.'); return; }
+
+            const bid = Number(order.booking_id);
+            const conf = String(order.confirmation_code || '').trim();
+            if (!bid || !conf) {
+              const ixLocalM = arr.findIndex((a) => a && a.id === order.id);
+              if (ixLocalM >= 0) {
+                arr[ixLocalM] = order;
+              }
+              try {
+                localStorage.setItem('btb_orders', JSON.stringify(arr));
+              } catch (_) {}
+              notifyOrdersChanged();
+              try {
+                load();
+              } catch (err) {
+                console.error(err);
+                btbOrderApplyClosedCardUi(order, summary, saveBtn, editBtn, clearBtn, priceEl);
+              }
+              alert('This booking has no server reference. Changes were saved on this device only.');
+              return;
+            }
+
+            saveBtn.disabled = true;
+            const saveLabelMassage = saveBtn.textContent;
+            saveBtn.textContent = 'Saving…';
+            try {
+              const fd = new FormData();
+              fd.append('action', 'update_guest_massage_booking');
+              fd.append('booking_id', String(bid));
+              fd.append('confirmation_code', conf);
+              fd.append('guest_name', order.name || '');
+              fd.append('email', order.email || '');
+              fd.append('phone', order.phone || '');
+              fd.append('massage_date', order.date || '');
+              fd.append('massage_time', order.time || '');
+              fd.append('massage_type', order.type || '');
+              fd.append('duration', String(order.duration || '60'));
+              const headers = btbOrderApiAuthHeaders();
+              const { res, json, rawText } = await btbOrderPostApi(fd, headers);
+              if (!json.success) {
+                alert(btbOrderFormatSaveFailureMessage(res, json, rawText));
+                return;
+              }
+              const d = json.data && json.data.booking;
+              if (d) {
+                order.type = d.massage_type || order.type;
+                order.duration = String(d.duration != null ? d.duration : order.duration);
+                order.date = d.massage_date || order.date;
+                order.time = d.massage_time || order.time;
+                order.name = d.guest_name || order.name;
+                order.email = d.email || order.email;
+                order.phone = d.phone || order.phone;
+                if (d.confirmation_code) order.confirmation_code = d.confirmation_code;
+                if (d.total_amount != null && d.total_amount !== '') {
+                  const p = typeof d.total_amount === 'number' ? d.total_amount : parseFloat(String(d.total_amount), 10);
+                  if (Number.isFinite(p) && p >= 0) {
+                    order.total_amount = p;
+                  }
+                }
+                if (d.currency) {
+                  order.currency = String(d.currency);
+                }
+              }
+              const arrIndex = arr.findIndex(a => a.id === order.id);
+              if (arrIndex >= 0) arr[arrIndex] = order;
+              localStorage.setItem('btb_orders', JSON.stringify(arr));
+              notifyOrdersChanged();
+              try {
+                load();
+              } catch (err) {
+                console.error(err);
+                btbOrderApplyClosedCardUi(order, summary, saveBtn, editBtn, clearBtn, priceEl);
+              }
+            } catch (e) {
+              alert(e && e.message ? e.message : 'Network error while saving.');
+            } finally {
+              saveBtn.disabled = false;
+              saveBtn.textContent = saveLabelMassage;
+            }
           });
         });
         updateTotal();
+        btbOrderClearUpdateResetLinkVisibility();
       };
+
+      const resetClearPrefsBtn = document.getElementById('btb-order-clear-reset-prefs');
+      if (resetClearPrefsBtn) {
+        resetClearPrefsBtn.addEventListener('click', () => {
+          try {
+            localStorage.removeItem(BTB_ORDER_CLEAR_SKIP_LS);
+          } catch (_) {}
+          btbOrderClearUpdateResetLinkVisibility();
+        });
+      }
 
       function escapeHtml(s) { return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])); }
       function escapeAttr(s) { return escapeHtml(s); }
@@ -470,19 +1249,12 @@
         try { const d1 = parseLocalDate(a); const d2 = parseLocalDate(b); return Math.max(0, Math.round((d2 - d1) / 86400000)); } catch(_) { return 0; }
       }
       function getRoomNightRate(o) {
-        const per = {
-          'Loki Suite': 140,
-          'The Nouk': 130,
-          'Vrienden': 125,
-          'Kelder': 210,
-          'Basement — Queen': 140,
-          'Ground floor — Queen bed': 130,
-          'Ground floor — Twin beds': 125,
-          'Second floor — Loft suite': 210,
-          'Second floor — Loft suite (entire)': 210,
-          'Second floor (entire) — Queen bed': 210,
-        };
-        return per[o.room] || 0;
+        const r = o && o.nightly_rate;
+        const n = typeof r === 'number' ? r : parseFloat(String(r ?? ''), 10);
+        if (Number.isFinite(n) && n > 0) {
+          return n;
+        }
+        return 0;
       }
       function calcRoomPrice(o) {
         const base = getRoomNightRate(o);
@@ -490,49 +1262,105 @@
         return base * nights;
       }
       function calcMassagePrice(o) {
+        if (o && o.total_amount != null && o.total_amount !== '') {
+          const n = typeof o.total_amount === 'number' ? o.total_amount : parseFloat(String(o.total_amount), 10);
+          if (Number.isFinite(n) && n >= 0) {
+            return n;
+          }
+        }
         const t = String(o.type || '');
         const d = String(o.duration || '');
-        if (t === 'Relaxing Massage') return d==='90'?160:110;
-        if (t === 'Deep Tissue Massage') return d==='90'?170:120;
-        if (t === 'Reiki Energy Healing') return d==='30'?50:25;
+        if (t === 'Relaxing Massage') return d === '90' ? 160 : 110;
+        if (t === 'Deep Tissue Massage') return d === '90' ? 170 : 120;
+        if (t === 'Reiki Energy Healing') return d === '30' ? 50 : 25;
+        // Sauna: CMS default / massage.php (60 min = 1 hour)
+        if (t === 'Sauna' && d === '60') return 25;
         return 0;
       }
 
+      function btbFmtMoney(n) {
+        const x = Number(n);
+        if (!Number.isFinite(x)) return '0.00';
+        return (Math.round(x * 100) / 100).toFixed(2);
+      }
+      function btbFmtPct(n) {
+        const x = parseFloat(n);
+        if (!Number.isFinite(x) || x <= 0) return '0';
+        const r = Math.round(x * 1000) / 1000;
+        if (Math.abs(r - Math.round(r)) < 1e-9) return String(Math.round(r));
+        return String(r);
+      }
+      /** Guest-facing tax name; avoid showing a lone "0" if the field was left blank or mis-saved. */
+      function btbOrderTaxDisplayLabel(raw, fallback) {
+        if (raw == null) return fallback;
+        const s = String(raw).trim();
+        if (s === '' || s === '0') return fallback;
+        return s;
+      }
       function updateTotal() {
-        let sum = 0;
-        let roomCount = 0;
+        const p = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
+        let roomsSubtotal = 0;
+        let wellnessSubtotal = 0;
         try {
           const raw2 = localStorage.getItem('btb_orders');
           const a2 = JSON.parse(raw2 || '[]');
-          a2.forEach(o => { 
-            if (o.kind === 'room') {
-              sum += calcRoomPrice(o);
-              roomCount++;
-            } else {
-              sum += calcMassagePrice(o);
-            }
-          });
-          // Добавляем плату за уборку для каждого бронирования комнаты
-          if (roomCount > 0) {
-            a2.forEach(o => {
+          if (Array.isArray(a2)) {
+            a2.forEach((o) => {
+              if (!o) return;
               if (o.kind === 'room') {
-                // Second floor (entire) — Queen bed: +100 CAD, остальные: +60 CAD
-                if (isKelderRoomName(o.room)) {
-                  sum += 100;
-                } else {
-                  sum += 60;
-                }
-                
-                // Добавляем плату за домашних животных: +75 CAD
-                if (o.pets === 'add') {
-                  sum += 75;
-                }
+                roomsSubtotal += calcRoomPrice(o);
+                roomsSubtotal += btbCleaningFeeCAD(o);
+                roomsSubtotal += btbRoomDogFeeCAD(o);
+              } else {
+                wellnessSubtotal += calcMassagePrice(o);
               }
             });
           }
-        } catch (_) {}
+        } catch (_) {
+          roomsSubtotal = 0;
+          wellnessSubtotal = 0;
+        }
+        roomsSubtotal = Math.round(roomsSubtotal * 100) / 100;
+        wellnessSubtotal = Math.round(wellnessSubtotal * 100) / 100;
+        const taxableSubtotal = Math.round((roomsSubtotal + wellnessSubtotal) * 100) / 100;
+        const t1p = parseFloat(p.tax1_percent);
+        const t2p = parseFloat(p.tax2_percent);
+        const tax1 =
+          Number.isFinite(t1p) && t1p > 0 ? Math.round(taxableSubtotal * (t1p / 100) * 100) / 100 : 0;
+        const tax2 =
+          Number.isFinite(t2p) && t2p > 0 ? Math.round(taxableSubtotal * (t2p / 100) * 100) / 100 : 0;
+        const grand = Math.round((taxableSubtotal + tax1 + tax2) * 100) / 100;
+        const subEl = document.getElementById('orders-subtotal-line');
+        const taxHintEl = document.getElementById('orders-tax-base-hint');
+        const tax1El = document.getElementById('orders-tax1-line');
+        const tax2El = document.getElementById('orders-tax2-line');
         const current = document.getElementById('orders-total');
-        if (current) current.textContent = `Total: ${sum} CAD`;
+        if (subEl) {
+          subEl.textContent = `Subtotal before tax: ${btbFmtMoney(taxableSubtotal)} CAD`;
+        }
+        if (taxHintEl) {
+          taxHintEl.textContent =
+            taxableSubtotal > 0
+              ? 'Tax % applies to: room stays (nights + cleaning + pets) and wellness (massage / sauna).'
+              : '';
+        }
+        if (tax1El) {
+          const show = Number.isFinite(t1p) && t1p > 0;
+          tax1El.style.display = show ? 'block' : 'none';
+          if (show) {
+            const lab = btbOrderTaxDisplayLabel(p.tax1_label, 'Tax');
+            tax1El.textContent = `${lab} (${btbFmtPct(t1p)}%): ${btbFmtMoney(tax1)} CAD`;
+          }
+        }
+        if (tax2El) {
+          const show = Number.isFinite(t2p) && t2p > 0;
+          tax2El.style.display = show ? 'block' : 'none';
+          if (show) {
+            const lab = btbOrderTaxDisplayLabel(p.tax2_label, 'Tax');
+            tax2El.textContent = `${lab} (${btbFmtPct(t2p)}%): ${btbFmtMoney(tax2)} CAD`;
+          }
+        }
+        if (current) current.textContent = `Total: ${btbFmtMoney(grand)} CAD`;
       }
     });
   </script>

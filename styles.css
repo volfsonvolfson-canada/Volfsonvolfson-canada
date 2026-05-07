@@ -8,7 +8,7 @@
 }
 .flash-invalid, select.flash-invalid, input.flash-invalid { animation: flash-invalid .9s ease 0s 2; border-color: rgba(255,77,77,.8) !important; }
 
-/* Field error messages - для всех полей формы, включая даты */
+/* Field error messages - for all form fields, including dates */
 .field-error {
   color: #ff4d4d;
   font-size: 14px;
@@ -26,12 +26,13 @@
 }
 
 /* Custom validation bubble for hidden date inputs */
-.btb-bubble { position: fixed; z-index: 50; max-width: 360px; background: #2b2f36; color: #fff; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 10px 24px rgba(0,0,0,.35); font-size: 14px; line-height: 1.35; display: flex; gap: 10px; align-items: flex-start; }
+/* pointer-events: none — bubble is informational; must not block clicks (e.g. Save on My Bookings). */
+.btb-bubble { position: fixed; z-index: 50; max-width: 360px; background: #2b2f36; color: #fff; padding: 10px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,.12); box-shadow: 0 10px 24px rgba(0,0,0,.35); font-size: 14px; line-height: 1.35; display: flex; gap: 10px; align-items: flex-start; pointer-events: none; }
 .btb-bubble::after { content: ""; position: absolute; left: -7px; top: 14px; border-width: 7px; border-style: solid; border-color: transparent #2b2f36 transparent transparent; filter: drop-shadow(0 0 0 rgba(0,0,0,.0)); }
 .btb-bubble .btb-ic { width: 22px; height: 22px; border-radius: 6px; background: #f59e0b; color: #0b0f14; display: grid; place-items: center; font-weight: 800; flex: 0 0 22px; }
 .btb-bubble .btb-msg { white-space: normal; }
 
-/* Custom date error notification - показывается дольше стандартного сообщения */
+/* Custom date error notification - appears longer than the standard message */
 .btb-date-error-notification { 
   position: fixed;
   z-index: 10000; 
@@ -52,14 +53,14 @@
   transition: opacity 0.3s ease, transform 0.3s ease;
   cursor: pointer;
   box-sizing: border-box;
-  /* Гарантируем, что уведомление не влияет на размер страницы */
+  /* We guarantee that the notification does not affect the page size */
   margin: 0;
   pointer-events: auto;
-  /* position: fixed выводит элемент из потока документа и не влияет на layout */
-  /* КРИТИЧНО: Убеждаемся, что уведомление не вызывает горизонтальную прокрутку */
+  /* position: fixed removes the element from the document flow and has no effect on layout */
+  /* CRITICAL: Make sure the notification does not cause horizontal scrolling */
   overflow-wrap: break-word;
   word-wrap: break-word;
-  /* Уведомление не должно выходить за границы viewport */
+  /* Notice must not go beyond boundaries viewport */
 }
 .btb-date-error-notification .btb-ic { 
   width: 22px; 
@@ -78,7 +79,7 @@
   flex: 1;
 }
 
-/* Flatpickr стили для полей ввода */
+/* Flatpickr styles for input fields */
 .flatpickr-input {
   width: 100% !important;
   padding: 10px 12px !important;
@@ -98,7 +99,7 @@
   color: var(--muted) !important;
 }
 
-/* Стили для altInput (альтернативный input с placeholder) */
+/* Styles for altInput (alternative input With placeholder) */
 .flatpickr-input.flatpickr-alt-input {
   width: 100% !important;
   padding: 10px 12px !important;
@@ -118,7 +119,7 @@
   border-color: var(--brand) !important;
 }
 
-/* Flatpickr стили для календаря */
+/* Flatpickr calendar styles */
 .flatpickr-calendar {
   background: var(--card) !important;
   border: 1px solid rgba(255,255,255,.1) !important;
@@ -200,7 +201,7 @@
   stroke: #ffffff !important;
 }
 
-/* Year navigation arrows (up-down) - скрыты, так как используется выпадающий список */
+/* Year navigation arrows (up-down) - hidden because a dropdown list is used */
 .flatpickr-prev-year,
 .flatpickr-next-year {
   display: none !important;
@@ -497,6 +498,14 @@ body {
     color: #fff !important;
     -webkit-text-fill-color: #fff !important;
   }
+
+  /* Wellness price rows live inside .card; Safari forces inherit fill from card — keep white on brand */
+  [data-theme="light"] body:has(#book) .massage-list li,
+  [data-theme="light"] body:has(#book) .massage-price-btn__info,
+  [data-theme="light"] body:has(#book) .massage-price-btn__cta {
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+  }
   
   [data-theme="light"] .btn.outline {
     background-color: transparent !important;
@@ -611,6 +620,13 @@ body {
   [data-theme="light"] .btn.primary {
     background-color: var(--brand) !important;
     background-image: none !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+  }
+
+  [data-theme="light"] body:has(#book) .massage-list li,
+  [data-theme="light"] body:has(#book) .massage-price-btn__info,
+  [data-theme="light"] body:has(#book) .massage-price-btn__cta {
     color: #fff !important;
     -webkit-text-fill-color: #fff !important;
   }
@@ -995,31 +1011,6 @@ html { scroll-behavior: smooth; }
   color: var(--text);
   text-wrap: balance;
 }
-.trust-badge-brand-text--vrbo {
-  color: #1f4ae5;
-  -webkit-text-fill-color: #1f4ae5;
-}
-.trust-badge-brand-text--airbnb {
-  color: #ff385c;
-  -webkit-text-fill-color: #ff385c;
-}
-
-/*
- * Safari / Samsung Internet: light theme forces spans to inherit text fill (see blocks above).
- * These badges must keep brand-like colors regardless of theme inheritance.
- */
-[data-theme="light"] .trust-badge-brand-text.trust-badge-brand-text--vrbo,
-[data-theme="dark"] .trust-badge-brand-text.trust-badge-brand-text--vrbo,
-[data-theme="twilight"] .trust-badge-brand-text.trust-badge-brand-text--vrbo {
-  color: #1f4ae5 !important;
-  -webkit-text-fill-color: #1f4ae5 !important;
-}
-[data-theme="light"] .trust-badge-brand-text.trust-badge-brand-text--airbnb,
-[data-theme="dark"] .trust-badge-brand-text.trust-badge-brand-text--airbnb,
-[data-theme="twilight"] .trust-badge-brand-text.trust-badge-brand-text--airbnb {
-  color: #ff385c !important;
-  -webkit-text-fill-color: #ff385c !important;
-}
 
 /* Star in score line: same Safari/Samsung span inheritance issue as brand text */
 [data-theme="light"] .trust-badge-stars,
@@ -1122,15 +1113,55 @@ html { scroll-behavior: smooth; }
   background: var(--card);
   border-radius: 14px;
   padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   box-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset;
 }
+[data-theme="light"] .guest-reviews-column {
+  border-color: rgba(15, 23, 42, 0.1);
+}
+/* Thin colored strokes on columns (Vrbo / Airbnb) */
 .guest-reviews-column--vrbo {
-  border: 2px solid rgba(31, 74, 229, 0.75);
-  box-shadow: 0 0 0 2px rgba(31, 74, 229, 0.25);
+  border: 1px solid rgba(31, 74, 229, 0.38);
 }
 .guest-reviews-column--airbnb {
-  border: 2px solid rgba(255, 56, 92, 0.75);
-  box-shadow: 0 0 0 2px rgba(255, 56, 92, 0.25);
+  border: 1px solid rgba(255, 56, 92, 0.38);
+}
+[data-theme="light"] .guest-reviews-column--vrbo {
+  border-color: rgba(31, 74, 229, 0.42);
+}
+[data-theme="light"] .guest-reviews-column--airbnb {
+  border-color: rgba(255, 56, 92, 0.42);
+}
+/* Outline-buttons in the column footer - outline like a card */
+.guest-reviews-column--vrbo .btn.outline {
+  border-color: rgba(31, 74, 229, 0.38);
+}
+.guest-reviews-column--vrbo .btn.outline:hover {
+  border-color: rgba(31, 74, 229, 0.62);
+  background: rgba(31, 74, 229, 0.08);
+  color: var(--text);
+}
+.guest-reviews-column--airbnb .btn.outline {
+  border-color: rgba(255, 56, 92, 0.38);
+}
+.guest-reviews-column--airbnb .btn.outline:hover {
+  border-color: rgba(255, 56, 92, 0.62);
+  background: rgba(255, 56, 92, 0.08);
+  color: var(--text);
+}
+[data-theme="light"] .guest-reviews-column--vrbo .btn.outline {
+  border-color: rgba(31, 74, 229, 0.42);
+}
+[data-theme="light"] .guest-reviews-column--vrbo .btn.outline:hover {
+  border-color: rgba(31, 74, 229, 0.65);
+  background: rgba(31, 74, 229, 0.07);
+}
+[data-theme="light"] .guest-reviews-column--airbnb .btn.outline {
+  border-color: rgba(255, 56, 92, 0.42);
+}
+[data-theme="light"] .guest-reviews-column--airbnb .btn.outline:hover {
+  border-color: rgba(255, 56, 92, 0.65);
+  background: rgba(255, 56, 92, 0.07);
 }
 .guest-reviews-column-top {
   display: flex;
@@ -1153,27 +1184,7 @@ html { scroll-behavior: smooth; }
 }
 .guest-reviews-source-name {
   font-weight: 700;
-}
-.guest-reviews-source-name--vrbo {
-  color: #1f4ae5;
-  -webkit-text-fill-color: #1f4ae5;
-}
-.guest-reviews-source-name--airbnb {
-  color: #ff385c;
-  -webkit-text-fill-color: #ff385c;
-}
-/* Safari / Samsung: [data-theme="light"] span { inherit } — keep brand names visible */
-[data-theme="light"] .guest-reviews .guest-reviews-source-name--vrbo,
-[data-theme="dark"] .guest-reviews .guest-reviews-source-name--vrbo,
-[data-theme="twilight"] .guest-reviews .guest-reviews-source-name--vrbo {
-  color: #1f4ae5 !important;
-  -webkit-text-fill-color: #1f4ae5 !important;
-}
-[data-theme="light"] .guest-reviews .guest-reviews-source-name--airbnb,
-[data-theme="dark"] .guest-reviews .guest-reviews-source-name--airbnb,
-[data-theme="twilight"] .guest-reviews .guest-reviews-source-name--airbnb {
-  color: #ff385c !important;
-  -webkit-text-fill-color: #ff385c !important;
+  color: inherit;
 }
 .guest-reviews-panel {
   display: flex;
@@ -1266,10 +1277,7 @@ html { scroll-behavior: smooth; }
   }
 }
 @media (min-width: 901px) {
-  .guest-reviews-column--vrbo {
-    min-height: 100%;
-  }
-  .guest-reviews-column--airbnb {
+  .guest-reviews-column {
     min-height: 100%;
   }
 }
@@ -1372,9 +1380,33 @@ body.home #wellness-experiences .card-massage .card-body > p {
 /* Footer */
 .site-footer { border-top: 1px solid rgba(255,255,255,.06); background: var(--card); margin-top: 32px; }
 .footer-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; padding: 24px 0; }
-.footer-nav { list-style: none; padding: 0; margin: 0; }
+/* Footer nav links: tight vertical stack (Navigation + Privacy/Cookie use same classes) */
+.footer-nav {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.footer-nav > li {
+  margin: 0;
+  line-height: 1.25;
+}
 .footer-nav a { color: var(--muted); text-decoration: none; }
 .footer-nav a:hover { color: #fff; }
+/* Quiet hours time — same line rhythm as nav links (no extra min-height; that pushed Privacy too low) */
+.site-footer .footer-grid > div:nth-child(3) > p:first-of-type {
+  margin: 0;
+  line-height: 1.25;
+}
+/*
+ * Align first legal link with 3rd Navigation link (Retreats…): below h4, nav has 2 rows + 2×flex gap;
+ * quiet column has one time line — add margin ≈ one nav row + gaps (1.25em + 4px).
+ */
+.footer-nav--legal {
+  margin-top: calc(1.25em + 4px);
+}
 .copyright { padding: 10px 0 24px; color: var(--muted); font-size: 14px; }
 
 /* Order indicator */
@@ -1382,7 +1414,7 @@ body.home #wellness-experiences .card-massage .card-body > p {
 .order-indicator:hover { filter: brightness(1.05); transform: translateY(-1px); }
 .order-indicator svg { width: 22px; height: 22px; display: block; }
 
-/* Скрываем иконку домика на страницах комнат */
+/* Hiding the house icon on room pages */
 form.booking-form[data-room] ~ .order-indicator,
 .room-hero ~ .order-indicator,
 body:has(form.booking-form[data-room]) .order-indicator,
@@ -1703,7 +1735,7 @@ body.home .home-intro.is-revealed .home-main-subtitle {
 .card-massage .card-img img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .card-massage .card-body h2 { margin: 0 0 8px; }
 
-/* Wellness section - увеличенные отступы для большего "воздуха" */
+/* Wellness section - increased padding for more "air" */
 #wellness-section .section h2 { margin: 0 0 40px; }
 #wellness-section .section-lead { margin: 0 0 60px; }
 #wellness-section .card-massage { margin-bottom: 48px; }
@@ -1838,14 +1870,135 @@ body.home .home-intro.is-revealed .home-main-subtitle {
   color: #fff;
 }
 
+/* Same weight as Guest login / other .btn — avoid heavier “My Account” */
 .btn-signin.authenticated {
   color: var(--text);
-  font-weight: 600;
 }
 
 .btn-signin.authenticated:hover {
   background-color: rgba(255, 255, 255, 0.1);
   transform: translateY(-1px);
+}
+
+/* Pending booking hint under sign-in (pending-booking-hint.js) */
+.header-signin-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 240px;
+}
+
+.header-pending-booking-hint,
+.mobile-pending-booking-hint {
+  position: relative;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: right;
+  max-width: 260px;
+}
+
+.mobile-pending-booking-hint {
+  text-align: left;
+  max-width: none;
+  margin: 8px 0 0;
+  padding: 0 4px 8px;
+}
+
+/* Dark frosted plate behind copy — works on any hero / bright header */
+.header-pending-booking-hint .header-pending-booking-hint__inner,
+.mobile-pending-booking-hint .header-pending-booking-hint__inner {
+  display: inline-block;
+  max-width: 100%;
+  padding: 7px 30px 7px 11px;
+  border-radius: 8px;
+  background: rgba(8, 10, 14, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.45),
+    0 8px 28px rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+[data-theme="light"] .header-pending-booking-hint .header-pending-booking-hint__inner,
+[data-theme="light"] .mobile-pending-booking-hint .header-pending-booking-hint__inner {
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.12),
+    0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+/* !important + -webkit-text-fill-color: body uses -webkit-text-fill-color !important for themes */
+.header-pending-booking-hint .header-pending-booking-hint__text,
+.mobile-pending-booking-hint .header-pending-booking-hint__text {
+  margin: 0;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  /* Brighter on dark plate */
+  color: #ffc4c4 !important;
+  -webkit-text-fill-color: #ffc4c4 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .header-pending-booking-hint .header-pending-booking-hint__text,
+[data-theme="light"] .mobile-pending-booking-hint .header-pending-booking-hint__text {
+  color: #8b2d2d !important;
+  -webkit-text-fill-color: #8b2d2d !important;
+  text-shadow: none;
+}
+
+.header-pending-booking-hint__close,
+.mobile-pending-booking-hint .header-pending-booking-hint__close {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  right: 4px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  font-size: 17px;
+  line-height: 1;
+  cursor: pointer;
+  border-radius: 6px;
+  z-index: 2;
+  opacity: 0.92;
+  color: rgba(255, 255, 255, 0.92) !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.92) !important;
+  background: rgba(0, 0, 0, 0.25);
+  text-shadow: none;
+}
+
+.header-pending-booking-hint__close:hover,
+.mobile-pending-booking-hint .header-pending-booking-hint__close:hover {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+[data-theme="light"] .header-pending-booking-hint__close,
+[data-theme="light"] .mobile-pending-booking-hint .header-pending-booking-hint__close {
+  color: #5c2a2a !important;
+  -webkit-text-fill-color: #5c2a2a !important;
+  background: rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .header-pending-booking-hint__close:hover,
+[data-theme="light"] .mobile-pending-booking-hint .header-pending-booking-hint__close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.mobile-pending-booking-hint .header-pending-booking-hint__close {
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+@media (max-width: 767px) {
+  .header-signin-wrap {
+    max-width: 200px;
+  }
 }
 
 /* Account icon styles */
@@ -2202,7 +2355,7 @@ body.home .home-intro.is-revealed .home-main-subtitle {
   color: var(--muted);
 }
 
-/* Стили для автозаполнения в формах авторизации - темная тема */
+/* Styles for autofill in login forms - dark theme */
 .auth-form input:-webkit-autofill,
 .auth-form input:-webkit-autofill:hover,
 .auth-form input:-webkit-autofill:focus {
@@ -2217,7 +2370,7 @@ body.home .home-intro.is-revealed .home-main-subtitle {
   border-color: var(--brand) !important;
 }
 
-/* Стили для автозаполнения в формах авторизации - светлая тема */
+/* Styles for autofill in login forms - light theme */
 [data-theme="light"] .auth-form input:-webkit-autofill,
 [data-theme="light"] .auth-form input:-webkit-autofill:hover,
 [data-theme="light"] .auth-form input:-webkit-autofill:focus {
@@ -2232,9 +2385,9 @@ body.home .home-intro.is-revealed .home-main-subtitle {
   border-color: var(--brand) !important;
 }
 
-/* Placeholder для светлой темы в формах авторизации */
+/* Placeholder for a light theme in login forms */
 [data-theme="light"] .auth-form input::placeholder {
-  color: #9ca3af !important; /* Темно-серый цвет для placeholder в светлой теме */
+  color: #9ca3af !important; /* Dark gray color for placeholder in a light theme */
 }
 
 .auth-form .btn {
@@ -2684,11 +2837,14 @@ body.home .home-intro.is-revealed .home-main-subtitle {
 
 [data-theme="light"] .btn.primary {
   background: var(--brand);
-  color: white;
+  color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 
 [data-theme="light"] .btn.primary:hover {
   background: var(--brand-600);
+  color: #fff;
+  -webkit-text-fill-color: #fff;
 }
 
 [data-theme="light"] .btn.outline {
@@ -2849,25 +3005,87 @@ body.home .home-intro.is-revealed .home-main-subtitle {
   list-style-position: inside;
 }
 
-/* Massage page - make massage list items look like buttons */
+/* Massage / Wellness — price rows: match .btn.primary (full-width block buttons) */
 body:has(#book) .massage-list li {
   cursor: pointer;
   padding: 10px 16px;
-  margin: 8px 0;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 0;
+  border: 1px solid var(--brand);
   border-radius: 10px;
   list-style-type: none;
   list-style-position: outside;
-  background: var(--card);
-  transition: all 0.2s ease;
-  display: inline-block;
-  min-width: 200px;
+  background: var(--brand);
+  color: #fff;
+  font-family: inherit;
+  font-size: inherit;
+  font-weight: 500;
+  transition: 0.2s ease;
+  display: flex;
+  align-items: stretch;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 body:has(#book) .massage-list li:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
+  background: var(--brand-600);
+  border-color: var(--brand-600);
   transform: translateY(-1px);
+}
+
+body:has(#book) .massage-list li > .massage-price-btn__row {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+}
+
+body:has(#book) .massage-price-btn__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 20px;
+  width: 100%;
+  min-width: 0;
+}
+
+body:has(#book) .massage-price-btn__info {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: left;
+  font: inherit;
+  font-weight: 500;
+  color: #fff;
+  line-height: 1.35;
+  padding-right: 4px;
+}
+
+body:has(#book) .massage-price-btn__cta {
+  flex: 0 0 auto;
+  margin-left: auto;
+  align-self: center;
+  font: inherit;
+  font-weight: 500;
+  color: #fff;
+  white-space: nowrap;
+  text-align: right;
+  padding-left: 14px;
+  border-left: 1px solid rgba(255, 255, 255, 0.35);
+  line-height: 1.35;
+}
+
+body:has(#book) .massage-list li.massage-li-in-cart {
+  background: var(--brand-600);
+  border-color: var(--brand-600);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+}
+
+body:has(#book) .massage-list li.massage-li-in-cart .massage-price-btn__info,
+body:has(#book) .massage-list li.massage-li-in-cart .massage-price-btn__cta {
+  color: #fff;
+}
+
+body:has(#book) .massage-list li.massage-li-in-cart .massage-price-btn__cta {
+  border-left-color: rgba(255, 255, 255, 0.5);
 }
 
 body:has(#book) .massage-list {
@@ -2875,18 +3093,139 @@ body:has(#book) .massage-list {
   margin: 16px 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  width: 100%;
 }
 
-/* Устанавливаем ширину формы Sign In / Create Account равной ширине сообщения */
-/* Форма должна соответствовать размерам рамки сообщения "Your booking has been submitted!" */
+[data-theme="light"] body:has(#book) .massage-list li {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+[data-theme="light"] body:has(#book) .massage-list li:hover {
+  background: var(--brand-600);
+  border-color: var(--brand-600);
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+[data-theme="light"] body:has(#book) .massage-price-btn__info,
+[data-theme="light"] body:has(#book) .massage-price-btn__cta {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
+}
+
+@media (max-width: 480px) {
+  body:has(#book) .massage-price-btn__row {
+    flex-wrap: wrap;
+    row-gap: 10px;
+  }
+  body:has(#book) .massage-price-btn__cta {
+    width: 100%;
+    margin-left: 0;
+    text-align: right;
+    padding-left: 0;
+    padding-top: 10px;
+    border-left: none;
+    border-top: 1px solid rgba(255, 255, 255, 0.38);
+  }
+}
+
+/* Centered success dialog after room / wellness booking */
+.btb-booking-success-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+    max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  box-sizing: border-box;
+  background: rgba(15, 23, 42, 0.72);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  animation: btb-success-overlay-in 0.25s ease;
+}
+
+@keyframes btb-success-overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.btb-booking-success-dialog {
+  width: 100%;
+  max-width: 520px;
+  max-height: min(90vh, 720px);
+  overflow-y: auto;
+  margin: 0;
+  padding: 28px 26px 24px;
+  text-align: left;
+  border-radius: 16px;
+  background: var(--card, #1e293b);
+  color: var(--text, #f8fafc);
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.12),
+    0 24px 48px rgba(0, 0, 0, 0.45),
+    0 0 80px rgba(59, 130, 246, 0.08);
+  animation: btb-success-dialog-in 0.3s ease;
+}
+
+@keyframes btb-success-dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+[data-theme='light'] .btb-booking-success-dialog {
+  border-color: rgba(37, 99, 235, 0.35);
+  box-shadow:
+    0 0 0 1px rgba(37, 99, 235, 0.1),
+    0 24px 48px rgba(15, 23, 42, 0.12);
+}
+
+.btb-booking-success-dialog .booking-success-heading {
+  margin: 0 0 12px;
+  color: var(--text);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.btb-booking-success-dialog .booking-success-body p {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.6;
+  text-align: left;
+}
+
+.btb-booking-success-dialog .booking-success-body p:last-child {
+  margin-bottom: 0;
+}
+
+/* Setting the width of the form Sign In / Create Account equal to message width */
+/* The shape must fit the size of the message frame "Your booking has been submitted!" */
 #booking-success-auth-menu .auth-container {
   max-width: 100% !important;
   width: 100% !important;
   min-width: 0 !important;
 }
 
-/* Увеличиваем ширину всех input полей для обеих форм (Sign In и Create Account) */
+/* Increase the width of all input fields for both forms (Sign In And Create Account) */
 #booking-success-auth-menu .auth-container #login-form input[type="text"],
 #booking-success-auth-menu .auth-container #login-form input[type="email"],
 #booking-success-auth-menu .auth-container #login-form input[type="password"],
@@ -2901,7 +3240,7 @@ body:has(#book) .massage-list {
   box-sizing: border-box !important;
 }
 
-/* Увеличиваем ширину всех контейнеров полей в формах */
+/* Increasing the width of all field containers in forms */
 #booking-success-auth-menu .auth-container .form-row {
   display: grid !important;
   grid-template-columns: 1fr !important;
@@ -2915,26 +3254,26 @@ body:has(#book) .massage-list {
   grid-column: 1 !important;
 }
 
-/* Стили для полей пароля с иконкой глаза */
+/* Styles for password fields with eye icon */
 .password-input-wrapper {
   position: relative;
   width: 100%;
   display: block;
-  /* Убеждаемся, что wrapper занимает всю ширину родителя */
+  /* We make sure that wrapper takes up the entire width of the parent */
   box-sizing: border-box;
 }
 
 .password-input-wrapper input {
   width: 100% !important;
-  /* Увеличиваем padding-right, чтобы текст не перекрывался с иконкой (20px иконка + 12px отступ справа + 8px запас = 40px) */
+  /* We increase padding-right, so that the text does not overlap with the icon (20px icon + 12px right indent + 8px stock = 40px) */
   padding-right: 40px !important;
   box-sizing: border-box !important;
-  /* Убираем outline по умолчанию, используем box-shadow для фокуса */
+  /* We remove outline by default, we use box-shadow for focus */
   outline: none !important;
 }
 
 .password-input-wrapper input:focus {
-  /* Используем box-shadow вместо outline для точного соответствия размерам видимого инпута */
+  /* We use box-shadow instead of outline to exactly match the size of the visible input */
   box-shadow: 0 0 0 2px var(--brand) !important;
   outline: none !important;
 }
@@ -2956,7 +3295,7 @@ body:has(#book) .massage-list {
   opacity: 0.7;
   transition: opacity 0.2s ease;
   z-index: 10;
-  /* Размер кнопки точно по размеру иконки (20x20px) */
+  /* The button size is exactly the size of the icon (20x20px) */
   width: 20px;
   height: 20px;
   min-width: 20px;
@@ -2964,14 +3303,14 @@ body:has(#book) .massage-list {
   max-width: 20px;
   max-height: 20px;
   flex-shrink: 0;
-  /* Кнопка должна быть кликабельной */
+  /* The button must be clickable */
   pointer-events: auto;
-  /* Убираем все отступы и границы */
+  /* Remove all padding and borders */
   outline: none;
-  /* Убеждаемся, что кнопка не перехватывает клики на input */
+  /* We make sure that the button does not intercept clicks on input */
   user-select: none;
   -webkit-user-select: none;
-  /* Убеждаемся, что кнопка не растягивается */
+  /* Make sure the button does not stretch */
   box-sizing: border-box;
 }
 

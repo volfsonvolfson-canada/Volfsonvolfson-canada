@@ -1,10 +1,10 @@
 <?php
 /**
- * Проверка конфликтующих бронирований и заблокированных дат
+ * Check for conflicting bookings and blocked dates
  * 
- * Использование:
- * 1. Загрузите этот файл на хостинг
- * 2. Откройте в браузере: https://new.backtobase.ca/check-booking-conflicts.php?room=Loki%20Suite&checkin=2025-11-06&checkout=2025-11-21
+ * Usage:
+ * 1. Upload this file to your hosting
+ * 2. Open in your browser: https://new.backtobase.ca/check-booking-conflicts.php?room=Loki%20Suite&checkin=2025-11-06&checkout=2025-11-21
  */
 
 require_once 'config.php';
@@ -16,15 +16,15 @@ $roomName = isset($_GET['room']) ? $_GET['room'] : 'Loki Suite';
 $checkinDate = isset($_GET['checkin']) ? $_GET['checkin'] : '2025-11-06';
 $checkoutDate = isset($_GET['checkout']) ? $_GET['checkout'] : '2025-11-21';
 
-echo "<h1>Проверка конфликтов для бронирования</h1>";
-echo "<p><strong>Комната:</strong> " . htmlspecialchars($roomName) . "</p>";
+echo "<h1>Checking conflicts for bookings</h1>";
+echo "<p><strong>Room:</strong> " . htmlspecialchars($roomName) . "</p>";
 echo "<p><strong>Check-in:</strong> " . htmlspecialchars($checkinDate) . "</p>";
 echo "<p><strong>Check-out:</strong> " . htmlspecialchars($checkoutDate) . "</p>";
 
-echo "<h2>1. Конфликтующие бронирования:</h2>";
+echo "<h2>1. Conflicting bookings:</h2>";
 
 try {
-    // Проверяем существующие бронирования
+    // Checking existing bookings
     $sql = "SELECT id, checkin_date, checkout_date, status, guest_name, email FROM bookings 
             WHERE room_name = ? 
             AND status IN ('pending', 'confirmed')
@@ -42,7 +42,7 @@ try {
     ]);
     
     if ($result && count($result) > 0) {
-        echo "<p style='color: red;'><strong>Найдено конфликтующих бронирований: " . count($result) . "</strong></p>";
+        echo "<p style='color: red;'><strong>Conflicting bookings found: " . count($result) . "</strong></p>";
         echo "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
         echo "<tr><th>ID</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Guest</th><th>Email</th></tr>";
         foreach ($result as $booking) {
@@ -57,13 +57,13 @@ try {
         }
         echo "</table>";
     } else {
-        echo "<p style='color: green;'>✅ Конфликтующих бронирований не найдено</p>";
+        echo "<p style='color: green;'>✅ No conflicting bookings found</p>";
     }
 } catch (Exception $e) {
-    echo "<p style='color: red;'>Ошибка при проверке бронирований: " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p style='color: red;'>Error checking reservations: " . htmlspecialchars($e->getMessage()) . "</p>";
 }
 
-echo "<h2>2. Заблокированные даты (вручную):</h2>";
+echo "<h2>2. Blocked dates (manually):</h2>";
 
 try {
     $sql = "SELECT blocked_date, reason FROM blocked_dates 
@@ -74,9 +74,9 @@ try {
     $result = fetchAll($conn, $sql, [$roomName, $checkinDate, $checkoutDate]);
     
     if ($result && count($result) > 0) {
-        echo "<p style='color: red;'><strong>Найдено заблокированных дат: " . count($result) . "</strong></p>";
+        echo "<p style='color: red;'><strong>Blocked dates found: " . count($result) . "</strong></p>";
         echo "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
-        echo "<tr><th>Дата</th><th>Причина</th></tr>";
+        echo "<tr><th>Date</th><th>Cause</th></tr>";
         foreach ($result as $blocked) {
             echo "<tr>";
             echo "<td>" . htmlspecialchars($blocked['blocked_date'] ?? '') . "</td>";
@@ -85,13 +85,13 @@ try {
         }
         echo "</table>";
     } else {
-        echo "<p style='color: green;'>✅ Заблокированных дат не найдено</p>";
+        echo "<p style='color: green;'>✅ No blocked dates found</p>";
     }
 } catch (Exception $e) {
-    echo "<p style='color: red;'>Ошибка при проверке заблокированных дат: " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p style='color: red;'>Error checking blocked dates: " . htmlspecialchars($e->getMessage()) . "</p>";
 }
 
-echo "<h2>3. Заблокированные даты (Airbnb):</h2>";
+echo "<h2>3. Blocked dates (Airbnb):</h2>";
 
 try {
     $sql = "SELECT date, is_available, last_synced_at FROM airbnb_calendar 
@@ -103,9 +103,9 @@ try {
     $result = fetchAll($conn, $sql, [$roomName, $checkinDate, $checkoutDate]);
     
     if ($result && count($result) > 0) {
-        echo "<p style='color: red;'><strong>Найдено заблокированных дат Airbnb: " . count($result) . "</strong></p>";
+        echo "<p style='color: red;'><strong>Blocked dates found Airbnb: " . count($result) . "</strong></p>";
         echo "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
-        echo "<tr><th>Дата</th><th>Available</th><th>Last Synced</th></tr>";
+        echo "<tr><th>Date</th><th>Available</th><th>Last Synced</th></tr>";
         foreach ($result as $airbnb) {
             echo "<tr>";
             echo "<td>" . htmlspecialchars($airbnb['date'] ?? '') . "</td>";
@@ -115,13 +115,13 @@ try {
         }
         echo "</table>";
     } else {
-        echo "<p style='color: green;'>✅ Заблокированных дат Airbnb не найдено</p>";
+        echo "<p style='color: green;'>✅ Blocked dates Airbnb not found</p>";
     }
 } catch (Exception $e) {
-    echo "<p style='color: red;'>Ошибка при проверке Airbnb дат: " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p style='color: red;'>Validation error Airbnb dates: " . htmlspecialchars($e->getMessage()) . "</p>";
 }
 
-echo "<h2>4. Все бронирования для этой комнаты:</h2>";
+echo "<h2>4. All bookings for this room:</h2>";
 
 try {
     $sql = "SELECT id, checkin_date, checkout_date, status, guest_name, email, created_at FROM bookings 
@@ -131,7 +131,7 @@ try {
     $result = fetchAll($conn, $sql, [$roomName]);
     
     if ($result && count($result) > 0) {
-        echo "<p>Найдено бронирований: " . count($result) . "</p>";
+        echo "<p>Bookings found: " . count($result) . "</p>";
         echo "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
         echo "<tr><th>ID</th><th>Check-in</th><th>Check-out</th><th>Status</th><th>Guest</th><th>Email</th><th>Created</th></tr>";
         foreach ($result as $booking) {
@@ -139,7 +139,7 @@ try {
             if (in_array($booking['status'], ['pending', 'confirmed'])) {
                 $checkin = $booking['checkin_date'];
                 $checkout = $booking['checkout_date'];
-                // Проверяем пересечение
+                // Checking the intersection
                 if (($checkin <= $checkoutDate && $checkout > $checkinDate) ||
                     ($checkin < $checkoutDate && $checkout >= $checkinDate) ||
                     ($checkin >= $checkinDate && $checkout <= $checkoutDate)) {
@@ -160,17 +160,17 @@ try {
         }
         echo "</table>";
         if ($isConflict) {
-            echo "<p><small style='color: red;'>* Выделенные красным - конфликтующие бронирования</small></p>";
+            echo "<p><small style='color: red;'>* Highlighted in red - conflicting bookings</small></p>";
         }
     } else {
-        echo "<p>Бронирований для этой комнаты не найдено.</p>";
+        echo "<p>No bookings found for this room.</p>";
     }
 } catch (Exception $e) {
-    echo "<p style='color: red;'>Ошибка при получении бронирований: " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p style='color: red;'>Error when receiving reservations: " . htmlspecialchars($e->getMessage()) . "</p>";
 }
 
 echo "<hr>";
-echo "<p><small>Для удаления этого файла после проверки: удалите check-booking-conflicts.php с хостинга</small></p>";
+echo "<p><small>To delete this file after verification: delete check-booking-conflicts.php from hosting</small></p>";
 ?>
 
 

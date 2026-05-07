@@ -1,11 +1,11 @@
 <?php
 /**
- * Отладочный файл для проверки отправки писем
+ * Debug file for checking email sending
  * 
- * Использование:
- * 1. Загрузите этот файл на хостинг
- * 2. Откройте в браузере: https://new.backtobase.ca/debug_email_sending.php
- * 3. Проверьте результат
+ * Usage:
+ * 1. Upload this file to your hosting
+ * 2. Open in your browser: https://new.backtobase.ca/debug_email_sending.php
+ * 3. Check the result
  */
 
 require_once 'config.php';
@@ -13,31 +13,31 @@ require_once 'email_service.php';
 
 echo "<h1>Email Sending Debug</h1>";
 
-// Проверка 1: Настройки Mailgun
-echo "<h2>1. Проверка настроек Mailgun:</h2>";
+// Check 1: Mailgun Settings
+echo "<h2>1. Checking settings Mailgun:</h2>";
 echo "<ul>";
 
 $checks = [];
 
-// Проверка API Key
+// API Key Check
 if (empty(MAILGUN_API_KEY)) {
-    $checks[] = "❌ MAILGUN_API_KEY не настроен";
+    $checks[] = "❌ MAILGUN_API_KEY not configured";
 } else {
-    $checks[] = "✅ MAILGUN_API_KEY настроен: " . substr(MAILGUN_API_KEY, 0, 10) . "...";
+    $checks[] = "✅ MAILGUN_API_KEY configured: " . substr(MAILGUN_API_KEY, 0, 10) . "...";
 }
 
-// Проверка Domain
+// Domain check
 if (empty(MAILGUN_DOMAIN)) {
-    $checks[] = "❌ MAILGUN_DOMAIN не настроен";
+    $checks[] = "❌ MAILGUN_DOMAIN not configured";
 } else {
-    $checks[] = "✅ MAILGUN_DOMAIN настроен: " . MAILGUN_DOMAIN;
+    $checks[] = "✅ MAILGUN_DOMAIN configured: " . MAILGUN_DOMAIN;
 }
 
-// Проверка From Email
+// Check From Email
 if (empty(MAILGUN_FROM_EMAIL)) {
-    $checks[] = "❌ MAILGUN_FROM_EMAIL не настроен";
+    $checks[] = "❌ MAILGUN_FROM_EMAIL not configured";
 } else {
-    $checks[] = "✅ MAILGUN_FROM_EMAIL настроен: " . MAILGUN_FROM_EMAIL;
+    $checks[] = "✅ MAILGUN_FROM_EMAIL configured: " . MAILGUN_FROM_EMAIL;
 }
 
 foreach ($checks as $check) {
@@ -45,16 +45,16 @@ foreach ($checks as $check) {
 }
 echo "</ul>";
 
-// Проверка 2: Тест отправки письма
-echo "<h2>2. Тест отправки письма:</h2>";
+// Test 2: Email sending test
+echo "<h2>2. Letter sending test:</h2>";
 
 if (!empty(MAILGUN_API_KEY) && !empty(MAILGUN_DOMAIN)) {
     $testEmail = MAILGUN_HOST_EMAIL ?: MAILGUN_FROM_EMAIL;
     
-    echo "<p>Попытка отправить тестовое письмо на: <strong>" . htmlspecialchars($testEmail) . "</strong></p>";
-    echo "<p>Используемый домен: <strong>" . htmlspecialchars(MAILGUN_DOMAIN) . "</strong></p>";
+    echo "<p>Attempting to send a test email to: <strong>" . htmlspecialchars($testEmail) . "</strong></p>";
+    echo "<p>Domain used: <strong>" . htmlspecialchars(MAILGUN_DOMAIN) . "</strong></p>";
     
-    // Пробуем отправить письмо напрямую через sendEmail
+    // Trying to send a letter directly via sendEmail
     $result = sendEmail(
         $testEmail,
         'Debug Test Email',
@@ -62,24 +62,24 @@ if (!empty(MAILGUN_API_KEY) && !empty(MAILGUN_DOMAIN)) {
         'This is a debug test email.'
     );
     
-    echo "<h3>Результат отправки:</h3>";
+    echo "<h3>Sending result:</h3>";
     echo "<pre>";
     echo json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
     echo "</pre>";
     
     if ($result['success']) {
-        echo "<p style='color: green;'><strong>✅ Письмо отправлено успешно!</strong></p>";
-        echo "<p>Проверьте Mailgun Dashboard → Sending → Logs</p>";
+        echo "<p style='color: green;'><strong>✅ The letter was sent successfully!</strong></p>";
+        echo "<p>Check Mailgun Dashboard → Sending → Logs</p>";
     } else {
-        echo "<p style='color: red;'><strong>❌ Ошибка отправки письма!</strong></p>";
-        echo "<p><strong>Ошибка:</strong> " . htmlspecialchars($result['error'] ?? 'Unknown error') . "</p>";
+        echo "<p style='color: red;'><strong>❌ Error sending email!</strong></p>";
+        echo "<p><strong>Error:</strong> " . htmlspecialchars($result['error'] ?? 'Unknown error') . "</p>";
     }
 } else {
-    echo "<p style='color: red;'><strong>❌ Не все настройки заполнены. Заполните config.php перед тестированием.</strong></p>";
+    echo "<p style='color: red;'><strong>❌ Not all settings are complete. Fill in config.php before testing.</strong></p>";
 }
 
-// Проверка 3: Проверка последних бронирований
-echo "<h2>3. Проверка последних бронирований:</h2>";
+// Check 3: Checking recent bookings
+echo "<h2>3. Checking recent bookings:</h2>";
 
 try {
     require_once 'common.php';
@@ -88,7 +88,7 @@ try {
     $result = fetchAll($conn, $query);
     
     if ($result && count($result) > 0) {
-        echo "<p>Найдено бронирований: " . count($result) . "</p>";
+        echo "<p>Bookings found: " . count($result) . "</p>";
         echo "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
         echo "<tr><th>ID</th><th>Room</th><th>Guest</th><th>Email</th><th>Status</th><th>Created</th></tr>";
         foreach ($result as $booking) {
@@ -103,18 +103,18 @@ try {
         }
         echo "</table>";
     } else {
-        echo "<p>Бронирования не найдены в базе данных.</p>";
+        echo "<p>Reservations not found in the database.</p>";
     }
 } catch (Exception $e) {
-    echo "<p style='color: red;'>Ошибка при проверке бронирований: " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p style='color: red;'>Error checking reservations: " . htmlspecialchars($e->getMessage()) . "</p>";
 }
 
-// Проверка 4: Проверка логов активности
-echo "<h2>4. Последние логи активности (если есть):</h2>";
+// Check 4: Checking activity logs
+echo "<h2>4. Latest activity logs (if there is):</h2>";
 
 try {
     if (function_exists('logActivity')) {
-        // Проверяем, есть ли таблица activity_logs
+        // Checking if there is an activity_logs table
         $query = "SHOW TABLES LIKE 'activity_logs'";
         $tables = fetchAll($conn, $query);
         
@@ -123,7 +123,7 @@ try {
             $logs = fetchAll($conn, $logQuery);
             
             if ($logs && count($logs) > 0) {
-                echo "<p>Найдено логов: " . count($logs) . "</p>";
+                echo "<p>Logs found: " . count($logs) . "</p>";
                 echo "<table border='1' cellpadding='10' style='border-collapse: collapse; font-size: 12px;'>";
                 echo "<tr><th>Time</th><th>Message</th><th>Level</th></tr>";
                 foreach ($logs as $log) {
@@ -135,18 +135,18 @@ try {
                 }
                 echo "</table>";
             } else {
-                echo "<p>Логи email не найдены.</p>";
+                echo "<p>Logs email not found.</p>";
             }
         } else {
-            echo "<p>Таблица activity_logs не найдена.</p>";
+            echo "<p>Table activity_logs not found.</p>";
         }
     }
 } catch (Exception $e) {
-    echo "<p style='color: orange;'>Не удалось проверить логи: " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p style='color: orange;'>Failed to check logs: " . htmlspecialchars($e->getMessage()) . "</p>";
 }
 
 echo "<hr>";
-echo "<p><small>Для удаления этого файла после проверки: удалите debug_email_sending.php с хостинга</small></p>";
+echo "<p><small>To delete this file after verification: delete debug_email_sending.php from hosting</small></p>";
 ?>
 
 

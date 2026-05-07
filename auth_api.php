@@ -1,28 +1,31 @@
 <?php
-// API для аутентификации пользователей
+// API for user authentication
 require_once 'common.php';
 require_once 'jwt_helper.php';
+if (!empty(MAILGUN_API_KEY)) {
+    require_once 'email_service.php';
+}
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
-// Функция для хеширования пароля
+// Password hashing function
 function hashPassword($password) {
     return password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 }
 
-// Функция для проверки пароля
+// Password check function
 function verifyPassword($password, $hash) {
     return password_verify($password, $hash);
 }
 
-// Регистрация нового пользователя
+// New user registration
 if ($action === 'register') {
     $name = trim($_POST['name'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $phone = trim($_POST['phone'] ?? '');
     $password = $_POST['password'] ?? '';
     
-    // Валидация
+    // Validation
     if (empty($name) || empty($email) || empty($phone) || empty($password)) {
         sendError('All fields are required');
     }
@@ -35,17 +38,17 @@ if ($action === 'register') {
         sendError('Password must be at least 6 characters long');
     }
     
-    // Проверяем, существует ли пользователь с таким email
+    // Checking if a user with this email exists
     $existingUser = fetchOne($conn, "SELECT id FROM users WHERE email = ?", [$email]);
     
     if ($existingUser) {
         sendError('An account with this email already exists');
     }
     
-    // Хешируем пароль
+    // Hashing the password
     $passwordHash = hashPassword($password);
     
-    // Создаем пользователя
+    // Create a user
     $userId = insertRecord($conn, 'users', [
         'email' => $email,
         'password_hash' => $passwordHash,
@@ -59,17 +62,33 @@ if ($action === 'register') {
         sendError('Failed to create user account');
     }
     
-    // Получаем созданного пользователя
+    // We get the created user
     $user = fetchOne($conn, "SELECT id, email, name, phone, phone2, is_verified, created_at FROM users WHERE id = ?", [$userId]);
     
-    // Создаем JWT токен
+    // Create a JWT token
     $token = createJWT([
         'user_id' => $user['id'],
         'email' => $user['email']
     ]);
     
-    // Устанавливаем cookie с токеном
-    setcookie('btb_auth_token', $token, time() + JWT_EXPIRATION, '/', '', true, true); // secure, httponly
+    $cookieOpts = [
+        'expires' => time() + JWT_EXPIRATION,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+    setcookie('btb_auth_token', $token, $cookieOpts);
+    
+    if (!empty(MAILGUN_API_KEY) && function_exists('sendUserRegistrationWelcomeEmail')) {
+        register_shutdown_function(static function () use ($user) {
+            try {
+                sendUserRegistrationWelcomeEmail($user);
+            } catch (Throwable $e) {
+                error_log('Auth register email error: ' . $e->getMessage());
+            }
+        });
+    }
     
     sendSuccess([
         'user' => [
@@ -84,12 +103,12 @@ if ($action === 'register') {
     ]);
 }
 
-// Вход пользователя
+// User Login
 if ($action === 'login') {
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     
-    // Валидация
+    // Validation
     if (empty($email) || empty($password)) {
         sendError('Email and password are required');
     }
@@ -98,29 +117,50 @@ if ($action === 'login') {
         sendError('Invalid email address');
     }
     
-    // Получаем пользователя
+    // Getting the user
     $user = fetchOne($conn, "SELECT id, email, password_hash, name, phone, phone2, is_verified, created_at FROM users WHERE email = ?", [$email]);
     
     if (!$user) {
         sendError('No account found with this email');
     }
     
-    // Проверяем пароль
+    // Checking the password
     if (!verifyPassword($password, $user['password_hash'])) {
         sendError('Incorrect password');
     }
     
-    // Обновляем время последнего сеанса
+    // Update last session time
     $stmt = executeQuery($conn, "UPDATE users SET last_session = NOW() WHERE id = ?", [$user['id']]);
     
-    // Создаем JWT токен
+    // Create a JWT token
     $token = createJWT([
         'user_id' => $user['id'],
         'email' => $user['email']
     ]);
     
-    // Устанавливаем cookie с токеном
-    setcookie('btb_auth_token', $token, time() + JWT_EXPIRATION, '/', '', true, true); // secure, httponly
+    $cookieOpts = [
+        'expires' => time() + JWT_EXPIRATION,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ];
+    setcookie('btb_auth_token', $token, $cookieOpts);
+    
+    if (!empty(MAILGUN_API_KEY) && function_exists('sendUserLoginNotificationEmail')) {
+        $loginMeta = [
+            'ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
+            'user_agent' => (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''),
+            'time' => date('Y-m-d H:i:s'),
+        ];
+        register_shutdown_function(static function () use ($user, $loginMeta) {
+            try {
+                sendUserLoginNotificationEmail($user, $loginMeta);
+            } catch (Throwable $e) {
+                error_log('Auth login email error: ' . $e->getMessage());
+            }
+        });
+    }
     
     sendSuccess([
         'user' => [
@@ -136,7 +176,7 @@ if ($action === 'login') {
     ]);
 }
 
-// Проверка токена и получение данных пользователя
+// Validating the token and retrieving user data
 if ($action === 'verify') {
     $user = authenticateUser($conn);
     
@@ -158,15 +198,21 @@ if ($action === 'verify') {
     ]);
 }
 
-// Выход пользователя
+// User logout
 if ($action === 'logout') {
-    // Удаляем cookie
-    setcookie('btb_auth_token', '', time() - 3600, '/', '', true, true);
+    // Delete cookies
+    setcookie('btb_auth_token', '', [
+        'expires' => time() - 3600,
+        'path' => '/',
+        'secure' => (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off'),
+        'httponly' => true,
+        'samesite' => 'Lax',
+    ]);
     
     sendSuccess(['message' => 'Logged out successfully']);
 }
 
-// Поиск пользователя по email (для проверки существования)
+// Search for user by email (to check existence)
 if ($action === 'find_by_email') {
     $email = trim($_GET['email'] ?? '');
     
@@ -183,7 +229,7 @@ if ($action === 'find_by_email') {
     }
 }
 
-// Обновление данных пользователя
+// Updating User Data
 if ($action === 'update_profile') {
     $user = authenticateUser($conn);
     
@@ -199,7 +245,7 @@ if ($action === 'update_profile') {
         sendError('Name is required');
     }
     
-    // Обновляем данные
+    // Updating the data
     $result = updateRecord($conn, 'users', [
         'name' => $name,
         'phone' => $phone,
@@ -210,13 +256,13 @@ if ($action === 'update_profile') {
         sendError('Failed to update profile');
     }
     
-    // Получаем обновленного пользователя
+    // Getting the updated user
     $updatedUser = fetchOne($conn, "SELECT id, email, name, phone, phone2, is_verified, created_at FROM users WHERE id = ?", [$user['id']]);
     
     sendSuccess(['user' => $updatedUser]);
 }
 
-// Изменение пароля
+// Changing your password
 if ($action === 'change_password') {
     $user = authenticateUser($conn);
     
@@ -235,18 +281,18 @@ if ($action === 'change_password') {
         sendError('New password must be at least 6 characters long');
     }
     
-    // Получаем текущий хеш пароля
+    // Get the current password hash
     $currentUser = fetchOne($conn, "SELECT password_hash FROM users WHERE id = ?", [$user['id']]);
     
-    // Проверяем текущий пароль
+    // Checking the current password
     if (!verifyPassword($currentPassword, $currentUser['password_hash'])) {
         sendError('Current password is incorrect');
     }
     
-    // Хешируем новый пароль
+    // Hashing the new password
     $newPasswordHash = hashPassword($newPassword);
     
-    // Обновляем пароль
+    // Updating the password
     $result = updateRecord($conn, 'users', [
         'password_hash' => $newPasswordHash
     ], 'id = ?', [$user['id']]);
@@ -258,7 +304,7 @@ if ($action === 'change_password') {
     sendSuccess(['message' => 'Password changed successfully']);
 }
 
-// Получение списка всех пользователей (для админки)
+// Getting a list of all users (for the admin panel)
 if ($action === 'get_users') {
     // TODO: Add admin authentication check here
     // For now, allow access (should be protected in production)
@@ -269,14 +315,15 @@ if ($action === 'get_users') {
         if ($users === false) {
             sendError('Failed to fetch users');
         }
-        
-        sendSuccess(['data' => $users]);
+
+        // sendResponse puts this in top-level "data" — admin expects result.data to be the user list
+        sendSuccess($users);
     } catch (Exception $e) {
         sendError('Error fetching users: ' . $e->getMessage());
     }
 }
 
-// Удаление пользователя (для админки)
+// Deleting a user (for admin)
 if ($action === 'delete_user') {
     // TODO: Add admin authentication check here
     // For now, allow access (should be protected in production)
@@ -288,10 +335,10 @@ if ($action === 'delete_user') {
     }
     
     try {
-        // Удаляем токены пользователя (если есть)
+        // Delete user tokens (if any)
         executeQuery($conn, "DELETE FROM user_tokens WHERE user_id = ?", [$userId]);
         
-        // Удаляем пользователя
+        // Deleting a user
         $result = executeQuery($conn, "DELETE FROM users WHERE id = ?", [$userId]);
         
         if ($result === false) {
@@ -304,6 +351,6 @@ if ($action === 'delete_user') {
     }
 }
 
-// Если действие не распознано
+// If the action is not recognized
 sendError('Invalid action');
 

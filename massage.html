@@ -110,10 +110,9 @@
           <p id="massage-relaxing-description">This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.</p>
           <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <li data-m-type="Relaxing Massage" data-m-duration="60" role="button" tabindex="0" aria-pressed="false">60 minutes — 110 CAD</li>
-            <li data-m-type="Relaxing Massage" data-m-duration="90" role="button" tabindex="0" aria-pressed="false">90 minutes — 160 CAD</li>
+            <li data-m-type="Relaxing Massage" data-m-duration="60" role="button" tabindex="0" aria-pressed="false"><span class="massage-price-btn__row"><span class="massage-price-btn__info">60 minutes — 110 CAD</span><span class="massage-price-btn__cta">add to cart</span></span></li>
+            <li data-m-type="Relaxing Massage" data-m-duration="90" role="button" tabindex="0" aria-pressed="false"><span class="massage-price-btn__row"><span class="massage-price-btn__info">90 minutes — 160 CAD</span><span class="massage-price-btn__cta">add to cart</span></span></li>
           </ul>
-          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
           </div>
         </div>
       </section>
@@ -127,10 +126,9 @@
           <p id="massage-deep-tissue-description">For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.</p>
           <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <li data-m-type="Deep Tissue Massage" data-m-duration="60" role="button" tabindex="0" aria-pressed="false">60 minutes — 120 CAD</li>
-            <li data-m-type="Deep Tissue Massage" data-m-duration="90" role="button" tabindex="0" aria-pressed="false">90 minutes — 170 CAD</li>
+            <li data-m-type="Deep Tissue Massage" data-m-duration="60" role="button" tabindex="0" aria-pressed="false"><span class="massage-price-btn__row"><span class="massage-price-btn__info">60 minutes — 120 CAD</span><span class="massage-price-btn__cta">add to cart</span></span></li>
+            <li data-m-type="Deep Tissue Massage" data-m-duration="90" role="button" tabindex="0" aria-pressed="false"><span class="massage-price-btn__row"><span class="massage-price-btn__info">90 minutes — 170 CAD</span><span class="massage-price-btn__cta">add to cart</span></span></li>
           </ul>
-          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
           </div>
         </div>
       </section>
@@ -144,10 +142,9 @@
           <p id="massage-reiki-description">Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body's energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.</p>
           <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <li data-m-type="Reiki Energy Healing" data-m-duration="15" role="button" tabindex="0" aria-pressed="false">15 minutes on the go — 25 CAD</li>
-            <li data-m-type="Reiki Energy Healing" data-m-duration="30" role="button" tabindex="0" aria-pressed="false">30 minutes as an add-on — 50 CAD</li>
+            <li data-m-type="Reiki Energy Healing" data-m-duration="15" role="button" tabindex="0" aria-pressed="false"><span class="massage-price-btn__row"><span class="massage-price-btn__info">15 minutes on the go — 25 CAD</span><span class="massage-price-btn__cta">add to cart</span></span></li>
+            <li data-m-type="Reiki Energy Healing" data-m-duration="30" role="button" tabindex="0" aria-pressed="false"><span class="massage-price-btn__row"><span class="massage-price-btn__info">30 minutes as an add-on — 50 CAD</span><span class="massage-price-btn__cta">add to cart</span></span></li>
           </ul>
-          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
           </div>
         </div>
       </section>
@@ -161,9 +158,8 @@
           <p id="massage-sauna-description">After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.</p>
           <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <li data-m-type="Sauna" data-m-duration="60" role="button" tabindex="0" aria-pressed="false">1 hour — 25 CAD</li>
+            <li data-m-type="Sauna" data-m-duration="60" role="button" tabindex="0" aria-pressed="false"><span class="massage-price-btn__row"><span class="massage-price-btn__info">1 hour — 25 CAD</span><span class="massage-price-btn__cta">add to cart</span></span></li>
           </ul>
-          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
           </div>
         </div>
       </section>
@@ -201,7 +197,7 @@
               <input id="phone" name="phone" type="tel" placeholder="+1 555 123‑4567" required />
             </div>
           </div>
-          <button class="btn primary" id="massage-submit-btn" type="submit">Book service</button>
+          <button class="btn primary" id="massage-submit-btn" type="submit" data-btb-default-service-label="Book service" data-btb-cart-submit-label="">Book service</button>
         </form>
       </section>
 
@@ -262,8 +258,10 @@
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -402,12 +400,8 @@
       }
     }
     .massage-list li[data-m-type] {
-      transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-    }
-    .massage-list li[data-m-type].massage-li-in-cart {
-      background: var(--brand, #3b82f6);
-      color: #fff;
-      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease,
+        transform 0.15s ease;
     }
     body:has(#book) .card-massage .massage-price-hover-zone {
       display: block;
@@ -480,47 +474,6 @@
     .massage-booking-intro:empty {
       display: none;
     }
-    .massage-price-tap-hint {
-      display: block;
-      box-sizing: border-box;
-      text-align: center;
-      font-size: 0.82rem;
-      line-height: 1.4;
-      font-weight: 400;
-      font-style: normal;
-      margin: 0;
-      padding: 0;
-      border: none;
-      color: var(--muted, #64748b);
-      overflow: hidden;
-      pointer-events: none;
-      transform-origin: top;
-      transition: opacity 0.2s ease, max-height 0.22s ease, margin 0.22s ease;
-    }
-    @supports (selector(:has(*))) {
-      @media (hover: hover) {
-        .card-massage:has(.massage-price-hover-zone) .massage-price-tap-hint {
-          max-height: 0;
-          opacity: 0;
-        }
-        .card-massage:has(.massage-price-hover-zone:hover) .massage-price-tap-hint,
-        .card-massage:has(.massage-price-hover-zone:focus-within) .massage-price-tap-hint {
-          max-height: 3.5rem;
-          opacity: 1;
-          margin: 0.4rem 0 0;
-        }
-      }
-    }
-    @media (hover: none) {
-      .massage-price-tap-hint {
-        display: none;
-      }
-    }
-    @supports not (selector(:has(*))) {
-      .massage-price-tap-hint {
-        display: none;
-      }
-    }
     .massage-cart-panel {
       margin-bottom: 1.25rem;
       padding: 1rem 1.1rem;
@@ -588,6 +541,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
   <script src="script.js?v=32"></script>
+  <script src="auth-menu.js?v=26"></script>
   <script src="booking.js"></script>
   <script src="auth.js?v=26"></script>
   <script>

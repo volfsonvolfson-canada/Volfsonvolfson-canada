@@ -1,69 +1,69 @@
 <?php
 /**
- * Проверка настроек Mailgun на хостинге
+ * Checking Mailgun settings on hosting
  * 
- * Использование:
- * 1. Загрузите этот файл на хостинг
- * 2. Откройте в браузере: https://new.backtobase.ca/check-mailgun-config.php
- * 3. Проверьте результат
+ * Usage:
+ * 1. Upload this file to your hosting
+ * 2. Open in your browser: https://new.backtobase.ca/check-mailgun-config.php
+ * 3. Check the result
  */
 
 require_once 'config.php';
 
 header('Content-Type: text/html; charset=utf-8');
 
-echo "<h1>Проверка настроек Mailgun на хостинге</h1>";
+echo "<h1>Checking settings Mailgun on hosting</h1>";
 
-echo "<h2>1. Проверка констант:</h2>";
+echo "<h2>1. Checking constants:</h2>";
 echo "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
 
 $checks = [];
 
-// Проверка MAILGUN_DOMAIN
+// Checking MAILGUN_DOMAIN
 if (defined('MAILGUN_DOMAIN')) {
     $domain = MAILGUN_DOMAIN;
     $checks[] = [
         'name' => 'MAILGUN_DOMAIN',
         'value' => $domain,
-        'status' => ($domain === 'new.backtobase.ca') ? '✅ Правильно' : '❌ Неправильно (должно быть: new.backtobase.ca)'
+        'status' => ($domain === 'new.backtobase.ca') ? '✅ Right' : '❌ Wrong (there must be: new.backtobase.ca)'
     ];
 } else {
     $checks[] = [
         'name' => 'MAILGUN_DOMAIN',
-        'value' => 'НЕ ОПРЕДЕЛЕНО',
-        'status' => '❌ НЕ НАСТРОЕНО'
+        'value' => 'NOT DEFINED',
+        'status' => '❌ NOT CONFIGURED'
     ];
 }
 
-// Проверка MAILGUN_FROM_EMAIL
+// Checking MAILGUN_FROM_EMAIL
 if (defined('MAILGUN_FROM_EMAIL')) {
     $fromEmail = MAILGUN_FROM_EMAIL;
     $checks[] = [
         'name' => 'MAILGUN_FROM_EMAIL',
         'value' => $fromEmail,
-        'status' => ($fromEmail === 'bookings@new.backtobase.ca') ? '✅ Правильно' : '❌ Неправильно (должно быть: bookings@new.backtobase.ca)'
+        'status' => ($fromEmail === 'bookings@new.backtobase.ca') ? '✅ Right' : '❌ Wrong (there must be: bookings@new.backtobase.ca)'
     ];
 } else {
     $checks[] = [
         'name' => 'MAILGUN_FROM_EMAIL',
-        'value' => 'НЕ ОПРЕДЕЛЕНО',
-        'status' => '❌ НЕ НАСТРОЕНО'
+        'value' => 'NOT DEFINED',
+        'status' => '❌ NOT CONFIGURED'
     ];
 }
 
-// Проверка MAILGUN_API_KEY
+// Checking MAILGUN_API_KEY
 if (defined('MAILGUN_API_KEY')) {
     $apiKey = MAILGUN_API_KEY;
     $checks[] = [
         'name' => 'MAILGUN_API_KEY',
         'value' => substr($apiKey, 0, 10) . '...',
-        'status' => (!empty($apiKey)) ? '✅ Настроено' : '❌ Пустой'
+        'status' => (!empty($apiKey)) ? '✅ Configured' : '❌ Empty'
     ];
 } else {
     $checks[] = [
         'name' => 'MAILGUN_API_KEY',
-        'value' => 'НЕ ОПРЕДЕЛЕНО',
-        'status' => '❌ НЕ НАСТРОЕНО'
+        'value' => 'NOT DEFINED',
+        'status' => '❌ NOT CONFIGURED'
     ];
 }
 
@@ -77,7 +77,7 @@ foreach ($checks as $check) {
 
 echo "</table>";
 
-echo "<h2>2. Проверка последних бронирований:</h2>";
+echo "<h2>2. Checking recent bookings:</h2>";
 
 try {
     require_once 'common.php';
@@ -86,7 +86,7 @@ try {
     $result = fetchAll($conn, $query);
     
     if ($result && count($result) > 0) {
-        echo "<p>Найдено бронирований: " . count($result) . "</p>";
+        echo "<p>Bookings found: " . count($result) . "</p>";
         echo "<table border='1' cellpadding='10' style='border-collapse: collapse;'>";
         echo "<tr><th>ID</th><th>Room</th><th>Guest</th><th>Email</th><th>Status</th><th>Created</th></tr>";
         foreach ($result as $booking) {
@@ -101,25 +101,25 @@ try {
         }
         echo "</table>";
         
-        echo "<p><strong>Последнее бронирование создано:</strong> " . htmlspecialchars($result[0]['created_at'] ?? 'N/A') . "</p>";
+        echo "<p><strong>Last booking created:</strong> " . htmlspecialchars($result[0]['created_at'] ?? 'N/A') . "</p>";
     } else {
-        echo "<p>Бронирования не найдены в базе данных.</p>";
+        echo "<p>Reservations not found in the database.</p>";
     }
 } catch (Exception $e) {
-    echo "<p style='color: red;'>Ошибка при проверке бронирований: " . htmlspecialchars($e->getMessage()) . "</p>";
+    echo "<p style='color: red;'>Error checking reservations: " . htmlspecialchars($e->getMessage()) . "</p>";
 }
 
 echo "<hr>";
-echo "<h2>3. Что проверить:</h2>";
+echo "<h2>3. What to check:</h2>";
 echo "<ul>";
-echo "<li>✅ <strong>MAILGUN_DOMAIN</strong> должен быть: <code>new.backtobase.ca</code></li>";
-echo "<li>✅ <strong>MAILGUN_FROM_EMAIL</strong> должен быть: <code>bookings@new.backtobase.ca</code></li>";
-echo "<li>✅ Создайте новое бронирование ПОСЛЕ обновления config.php</li>";
-echo "<li>✅ Проверьте логи PHP на хостинге после создания бронирования</li>";
+echo "<li>✅ <strong>MAILGUN_DOMAIN</strong> must be: <code>new.backtobase.ca</code></li>";
+echo "<li>✅ <strong>MAILGUN_FROM_EMAIL</strong> must be: <code>bookings@new.backtobase.ca</code></li>";
+echo "<li>✅ Create a new booking AFTER the update config.php</li>";
+echo "<li>✅ Check the logs PHP on the hosting after creating a reservation</li>";
 echo "</ul>";
 
 echo "<hr>";
-echo "<p><small>Для удаления этого файла после проверки: удалите check-mailgun-config.php с хостинга</small></p>";
+echo "<p><small>To delete this file after verification: delete check-mailgun-config.php from hosting</small></p>";
 ?>
 
 

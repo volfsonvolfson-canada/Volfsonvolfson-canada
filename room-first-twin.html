@@ -169,11 +169,12 @@
               </select>
             </div>
             <div>
-              <label for="pets">Pets</label>
+              <label for="pets">Dogs</label>
               <select id="pets" name="pets" required>
                 <option value="" disabled selected hidden>—</option>
-                <option value="add">Add pets</option>
-                <option value="no">No pets</option>
+                <option value="0">No dogs</option>
+                <option value="1">1 dog</option>
+                <option value="2">2 dogs</option>
               </select>
             </div>
           </div>
@@ -227,8 +228,10 @@
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -370,7 +373,7 @@
       
       if (!modalImage || galleryImages.length === 0) return;
       
-      // Добавляем плавный переход
+      // Adding a smooth transition
       modalImage.style.opacity = '0';
       
       setTimeout(() => {
@@ -378,7 +381,7 @@
         modalImage.alt = ROOM_GALLERY_LABEL + ' — slide ' + (currentImageIndex + 1) + ' of ' + galleryImages.length;
         if (counter) counter.textContent = `${currentImageIndex + 1} / ${galleryImages.length}`;
         
-        // Показываем изображение с плавным появлением
+        // Showing the image with a smooth fade in
         modalImage.style.opacity = '1';
       }, 150);
     }
@@ -424,7 +427,7 @@
       // loadRoomGroundTwinContentFromAPI();
     });
   </script>
-  <!-- Flatpickr для визуальной блокировки занятых дат в календаре -->
+  <!-- Flatpickr for visually blocking busy dates in your calendar -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
   <script src="auth-menu.js"></script>

@@ -1,19 +1,19 @@
 <?php
 /**
- * Скрипт для удаления всех бронирований из базы данных
- * ВНИМАНИЕ: Этот скрипт удалит ВСЕ бронирования без возможности восстановления!
+ * Script to delete all bookings from the database
+ * ATTENTION: This script will delete ALL reservations permanently!
  * 
- * Использование:
- * 1. Загрузите этот файл на хостинг
- * 2. Откройте в браузере: https://new.backtobase.ca/delete_all_bookings.php
- * 3. После выполнения удалите файл с хостинга для безопасности
+ * Usage:
+ * 1. Upload this file to your hosting
+ * 2. Open in your browser: https://new.backtobase.ca/delete_all_bookings.php
+ * 3. After execution, delete the file from the hosting for security
  */
 
 require_once 'config.php';
 require_once 'common.php';
 
-// Используем глобальное подключение $conn из config.php
-// Проверка авторизации администратора (опционально, раскомментируйте если нужно)
+// Using the global connection $conn from config.php
+// Checking administrator authorization (optional, uncomment if necessary)
 // if (!isAdminAuthenticated()) {
 //     die('Admin authentication required');
 // }
@@ -108,28 +108,28 @@ header('Content-Type: text/html; charset=utf-8');
         <?php
         if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['confirm_delete'])) {
             try {
-                // Используем глобальное подключение $conn из config.php
+                // Using the global connection $conn from config.php
                 global $conn;
                 
                 if (!$conn || $conn->connect_error) {
                     throw new Exception('Failed to connect to database: ' . ($conn->connect_error ?? 'Unknown error'));
                 }
                 
-                // Получаем количество бронирований перед удалением
+                // Getting the number of reservations before deleting
                 $countBefore = fetchOne($conn, "SELECT COUNT(*) as count FROM bookings");
                 $countBefore = $countBefore['count'] ?? 0;
                 
-                // Удаляем связанные записи из booking_confirmations
+                // Removing related entries from booking_confirmations
                 $deleteConfirmations = executeQuery($conn, "DELETE FROM booking_confirmations");
                 
-                // Удаляем все бронирования
+                // We delete all bookings
                 $deleteBookings = executeQuery($conn, "DELETE FROM bookings");
                 
-                // Проверяем результат
+                // Checking the result
                 $countAfter = fetchOne($conn, "SELECT COUNT(*) as count FROM bookings");
                 $countAfter = $countAfter['count'] ?? 0;
                 
-                // Не закрываем соединение, так как оно глобальное
+                // We do not close the connection, since it is global
                 
                 echo '<div class="success">';
                 echo '<h2>✅ Success!</h2>';
@@ -149,9 +149,9 @@ header('Content-Type: text/html; charset=utf-8');
                 echo '</div>';
             }
         } else {
-            // Показываем форму подтверждения
+            // Showing the confirmation form
             try {
-                // Используем глобальное подключение $conn из config.php
+                // Using the global connection $conn from config.php
                 global $conn;
                 
                 if ($conn && !$conn->connect_error) {

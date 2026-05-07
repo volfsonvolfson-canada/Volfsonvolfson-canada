@@ -1,17 +1,17 @@
 <?php
 /**
  * iCal Parser
- * Парсинг iCal календарей от Airbnb
+ * Parsing iCal calendars from Airbnb
  */
 
 require_once 'config.php';
 require_once 'common.php';
 
 /**
- * Парсинг iCal URL и извлечение занятых дат
+ * Parse iCal URL and extract busy dates
  * 
- * @param string $icalUrl URL iCal календаря
- * @return array Массив занятых дат в формате ['YYYY-MM-DD' => true, ...]
+ * @param string $icalUrl iCal calendar URL
+ * @return array Array of busy dates in the format ['YYYY-MM-DD' => true, ...]
  */
 function parseIcalUrl($icalUrl) {
     if (empty($icalUrl)) {
@@ -19,7 +19,7 @@ function parseIcalUrl($icalUrl) {
     }
     
     try {
-        // Загружаем iCal данные
+        // Loading iCal data
         $icalData = fetchIcalData($icalUrl);
         
         if (empty($icalData)) {
@@ -27,7 +27,7 @@ function parseIcalUrl($icalUrl) {
             return [];
         }
         
-        // Парсим iCal формат
+        // Parse iCal format
         $blockedDates = parseIcalData($icalData);
         
         logActivity("Parsed iCal calendar: " . count($blockedDates) . " blocked dates found");
@@ -41,10 +41,10 @@ function parseIcalUrl($icalUrl) {
 }
 
 /**
- * Загрузка iCal данных по URL
+ * Loading iCal data by URL
  * 
- * @param string $icalUrl URL iCal календаря
- * @return string Содержимое iCal файла или пустая строка
+ * @param string $icalUrl iCal calendar URL
+ * @return string Contents of iCal file or empty string
  */
 function fetchIcalData($icalUrl) {
     if (empty($icalUrl)) {
@@ -52,7 +52,7 @@ function fetchIcalData($icalUrl) {
     }
     
     try {
-        // Используем cURL для загрузки
+        // Using cURL to download
         $ch = curl_init();
         curl_setopt($ch, CURLOPT_URL, $icalUrl);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
@@ -91,10 +91,10 @@ function fetchIcalData($icalUrl) {
 }
 
 /**
- * Парсинг iCal данных и извлечение занятых дат
+ * Parse iCal data and extract busy dates
  * 
- * @param string $icalData Содержимое iCal файла
- * @return array Массив занятых дат в формате ['YYYY-MM-DD' => true, ...]
+ * @param string $icalData Contents of the iCal file
+ * @return array Array of busy dates in the format ['YYYY-MM-DD' => true, ...]
  */
 function parseIcalData($icalData) {
     if (empty($icalData)) {
@@ -104,16 +104,16 @@ function parseIcalData($icalData) {
     $blockedDates = [];
     
     try {
-        // Разбиваем на события (VEVENT)
+        // Break it down into events (VEVENT)
         $events = extractIcalEvents($icalData);
         
         foreach ($events as $event) {
-            // Извлекаем даты начала и конца
+            // Retrieving start and end dates
             $startDate = extractIcalDate($event, 'DTSTART');
             $endDate = extractIcalDate($event, 'DTEND');
             
             if ($startDate && $endDate) {
-                // Генерируем все даты между началом и концом
+                // Generate all dates between start and end
                 $dates = generateDateRange($startDate, $endDate);
                 
                 foreach ($dates as $date) {
@@ -131,10 +131,10 @@ function parseIcalData($icalData) {
 }
 
 /**
- * Извлечение событий из iCal данных
+ * Extracting Events from iCal Data
  * 
- * @param string $icalData Содержимое iCal файла
- * @return array Массив событий
+ * @param string $icalData Contents of the iCal file
+ * @return array Array of events
  */
 function extractIcalEvents($icalData) {
     $events = [];
@@ -145,14 +145,14 @@ function extractIcalEvents($icalData) {
     foreach ($lines as $line) {
         $line = trim($line);
         
-        // Начало события
+        // Start of the event
         if (strpos($line, 'BEGIN:VEVENT') !== false) {
             $inEvent = true;
             $currentEvent = [];
             continue;
         }
         
-        // Конец события
+        // End of event
         if (strpos($line, 'END:VEVENT') !== false) {
             if ($inEvent && !empty($currentEvent)) {
                 $events[] = implode("\n", $currentEvent);
@@ -162,9 +162,9 @@ function extractIcalEvents($icalData) {
             continue;
         }
         
-        // Собираем строки события (обрабатываем многострочные значения)
+        // Collecting event strings (processing multi-line values)
         if ($inEvent) {
-            // Если строка начинается с пробела - это продолжение предыдущей строки
+            // If a line begins with a space, it is a continuation of the previous line
             if (!empty($line) && $line[0] === ' ') {
                 if (!empty($currentEvent)) {
                     $lastIndex = count($currentEvent) - 1;
@@ -180,22 +180,22 @@ function extractIcalEvents($icalData) {
 }
 
 /**
- * Извлечение даты из события
+ * Extracting a date from an event
  * 
- * @param string $event Строка события
- * @param string $property Название свойства (DTSTART, DTEND)
- * @return string|null Дата в формате YYYYMMDD или null
+ * @param string $event Event string
+ * @param string $property Property name (DTSTART, DTEND)
+ * @return string|null Date in YYYYMMDD or null format
  */
 function extractIcalDate($event, $property) {
-    // Ищем свойство в событии
+    // Looking for a property in an event
     $pattern = '/' . preg_quote($property, '/') . '(?:;.*?)?:(.+)/';
     if (preg_match($pattern, $event, $matches)) {
         $dateStr = trim($matches[1]);
         
-        // Удаляем TZID если есть
+        // Remove TZID if any
         $dateStr = preg_replace('/;.*$/', '', $dateStr);
         
-        // Извлекаем дату (первые 8 символов YYYYMMDD или YYYYMMDDTHHMMSS)
+        // Extract the date (first 8 characters YYYYMMDD or YYYYMMDDTHHMMSS)
         if (preg_match('/^(\d{8})/', $dateStr, $dateMatch)) {
             return $dateMatch[1];
         }
@@ -205,18 +205,18 @@ function extractIcalDate($event, $property) {
 }
 
 /**
- * Генерация массива дат между началом и концом (включительно начало, исключая конец)
+ * Generating an array of dates between start and end (inclusive start, excluding end)
  * 
- * @param string $startDate Дата начала в формате YYYYMMDD
- * @param string $endDate Дата конца в формате YYYYMMDD
- * @return array Массив дат в формате YYYY-MM-DD
+ * @param string $startDate Start date in YYYYMMDD format
+ * @param string $endDate End date in YYYYMMDD format
+ * @return array Array of dates in YYYY-MM-DD format
  */
 function generateDateRange($startDate, $endDate) {
     $dates = [];
     
     try {
-        // Конвертируем YYYYMMDD в timestamp
-        // Если дата уже в формате YYYY-MM-DD, используем её как есть
+        // Convert YYYYMMDD to timestamp
+        // If the date is already in the YYYY-MM-DD format, use it as is
         if (strlen($startDate) === 8) {
             $start = strtotime(substr($startDate, 0, 4) . '-' . substr($startDate, 4, 2) . '-' . substr($startDate, 6, 2));
         } else {
@@ -234,13 +234,13 @@ function generateDateRange($startDate, $endDate) {
             return [];
         }
         
-        // Генерируем даты (включительно начало, исключая конец - как в iCal)
+        // Generate dates (inclusive of the beginning, excluding the end - as in iCal)
         $current = $start;
         while ($current < $end) {
             $dates[] = date('Y-m-d', $current);
             $current = strtotime('+1 day', $current);
             
-            // Защита от бесконечного цикла
+            // Infinite loop protection
             if (count($dates) > 1000) {
                 logActivity("Date range too large: {$startDate} to {$endDate}", 'WARNING');
                 break;
@@ -256,11 +256,11 @@ function generateDateRange($startDate, $endDate) {
 }
 
 /**
- * Конвертация даты из одного формата в другой
+ * Converting a date from one format to another
  * 
- * @param string $date Дата в любом формате
- * @param string $format Выходной формат (по умолчанию 'Y-m-d')
- * @return string|null Дата в нужном формате или null
+ * @param string $date Date in any format
+ * @param string $format Output format (default 'Y-m-d')
+ * @return string|null Date in the required format or null
  */
 function convertIcalDate($date, $format = 'Y-m-d') {
     if (empty($date)) {
@@ -268,7 +268,7 @@ function convertIcalDate($date, $format = 'Y-m-d') {
     }
     
     try {
-        // Пробуем разные форматы
+        // Trying different formats
         $formats = ['Ymd', 'Y-m-d', 'Y/m/d', 'Ymd\THis', 'Y-m-d H:i:s'];
         
         foreach ($formats as $fmt) {
@@ -278,7 +278,7 @@ function convertIcalDate($date, $format = 'Y-m-d') {
             }
         }
         
-        // Пробуем strtotime
+        // Let's try strtotime
         $timestamp = strtotime($date);
         if ($timestamp !== false) {
             return date($format, $timestamp);

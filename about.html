@@ -120,7 +120,7 @@
     }
     .founder-content-expandable {
       position: relative;
-      max-height: 3em; /* Показываем примерно одну строку второго абзаца */
+      max-height: 3em; /* Show roughly one line of the second paragraph */
       overflow: hidden;
       transition: max-height 0.4s ease-out;
     }
@@ -991,8 +991,10 @@ We'll be happy to help you plan your stay and answer any questions!</div>
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -1800,7 +1802,7 @@ We'll be happy to help you plan your stay and answer any questions!</div>
               <polyline points="15 3 21 3 21 9"></polyline>
               <line x1="10" y1="14" x2="21" y2="3"></line>
             </svg>
-            Открыть в Google Maps
+            Open in Google Maps
           </a>
           <button class="map-modal-close" onclick="closeMapModal()" aria-label="Close map">
             ×

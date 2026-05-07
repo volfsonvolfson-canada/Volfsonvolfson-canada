@@ -1,14 +1,14 @@
 <?php
 // add_floorplan_table.php
-// Включить отображение ошибок для отладки
+// Enable error display for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once 'config.php';
 
-echo "<h2>Миграция базы данных: Добавление таблицы для Floor Plan...</h2>";
+echo "<h2>Database migration: Adding a table for Floor Plan...</h2>";
 
-// Создаем таблицу floorplan_settings
+// Create the floorplan_settings table
 $sql_create_floorplan = "CREATE TABLE IF NOT EXISTS floorplan_settings (
     id INT PRIMARY KEY,
     basement_subtitle VARCHAR(255),
@@ -25,28 +25,28 @@ $sql_create_floorplan = "CREATE TABLE IF NOT EXISTS floorplan_settings (
 )";
 
 if ($conn->query($sql_create_floorplan) === TRUE) {
-    echo "<p style='color:green'>✓ Таблица 'floorplan_settings' успешно создана.</p>";
+    echo "<p style='color:green'>✓ Table 'floorplan_settings' successfully created.</p>";
 } else {
-    echo "<p style='color:orange'>Таблица 'floorplan_settings' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Table 'floorplan_settings' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
-// Добавляем поля hero_image_url и hero2_image_url в content_settings, если их нет
+// Add the fields hero_image_url and hero2_image_url to content_settings if they are not there
 $sql_add_hero_image = "ALTER TABLE content_settings ADD COLUMN IF NOT EXISTS hero_image_url VARCHAR(255) DEFAULT ''";
 if ($conn->query($sql_add_hero_image) === TRUE) {
-    echo "<p style='color:green'>✓ Поле 'hero_image_url' успешно добавлено в content_settings.</p>";
+    echo "<p style='color:green'>✓ Field 'hero_image_url' successfully added to content_settings.</p>";
 } else {
-    echo "<p style='color:orange'>Поле 'hero_image_url' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Field 'hero_image_url' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
 $sql_add_hero2_image = "ALTER TABLE content_settings ADD COLUMN IF NOT EXISTS hero2_image_url VARCHAR(255) DEFAULT ''";
 if ($conn->query($sql_add_hero2_image) === TRUE) {
-    echo "<p style='color:green'>✓ Поле 'hero2_image_url' успешно добавлено в content_settings.</p>";
+    echo "<p style='color:green'>✓ Field 'hero2_image_url' successfully added to content_settings.</p>";
 } else {
-    echo "<p style='color:orange'>Поле 'hero2_image_url' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Field 'hero2_image_url' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
-// Вставляем начальные данные, если таблица пустая
-echo "<p>Проверка начальных данных...</p>";
+// Insert initial data if the table is empty
+echo "<p>Checking initial data...</p>";
 $check = $conn->query("SELECT * FROM floorplan_settings WHERE id = 1");
 if ($check && $check->num_rows == 0) {
     $default_basement_sub = "Private floor with a separate entrance.";
@@ -64,21 +64,21 @@ if ($check && $check->num_rows == 0) {
     if ($stmt) {
         $stmt->bind_param("ssssssssss", $default_basement_sub, $default_basement_desc, $default_basement_img, $default_ground_sub, $default_ground_desc, $default_ground_queen, $default_ground_twin, $default_loft_sub, $default_loft_desc, $default_loft_img);
         if ($stmt->execute()) {
-            echo "<p style='color:green'>✓ Начальные данные для floorplan добавлены</p>";
+            echo "<p style='color:green'>✓ Initial data for floorplan added</p>";
         } else {
-            echo "<p style='color:red'>Ошибка при добавлении данных: " . $stmt->error . "</p>";
+            echo "<p style='color:red'>Error adding data: " . $stmt->error . "</p>";
         }
         $stmt->close();
     } else {
-        echo "<p style='color:red'>Ошибка при подготовке запроса: " . $conn->error . "</p>";
+        echo "<p style='color:red'>Error preparing request: " . $conn->error . "</p>";
     }
 } else {
-    echo "<p style='color:orange'>Начальные данные для floorplan уже существуют</p>";
+    echo "<p style='color:orange'>Initial data for floorplan already exist</p>";
 }
 
 echo "<hr>";
-echo "<h1 style='color:green'>Миграция завершена!</h1>";
-echo "<p><strong>Важно:</strong> Удалите файл add_floorplan_table.php с сервера для безопасности.</p>";
+echo "<h1 style='color:green'>Migration complete!</h1>";
+echo "<p><strong>Important:</strong> Delete the file add_floorplan_table.php from the server for security.</p>";
 
 $conn->close();
 ?>
@@ -86,15 +86,15 @@ $conn->close();
 
 
 
-// Включить отображение ошибок для отладки
+// Enable error display for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once 'config.php';
 
-echo "<h2>Миграция базы данных: Добавление таблицы для Floor Plan...</h2>";
+echo "<h2>Database migration: Adding a table for Floor Plan...</h2>";
 
-// Создаем таблицу floorplan_settings
+// Create the floorplan_settings table
 $sql_create_floorplan = "CREATE TABLE IF NOT EXISTS floorplan_settings (
     id INT PRIMARY KEY,
     basement_subtitle VARCHAR(255),
@@ -111,28 +111,28 @@ $sql_create_floorplan = "CREATE TABLE IF NOT EXISTS floorplan_settings (
 )";
 
 if ($conn->query($sql_create_floorplan) === TRUE) {
-    echo "<p style='color:green'>✓ Таблица 'floorplan_settings' успешно создана.</p>";
+    echo "<p style='color:green'>✓ Table 'floorplan_settings' successfully created.</p>";
 } else {
-    echo "<p style='color:orange'>Таблица 'floorplan_settings' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Table 'floorplan_settings' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
-// Добавляем поля hero_image_url и hero2_image_url в content_settings, если их нет
+// Add the fields hero_image_url and hero2_image_url to content_settings if they are not there
 $sql_add_hero_image = "ALTER TABLE content_settings ADD COLUMN IF NOT EXISTS hero_image_url VARCHAR(255) DEFAULT ''";
 if ($conn->query($sql_add_hero_image) === TRUE) {
-    echo "<p style='color:green'>✓ Поле 'hero_image_url' успешно добавлено в content_settings.</p>";
+    echo "<p style='color:green'>✓ Field 'hero_image_url' successfully added to content_settings.</p>";
 } else {
-    echo "<p style='color:orange'>Поле 'hero_image_url' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Field 'hero_image_url' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
 $sql_add_hero2_image = "ALTER TABLE content_settings ADD COLUMN IF NOT EXISTS hero2_image_url VARCHAR(255) DEFAULT ''";
 if ($conn->query($sql_add_hero2_image) === TRUE) {
-    echo "<p style='color:green'>✓ Поле 'hero2_image_url' успешно добавлено в content_settings.</p>";
+    echo "<p style='color:green'>✓ Field 'hero2_image_url' successfully added to content_settings.</p>";
 } else {
-    echo "<p style='color:orange'>Поле 'hero2_image_url' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Field 'hero2_image_url' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
-// Вставляем начальные данные, если таблица пустая
-echo "<p>Проверка начальных данных...</p>";
+// Insert initial data if the table is empty
+echo "<p>Checking initial data...</p>";
 $check = $conn->query("SELECT * FROM floorplan_settings WHERE id = 1");
 if ($check && $check->num_rows == 0) {
     $default_basement_sub = "Private floor with a separate entrance.";
@@ -150,21 +150,21 @@ if ($check && $check->num_rows == 0) {
     if ($stmt) {
         $stmt->bind_param("ssssssssss", $default_basement_sub, $default_basement_desc, $default_basement_img, $default_ground_sub, $default_ground_desc, $default_ground_queen, $default_ground_twin, $default_loft_sub, $default_loft_desc, $default_loft_img);
         if ($stmt->execute()) {
-            echo "<p style='color:green'>✓ Начальные данные для floorplan добавлены</p>";
+            echo "<p style='color:green'>✓ Initial data for floorplan added</p>";
         } else {
-            echo "<p style='color:red'>Ошибка при добавлении данных: " . $stmt->error . "</p>";
+            echo "<p style='color:red'>Error adding data: " . $stmt->error . "</p>";
         }
         $stmt->close();
     } else {
-        echo "<p style='color:red'>Ошибка при подготовке запроса: " . $conn->error . "</p>";
+        echo "<p style='color:red'>Error preparing request: " . $conn->error . "</p>";
     }
 } else {
-    echo "<p style='color:orange'>Начальные данные для floorplan уже существуют</p>";
+    echo "<p style='color:orange'>Initial data for floorplan already exist</p>";
 }
 
 echo "<hr>";
-echo "<h1 style='color:green'>Миграция завершена!</h1>";
-echo "<p><strong>Важно:</strong> Удалите файл add_floorplan_table.php с сервера для безопасности.</p>";
+echo "<h1 style='color:green'>Migration complete!</h1>";
+echo "<p><strong>Important:</strong> Delete the file add_floorplan_table.php from the server for security.</p>";
 
 $conn->close();
 ?>
@@ -177,15 +177,15 @@ $conn->close();
 
 
 
-// Включить отображение ошибок для отладки
+// Enable error display for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once 'config.php';
 
-echo "<h2>Миграция базы данных: Добавление таблицы для Floor Plan...</h2>";
+echo "<h2>Database migration: Adding a table for Floor Plan...</h2>";
 
-// Создаем таблицу floorplan_settings
+// Create the floorplan_settings table
 $sql_create_floorplan = "CREATE TABLE IF NOT EXISTS floorplan_settings (
     id INT PRIMARY KEY,
     basement_subtitle VARCHAR(255),
@@ -202,28 +202,28 @@ $sql_create_floorplan = "CREATE TABLE IF NOT EXISTS floorplan_settings (
 )";
 
 if ($conn->query($sql_create_floorplan) === TRUE) {
-    echo "<p style='color:green'>✓ Таблица 'floorplan_settings' успешно создана.</p>";
+    echo "<p style='color:green'>✓ Table 'floorplan_settings' successfully created.</p>";
 } else {
-    echo "<p style='color:orange'>Таблица 'floorplan_settings' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Table 'floorplan_settings' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
-// Добавляем поля hero_image_url и hero2_image_url в content_settings, если их нет
+// Add the fields hero_image_url and hero2_image_url to content_settings if they are not there
 $sql_add_hero_image = "ALTER TABLE content_settings ADD COLUMN IF NOT EXISTS hero_image_url VARCHAR(255) DEFAULT ''";
 if ($conn->query($sql_add_hero_image) === TRUE) {
-    echo "<p style='color:green'>✓ Поле 'hero_image_url' успешно добавлено в content_settings.</p>";
+    echo "<p style='color:green'>✓ Field 'hero_image_url' successfully added to content_settings.</p>";
 } else {
-    echo "<p style='color:orange'>Поле 'hero_image_url' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Field 'hero_image_url' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
 $sql_add_hero2_image = "ALTER TABLE content_settings ADD COLUMN IF NOT EXISTS hero2_image_url VARCHAR(255) DEFAULT ''";
 if ($conn->query($sql_add_hero2_image) === TRUE) {
-    echo "<p style='color:green'>✓ Поле 'hero2_image_url' успешно добавлено в content_settings.</p>";
+    echo "<p style='color:green'>✓ Field 'hero2_image_url' successfully added to content_settings.</p>";
 } else {
-    echo "<p style='color:orange'>Поле 'hero2_image_url' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Field 'hero2_image_url' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
-// Вставляем начальные данные, если таблица пустая
-echo "<p>Проверка начальных данных...</p>";
+// Insert initial data if the table is empty
+echo "<p>Checking initial data...</p>";
 $check = $conn->query("SELECT * FROM floorplan_settings WHERE id = 1");
 if ($check && $check->num_rows == 0) {
     $default_basement_sub = "Private floor with a separate entrance.";
@@ -241,21 +241,21 @@ if ($check && $check->num_rows == 0) {
     if ($stmt) {
         $stmt->bind_param("ssssssssss", $default_basement_sub, $default_basement_desc, $default_basement_img, $default_ground_sub, $default_ground_desc, $default_ground_queen, $default_ground_twin, $default_loft_sub, $default_loft_desc, $default_loft_img);
         if ($stmt->execute()) {
-            echo "<p style='color:green'>✓ Начальные данные для floorplan добавлены</p>";
+            echo "<p style='color:green'>✓ Initial data for floorplan added</p>";
         } else {
-            echo "<p style='color:red'>Ошибка при добавлении данных: " . $stmt->error . "</p>";
+            echo "<p style='color:red'>Error adding data: " . $stmt->error . "</p>";
         }
         $stmt->close();
     } else {
-        echo "<p style='color:red'>Ошибка при подготовке запроса: " . $conn->error . "</p>";
+        echo "<p style='color:red'>Error preparing request: " . $conn->error . "</p>";
     }
 } else {
-    echo "<p style='color:orange'>Начальные данные для floorplan уже существуют</p>";
+    echo "<p style='color:orange'>Initial data for floorplan already exist</p>";
 }
 
 echo "<hr>";
-echo "<h1 style='color:green'>Миграция завершена!</h1>";
-echo "<p><strong>Важно:</strong> Удалите файл add_floorplan_table.php с сервера для безопасности.</p>";
+echo "<h1 style='color:green'>Migration complete!</h1>";
+echo "<p><strong>Important:</strong> Delete the file add_floorplan_table.php from the server for security.</p>";
 
 $conn->close();
 ?>
@@ -263,15 +263,15 @@ $conn->close();
 
 
 
-// Включить отображение ошибок для отладки
+// Enable error display for debugging
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
 require_once 'config.php';
 
-echo "<h2>Миграция базы данных: Добавление таблицы для Floor Plan...</h2>";
+echo "<h2>Database migration: Adding a table for Floor Plan...</h2>";
 
-// Создаем таблицу floorplan_settings
+// Create the floorplan_settings table
 $sql_create_floorplan = "CREATE TABLE IF NOT EXISTS floorplan_settings (
     id INT PRIMARY KEY,
     basement_subtitle VARCHAR(255),
@@ -288,28 +288,28 @@ $sql_create_floorplan = "CREATE TABLE IF NOT EXISTS floorplan_settings (
 )";
 
 if ($conn->query($sql_create_floorplan) === TRUE) {
-    echo "<p style='color:green'>✓ Таблица 'floorplan_settings' успешно создана.</p>";
+    echo "<p style='color:green'>✓ Table 'floorplan_settings' successfully created.</p>";
 } else {
-    echo "<p style='color:orange'>Таблица 'floorplan_settings' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Table 'floorplan_settings' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
-// Добавляем поля hero_image_url и hero2_image_url в content_settings, если их нет
+// Add the fields hero_image_url and hero2_image_url to content_settings if they are not there
 $sql_add_hero_image = "ALTER TABLE content_settings ADD COLUMN IF NOT EXISTS hero_image_url VARCHAR(255) DEFAULT ''";
 if ($conn->query($sql_add_hero_image) === TRUE) {
-    echo "<p style='color:green'>✓ Поле 'hero_image_url' успешно добавлено в content_settings.</p>";
+    echo "<p style='color:green'>✓ Field 'hero_image_url' successfully added to content_settings.</p>";
 } else {
-    echo "<p style='color:orange'>Поле 'hero_image_url' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Field 'hero_image_url' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
 $sql_add_hero2_image = "ALTER TABLE content_settings ADD COLUMN IF NOT EXISTS hero2_image_url VARCHAR(255) DEFAULT ''";
 if ($conn->query($sql_add_hero2_image) === TRUE) {
-    echo "<p style='color:green'>✓ Поле 'hero2_image_url' успешно добавлено в content_settings.</p>";
+    echo "<p style='color:green'>✓ Field 'hero2_image_url' successfully added to content_settings.</p>";
 } else {
-    echo "<p style='color:orange'>Поле 'hero2_image_url' уже существует или произошла ошибка: " . $conn->error . "</p>";
+    echo "<p style='color:orange'>Field 'hero2_image_url' already exists or an error occurred: " . $conn->error . "</p>";
 }
 
-// Вставляем начальные данные, если таблица пустая
-echo "<p>Проверка начальных данных...</p>";
+// Insert initial data if the table is empty
+echo "<p>Checking initial data...</p>";
 $check = $conn->query("SELECT * FROM floorplan_settings WHERE id = 1");
 if ($check && $check->num_rows == 0) {
     $default_basement_sub = "Private floor with a separate entrance.";
@@ -327,21 +327,21 @@ if ($check && $check->num_rows == 0) {
     if ($stmt) {
         $stmt->bind_param("ssssssssss", $default_basement_sub, $default_basement_desc, $default_basement_img, $default_ground_sub, $default_ground_desc, $default_ground_queen, $default_ground_twin, $default_loft_sub, $default_loft_desc, $default_loft_img);
         if ($stmt->execute()) {
-            echo "<p style='color:green'>✓ Начальные данные для floorplan добавлены</p>";
+            echo "<p style='color:green'>✓ Initial data for floorplan added</p>";
         } else {
-            echo "<p style='color:red'>Ошибка при добавлении данных: " . $stmt->error . "</p>";
+            echo "<p style='color:red'>Error adding data: " . $stmt->error . "</p>";
         }
         $stmt->close();
     } else {
-        echo "<p style='color:red'>Ошибка при подготовке запроса: " . $conn->error . "</p>";
+        echo "<p style='color:red'>Error preparing request: " . $conn->error . "</p>";
     }
 } else {
-    echo "<p style='color:orange'>Начальные данные для floorplan уже существуют</p>";
+    echo "<p style='color:orange'>Initial data for floorplan already exist</p>";
 }
 
 echo "<hr>";
-echo "<h1 style='color:green'>Миграция завершена!</h1>";
-echo "<p><strong>Важно:</strong> Удалите файл add_floorplan_table.php с сервера для безопасности.</p>";
+echo "<h1 style='color:green'>Migration complete!</h1>";
+echo "<p><strong>Important:</strong> Delete the file add_floorplan_table.php from the server for security.</p>";
 
 $conn->close();
 ?>

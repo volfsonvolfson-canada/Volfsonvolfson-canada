@@ -91,3 +91,28 @@ CREATE TABLE IF NOT EXISTS `room_airbnb_settings` (
   UNIQUE KEY `idx_room_name` (`room_name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Настройки синхронизации Airbnb для комнат';
 
+-- Guest ↔ host chat (My Account messages + admin Chat management)
+-- Tables are also auto-created on first API use (host_chat_api.php).
+CREATE TABLE IF NOT EXISTS `host_chat_threads` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `user_id` INT UNSIGNED NOT NULL,
+  `subject` VARCHAR(500) NOT NULL DEFAULT '',
+  `last_message_at` TIMESTAMP NULL DEFAULT NULL,
+  `staff_unread` TINYINT(1) NOT NULL DEFAULT 1,
+  `guest_unread` TINYINT(1) NOT NULL DEFAULT 0,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user` (`user_id`),
+  KEY `idx_last` (`last_message_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS `host_chat_messages` (
+  `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+  `thread_id` INT UNSIGNED NOT NULL,
+  `sender` ENUM('guest','staff') NOT NULL,
+  `body` MEDIUMTEXT NOT NULL,
+  `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_thread` (`thread_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

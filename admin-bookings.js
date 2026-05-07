@@ -1,5 +1,16 @@
 // Admin Bookings Management JavaScript
 
+function formatRoomBookingDogs(petsVal) {
+  let n = parseInt(String(petsVal ?? ''), 10);
+  if (!Number.isFinite(n)) {
+    n = petsVal ? 1 : 0;
+  }
+  n = Math.min(2, Math.max(0, n));
+  if (n === 0) return 'No dogs';
+  if (n === 1) return '1 dog';
+  return '2 dogs';
+}
+
 // Check if user is authenticated
 function checkAdminAuth() {
   const isAuthenticated = localStorage.getItem('btb_admin_auth') === 'true';
@@ -164,8 +175,8 @@ function renderBookingsList(bookings) {
           <div class="booking-detail-value">${booking.guests_count || '—'}</div>
         </div>
         <div class="booking-detail-item">
-          <div class="booking-detail-label">Pets</div>
-          <div class="booking-detail-value">${booking.pets ? 'Yes' : 'No'}</div>
+          <div class="booking-detail-label">Dogs</div>
+          <div class="booking-detail-value">${formatRoomBookingDogs(booking.pets)}</div>
         </div>
         <div class="booking-detail-item">
           <div class="booking-detail-label">Total Amount</div>
@@ -399,7 +410,7 @@ async function viewBookingDetails(bookingId) {
         `Check-in: ${formatDate(booking.checkin_date)}\n` +
         `Check-out: ${formatDate(booking.checkout_date)}\n` +
         `Guests: ${booking.guests_count}\n` +
-        `Pets: ${booking.pets ? 'Yes' : 'No'}\n` +
+        `Dogs: ${formatRoomBookingDogs(booking.pets)}\n` +
         `Guest: ${booking.guest_name}\n` +
         `Email: ${booking.email}\n` +
         `Phone: ${booking.phone}\n` +
@@ -493,19 +504,19 @@ async function loadCalendarData() {
     if (blockedResponse.ok) {
       const blockedResult = await blockedResponse.json();
       if (blockedResult.success) {
-        // Получаем ручные блокировки
+        // Getting manual locks
         if (blockedResult.data?.blocked_dates) {
           blockedDates = blockedResult.data.blocked_dates.map(b => b.blocked_date);
         }
         
-        // Также получаем Airbnb заблокированные даты
+        // We also receive Airbnb blocked dates
         if (blockedResult.data?.airbnb_blocked_dates) {
           blockedDates = [...blockedDates, ...blockedResult.data.airbnb_blocked_dates];
         }
       }
     }
     
-    // Убираем дубликаты
+    // Removing duplicates
     blockedDates = [...new Set(blockedDates)];
     
     if (loadingEl) loadingEl.style.display = 'none';
@@ -752,11 +763,11 @@ function initCalendarBlocking() {
     syncBtn.addEventListener('click', syncAirbnbCalendar);
   }
   
-  // Загружаем статус синхронизации при открытии раздела
+  // Loading the synchronization status when opening a section
   loadAirbnbSyncStatus();
 }
 
-// Синхронизация календаря Airbnb
+// Airbnb Calendar Sync
 async function syncAirbnbCalendar() {
   const syncBtn = document.getElementById('airbnb-sync-btn');
   const statusEl = document.getElementById('airbnb-sync-status');
@@ -766,7 +777,7 @@ async function syncAirbnbCalendar() {
     return;
   }
   
-  // Показываем состояние загрузки
+  // Showing download status
   syncBtn.disabled = true;
   syncBtn.textContent = 'Syncing...';
   statusEl.style.display = 'block';
@@ -792,14 +803,14 @@ async function syncAirbnbCalendar() {
       statusTextEl.textContent = `Sync completed successfully! ${result.data?.synced_rooms?.length || 0} room(s) synced.`;
       statusTextEl.style.color = '#2f855a';
       
-      // Если были ошибки, показываем их
+      // If there were errors, we show them
       if (result.data?.errors && result.data.errors.length > 0) {
         const errors = result.data.errors.map(e => `${e.room}: ${e.error}`).join(', ');
         statusTextEl.textContent += ` Errors: ${errors}`;
         statusTextEl.style.color = '#e53e3e';
       }
       
-      // Обновляем календарь после синхронизации
+      // Update the calendar after synchronization
       setTimeout(() => {
         loadCalendarData();
         loadAirbnbSyncStatus();
@@ -817,7 +828,7 @@ async function syncAirbnbCalendar() {
   }
 }
 
-// Загрузка статуса синхронизации Airbnb
+// Loading Airbnb Sync Status
 async function loadAirbnbSyncStatus() {
   const statusEl = document.getElementById('airbnb-sync-status');
   const statusTextEl = document.getElementById('airbnb-sync-status-text');
@@ -853,7 +864,7 @@ async function loadAirbnbSyncStatus() {
     }
   } catch (error) {
     console.error('Load sync status error:', error);
-    // Не показываем ошибку, просто скрываем статус
+    // We don't show the error, we just hide the status
     statusEl.style.display = 'none';
   }
 }
@@ -1000,7 +1011,7 @@ function isDateBooked(dateString, bookings) {
     const checkin = new Date(booking.checkin_date + 'T00:00:00');
     const checkout = new Date(booking.checkout_date + 'T00:00:00');
     
-    // Дата забронирована, если она в диапазоне checkin (включительно) до checkout (исключительно)
+    // A date is booked if it is in the range checkin (inclusive) to checkout (exclusive)
     return checkDate >= checkin && checkDate < checkout;
   });
 }

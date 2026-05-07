@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://backtobase.ca/admin-login.html">
   <title>Admin Login — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -120,7 +122,7 @@
           console.log('Response status:', response.status);
           console.log('Response ok:', response.ok);
           
-          // Проверяем, что ответ успешный
+          // Checking that the response is successful
           if (!response.ok) {
             const errorText = await response.text();
             console.error('Response error:', errorText);
@@ -133,7 +135,7 @@
             return;
           }
           
-          // Получаем текст ответа для отладки
+          // Getting the response text for debugging
           const responseText = await response.text();
           console.log('Response text:', responseText);
           
@@ -155,12 +157,12 @@
           
           if (result.success && result.user) {
             console.log('Login successful!', result);
-            // Сохраняем токен в localStorage для проверки на других страницах
+            // We save the token in localStorage for checking on other pages
             if (result.token) {
               localStorage.setItem('btb_admin_token', result.token);
               console.log('Token saved to localStorage');
             }
-            // Сохраняем флаг авторизации для checkAdminAuth()
+            // Save the authorization flag for checkAdminAuth()
             localStorage.setItem('btb_admin_auth', 'true');
             console.log('Admin auth flag set to true');
             // Redirect to admin panel

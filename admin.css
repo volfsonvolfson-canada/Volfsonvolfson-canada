@@ -1,10 +1,22 @@
 /* Import common utilities */
 @import url('common.css');
 
+/* Avoid horizontal layout shift when vertical scrollbar appears/disappears */
+html {
+  scrollbar-gutter: stable;
+}
+
 .admin-body {
   background: #ffffff !important;
   min-height: 100vh;
   font-family: 'Inter', sans-serif;
+  /* Unified text controls: light gray field, slightly darker border, rounded */
+  --admin-field-bg: #f1f5f9;
+  --admin-field-border: #cbd5e1;
+  --admin-field-radius: 8px;
+  --admin-field-focus: #667eea;
+  --admin-field-text: #0f172a;
+  --admin-field-placeholder: #94a3b8;
 }
 
 /* Ensure white background for admin pages regardless of theme */
@@ -17,18 +29,24 @@ html body.admin-body,
   background-color: #ffffff !important;
 }
 
-/* Retreat preview: full text visible; height follows content (no line-clamp truncation) */
+/* Retreat preview: full text visible; same shell as text fields */
 #retreat-workshop-section .editable-preview {
   max-height: none;
   overflow: visible;
   word-wrap: break-word;
   overflow-wrap: break-word;
   white-space: pre-wrap;
-  background: #f8fafc;
-  border: 1px solid #e5e7eb;
-  color: #0f172a;
-  padding: 8px 10px;
-  border-radius: 6px;
+  background: var(--admin-field-bg);
+  border: 1px solid var(--admin-field-border);
+  color: var(--admin-field-text);
+  padding: 10px 14px;
+  border-radius: var(--admin-field-radius);
+}
+
+#retreat-workshop-section .editable-preview:focus {
+  outline: none;
+  border-color: var(--admin-field-focus);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.22);
 }
 
 .retreat-status-bar,
@@ -162,19 +180,12 @@ html body.admin-body,
   font-size: 14px;
 }
 
-.admin-login-form input {
+.admin-login-form input[type='email'],
+.admin-login-form input[type='password'],
+.admin-login-form input[type='text'] {
   width: 100%;
-  padding: 12px 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 16px;
-  transition: border-color 0.2s;
+  font-size: 16px; /* avoid iOS zoom on focus */
   box-sizing: border-box;
-}
-
-.admin-login-form input:focus {
-  outline: none;
-  border-color: #667eea;
 }
 
 .admin-login-btn {
@@ -322,26 +333,64 @@ html body.admin-body,
   font-size: 14px;
 }
 
-.admin-form-group input,
-.admin-form-group select,
-.admin-form-group textarea {
-  padding: 12px 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
-  font-size: 14px;
-  transition: border-color 0.2s;
-}
-
-.admin-form-group input:focus,
-.admin-form-group select:focus,
-.admin-form-group textarea:focus {
-  outline: none;
-  border-color: #667eea;
-}
-
 .admin-form-group textarea {
   min-height: 100px;
   resize: vertical;
+}
+
+/* All text-like controls: one style (light gray, bordered, rounded) */
+.admin-body input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='image']):not([type='reset']):not([type='range']):not([type='color']),
+.admin-body textarea,
+.admin-body select,
+.admin-body .admin-input {
+  background-color: var(--admin-field-bg) !important;
+  background: var(--admin-field-bg) !important;
+  color: var(--admin-field-text);
+  border: 1px solid var(--admin-field-border) !important;
+  border-radius: var(--admin-field-radius);
+  padding: 10px 14px;
+  font-size: 14px;
+  line-height: 1.45;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  box-sizing: border-box;
+  color-scheme: light;
+}
+
+.admin-body input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='image']):not([type='reset']):not([type='range']):not([type='color']):focus,
+.admin-body textarea:focus,
+.admin-body select:focus,
+.admin-body .admin-input:focus {
+  outline: none;
+  border-color: var(--admin-field-focus) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.22);
+}
+
+.admin-body input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='image']):not([type='reset']):not([type='range']):not([type='color'])::placeholder,
+.admin-body textarea::placeholder {
+  color: var(--admin-field-placeholder);
+}
+
+.admin-body input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='image']):not([type='reset']):not([type='range']):not([type='color']):-webkit-autofill,
+.admin-body input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='image']):not([type='reset']):not([type='range']):not([type='color']):-webkit-autofill:hover,
+.admin-body input:not([type='checkbox']):not([type='radio']):not([type='file']):not([type='hidden']):not([type='submit']):not([type='button']):not([type='image']):not([type='reset']):not([type='range']):not([type='color']):-webkit-autofill:focus,
+.admin-body textarea:-webkit-autofill,
+.admin-body textarea:-webkit-autofill:hover,
+.admin-body textarea:-webkit-autofill:focus,
+.admin-body select:-webkit-autofill,
+.admin-body select:-webkit-autofill:hover,
+.admin-body select:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--admin-field-bg) inset !important;
+  box-shadow: 0 0 0 1000px var(--admin-field-bg) inset !important;
+  -webkit-text-fill-color: var(--admin-field-text) !important;
+  border: 1px solid var(--admin-field-border) !important;
+}
+
+/* Login: 16px on email/password — avoids iOS zoom (overrides global 14px) */
+.admin-body .admin-login-form input[type='email'],
+.admin-body .admin-login-form input[type='password'],
+.admin-body .admin-login-form input[type='text'] {
+  font-size: 16px;
 }
 
 .admin-form-group.full-width {
@@ -429,14 +478,20 @@ html body.admin-body,
 /* Content Editor */
 .admin-content-editor {
   min-height: 200px;
-  padding: 16px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  padding: 12px 14px;
+  border: 1px solid var(--admin-field-border);
+  border-radius: var(--admin-field-radius);
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   line-height: 1.5;
-  color: #0f172a;
-  background: #f8fafc;
+  color: var(--admin-field-text);
+  background: var(--admin-field-bg);
+}
+
+.admin-content-editor:focus {
+  outline: none;
+  border-color: var(--admin-field-focus);
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.22);
 }
 
 /* Status Messages */
@@ -584,25 +639,25 @@ html body.admin-body,
 }
 
 /* Form Enhancements */
-/* Убираем подсветку валидации для инпутов в Block Date Manually */
+/* Remove validation highlighting for inputs in Block Date Manually */
 .admin-form-group input:invalid:not(#block-room-select):not(#block-reason),
 .admin-form-group select:invalid:not(#block-room-select):not(#block-reason),
 .admin-form-group textarea:invalid:not(#block-room-select):not(#block-reason) {
-  border-color: #e53e3e;
+  border-color: #e53e3e !important;
 }
 
 .admin-form-group input:valid:not(#block-room-select):not(#block-reason),
 .admin-form-group select:valid:not(#block-room-select):not(#block-reason),
 .admin-form-group textarea:valid:not(#block-room-select):not(#block-reason) {
-  border-color: #38a169;
+  border-color: #38a169 !important;
 }
 
-/* Убираем подсветку для инпутов Block Date Manually */
+/* Removing the backlight for inputs Block Date Manually */
 #block-room-select:invalid,
 #block-room-select:valid,
 #block-reason:invalid,
 #block-reason:valid {
-  border-color: #e2e8f0;
+  border-color: var(--admin-field-border) !important;
 }
 
 /* Flash invalid animation for validation */
@@ -634,12 +689,13 @@ input.flash-invalid {
   background: inherit;
 }
 
-/* Success States */
+/* Success States — green border; fill matches unified field */
 .admin-form-group.success input,
 .admin-form-group.success select,
 .admin-form-group.success textarea {
-  border-color: #38a169;
-  background: #f0fff4;
+  border-color: #38a169 !important;
+  background: var(--admin-field-bg) !important;
+  background-color: var(--admin-field-bg) !important;
 }
 
 /* Animation for status messages */
@@ -688,7 +744,7 @@ input.flash-invalid {
   stroke: #ffffff !important;
 }
 
-/* Year navigation arrows (up-down) - скрыты, так как используется выпадающий список */
+/* Year navigation arrows (up-down) - hidden because a dropdown list is used */
 .flatpickr-prev-year,
 .flatpickr-next-year {
   display: none !important;
@@ -957,77 +1013,89 @@ html[data-theme="light"] body.admin-body .site-footer .copyright {
 .admin-save-banner.is-visible {
   transform: translateY(0);
   opacity: 1;
-  max-height: 80px;
-  padding-top: 10px;
-  padding-bottom: 2px;
+  max-height: 140px;
+  padding-top: 12px;
+  padding-bottom: 4px;
   pointer-events: auto;
 }
 
-body.admin-global-save-banner-padded {
-  padding-top: 52px;
-  transition: padding-top 0.2s ease;
-}
+/* Banner is position:fixed — do not add body padding; it caused layout shift and scroll “jump”. */
 
 .admin-save-banner__inner {
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 8px 12px;
+  gap: 10px 14px;
   max-width: min(960px, 100%);
   width: 100%;
-  padding: 10px 16px;
-  border-radius: 0 0 12px 12px;
-  font-size: 0.9rem;
+  padding: 14px 22px;
+  border-radius: 0 0 14px 14px;
+  font-size: 1.0625rem;
   font-weight: 600;
-  color: #0f172a;
-  background: #f1f5f9;
-  border: 1px solid #e2e8f0;
+  color: #f1f5f9;
+  background: #1e293b;
+  border: 1px solid #334155;
   border-top: none;
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.45);
 }
 
 .admin-save-banner[data-state='saving'] .admin-save-banner__inner {
-  background: #eff6ff;
-  border-color: #bfdbfe;
-  color: #1e3a5f;
+  background: #172554;
+  border-color: #1d4ed8;
+  color: #e0f2fe;
 }
 
 .admin-save-banner[data-state='saved'] .admin-save-banner__inner {
-  background: #ecfdf5;
-  border-color: #a7f3d0;
-  color: #065f46;
+  background: #14532d;
+  border-color: #15803d;
+  color: #ecfdf5;
 }
 
 .admin-save-banner[data-state='error'] .admin-save-banner__inner {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+  background: #7f1d1d;
+  border-color: #b91c1c;
+  color: #fef2f2;
 }
 
 .admin-save-banner[data-state='toast_success'] .admin-save-banner__inner,
 .admin-save-banner[data-state='toast'] .admin-save-banner__inner {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-  color: #166534;
+  background: #14532d;
+  border-color: #16a34a;
+  color: #f0fdf4;
 }
 
 .admin-save-banner[data-state='toast_error'] .admin-save-banner__inner {
-  background: #fef2f2;
-  border-color: #fecaca;
-  color: #991b1b;
+  background: #7f1d1d;
+  border-color: #dc2626;
+  color: #fef2f2;
 }
 
 .admin-save-banner__section {
-  color: #475569;
-  font-size: 0.82rem;
+  color: #cbd5e1;
+  font-size: 0.875rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+}
+
+.admin-save-banner[data-state='saving'] .admin-save-banner__section {
+  color: #93c5fd;
+}
+
+.admin-save-banner[data-state='saved'] .admin-save-banner__section,
+.admin-save-banner[data-state='toast_success'] .admin-save-banner__section,
+.admin-save-banner[data-state='toast'] .admin-save-banner__section {
+  color: #86efac;
+}
+
+.admin-save-banner[data-state='error'] .admin-save-banner__section,
+.admin-save-banner[data-state='toast_error'] .admin-save-banner__section {
+  color: #fecaca;
 }
 
 .admin-save-banner__icon {
-  font-size: 1.1rem;
+  font-size: 1.35rem;
   line-height: 1;
   flex-shrink: 0;
 }
@@ -1037,6 +1105,96 @@ body.admin-global-save-banner-padded {
   min-width: 0;
   line-height: 1.4;
   word-break: break-word;
+}
+
+/* Gallery tile: reorder (horizontal order = left / right) */
+.admin-gallery-reorder {
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  right: 6px;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+  z-index: 11;
+  pointer-events: none;
+}
+
+.admin-gallery-reorder--compact {
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  gap: 4px;
+}
+
+.admin-gallery-reorder__btn {
+  pointer-events: auto;
+  box-sizing: border-box;
+  min-width: 30px;
+  height: 28px;
+  padding: 0 6px;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  color: #f8fafc;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.96) 0%, rgba(15, 23, 42, 0.98) 100%);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
+}
+
+.admin-gallery-reorder--compact .admin-gallery-reorder__btn {
+  min-width: 26px;
+  height: 24px;
+  padding: 0 4px;
+  font-size: 0.7rem;
+  border-radius: 5px;
+}
+
+.admin-gallery-reorder__btn:hover:not(:disabled) {
+  background: linear-gradient(180deg, rgba(51, 65, 85, 0.98) 0%, rgba(30, 41, 59, 0.99) 100%);
+  border-color: rgba(226, 232, 240, 0.55);
+}
+
+.admin-gallery-reorder__btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.admin-gallery-reorder__btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* Drag reorder on gallery tiles (arrows still work) */
+.admin-gallery-tile--draggable {
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.admin-gallery-tile--draggable:active {
+  cursor: grabbing;
+}
+
+.admin-gallery-tile--dragging {
+  opacity: 0.55;
+  outline: 2px dashed #64748b;
+  outline-offset: 2px;
+}
+
+.admin-gallery-tile--drag-over {
+  outline: 3px solid #3b82f6;
+  outline-offset: 1px;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
 }
 
 /* Hide in-flow save chips when the global bar is used */
@@ -1081,19 +1239,22 @@ body.admin-uses-global-save-banner .massage-live-status {
 }
 
 /* Guest reviews — light fields; neutral borders (no global :valid green on .admin-form-group) */
+/* Guest reviews: same tokens as global fields (overrides :valid/:invalid green elsewhere) */
 #guest-reviews-section input,
 #guest-reviews-section select,
 #guest-reviews-section textarea {
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  -webkit-text-fill-color: #0f172a !important;
-  caret-color: #0f172a;
+  background: var(--admin-field-bg) !important;
+  background-color: var(--admin-field-bg) !important;
+  color: var(--admin-field-text) !important;
+  -webkit-text-fill-color: var(--admin-field-text) !important;
+  caret-color: var(--admin-field-text);
   color-scheme: light;
   font-family: inherit;
   font-size: 14px;
   line-height: 1.4;
-  border: 2px solid #e2e8f0 !important;
+  border: 1px solid var(--admin-field-border) !important;
+  border-radius: var(--admin-field-radius);
+  padding: 10px 14px;
 }
 
 #guest-reviews-section input:valid,
@@ -1102,23 +1263,23 @@ body.admin-uses-global-save-banner .massage-live-status {
 #guest-reviews-section select:invalid,
 #guest-reviews-section textarea:valid,
 #guest-reviews-section textarea:invalid {
-  border-color: #e2e8f0 !important;
+  border-color: var(--admin-field-border) !important;
 }
 
 #guest-reviews-section input:focus,
 #guest-reviews-section select:focus,
 #guest-reviews-section textarea:focus {
-  color: #0f172a !important;
-  -webkit-text-fill-color: #0f172a !important;
+  color: var(--admin-field-text) !important;
+  -webkit-text-fill-color: var(--admin-field-text) !important;
   outline: none;
-  border-color: #667eea !important;
-  box-shadow: none;
+  border-color: var(--admin-field-focus) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.22);
 }
 
 #guest-reviews-section input::placeholder,
 #guest-reviews-section textarea::placeholder {
-  color: #94a3b8;
-  -webkit-text-fill-color: #94a3b8;
+  color: var(--admin-field-placeholder);
+  -webkit-text-fill-color: var(--admin-field-placeholder);
 }
 
 #guest-reviews-section input:-webkit-autofill,
@@ -1127,39 +1288,246 @@ body.admin-uses-global-save-banner .massage-live-status {
 #guest-reviews-section textarea:-webkit-autofill,
 #guest-reviews-section textarea:-webkit-autofill:hover,
 #guest-reviews-section textarea:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-  box-shadow: 0 0 0 1000px #ffffff inset !important;
-  -webkit-text-fill-color: #0f172a !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--admin-field-bg) inset !important;
+  box-shadow: 0 0 0 1000px var(--admin-field-bg) inset !important;
+  -webkit-text-fill-color: var(--admin-field-text) !important;
 }
 
-/* Room page preview — price line: always light field, readable on dark UIs (no raw HTML in values) */
+/* Room page preview — price line: same field style as rest of admin */
 input.admin-room-price-input {
   display: block;
   width: 100%;
   box-sizing: border-box;
-  background: #ffffff !important;
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border: 1px solid #e2e8f0 !important;
-  -webkit-text-fill-color: #0f172a !important;
-  caret-color: #0f172a;
+  background: var(--admin-field-bg) !important;
+  background-color: var(--admin-field-bg) !important;
+  color: var(--admin-field-text) !important;
+  border: 1px solid var(--admin-field-border) !important;
+  border-radius: var(--admin-field-radius);
+  padding: 10px 14px;
+  -webkit-text-fill-color: var(--admin-field-text) !important;
+  caret-color: var(--admin-field-text);
   color-scheme: light;
 }
 
 input.admin-room-price-input:focus {
   outline: none;
-  border-color: #3b82f6 !important;
-  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+  border-color: var(--admin-field-focus) !important;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.22);
 }
 
 input.admin-room-price-input::placeholder {
-  color: #94a3b8;
+  color: var(--admin-field-placeholder);
 }
 
 input.admin-room-price-input:-webkit-autofill,
 input.admin-room-price-input:-webkit-autofill:hover,
 input.admin-room-price-input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
-  box-shadow: 0 0 0 1000px #ffffff inset !important;
-  -webkit-text-fill-color: #0f172a !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--admin-field-bg) inset !important;
+  box-shadow: 0 0 0 1000px var(--admin-field-bg) inset !important;
+  -webkit-text-fill-color: var(--admin-field-text) !important;
+}
+
+/* Same tokens where HTML uses inline padding/border (overrides inline) */
+.admin-body input.retreat-text-input,
+.admin-body input.admin-room-price-input {
+  padding: 10px 14px !important;
+  border-radius: var(--admin-field-radius) !important;
+}
+
+#massage-wellness-stay-gallery-overlay.admin-input {
+  padding: 10px 14px !important;
+  border-radius: var(--admin-field-radius) !important;
+}
+
+/* Awaiting host reply: blink primary/secondary nav + section title */
+@keyframes btb-admin-chat-pending-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    color: #b91c1c;
+  }
+  50% {
+    opacity: 0.5;
+    color: #dc2626;
+  }
+}
+
+.btb-admin-chat-pending {
+  color: #b91c1c !important;
+  animation: btb-admin-chat-pending-pulse 1.1s ease-in-out infinite;
+}
+
+#chat-management-section > h2.btb-admin-chat-pending {
+  -webkit-text-fill-color: currentColor;
+}
+
+#chat-management-section > h2 {
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+
+/* Chat management (three columns) */
+.btb-admin-chat-shell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: stretch;
+  min-height: min(520px, calc(100vh - 220px));
+}
+.btb-admin-chat-col {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  box-sizing: border-box;
+}
+.btb-admin-chat-col--threads {
+  flex: 0 0 220px;
+  max-width: 100%;
+}
+.btb-admin-chat-col--meta {
+  flex: 0 0 280px;
+  max-width: 100%;
+}
+.btb-admin-chat-col--messages {
+  flex: 1 1 320px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Chat management: column titles + guest name — black text (admin body can force light fill) */
+#chat-management-section .btb-admin-chat-col-title {
+  font-size: 14px;
+  margin: 0 0 10px;
+  font-weight: 600;
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+#chat-management-section .btb-admin-chat-col-title--inline {
+  margin: 0;
+}
+#chat-management-section .btb-admin-chat-conv-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+}
+#chat-management-section .btb-admin-chat-thread-btn {
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+#chat-management-section .btb-admin-chat-thread-btn strong {
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+  font-weight: 600;
+}
+.btb-admin-chat-thread-list {
+  max-height: min(78vh, calc(100vh - 240px));
+  overflow-y: auto;
+}
+.btb-admin-chat-thread-btn {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 10px 10px;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  line-height: 1.35;
+}
+.btb-admin-chat-thread-btn:hover {
+  border-color: #94a3b8;
+  background: #f1f5f9;
+}
+.btb-admin-chat-thread-btn.active {
+  border-color: #667eea;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.2);
+}
+.btb-admin-chat-thread-btn .sub {
+  display: block;
+  font-size: 12px;
+  color: #64748b;
+  margin-top: 4px;
+}
+.btb-admin-chat-meta {
+  font-size: 13px;
+  line-height: 1.5;
+  max-height: min(78vh, calc(100vh - 240px));
+  overflow-y: auto;
+}
+.btb-admin-chat-meta dt {
+  font-weight: 600;
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+  margin-top: 10px;
+}
+.btb-admin-chat-meta dd {
+  margin: 2px 0 0 0;
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+.btb-admin-chat-meta h4 {
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+.btb-admin-chat-meta ul {
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+
+#chat-management-section .btb-admin-chat-reply label,
+#chat-management-section .btb-admin-chat-reply-label {
+  display: block;
+  font-size: 12px;
+  margin-bottom: 6px;
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+.btb-admin-chat-messages {
+  flex: 1;
+  min-height: min(360px, 42vh);
+  max-height: min(78vh, calc(100vh - 260px));
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 10px;
+}
+.btb-admin-chat-bubble {
+  margin-bottom: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  max-width: min(95%, 36rem);
+  font-size: 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
+}
+.btb-admin-chat-bubble--guest {
+  background: #e0e7ff;
+  margin-left: auto;
+  margin-right: 0;
+}
+.btb-admin-chat-bubble--staff {
+  background: #dcfce7;
+  margin-right: auto;
+  margin-left: 0;
+}
+.btb-admin-chat-bubble .meta {
+  font-size: 11px;
+  color: #475569;
+  -webkit-text-fill-color: #475569;
+  margin-bottom: 4px;
+}
+.btb-admin-chat-bubble-body {
+  color: #0f172a;
+  -webkit-text-fill-color: #0f172a;
 }

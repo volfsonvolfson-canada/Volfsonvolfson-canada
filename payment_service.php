@@ -1,44 +1,44 @@
 <?php
 /**
  * Payment Service
- * Сервис для обработки платежей через Stripe
+ * Service for processing payments via Stripe
  */
 
 require_once 'config.php';
 require_once 'common.php';
 
-// Проверяем, что Stripe ключи настроены
+// Checking that Stripe keys are configured
 if (empty(STRIPE_SECRET_KEY)) {
     error_log("Stripe Secret Key is not configured");
     throw new Exception("Stripe Secret Key is not configured");
 }
 
 /**
- * Инициализация Stripe клиента
+ * Initializing the Stripe client
  * 
- * Для работы этого сервиса нужно установить Stripe PHP SDK через Composer:
+ * For this service to work, you need to install the Stripe PHP SDK via Composer:
  * composer require stripe/stripe-php
  * 
- * Или загрузить вручную и подключить:
+ * Or download manually and connect:
  * require_once 'path/to/stripe-php/init.php';
  */
 function getStripeClient() {
-    // Проверяем, установлен ли Stripe SDK
+    // Checking if Stripe SDK is installed
     if (class_exists('\Stripe\Stripe')) {
         \Stripe\Stripe::setApiKey(STRIPE_SECRET_KEY);
         return new \Stripe\StripeClient(STRIPE_SECRET_KEY);
     }
     
-    // Если Stripe SDK не установлен, используем прямые вызовы API
-    // Это менее удобно, но работает без Composer
+    // If Stripe SDK is not installed, use direct API calls
+    // This is less convenient, but works without Composer
     return null;
 }
 
 /**
- * Создание Payment Intent для бронирования
+ * Creating a Payment Intent for a booking
  * 
- * @param array $booking Данные бронирования
- * @return array Результат создания Payment Intent
+ * @param array $booking Booking data
+ * @return array Result of creating Payment Intent
  */
 function createPaymentIntent($booking) {
     global $conn;
@@ -57,14 +57,14 @@ function createPaymentIntent($booking) {
             throw new Exception('Invalid payment amount');
         }
         
-        // Конвертируем сумму в центы (Stripe использует центы)
+        // Convert the amount to cents (Stripe uses cents)
         $amountInCents = intval(round($amount * 100));
         
-        // Создаем Payment Intent через Stripe API
+        // Creating Payment Intent via Stripe API
         $stripeClient = getStripeClient();
         
         if ($stripeClient) {
-            // Используем Stripe SDK (если установлен)
+            // We use Stripe SDK (if installed)
             $paymentIntent = $stripeClient->paymentIntents->create([
                 'amount' => $amountInCents,
                 'currency' => $currency,
@@ -85,12 +85,12 @@ function createPaymentIntent($booking) {
             $paymentIntentId = $paymentIntent->id;
             $clientSecret = $paymentIntent->client_secret;
         } else {
-            // Используем прямые вызовы API (без SDK)
+            // We use direct API calls (without SDK)
             $paymentIntentId = createPaymentIntentViaAPI($amountInCents, $currency, $bookingId, $booking, $email);
             $clientSecret = getPaymentIntentClientSecret($paymentIntentId);
         }
         
-        // Обновляем бронирование с Payment Intent ID
+        // Updating a reservation with Payment Intent ID
         if ($bookingId) {
             updateRecord($conn, 'bookings', [
                 'payment_intent_id' => $paymentIntentId,
@@ -98,7 +98,7 @@ function createPaymentIntent($booking) {
             ], 'id = ?', [$bookingId]);
         }
         
-        // Логируем создание Payment Intent
+        // Logging the creation of Payment Intent
         logActivity("Payment Intent created: {$paymentIntentId}, Booking: {$bookingId}, Amount: {$amount} {$currency}");
         
         return [
@@ -120,7 +120,7 @@ function createPaymentIntent($booking) {
 }
 
 /**
- * Создание Payment Intent через прямой вызов API (без SDK)
+ * Creating Payment Intent via direct API call (no SDK)
  */
 function createPaymentIntentViaAPI($amountInCents, $currency, $bookingId, $booking, $email) {
     $url = 'https://api.stripe.com/v1/payment_intents';
@@ -161,7 +161,7 @@ function createPaymentIntentViaAPI($amountInCents, $currency, $bookingId, $booki
 }
 
 /**
- * Получение Client Secret для Payment Intent
+ * Obtaining Client Secret for Payment Intent
  */
 function getPaymentIntentClientSecret($paymentIntentId) {
     $url = "https://api.stripe.com/v1/payment_intents/{$paymentIntentId}";
@@ -185,16 +185,16 @@ function getPaymentIntentClientSecret($paymentIntentId) {
 }
 
 /**
- * Обработка успешного платежа
+ * Processing a successful payment
  * 
  * @param string $paymentIntentId ID Payment Intent
- * @return array Результат обработки
+ * @return array Processing result
  */
 function processSuccessfulPayment($paymentIntentId) {
     global $conn;
     
     try {
-        // Получаем информацию о Payment Intent
+        // Getting information about Payment Intent
         $paymentIntent = retrievePaymentIntent($paymentIntentId);
         
         if (!$paymentIntent) {
@@ -207,7 +207,7 @@ function processSuccessfulPayment($paymentIntentId) {
             throw new Exception('Booking ID not found in payment metadata');
         }
         
-        // Обновляем статус оплаты бронирования
+        // Updating the reservation payment status
         $updateData = [
             'payment_status' => 'paid',
             'stripe_payment_id' => $paymentIntentId,
@@ -220,10 +220,10 @@ function processSuccessfulPayment($paymentIntentId) {
             throw new Exception('Failed to update booking payment status');
         }
         
-        // Логируем успешную оплату
+        // Logging successful payment
         logActivity("Payment successful: Payment Intent {$paymentIntentId}, Booking {$bookingId}");
         
-        // Получаем обновленное бронирование
+        // We receive an updated reservation
         $booking = fetchOne($conn, "SELECT * FROM bookings WHERE id = ?", [$bookingId]);
         
         return [
@@ -244,7 +244,7 @@ function processSuccessfulPayment($paymentIntentId) {
 }
 
 /**
- * Получение информации о Payment Intent
+ * Getting information about Payment Intent
  */
 function retrievePaymentIntent($paymentIntentId) {
     $url = "https://api.stripe.com/v1/payment_intents/{$paymentIntentId}";
@@ -267,17 +267,17 @@ function retrievePaymentIntent($paymentIntentId) {
 }
 
 /**
- * Обработка возврата средств при отмене бронирования
+ * Processing refunds for cancellations
  * 
- * @param int $bookingId ID бронирования
- * @param float $amount Сумма возврата (опционально, по умолчанию полный возврат)
- * @return array Результат возврата
+ * @param int $bookingId Booking ID
+ * @param float $amount Refund amount (optional, default full refund)
+ * @return array Return result
  */
 function refundPayment($bookingId, $amount = null) {
     global $conn;
     
     try {
-        // Получаем бронирование
+        // We receive a reservation
         $booking = fetchOne($conn, "SELECT * FROM bookings WHERE id = ?", [$bookingId]);
         
         if (!$booking) {
@@ -294,11 +294,11 @@ function refundPayment($bookingId, $amount = null) {
             throw new Exception('Payment Intent ID not found');
         }
         
-        // Определяем сумму возврата
+        // Determining the refund amount
         $refundAmount = $amount !== null ? floatval($amount) : floatval($booking['total_amount']);
         $refundAmountInCents = intval(round($refundAmount * 100));
         
-        // Создаем возврат через Stripe API
+        // Creating a refund via Stripe API
         $url = "https://api.stripe.com/v1/refunds";
         
         $data = [
@@ -329,7 +329,7 @@ function refundPayment($bookingId, $amount = null) {
         
         $refund = json_decode($response, true);
         
-        // Обновляем статус оплаты бронирования
+        // Updating the reservation payment status
         $updateData = [
             'payment_status' => 'refunded',
             'updated_at' => date('Y-m-d H:i:s')
@@ -337,7 +337,7 @@ function refundPayment($bookingId, $amount = null) {
         
         updateRecord($conn, 'bookings', $updateData, 'id = ?', [$bookingId]);
         
-        // Логируем возврат
+        // Logging the return
         logActivity("Payment refunded: Booking {$bookingId}, Amount: {$refundAmount}, Refund ID: {$refund['id']}");
         
         return [
@@ -358,10 +358,10 @@ function refundPayment($bookingId, $amount = null) {
 }
 
 /**
- * Проверка статуса платежа
+ * Checking payment status
  * 
  * @param string $paymentIntentId ID Payment Intent
- * @return array Статус платежа
+ * @return array Payment status
  */
 function checkPaymentStatus($paymentIntentId) {
     try {
@@ -377,7 +377,7 @@ function checkPaymentStatus($paymentIntentId) {
         return [
             'success' => true,
             'status' => $paymentIntent['status'],
-            'amount' => $paymentIntent['amount'] / 100, // Конвертируем из центов
+            'amount' => $paymentIntent['amount'] / 100, // Convert from cents
             'currency' => strtoupper($paymentIntent['currency']),
             'metadata' => $paymentIntent['metadata'] ?? []
         ];

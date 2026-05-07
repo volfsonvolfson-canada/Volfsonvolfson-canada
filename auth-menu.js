@@ -1,14 +1,14 @@
 /**
- * Универсальная функция для создания меню Sign In / Create Account
- * Основана на структуре login.html
+ * Universal function for creating Sign In / Create Account menu
+ * Based on login.html structure
  * 
- * @param {string|HTMLElement} container - Селектор или элемент контейнера для меню
- * @param {Object} options - Опции конфигурации
- * @param {string} options.defaultTab - Вкладка по умолчанию ('signin' или 'register')
- * @param {Function} options.onLogin - Callback при успешном входе
- * @param {Function} options.onRegister - Callback при успешной регистрации
- * @param {Function} options.onPasswordReset - Callback при запросе сброса пароля
- * @param {Object} options.prefillData - Данные для предзаполнения полей {name, email, phone}
+ * @param {string|HTMLElement} container - Selector or container element for the menu
+ * @param {Object} options - Configuration options
+ * @param {string} options.defaultTab - Default tab ('signin' or 'register')
+ * @param {Function} options.onLogin - Callback on successful login
+ * @param {Function} options.onRegister - Callback on successful registration
+ * @param {Function} options.onPasswordReset - Callback when requesting a password reset
+ * @param {Object} options.prefillData - Data for prefilling fields {name, email, phone}
  */
 function createAuthMenu(container, options = {}) {
   const {
@@ -20,7 +20,7 @@ function createAuthMenu(container, options = {}) {
     onReady = null
   } = options;
 
-  // Получаем контейнер
+  // We get the container
   const containerEl = typeof container === 'string' 
     ? document.querySelector(container) 
     : container;
@@ -30,7 +30,7 @@ function createAuthMenu(container, options = {}) {
     return null;
   }
 
-  // Создаем HTML структуру
+  // Creating an HTML structure
   const authHTML = `
     <div class="auth-container">
       <div class="auth-tabs">
@@ -38,7 +38,7 @@ function createAuthMenu(container, options = {}) {
         <button class="tab-btn ${defaultTab === 'register' ? 'active' : ''}" data-tab="register">Create Account</button>
       </div>
       
-      <!-- Форма входа -->
+      <!-- Login form -->
       <div id="signin-form" class="auth-form ${defaultTab === 'signin' ? 'active' : ''}">
         <form id="login-form" novalidate>
           <div class="form-row">
@@ -79,7 +79,7 @@ function createAuthMenu(container, options = {}) {
           </div>
         </form>
         
-        <!-- Форма восстановления пароля -->
+        <!-- Password recovery form -->
         <form id="forgot-password-form" style="display: none;" novalidate>
           <div class="form-row">
             <div>
@@ -101,7 +101,7 @@ function createAuthMenu(container, options = {}) {
         </form>
       </div>
       
-      <!-- Форма регистрации -->
+      <!-- Registration form -->
       <div id="register-form" class="auth-form ${defaultTab === 'register' ? 'active' : ''}">
         <form id="registration-form" novalidate>
           <div class="form-row">
@@ -171,35 +171,35 @@ function createAuthMenu(container, options = {}) {
         </form>
       </div>
       
-      <!-- Сообщения об ошибках и успехе -->
+      <!-- Error and Success Messages -->
       <div id="auth-messages"></div>
     </div>
   `;
 
-  // Вставляем HTML в контейнер
+  // Inserting HTML into the container
   containerEl.innerHTML = authHTML;
 
-  // Функция для очистки ошибок полей в формах авторизации
+  // Function for clearing field errors in authorization forms
   const clearAuthFormErrors = (form) => {
     if (!form) return;
     form.querySelectorAll('.field-error').forEach(error => error.remove());
     form.querySelectorAll('.invalid-field').forEach(field => field.classList.remove('invalid-field'));
   };
 
-  // Функция для показа ошибки поля в формах авторизации
+  // Function to show field error in login forms
   const showAuthFieldError = (input, message) => {
     if (!input || !message) return;
     
-    // Используем глобальную функцию showFieldError, если доступна
+    // Use the global showFieldError function if available
     if (window.showFieldError) {
-      // Заменяем \n на <br> для отображения в две строки
+      // Replace \n with <br> to display in two lines
       const messageWithBreaks = message.replace(/\n/g, '<br>');
       
-      // Создаем временный элемент для получения текста с HTML
+      // Create a temporary element to receive text from HTML
       const tempDiv = document.createElement('div');
       tempDiv.innerHTML = messageWithBreaks;
       
-      // Получаем видимое поле
+      // Getting a visible field
       let visibleField = input;
       if (typeof flatpickr !== 'undefined' && input._flatpickr) {
         const fpInstance = input._flatpickr;
@@ -208,26 +208,26 @@ function createAuthMenu(container, options = {}) {
         }
       }
       
-      // Удаляем предыдущую ошибку, если есть
+      // Remove the previous error, if any
       const errorId = `error-${input.id || input.name || 'field'}`;
       const existingError = visibleField.parentNode?.querySelector(`#${errorId}`);
       if (existingError) {
         existingError.remove();
       }
       
-      // Добавляем класс invalid-field
+      // Adding the invalid-field class
       visibleField.classList.add('invalid-field');
       if (input !== visibleField) {
         input.classList.add('invalid-field');
       }
       
-      // Создаем элемент ошибки с HTML для поддержки переносов строк
+      // Create an error element with HTML to support line breaks
       const errorMsg = document.createElement('div');
       errorMsg.className = 'field-error';
       errorMsg.innerHTML = messageWithBreaks;
       errorMsg.id = errorId;
       
-      // Вставляем ошибку после видимого поля
+      // Insert an error after the visible field
       if (visibleField.parentNode) {
         visibleField.parentNode.insertBefore(errorMsg, visibleField.nextSibling);
       }
@@ -236,7 +236,7 @@ function createAuthMenu(container, options = {}) {
         window.flashDateField(input);
       }
     } else {
-      // Fallback: создаем элемент ошибки вручную
+      // Fallback: creating an error element manually
       const errorId = `error-${input.id || input.name || 'field'}`;
       const existingError = input.parentNode?.querySelector(`#${errorId}`);
       if (existingError) {
@@ -247,19 +247,19 @@ function createAuthMenu(container, options = {}) {
       
       const errorMsg = document.createElement('div');
       errorMsg.className = 'field-error';
-      // Заменяем \n на <br> для отображения в две строки
+      // Replace \n with <br> to display in two lines
       errorMsg.innerHTML = message.replace(/\n/g, '<br>');
       errorMsg.id = errorId;
       input.parentNode?.insertBefore(errorMsg, input.nextSibling);
     }
   };
 
-  // Функция для показа/скрытия пароля
+  // Function to show/hide password
   const initPasswordToggles = () => {
     containerEl.querySelectorAll('.password-toggle').forEach(toggleBtn => {
       toggleBtn.addEventListener('click', (e) => {
         e.preventDefault();
-        e.stopPropagation(); // Предотвращаем всплытие события
+        e.stopPropagation(); // Preventing an event from bubbling up
         const wrapper = toggleBtn.closest('.password-input-wrapper');
         const input = wrapper?.querySelector('input[type="password"], input[type="text"]');
         const eyeOpen = toggleBtn.querySelector('.eye-open');
@@ -280,17 +280,17 @@ function createAuthMenu(container, options = {}) {
         }
       });
       
-      // Предотвращаем фокус на input при клике на кнопку
+      // Prevent focus on input when clicking a button
       toggleBtn.addEventListener('mousedown', (e) => {
         e.preventDefault();
       });
     });
   };
 
-  // Инициализируем переключатели пароля
+  // Initializing password switches
   initPasswordToggles();
 
-  // Проверка совпадения паролей в реальном времени для формы Create Account
+  // Real-time password matching check for Create Account form
   const initPasswordMatchCheck = () => {
     const passwordInput = containerEl.querySelector('#reg-password');
     const confirmPasswordInput = containerEl.querySelector('#reg-confirm-password');
@@ -300,39 +300,39 @@ function createAuthMenu(container, options = {}) {
         const password = passwordInput.value;
         const confirmPassword = confirmPasswordInput.value;
         
-        // Очищаем предыдущую ошибку совпадения, если она была
+        // Clear the previous match error, if there was one
         const existingError = confirmPasswordInput.parentNode?.querySelector('#error-reg-confirm-password');
         if (existingError && existingError.textContent === 'Passwords do not match') {
           existingError.remove();
           confirmPasswordInput.classList.remove('invalid-field');
         }
         
-        // Проверяем совпадение только если оба поля заполнены
+        // We check for a match only if both fields are filled in
         if (password && confirmPassword && password !== confirmPassword) {
           showAuthFieldError(confirmPasswordInput, 'Passwords do not match');
         }
       };
       
-      // Проверяем при вводе в поле подтверждения пароля
+      // We check when entering the password confirmation field
       confirmPasswordInput.addEventListener('input', checkPasswordMatch);
       
-      // Также проверяем при изменении основного пароля
+      // We also check when changing the main password
       passwordInput.addEventListener('input', checkPasswordMatch);
     }
   };
 
-  // Инициализируем проверку совпадения паролей
+  // Initialize password matching check
   initPasswordMatchCheck();
 
-  // Вызываем onReady колбэк после создания формы, если он предоставлен
+  // Call the onReady callback after creating the form, if provided
   if (onReady && typeof onReady === 'function') {
-    // Используем setTimeout для гарантии, что DOM обновлен
+    // Use setTimeout to ensure the DOM is updated
     setTimeout(() => {
       onReady();
     }, 0);
   }
 
-  // Предзаполняем данные, если они предоставлены
+  // Prefill the data if provided
   if (prefillData) {
     if (prefillData.email) {
       const emailInput = containerEl.querySelector('#login-email');
@@ -350,21 +350,21 @@ function createAuthMenu(container, options = {}) {
     }
   }
 
-  // Инициализируем обработчики событий
+  // Initializing event handlers
   const authMenu = {
     container: containerEl,
     switchTab: (tabName) => {
-      // Обновляем активную вкладку
+      // Refresh the active tab
       containerEl.querySelectorAll('.tab-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.tab === tabName);
       });
 
-      // Показываем соответствующую форму
+      // Show the corresponding form
       containerEl.querySelectorAll('.auth-form').forEach(form => {
         form.classList.toggle('active', form.id === `${tabName}-form`);
       });
 
-      // Очищаем сообщения
+      // Clearing messages
       authMenu.clearMessages();
     },
 
@@ -378,7 +378,7 @@ function createAuthMenu(container, options = {}) {
 
       messagesContainer.appendChild(messageEl);
 
-      // Автоматически убираем сообщение через 5 секунд
+      // Automatically remove the message after 5 seconds
       setTimeout(() => {
         if (messageEl.parentNode) {
           messageEl.parentNode.removeChild(messageEl);
@@ -400,7 +400,7 @@ function createAuthMenu(container, options = {}) {
         loginForm.style.display = 'none';
         forgotForm.style.display = 'block';
         
-        // Заполняем email в форме восстановления
+        // Fill in the email in the recovery form
         const loginEmail = containerEl.querySelector('#login-email').value;
         const resetEmail = containerEl.querySelector('#reset-email');
         if (resetEmail) {
@@ -419,7 +419,7 @@ function createAuthMenu(container, options = {}) {
     }
   };
 
-  // Переключение между вкладками
+  // Switch between tabs
   containerEl.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.preventDefault();
@@ -427,13 +427,13 @@ function createAuthMenu(container, options = {}) {
     });
   });
 
-  // Форма входа
+  // Login form
   const loginForm = containerEl.querySelector('#login-form');
   if (loginForm) {
     loginForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      // Очищаем предыдущие ошибки
+      // Clearing previous errors
       clearAuthFormErrors(loginForm);
       
       const emailInput = containerEl.querySelector('#login-email');
@@ -443,7 +443,7 @@ function createAuthMenu(container, options = {}) {
 
       let hasErrors = false;
 
-      // Валидация email
+      // Email Validation
       if (!email) {
         showAuthFieldError(emailInput, 'Email address is required');
         hasErrors = true;
@@ -452,7 +452,7 @@ function createAuthMenu(container, options = {}) {
         hasErrors = true;
       }
 
-      // Валидация password
+      // Password Validation
       if (!password) {
         showAuthFieldError(passwordInput, 'Password is required');
         hasErrors = true;
@@ -463,22 +463,22 @@ function createAuthMenu(container, options = {}) {
       }
 
       try {
-        // Используем AuthSystem, если доступен
+        // Use AuthSystem if available
         if (window.authSystem) {
-          // Вход через API (проверка пароля происходит на сервере)
+          // Login via API (password verification occurs on the server)
           await window.authSystem.loginUser({ email, password });
           
-          // Получаем текущего пользователя из AuthSystem
+          // Getting the current user from AuthSystem
           const user = window.authSystem.currentUser;
           
           if (onLogin) {
             onLogin(user);
           } else {
-            // Если колбэк не предоставлен, показываем сообщение
+            // If the callback is not provided, display a message
             authMenu.showMessage('Successfully signed in!', 'success');
           }
         } else {
-          // Fallback: если AuthSystem недоступен, вызываем callback
+          // Fallback: if AuthSystem is not available, call callback
           if (onLogin) {
             onLogin({ email, password });
           } else {
@@ -491,13 +491,13 @@ function createAuthMenu(container, options = {}) {
     });
   }
 
-  // Форма регистрации
+  // Registration form
   const regForm = containerEl.querySelector('#registration-form');
   if (regForm) {
     regForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      // Очищаем предыдущие ошибки
+      // Clearing previous errors
       clearAuthFormErrors(regForm);
       
       const nameInput = containerEl.querySelector('#reg-name');
@@ -514,13 +514,13 @@ function createAuthMenu(container, options = {}) {
 
       let hasErrors = false;
 
-      // Валидация name
+      // Validation name
       if (!name) {
         showAuthFieldError(nameInput, 'Full name is required');
         hasErrors = true;
       }
 
-      // Валидация email
+      // Email Validation
       if (!email) {
         showAuthFieldError(emailInput, 'Email address is required');
         hasErrors = true;
@@ -529,12 +529,12 @@ function createAuthMenu(container, options = {}) {
         hasErrors = true;
       }
 
-      // Валидация phone
+      // Validation phone
       if (!phone) {
         showAuthFieldError(phoneInput, 'Phone number is required');
         hasErrors = true;
       } else {
-        // Проверяем формат телефона (минимум 10 цифр)
+        // Checking the phone format (minimum 10 digits)
         const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
         if (!phoneRegex.test(phone)) {
           showAuthFieldError(phoneInput, 'Invalid phone number');
@@ -542,7 +542,7 @@ function createAuthMenu(container, options = {}) {
         }
       }
 
-      // Валидация password
+      // Password Validation
       if (!password) {
         showAuthFieldError(passwordInput, 'Password is required');
         hasErrors = true;
@@ -551,7 +551,7 @@ function createAuthMenu(container, options = {}) {
         hasErrors = true;
       }
 
-      // Валидация confirmPassword
+      // Validation confirmPassword
       if (!confirmPassword) {
         showAuthFieldError(confirmPasswordInput, 'Please confirm your password');
         hasErrors = true;
@@ -565,18 +565,18 @@ function createAuthMenu(container, options = {}) {
       }
 
       try {
-        // Используем AuthSystem, если доступен
+        // Use AuthSystem if available
         if (window.authSystem) {
           const existingUser = await window.authSystem.findUserByEmail(email);
           
           if (existingUser) {
-            // Показываем ошибку под полем email (в две строки)
+            // Show the error under the email field (in two lines)
             showAuthFieldError(emailInput, 'An account with this email already exists.\nPlease sign in.');
             
-            // Мигаем вкладкой Sign In красным несколько раз
+            // Flash the Sign In tab red several times
             const signInTab = containerEl.querySelector('.tab-btn[data-tab="signin"]');
             if (signInTab) {
-              // Функция для мигания вкладки
+              // Function for flashing tab
               const flashTab = () => {
                 signInTab.style.transition = 'background-color 0.3s ease, color 0.3s ease';
                 signInTab.style.backgroundColor = 'rgba(255, 77, 77, 0.2)';
@@ -588,28 +588,28 @@ function createAuthMenu(container, options = {}) {
                 }, 300);
               };
               
-              // Мигаем 3 раза с интервалом
+              // Flashing 3 times at intervals
               flashTab();
               setTimeout(() => flashTab(), 600);
               setTimeout(() => flashTab(), 1200);
             }
             
-            // НЕ переключаем вкладку и НЕ перекидываем пользователя
+            // DO NOT switch tabs and DO NOT transfer the user
             return;
           }
 
           const newUser = await window.authSystem.createUser({ name, email, phone, password });
           
-          // Автоматически логиним пользователя после регистрации
+          // Automatically login the user after registration
           await window.authSystem.loginUser({ email, password });
           
-          // Получаем текущего пользователя из AuthSystem
+          // Getting the current user from AuthSystem
           const loggedInUser = window.authSystem.currentUser;
           
           if (onRegister) {
             onRegister(loggedInUser);
           } else {
-            // Если колбэк не предоставлен, показываем сообщение и переключаемся на форму входа
+            // If the callback is not provided, display a message and switch to the login form
             authMenu.showMessage('Account created successfully!', 'success');
             setTimeout(() => {
               authMenu.switchTab('signin');
@@ -618,7 +618,7 @@ function createAuthMenu(container, options = {}) {
             }, 2000);
           }
         } else {
-          // Fallback: если AuthSystem недоступен, вызываем callback
+          // Fallback: if AuthSystem is not available, call callback
           if (onRegister) {
             onRegister({ name, email, phone, password });
           } else {
@@ -631,13 +631,13 @@ function createAuthMenu(container, options = {}) {
     });
   }
 
-  // Форма восстановления пароля
+  // Password recovery form
   const forgotForm = containerEl.querySelector('#forgot-password-form');
   if (forgotForm) {
     forgotForm.addEventListener('submit', async (e) => {
       e.preventDefault();
       
-      // Очищаем предыдущие ошибки
+      // Clearing previous errors
       clearAuthFormErrors(forgotForm);
       
       const emailInput = containerEl.querySelector('#reset-email');
@@ -645,7 +645,7 @@ function createAuthMenu(container, options = {}) {
 
       let hasErrors = false;
 
-      // Валидация email
+      // Email Validation
       if (!email) {
         showAuthFieldError(emailInput, 'Email address is required');
         hasErrors = true;
@@ -659,7 +659,7 @@ function createAuthMenu(container, options = {}) {
       }
 
       try {
-        // Используем AuthSystem, если доступен
+        // Use AuthSystem if available
         if (window.authSystem) {
           const user = await window.authSystem.findUserByEmail(email);
           
@@ -679,7 +679,7 @@ function createAuthMenu(container, options = {}) {
             }, 2000);
           }
         } else {
-          // Fallback: если AuthSystem недоступен, вызываем callback
+          // Fallback: if AuthSystem is not available, call callback
           if (onPasswordReset) {
             onPasswordReset(email);
           } else {
@@ -692,7 +692,7 @@ function createAuthMenu(container, options = {}) {
     });
   }
 
-  // Ссылки для переключения форм
+  // Links to switch forms
   const forgotLink = containerEl.querySelector('#forgot-password-link');
   if (forgotLink) {
     forgotLink.addEventListener('click', (e) => {
@@ -712,6 +712,6 @@ function createAuthMenu(container, options = {}) {
   return authMenu;
 }
 
-// Экспорт для использования в других файлах
+// Export for use in other files
 window.createAuthMenu = createAuthMenu;
 

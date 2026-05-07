@@ -1,5 +1,5 @@
-<?php
-// Отключаем вывод ошибок для API (чтобы не ломать JSON ответы)
+﻿<?php
+// Disable error display for API responses so JSON output is not corrupted
 ini_set('display_errors', 0);
 ini_set('log_errors', 1);
 
@@ -57,7 +57,18 @@ if ($action === 'admin_login') {
 // Content handlers - must be BEFORE auth_api.php to avoid "Invalid action" error
 if ($action === 'get_content') {
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
     try {
+        if (function_exists('btb_ensure_special_block2_columns')) {
+            btb_ensure_special_block2_columns($conn);
+        }
+        if (function_exists('btb_ensure_special_addon_panels_json_column')) {
+            btb_ensure_special_addon_panels_json_column($conn);
+        }
+        if (function_exists('btb_ensure_booking_button_label_columns')) {
+            btb_ensure_booking_button_label_columns($conn);
+        }
         // Try to get rooms_title and rooms_subtitle from rooms_settings table first
         // If table doesn't exist, fall back to content_settings
         $roomsTitleValue = 'Choose your room';
@@ -205,91 +216,12 @@ if ($action === 'get_content') {
             }
         }
         
-        // Explore page hero: separate table when content_settings row is at size limit
-        $exploreSettingsTableCheck = $conn->query("SHOW TABLES LIKE 'explore_settings'");
-        if ($exploreSettingsTableCheck && $exploreSettingsTableCheck->num_rows > 0) {
-            $exR = $conn->query('SELECT * FROM explore_settings WHERE id = 1');
-            if ($exR && $exR->num_rows > 0) {
-                $exRow = $exR->fetch_assoc();
-                if (!is_array($data)) {
-                    $data = [];
-                }
-                if (is_array($exRow)) {
-                    foreach ($exRow as $k => $v) {
-                        if ($k === 'id') {
-                            continue;
-                        }
-                        if (strpos((string) $k, 'explore_') === 0) {
-                            $data[$k] = $v;
-                        }
-                    }
-                }
-                error_log('get_content: Merged explore_settings into content');
-            }
+        if (function_exists('btb_ensure_massage_service_cards_json_column')) {
+            btb_ensure_massage_service_cards_json_column($conn);
         }
-
-        // Explore — Provincial parks block (separate table to avoid content_settings row growth)
-        $exploreParksTableCheck = $conn->query("SHOW TABLES LIKE 'explore_parks_settings'");
-        if ($exploreParksTableCheck && $exploreParksTableCheck->num_rows > 0) {
-            $epR = $conn->query("SELECT title, intro, parks_list, map_lat, map_lng, hero_image_url, gallery, parks_cards FROM explore_parks_settings WHERE id = 1");
-            if ($epR && $epR->num_rows > 0) {
-                $epRow = $epR->fetch_assoc();
-                if (!is_array($data)) {
-                    $data = [];
-                }
-                if (array_key_exists('title', $epRow) && $epRow['title'] !== null) {
-                    $data['about_parks_title'] = $epRow['title'];
-                }
-                if (array_key_exists('intro', $epRow) && $epRow['intro'] !== null) {
-                    $data['about_parks_intro'] = $epRow['intro'];
-                }
-                if (array_key_exists('parks_list', $epRow) && $epRow['parks_list'] !== null) {
-                    $data['about_parks_list'] = $epRow['parks_list'];
-                }
-                if (array_key_exists('map_lat', $epRow)) {
-                    $data['about_parks_map_lat'] = $epRow['map_lat'];
-                }
-                if (array_key_exists('map_lng', $epRow)) {
-                    $data['about_parks_map_lng'] = $epRow['map_lng'];
-                }
-                if (array_key_exists('hero_image_url', $epRow)) {
-                    $data['about_parks_hero_image_url'] = $epRow['hero_image_url'];
-                }
-                if (array_key_exists('gallery', $epRow)) {
-                    $data['about_parks_gallery'] = $epRow['gallery'];
-                }
-                if (array_key_exists('parks_cards', $epRow)) {
-                    $data['about_parks_cards'] = $epRow['parks_cards'];
-                }
-                error_log('get_content: Merged explore_parks_settings into content');
-            }
-        }
-
-        $exploreCommunityExtraTableCheck = $conn->query("SHOW TABLES LIKE 'explore_community_extra'");
-        if ($exploreCommunityExtraTableCheck && $exploreCommunityExtraTableCheck->num_rows > 0) {
-            $ecR = $conn->query('SELECT * FROM explore_community_extra WHERE id = 1');
-            if ($ecR && $ecR->num_rows > 0) {
-                $ecRow = $ecR->fetch_assoc();
-                if (!is_array($data)) {
-                    $data = [];
-                }
-                foreach ($ecRow as $k => $v) {
-                    if ($k === 'id' || $v === null) {
-                        continue;
-                    }
-                    if ($k === 'about_nelson_image_url') {
-                        $cur = trim((string) ($data['about_nelson_image_url'] ?? ''));
-                        if ($cur === '' && trim((string) $v) !== '') {
-                            $data['about_nelson_image_url'] = $v;
-                        }
-                    } elseif (strpos((string) $k, 'about_kaslo_') === 0 || strpos((string) $k, 'about_crawford_') === 0 || strpos((string) $k, 'about_museum_') === 0) {
-                        $data[$k] = $v;
-                    } elseif (strpos((string) $k, 'explore_') === 0) {
-                        $data[$k] = $v;
-                    }
-                }
-                error_log('get_content: Merged explore_community_extra into content');
-            }
+        // Explore + other Phase 1 canonical tables (explore merge is first inside btb_merge_phase1_canonical_into_content_row)
+        if (function_exists('btb_merge_phase1_canonical_into_content_row')) {
+            btb_merge_phase1_canonical_into_content_row($conn, $data);
         }
         
         // If mini-hotel columns exist but are not in $data, try explicit SELECT (same approach as Sauna)
@@ -317,26 +249,28 @@ if ($action === 'get_content') {
             $roomPricePartsGroundTwin = btb_room_price_parts_for_admin($data, 'ground_twin');
             $roomPricePartsSecond = btb_room_price_parts_for_admin($data, 'second');
             
-            // Use room card data from room_cards_settings if available, otherwise from content_settings
-            $roomBasementCardTitle = !empty($roomCardData) ? ($roomCardData['room_basement_card_title'] ?? '') : ($data['room_basement_card_title'] ?? '');
-            $roomBasementCardDescription = !empty($roomCardData) ? ($roomCardData['room_basement_card_description'] ?? '') : ($data['room_basement_card_description'] ?? '');
-            $roomBasementCardPrice = btb_room_price_line_html($data, 'basement', btb_room_price_default_line_html('basement'));
-            $roomBasementCardImageUrl = !empty($roomCardData) ? ($roomCardData['room_basement_card_image_url'] ?? '') : ($data['room_basement_card_image_url'] ?? '');
+            // Main cards: text/image - non-empty from room_cards, otherwise from merged $data (after preserve from content_settings).
+            $rc = is_array($roomCardData) ? $roomCardData : [];
+            $roomBasementCardTitle = btb_room_card_field_prefer_non_empty($rc, $data, 'room_basement_card_title');
+            $roomBasementCardDescription = btb_room_card_field_prefer_non_empty($rc, $data, 'room_basement_card_description');
+            // Home cards: the same price line as on the room's detail page (as index.php).
+            $roomBasementCardPrice = btb_room_price_line_html_stored_only($data, 'basement');
+            $roomBasementCardImageUrl = trim(btb_room_card_field_prefer_non_empty($rc, $data, 'room_basement_card_image_url'));
             
-            $roomGroundQueenCardTitle = !empty($roomCardData) ? ($roomCardData['room_ground_queen_card_title'] ?? '') : ($data['room_ground_queen_card_title'] ?? '');
-            $roomGroundQueenCardDescription = !empty($roomCardData) ? ($roomCardData['room_ground_queen_card_description'] ?? '') : ($data['room_ground_queen_card_description'] ?? '');
-            $roomGroundQueenCardPrice = btb_room_price_line_html($data, 'ground_queen', btb_room_price_default_line_html('ground_queen'));
-            $roomGroundQueenCardImageUrl = !empty($roomCardData) ? ($roomCardData['room_ground_queen_card_image_url'] ?? '') : ($data['room_ground_queen_card_image_url'] ?? '');
+            $roomGroundQueenCardTitle = btb_room_card_field_prefer_non_empty($rc, $data, 'room_ground_queen_card_title');
+            $roomGroundQueenCardDescription = btb_room_card_field_prefer_non_empty($rc, $data, 'room_ground_queen_card_description');
+            $roomGroundQueenCardPrice = btb_room_price_line_html_stored_only($data, 'ground_queen');
+            $roomGroundQueenCardImageUrl = trim(btb_room_card_field_prefer_non_empty($rc, $data, 'room_ground_queen_card_image_url'));
             
-            $roomGroundTwinCardTitle = !empty($roomCardData) ? ($roomCardData['room_ground_twin_card_title'] ?? '') : ($data['room_ground_twin_card_title'] ?? '');
-            $roomGroundTwinCardDescription = !empty($roomCardData) ? ($roomCardData['room_ground_twin_card_description'] ?? '') : ($data['room_ground_twin_card_description'] ?? '');
-            $roomGroundTwinCardPrice = btb_room_price_line_html($data, 'ground_twin', btb_room_price_default_line_html('ground_twin'));
-            $roomGroundTwinCardImageUrl = !empty($roomCardData) ? ($roomCardData['room_ground_twin_card_image_url'] ?? '') : ($data['room_ground_twin_card_image_url'] ?? '');
+            $roomGroundTwinCardTitle = btb_room_card_field_prefer_non_empty($rc, $data, 'room_ground_twin_card_title');
+            $roomGroundTwinCardDescription = btb_room_card_field_prefer_non_empty($rc, $data, 'room_ground_twin_card_description');
+            $roomGroundTwinCardPrice = btb_room_price_line_html_stored_only($data, 'ground_twin');
+            $roomGroundTwinCardImageUrl = trim(btb_room_card_field_prefer_non_empty($rc, $data, 'room_ground_twin_card_image_url'));
             
-            $roomSecondCardTitle = !empty($roomCardData) ? ($roomCardData['room_second_card_title'] ?? '') : ($data['room_second_card_title'] ?? '');
-            $roomSecondCardDescription = !empty($roomCardData) ? ($roomCardData['room_second_card_description'] ?? '') : ($data['room_second_card_description'] ?? '');
-            $roomSecondCardPrice = btb_room_price_line_html($data, 'second', btb_room_price_default_line_html('second'));
-            $roomSecondCardImageUrl = !empty($roomCardData) ? ($roomCardData['room_second_card_image_url'] ?? '') : ($data['room_second_card_image_url'] ?? '');
+            $roomSecondCardTitle = btb_room_card_field_prefer_non_empty($rc, $data, 'room_second_card_title');
+            $roomSecondCardDescription = btb_room_card_field_prefer_non_empty($rc, $data, 'room_second_card_description');
+            $roomSecondCardPrice = btb_room_price_line_html_stored_only($data, 'second');
+            $roomSecondCardImageUrl = trim(btb_room_card_field_prefer_non_empty($rc, $data, 'room_second_card_image_url'));
             
             error_log('get_content: Room basement card data - title: ' . substr($roomBasementCardTitle, 0, 50) . ' (isset: ' . (isset($roomCardData['room_basement_card_title']) || isset($data['room_basement_card_title']) ? 'yes' : 'no') . '), description: ' . substr($roomBasementCardDescription, 0, 50) . ', price: ' . substr($roomBasementCardPrice, 0, 50));
             
@@ -358,13 +292,7 @@ if ($action === 'get_content') {
             
             error_log('get_content: Mini-hotel data - title: ' . ($miniHotelTitle ? ('"' . substr($miniHotelTitle, 0, 50) . '"') : 'EMPTY') . ', desc1: ' . ($miniHotelDesc1 ? ('"' . substr($miniHotelDesc1, 0, 50) . '"') : 'EMPTY') . ', desc2: ' . ($miniHotelDesc2 ? ('"' . substr($miniHotelDesc2, 0, 50) . '"') : 'EMPTY') . ' (source: ' . (!empty($miniHotelData) ? 'room_cards_settings' : 'content_settings') . ')');
             
-            $retreatCollaborationImageUrlOut = trim($data['retreat_collaboration_image_url'] ?? '');
-            if (!empty($retreatSettingsData) && array_key_exists('retreat_collaboration_image_url', $retreatSettingsData)) {
-                $fromRs = trim((string)($retreatSettingsData['retreat_collaboration_image_url'] ?? ''));
-                if ($fromRs !== '') {
-                    $retreatCollaborationImageUrlOut = $fromRs;
-                }
-            }
+            $retreatCollaborationImageUrlOut = trim((string) ($data['retreat_collaboration_image_url'] ?? ''));
 
             $exploreAccDescRaw = (string)($data['explore_accommodation_description'] ?? '');
             if (trim($exploreAccDescRaw) !== '') {
@@ -377,6 +305,17 @@ if ($action === 'get_content') {
                 } else {
                     $exploreAccommodationDescriptionOut = $legacyB !== '' ? $legacyB : $legacyA;
                 }
+            }
+
+            // Special offer: admin uses one body field; merge legacy description into main for JSON (source indicator + clients).
+            $specialOfferMainRaw = trim((string) ($data['special_offer_main_text'] ?? ''));
+            $specialOfferDescRaw = trim((string) ($data['special_offer_description'] ?? ''));
+            if ($specialOfferMainRaw !== '' && $specialOfferDescRaw !== '') {
+                $specialOfferMainTextOut = $specialOfferMainRaw . "\n\n" . $specialOfferDescRaw;
+            } elseif ($specialOfferMainRaw === '' && $specialOfferDescRaw !== '') {
+                $specialOfferMainTextOut = $specialOfferDescRaw;
+            } else {
+                $specialOfferMainTextOut = $specialOfferMainRaw;
             }
             
             echo json_encode([
@@ -392,8 +331,8 @@ if ($action === 'get_content') {
                     'heroImageUrl' => $data['hero_image_url'] ?? '',
                     'hero2ImageUrl' => $data['hero2_image_url'] ?? '',
                     // Wellness Experiences images
-                    'wellnessMassageImageUrl' => !empty($wellnessImagesData) ? ($wellnessImagesData['wellness_massage_image_url'] ?? '') : ($data['wellness_massage_image_url'] ?? ''),
-                    'wellnessYogaImageUrl' => !empty($wellnessImagesData) ? ($wellnessImagesData['wellness_yoga_image_url'] ?? '') : ($data['wellness_yoga_image_url'] ?? ''),
+                    'wellnessMassageImageUrl' => $data['wellness_massage_image_url'] ?? '',
+                    'wellnessYogaImageUrl' => $data['wellness_yoga_image_url'] ?? '',
                     // Room cards images
                     'roomBasementCardImageUrl' => $roomBasementCardImageUrl,
                     'roomBasementCardTitle' => $roomBasementCardTitle,
@@ -411,17 +350,27 @@ if ($action === 'get_content') {
                     'roomSecondCardTitle' => $roomSecondCardTitle,
                     'roomSecondCardDescription' => $roomSecondCardDescription,
                     'roomSecondCardPrice' => $roomSecondCardPrice,
+                    'homepageBookAStayButtonLabel' => trim((string) ($data['homepage_book_a_stay_button_label'] ?? '')) !== ''
+                        ? $data['homepage_book_a_stay_button_label']
+                        : 'Book a stay',
+                    'roomBookNowButtonLabel' => trim((string) ($data['room_book_now_button_label'] ?? '')) !== ''
+                        ? $data['room_book_now_button_label']
+                        : 'Book now',
+                    'massageBookServiceButtonLabel' => trim((string) ($data['massage_book_service_button_label'] ?? '')) !== ''
+                        ? $data['massage_book_service_button_label']
+                        : 'Book service',
+                    'massageCartSubmitButtonLabel' => (string) ($data['massage_cart_submit_button_label'] ?? ''),
                     // Room banners
                     'roomBasementBannerImageUrl' => $data['room_basement_banner_image_url'] ?? '',
                     'roomGroundQueenBannerImageUrl' => $data['room_ground_queen_banner_image_url'] ?? '',
                     'roomGroundTwinBannerImageUrl' => $data['room_ground_twin_banner_image_url'] ?? '',
                     'roomSecondBannerImageUrl' => $data['room_second_banner_image_url'] ?? '',
                     // Massage page images - use massage_settings if available, otherwise content_settings
-                    'massageHeroImageUrl' => !empty($massageImagesData) ? ($massageImagesData['massage_hero_image_url'] ?? '') : ($data['massage_hero_image_url'] ?? ''),
-                    'massageRelaxingImageUrl' => !empty($massageImagesData) ? ($massageImagesData['massage_relaxing_image_url'] ?? '') : ($data['massage_relaxing_image_url'] ?? ''),
-                    'massageDeepTissueImageUrl' => !empty($massageImagesData) ? ($massageImagesData['massage_deep_tissue_image_url'] ?? '') : ($data['massage_deep_tissue_image_url'] ?? ''),
-                    'massageReikiImageUrl' => !empty($massageImagesData) ? ($massageImagesData['massage_reiki_image_url'] ?? '') : ($data['massage_reiki_image_url'] ?? ''),
-                    'massageSaunaImageUrl' => !empty($massageImagesData) ? ($massageImagesData['massage_sauna_image_url'] ?? '') : ($data['massage_sauna_image_url'] ?? ''),
+                    'massageHeroImageUrl' => $data['massage_hero_image_url'] ?? '',
+                    'massageRelaxingImageUrl' => $data['massage_relaxing_image_url'] ?? '',
+                    'massageDeepTissueImageUrl' => $data['massage_deep_tissue_image_url'] ?? '',
+                    'massageReikiImageUrl' => $data['massage_reiki_image_url'] ?? '',
+                    'massageSaunaImageUrl' => $data['massage_sauna_image_url'] ?? '',
                     'miniHotelImageUrl' => !empty($miniHotelData) ? ($miniHotelData['mini_hotel_image_url'] ?? '') : ($data['mini_hotel_image_url'] ?? ''),
                     // Retreat and Workshop page images
                     'retreatHeroImageUrl' => $data['retreat_hero_image_url'] ?? '',
@@ -430,10 +379,10 @@ if ($action === 'get_content') {
                     'retreatTheatreImageUrl' => $data['retreat_theatre_image_url'] ?? '',
                     'retreatCollaborationImageUrl' => $retreatCollaborationImageUrlOut,
                     // Special page images - use special_settings if available, otherwise content_settings
-                    'specialHeroImageUrl' => !empty($specialData) ? ($specialData['special_hero_image_url'] ?? '') : ($data['special_hero_image_url'] ?? ''),
-                    'specialPoolsImageUrl' => !empty($specialData) ? ($specialData['special_pools_image_url'] ?? '') : ($data['special_pools_image_url'] ?? ''),
-                    'specialDiningImageUrl' => !empty($specialData) ? ($specialData['special_dining_image_url'] ?? '') : ($data['special_dining_image_url'] ?? ''),
-                    'specialExtraImageUrl' => !empty($specialData) ? ($specialData['special_extra_image_url'] ?? '') : ($data['special_extra_image_url'] ?? ''),
+                    'specialHeroImageUrl' => $data['special_hero_image_url'] ?? '',
+                    'specialPoolsImageUrl' => $data['special_pools_image_url'] ?? '',
+                    'specialDiningImageUrl' => $data['special_dining_image_url'] ?? '',
+                    'specialExtraImageUrl' => $data['special_extra_image_url'] ?? '',
                     // About us page images
                     'aboutHeroImageUrl' => $data['about_hero_image_url'] ?? '',
                     'aboutFounderImageUrl' => $data['about_founder_image_url'] ?? '',
@@ -477,21 +426,26 @@ if ($action === 'get_content') {
                     'retreatCollaborationIntro' => $data['retreat_collaboration_intro'] ?? '',
                     'retreatCollaborationList' => $data['retreat_collaboration_list'] ?? '',
                     'retreatCollaborationConclusion' => $data['retreat_collaboration_conclusion'] ?? '',
+                    'retreatGalleryOverlayForest' => $data['retreat_gallery_overlay_forest'] ?? '',
+                    'retreatGalleryOverlayIndoor' => $data['retreat_gallery_overlay_indoor'] ?? '',
+                    'retreatGalleryOverlayTheatre' => $data['retreat_gallery_overlay_theatre'] ?? '',
                     // Special page content - use special_settings if available, otherwise content_settings
-                    'specialHeroTitle' => !empty($specialData) ? ($specialData['special_hero_title'] ?? '') : ($data['special_hero_title'] ?? ''),
-                    'specialHeroSubtitle' => !empty($specialData) ? ($specialData['special_hero_subtitle'] ?? '') : ($data['special_hero_subtitle'] ?? ''),
-                    'specialPoolsTitle' => !empty($specialData) ? ($specialData['special_pools_title'] ?? '') : ($data['special_pools_title'] ?? ''),
-                    'specialPoolsDescription1' => !empty($specialData) ? ($specialData['special_pools_description_1'] ?? '') : ($data['special_pools_description_1'] ?? ''),
-                    'specialPoolsDescription2' => !empty($specialData) ? ($specialData['special_pools_description_2'] ?? '') : ($data['special_pools_description_2'] ?? ''),
-                    'specialDiningTitle' => !empty($specialData) ? ($specialData['special_dining_title'] ?? '') : ($data['special_dining_title'] ?? ''),
-                    'specialDiningDescription1' => !empty($specialData) ? ($specialData['special_dining_description_1'] ?? '') : ($data['special_dining_description_1'] ?? ''),
-                    'specialDiningDescription2' => !empty($specialData) ? ($specialData['special_dining_description_2'] ?? '') : ($data['special_dining_description_2'] ?? ''),
-                    'specialExtraTitle' => !empty($specialData) ? ($specialData['special_extra_title'] ?? '') : ($data['special_extra_title'] ?? ''),
-                    'specialExtraDescription1' => !empty($specialData) ? ($specialData['special_extra_description_1'] ?? '') : ($data['special_extra_description_1'] ?? ''),
-                    'specialExtraDescription2' => !empty($specialData) ? ($specialData['special_extra_description_2'] ?? '') : ($data['special_extra_description_2'] ?? ''),
-                    'specialOfferTitle' => !empty($specialData) ? ($specialData['special_offer_title'] ?? '') : ($data['special_offer_title'] ?? ''),
-                    'specialOfferMainText' => !empty($specialData) ? ($specialData['special_offer_main_text'] ?? '') : ($data['special_offer_main_text'] ?? ''),
-                    'specialOfferDescription' => !empty($specialData) ? ($specialData['special_offer_description'] ?? '') : ($data['special_offer_description'] ?? ''),
+                    'specialHeroTitle' => $data['special_hero_title'] ?? '',
+                    'specialHeroSubtitle' => $data['special_hero_subtitle'] ?? '',
+                    'specialPoolsTitle' => $data['special_pools_title'] ?? '',
+                    'specialPoolsDescription1' => $data['special_pools_description_1'] ?? '',
+                    'specialPoolsDescription2' => $data['special_pools_description_2'] ?? '',
+                    'specialDiningTitle' => $data['special_dining_title'] ?? '',
+                    'specialDiningDescription1' => $data['special_dining_description_1'] ?? '',
+                    'specialExtraTitle' => $data['special_extra_title'] ?? '',
+                    'specialExtraDescription1' => $data['special_extra_description_1'] ?? '',
+                    'specialExtraDescription2' => $data['special_extra_description_2'] ?? '',
+                    'specialOfferTitle' => $data['special_offer_title'] ?? '',
+                    'specialOfferMainText' => $specialOfferMainTextOut,
+                    'specialOfferRoomsCtaLabel' => $data['special_offer_rooms_cta_label'] ?? '',
+                    'specialAddonPanels' => function_exists('btb_special_addon_panels_decode_from_content')
+                        ? btb_special_addon_panels_decode_from_content($data)
+                        : [],
                     // About us page content
                     'aboutHeroTitle' => $data['about_hero_title'] ?? '',
                     'aboutHeroSubtitle' => $data['about_hero_subtitle'] ?? '',
@@ -510,7 +464,7 @@ if ($action === 'get_content') {
                     'aboutLocationDeerWarning' => $data['about_location_deer_warning'] ?? '',
                     'aboutContactFormTitle' => $data['about_contact_form_title'] ?? '',
                     'aboutContactFormDescription' => $data['about_contact_form_description'] ?? '',
-                    // Legacy; admin no longer saves these — used if description empty on old DB rows
+                    // Legacy; admin no longer saves these â€” used if description empty on old DB rows
                     'aboutContactFormLead' => $data['about_contact_form_lead'] ?? '',
                     'aboutContactFormEmphasis' => $data['about_contact_form_emphasis'] ?? '',
                     'aboutAttractionsTitle' => $data['about_attractions_title'] ?? '',
@@ -560,6 +514,11 @@ if ($action === 'get_content') {
                     'exploreAccommodationTitle' => $data['explore_accommodation_title'] ?? '',
                     'exploreAccommodationDescription' => $exploreAccommodationDescriptionOut,
                     'exploreAccommodationImageUrl' => $data['explore_accommodation_image_url'] ?? '',
+                    'exploreGalleryOverlayCommunity' => $data['explore_gallery_overlay_community'] ?? '',
+                    'exploreGalleryOverlayCulture' => $data['explore_gallery_overlay_culture'] ?? '',
+                    'exploreGalleryOverlayPark' => $data['explore_gallery_overlay_park'] ?? '',
+                    'exploreGalleryOverlayActivity' => $data['explore_gallery_overlay_activity'] ?? '',
+                    'exploreGalleryOverlayStay' => $data['explore_gallery_overlay_stay'] ?? '',
                     // Massage page content
                     'massageHeroTitle' => $data['massage_hero_title'] ?? '',
                     'massageHeroImageUrl' => $data['massage_hero_image_url'] ?? '',
@@ -574,69 +533,73 @@ if ($action === 'get_content') {
                     'massageSaunaDescription' => $data['massage_sauna_description'] ?? '',
                     'massageBookingTitle' => $data['massage_booking_title'] ?? '',
                     'massageBookingIntro' => $data['massage_booking_intro'] ?? '',
+                    'wellnessStayGalleryOverlay' => $data['wellness_stay_gallery_overlay'] ?? '',
                     'massagePricingRelaxing' => $data['massage_pricing_relaxing'] ?? '',
                     'massagePricingDeepTissue' => $data['massage_pricing_deep_tissue'] ?? '',
                     'massagePricingReiki' => $data['massage_pricing_reiki'] ?? '',
                     'massagePricingSauna' => $data['massage_pricing_sauna'] ?? '',
+                    'massageServiceCardsJson' => function_exists('btb_massage_service_cards_json_column_name')
+                        ? (string) ($data[btb_massage_service_cards_json_column_name()] ?? '')
+                        : '',
                     'miniHotelTitle' => $miniHotelTitle,
                     'miniHotelDescription' => $miniHotelDescriptionMerged,
                     'miniHotelDescription1' => $miniHotelDesc1,
                     'miniHotelDescription2' => $miniHotelDesc2,
-                    // Room Second floor page content
-                    'roomSecondTitle' => $data['room_second_title'] ?? '',
-                    'roomSecondSubtitle' => $data['room_second_subtitle'] ?? '',
-                    'roomSecondDescription' => $data['room_second_description'] ?? '',
-                    'roomSecondPrice' => btb_room_price_line_html($data, 'second', btb_room_price_default_line_html('second')),
+                    // Room Second floor page content (same fallbacks as room-second-suite.php for admin parity with public site)
+                    'roomSecondTitle' => btb_field_or_default($data, 'room_second_title', 'content_settings.room_second_title', 'Kelder'),
+                    'roomSecondSubtitle' => btb_field_or_default($data, 'room_second_subtitle', 'content_settings.room_second_subtitle', 'A private loft under the roof: bedroom, kitchenette, shower, study and balcony.'),
+                    'roomSecondDescription' => btb_field_or_default($data, 'room_second_description', 'content_settings.room_second_description', 'A fully private floor featuring a large living area with a king-size bed, a separate kitchen, a private bathroom with a shower, a bright workspace, and a spacious balcony with stunning views of the lake and mountains.'),
+                    'roomSecondPrice' => btb_room_price_line_html_stored_only($data, 'second'),
                     'roomSecondPricePrefix' => $roomPricePartsSecond['prefix'],
                     'roomSecondPriceAmount' => $roomPricePartsSecond['amount'],
                     'roomSecondPriceSuffix' => $roomPricePartsSecond['suffix'],
                     'roomSecondCapacity' => $data['room_second_capacity'] ?? '',
-                    'roomSecondNote' => $data['room_second_note'] ?? '',
+                    'roomSecondNote' => btb_field_or_default($data, 'room_second_note', 'content_settings.room_second_note', '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.'),
                     'roomSecondGallery' => $data['room_second_gallery'] ?? '[]',
                     'roomSecondGallerySectionTitle' => $data['room_second_gallery_section_title'] ?? '',
                     'roomSecondCommonGallery' => $data['room_second_common_gallery'] ?? '[]',
                     'roomSecondCommonGallerySectionTitle' => $data['room_second_common_gallery_section_title'] ?? '',
                     'roomSecondBannerImageUrl' => $data['room_second_banner_image_url'] ?? '',
-                    // Room Ground Twin beds page content
-                    'roomGroundTwinTitle' => $data['room_ground_twin_title'] ?? '',
-                    'roomGroundTwinSubtitle' => $data['room_ground_twin_subtitle'] ?? '',
-                    'roomGroundTwinDescription' => $data['room_ground_twin_description'] ?? '',
-                    'roomGroundTwinPrice' => btb_room_price_line_html($data, 'ground_twin', btb_room_price_default_line_html('ground_twin')),
+                    // Room Ground Twin beds page content (same fallbacks as room-first-twin.php)
+                    'roomGroundTwinTitle' => btb_field_or_default($data, 'room_ground_twin_title', 'content_settings.room_ground_twin_title', 'Vrienden'),
+                    'roomGroundTwinSubtitle' => btb_field_or_default($data, 'room_ground_twin_subtitle', 'content_settings.room_ground_twin_subtitle', 'Perfect for friends or colleagues. Near the kitchen and massage hall.'),
+                    'roomGroundTwinDescription' => btb_field_or_default($data, 'room_ground_twin_description', 'content_settings.room_ground_twin_description', 'This first-floor room features two single beds, making it ideal for friends or colleagues traveling together. A shared bathroom with a large bathtub is located nearby.'),
+                    'roomGroundTwinPrice' => btb_room_price_line_html_stored_only($data, 'ground_twin'),
                     'roomGroundTwinPricePrefix' => $roomPricePartsGroundTwin['prefix'],
                     'roomGroundTwinPriceAmount' => $roomPricePartsGroundTwin['amount'],
                     'roomGroundTwinPriceSuffix' => $roomPricePartsGroundTwin['suffix'],
                     'roomGroundTwinCapacity' => $data['room_ground_twin_capacity'] ?? '',
-                    'roomGroundTwinNote' => $data['room_ground_twin_note'] ?? '',
+                    'roomGroundTwinNote' => btb_field_or_default($data, 'room_ground_twin_note', 'content_settings.room_ground_twin_note', '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.'),
                     'roomGroundTwinGallery' => $data['room_ground_twin_gallery'] ?? '[]',
                     'roomGroundTwinGallerySectionTitle' => $data['room_ground_twin_gallery_section_title'] ?? '',
                     'roomGroundTwinCommonGallery' => $data['room_ground_twin_common_gallery'] ?? '[]',
                     'roomGroundTwinCommonGallerySectionTitle' => $data['room_ground_twin_common_gallery_section_title'] ?? '',
                     'roomGroundTwinBannerImageUrl' => $data['room_ground_twin_banner_image_url'] ?? '',
-                    // Room Ground Queen bed page content
-                    'roomGroundQueenTitle' => $data['room_ground_queen_title'] ?? '',
-                    'roomGroundQueenSubtitle' => $data['room_ground_queen_subtitle'] ?? '',
-                    'roomGroundQueenDescription' => $data['room_ground_queen_description'] ?? '',
-                    'roomGroundQueenPrice' => btb_room_price_line_html($data, 'ground_queen', btb_room_price_default_line_html('ground_queen')),
+                    // Room Ground Queen bed page content (same fallbacks as room-first-double.php)
+                    'roomGroundQueenTitle' => btb_field_or_default($data, 'room_ground_queen_title', 'content_settings.room_ground_queen_title', 'The Nouk'),
+                    'roomGroundQueenSubtitle' => btb_field_or_default($data, 'room_ground_queen_subtitle', 'content_settings.room_ground_queen_subtitle', 'Bright room near the living room with fireplace. Ideal for two.'),
+                    'roomGroundQueenDescription' => btb_field_or_default($data, 'room_ground_queen_description', 'content_settings.room_ground_queen_description', 'A small but bright room with a large double bed. A shared bathroom with a spacious bathtub is located nearby.'),
+                    'roomGroundQueenPrice' => btb_room_price_line_html_stored_only($data, 'ground_queen'),
                     'roomGroundQueenPricePrefix' => $roomPricePartsGroundQueen['prefix'],
                     'roomGroundQueenPriceAmount' => $roomPricePartsGroundQueen['amount'],
                     'roomGroundQueenPriceSuffix' => $roomPricePartsGroundQueen['suffix'],
                     'roomGroundQueenCapacity' => $data['room_ground_queen_capacity'] ?? '',
-                    'roomGroundQueenNote' => $data['room_ground_queen_note'] ?? '',
+                    'roomGroundQueenNote' => btb_field_or_default($data, 'room_ground_queen_note', 'content_settings.room_ground_queen_note', '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.'),
                     'roomGroundQueenGallery' => $data['room_ground_queen_gallery'] ?? '[]',
                     'roomGroundQueenGallerySectionTitle' => $data['room_ground_queen_gallery_section_title'] ?? '',
                     'roomGroundQueenCommonGallery' => $data['room_ground_queen_common_gallery'] ?? '[]',
                     'roomGroundQueenCommonGallerySectionTitle' => $data['room_ground_queen_common_gallery_section_title'] ?? '',
                     'roomGroundQueenBannerImageUrl' => $data['room_ground_queen_banner_image_url'] ?? '',
-                    // Room Basement Queen bed page content
-                    'roomBasementTitle' => $data['room_basement_title'] ?? '',
-                    'roomBasementSubtitle' => $data['room_basement_subtitle'] ?? '',
-                    'roomBasementDescription' => $data['room_basement_description'] ?? '',
-                    'roomBasementPrice' => btb_room_price_line_html($data, 'basement', btb_room_price_default_line_html('basement')),
+                    // Room Basement / Loki Suite page content (same fallbacks as room-basement.php)
+                    'roomBasementTitle' => btb_field_or_default($data, 'room_basement_title', 'content_settings.room_basement_title', 'Loki Suite'),
+                    'roomBasementSubtitle' => btb_field_or_default($data, 'room_basement_subtitle', 'content_settings.room_basement_subtitle', 'A cozy room next to the home cinema and sauna. Ideal for two.'),
+                    'roomBasementDescription' => btb_field_or_default($data, 'room_basement_description', 'content_settings.room_basement_description', 'Next to this room there is a home theater lounge with a wood-burning stove and a large shower area with a sauna. The floor has a private exit from the house and a passage to the shared lounge on the first floor.'),
+                    'roomBasementPrice' => btb_room_price_line_html_stored_only($data, 'basement'),
                     'roomBasementPricePrefix' => $roomPricePartsBasement['prefix'],
                     'roomBasementPriceAmount' => $roomPricePartsBasement['amount'],
                     'roomBasementPriceSuffix' => $roomPricePartsBasement['suffix'],
                     'roomBasementCapacity' => $data['room_basement_capacity'] ?? '',
-                    'roomBasementNote' => $data['room_basement_note'] ?? '',
+                    'roomBasementNote' => btb_field_or_default($data, 'room_basement_note', 'content_settings.room_basement_note', '*All tenants may use the sauna and home theatre free of charge, as long as it does not disturb other guests.'),
                     'roomBasementGallery' => $data['room_basement_gallery'] ?? '[]',
                     'roomBasementGallerySectionTitle' => $data['room_basement_gallery_section_title'] ?? '',
                     'roomBasementCommonGallery' => $data['room_basement_common_gallery'] ?? '[]',
@@ -663,83 +626,30 @@ if ($action === 'get_content') {
 // Floor plan get handler - must be BEFORE auth_api.php to avoid "Invalid action" error
 if ($action === 'get_floorplan') {
     header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    header('Pragma: no-cache');
     try {
-        // Check if table exists first
         $tableCheck = $conn->query("SHOW TABLES LIKE 'floorplan_settings'");
-        if ($tableCheck->num_rows === 0) {
-            // Table doesn't exist, return default values
-            $defaultData = [
-                'floorplan_title' => 'Common areas',
-                'floorplan_subtitle' => 'Basement calm, a welcoming main living level, and bright multifunctional rooms for workshops and cinema.',
-                'basement_subtitle' => 'Private floor with a separate entrance.',
-                'basement_description' => 'A spacious bedroom with a king-size bed and a small study, a home theater with a fireplace, and a private bathroom featuring a shower and a sauna room.',
-                'basement_image_url' => 'assets/plan.jpg',
-                'ground_subtitle' => 'Open space with a separate entrance.',
-                'ground_description' => 'A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.',
-                'ground_queen_image' => 'assets/plan.jpg',
-                'ground_image_url' => 'assets/plan.jpg',
-                'loft_subtitle' => 'Multifunctional spaces & small cinema',
-                'loft_description' => 'Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.',
-                'loft_image_url' => 'assets/plan.jpg'
-            ];
-            echo json_encode(['success' => true, 'data' => $defaultData]);
+        if (!$tableCheck || $tableCheck->num_rows === 0) {
+            $payload = function_exists('btb_floorplan_api_payload_from_row') ? btb_floorplan_api_payload_from_row([]) : [];
+            echo json_encode(['success' => true, 'data' => $payload]);
             exit;
         }
-        
+
         $result = $conn->query("SELECT * FROM floorplan_settings WHERE id = 1");
-        
         if (!$result) {
             echo json_encode(['success' => false, 'error' => 'Query failed: ' . $conn->error]);
             exit;
         }
-        
+
         if ($result->num_rows > 0) {
             $data = $result->fetch_assoc();
-            // Universal: add ground_image_url as alias to ground_queen_image
-            if (isset($data['ground_queen_image']) && !isset($data['ground_image_url'])) {
-                $data['ground_image_url'] = $data['ground_queen_image'];
-            }
-            // Log loaded data
             error_log('get_floorplan: Loaded data - ground_description: ' . substr($data['ground_description'] ?? '', 0, 100));
-            // Return in underscore format (as expected by loadFloorplanData)
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'floorplan_title' => $data['floorplan_title'] ?? 'Common areas',
-                    'floorplan_subtitle' => $data['floorplan_subtitle'] ?? 'Basement calm, a welcoming main living level, and bright multifunctional rooms for workshops and cinema.',
-                    'basement_subtitle' => $data['basement_subtitle'] ?? '',
-                    'basement_description' => $data['basement_description'] ?? '',
-                    'basement_image_url' => $data['basement_image_url'] ?? '',
-                    'ground_subtitle' => $data['ground_subtitle'] ?? '',
-                    'ground_description' => $data['ground_description'] ?? '',
-                    'ground_queen_image' => $data['ground_queen_image'] ?? '',
-                    'ground_image_url' => $data['ground_image_url'] ?? $data['ground_queen_image'] ?? '',
-                    'ground_twin_image' => $data['ground_twin_image'] ?? '',
-                    'ground_gallery' => $data['ground_gallery'] ?? '[]',
-                    'loft_subtitle' => $data['loft_subtitle'] ?? 'Multifunctional spaces & small cinema',
-                    'loft_description' => $data['loft_description'] ?? 'Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.',
-                    'loft_image_url' => $data['loft_image_url'] ?? '',
-                    'basement_gallery' => $data['basement_gallery'] ?? '[]',
-                    'ground_gallery' => $data['ground_gallery'] ?? '[]',
-                    'loft_gallery' => $data['loft_gallery'] ?? '[]',
-                    'basement_gallery' => $data['basement_gallery'] ?? '[]'
-                ]
-            ]);
+            $payload = function_exists('btb_floorplan_api_payload_from_row') ? btb_floorplan_api_payload_from_row(is_array($data) ? $data : []) : [];
+            echo json_encode(['success' => true, 'data' => $payload]);
         } else {
-            // Return default values if no data exists
-            $defaultData = [
-                'basement_subtitle' => 'Private floor with a separate entrance.',
-                'basement_description' => 'A spacious bedroom with a king-size bed and a small study, a home theater with a fireplace, and a private bathroom featuring a shower and a sauna room.',
-                'basement_image_url' => 'assets/plan.jpg',
-                'ground_subtitle' => 'Open space with a separate entrance.',
-                'ground_description' => 'A large bright hall with a fireplace, a big dining table, a spacious modern kitchen, two rental rooms, a shared bathroom with a bathtub, and a separate room for massage and events.',
-                'ground_queen_image' => 'assets/plan.jpg',
-                'ground_image_url' => 'assets/plan.jpg',
-                'loft_subtitle' => 'Multifunctional spaces & small cinema',
-                'loft_description' => 'Bright, adaptable rooms for yoga circles, workshops, and film nights — on the main living level beside the kitchen and hall, with generous windows and blackout curtains when you want the room dark.',
-                'loft_image_url' => 'assets/plan.jpg'
-            ];
-            echo json_encode(['success' => true, 'data' => $defaultData]);
+            $payload = function_exists('btb_floorplan_api_payload_from_row') ? btb_floorplan_api_payload_from_row([]) : [];
+            echo json_encode(['success' => true, 'data' => $payload]);
         }
     } catch (Exception $e) {
         echo json_encode(['success' => false, 'error' => 'Database error: ' . $e->getMessage()]);
@@ -749,288 +659,211 @@ if ($action === 'get_floorplan') {
 
 // Floor plan save handler - must be BEFORE auth_api.php to avoid "Invalid action" error
 if ($action === 'save_floorplan') {
-    // Suppress all output and errors to ensure clean JSON response
     error_reporting(E_ALL);
     ini_set('display_errors', 0);
     ini_set('log_errors', 1);
     header('Content-Type: application/json');
-    ob_start(); // Start output buffering to prevent any output before JSON
-    
+    ob_start();
+
     try {
-        // Check if columns exist, if not, try to add them
-        try {
-            $columnsCheck = $conn->query("SHOW COLUMNS FROM floorplan_settings LIKE 'floorplan_title'");
-            if ($columnsCheck && $columnsCheck->num_rows === 0) {
-                // Try to add the columns
-                $conn->query("ALTER TABLE floorplan_settings ADD COLUMN floorplan_title VARCHAR(255) DEFAULT 'Common areas'");
-            }
-            $columnsCheck = $conn->query("SHOW COLUMNS FROM floorplan_settings LIKE 'floorplan_subtitle'");
-            if ($columnsCheck && $columnsCheck->num_rows === 0) {
-                // Try to add the columns
-                $conn->query("ALTER TABLE floorplan_settings ADD COLUMN floorplan_subtitle TEXT DEFAULT 'Basement calm, a welcoming main living level, and bright multifunctional rooms for workshops and cinema.'");
-            }
-        } catch (Exception $e) {
-            // Silently continue - columns might already exist or will be handled by error handling
-            error_log('save_floorplan: Column check error (non-critical): ' . $e->getMessage());
-        }
-        
-        $floorplan_title = $_POST['floorplanTitle'] ?? '';
-        $floorplan_subtitle = $_POST['floorplanSubtitle'] ?? '';
-        $basement_subtitle = $_POST['basementSubtitle'] ?? '';
-        $basement_description = $_POST['basementDescription'] ?? '';
-        $basement_image_url = $_POST['basementImageUrl'] ?? '';
-        $ground_subtitle = $_POST['groundSubtitle'] ?? '';
-        $ground_description = $_POST['groundDescription'] ?? '';
-        // Universal: support both ground_image_url and groundQueenImage
-        $ground_queen_image = $_POST['groundQueenImage'] ?? $_POST['ground_image_url'] ?? '';
-        $ground_twin_image = $_POST['groundTwinImage'] ?? '';
-        $loft_subtitle = $_POST['loftSubtitle'] ?? '';
-        $loft_description = $_POST['loftDescription'] ?? '';
-        $loft_image_url = $_POST['loftImageUrl'] ?? '';
-        
-        // Gallery fields (JSON arrays)
-        $basement_gallery = $_POST['basementGallery'] ?? '[]';
-        $ground_gallery = $_POST['groundGallery'] ?? '[]';
-        $loft_gallery = $_POST['loftGallery'] ?? '[]';
-        
-        // Log received data
-        error_log('save_floorplan: Received data - ground_description: ' . substr($ground_description, 0, 100));
-        error_log('save_floorplan: Received galleries - basement: ' . substr($basement_gallery, 0, 200) . ', ground: ' . substr($ground_gallery, 0, 200) . ', loft: ' . substr($loft_gallery, 0, 200));
-        
-        // Check if gallery columns exist, if not, try to add them
-        try {
-            $columnsCheck = $conn->query("SHOW COLUMNS FROM floorplan_settings LIKE 'basement_gallery'");
-            if ($columnsCheck && $columnsCheck->num_rows === 0) {
-                $conn->query("ALTER TABLE floorplan_settings ADD COLUMN basement_gallery TEXT DEFAULT NULL");
-            }
-            $columnsCheck = $conn->query("SHOW COLUMNS FROM floorplan_settings LIKE 'ground_gallery'");
-            if ($columnsCheck && $columnsCheck->num_rows === 0) {
-                $conn->query("ALTER TABLE floorplan_settings ADD COLUMN ground_gallery TEXT DEFAULT NULL");
-            }
-            $columnsCheck = $conn->query("SHOW COLUMNS FROM floorplan_settings LIKE 'loft_gallery'");
-            if ($columnsCheck && $columnsCheck->num_rows === 0) {
-                $conn->query("ALTER TABLE floorplan_settings ADD COLUMN loft_gallery TEXT DEFAULT NULL");
-            }
-        } catch (Exception $e) {
-            error_log('save_floorplan: Column check error (non-critical): ' . $e->getMessage());
-        }
-        
-        $stmt = $conn->prepare("INSERT INTO floorplan_settings (
-                               id, floorplan_title, floorplan_subtitle, basement_subtitle, basement_description, basement_image_url,
-                               basement_gallery, ground_subtitle, ground_description, ground_queen_image, ground_twin_image,
-                               ground_gallery, loft_subtitle, loft_description, loft_image_url, loft_gallery
-                               ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                               ON DUPLICATE KEY UPDATE
-                               floorplan_title = ?, floorplan_subtitle = ?, basement_subtitle = ?, basement_description = ?, basement_image_url = ?,
-                               basement_gallery = ?, ground_subtitle = ?, ground_description = ?, ground_queen_image = ?, ground_twin_image = ?,
-                               ground_gallery = ?, loft_subtitle = ?, loft_description = ?, loft_image_url = ?, loft_gallery = ?");
-        
-        if (!$stmt) {
-            $error = $conn->error;
-            error_log('save_floorplan: Prepare failed - ' . $error);
-            ob_end_clean();
-            echo json_encode(['success' => false, 'error' => 'Database prepare failed: ' . $error]);
-            exit;
-        }
-        
-        // Count: INSERT VALUES (15) + UPDATE (15) = 30 parameters
-        // VALUES parameters: floorplan_title(1), floorplan_subtitle(2), basement_subtitle(3), basement_description(4), basement_image_url(5),
-        //                    basement_gallery(6), ground_subtitle(7), ground_description(8), ground_queen_image(9), ground_twin_image(10),
-        //                    ground_gallery(11), loft_subtitle(12), loft_description(13), loft_image_url(14), loft_gallery(15)
-        // UPDATE parameters: floorplan_title(16), floorplan_subtitle(17), basement_subtitle(18), basement_description(19), basement_image_url(20),
-        //                    basement_gallery(21), ground_subtitle(22), ground_description(23), ground_queen_image(24), ground_twin_image(25),
-        //                    ground_gallery(26), loft_subtitle(27), loft_description(28), loft_image_url(29), loft_gallery(30)
-        $paramTypes = str_repeat('s', 30); // 30 string parameters
-        $result = $stmt->bind_param($paramTypes, 
-            $floorplan_title, $floorplan_subtitle, $basement_subtitle, $basement_description, $basement_image_url,
-            $basement_gallery, $ground_subtitle, $ground_description, $ground_queen_image, $ground_twin_image,
-            $ground_gallery, $loft_subtitle, $loft_description, $loft_image_url, $loft_gallery,
-            $floorplan_title, $floorplan_subtitle, $basement_subtitle, $basement_description, $basement_image_url,
-            $basement_gallery, $ground_subtitle, $ground_description, $ground_queen_image, $ground_twin_image,
-            $ground_gallery, $loft_subtitle, $loft_description, $loft_image_url, $loft_gallery);
-        
-        if (!$result) {
-            $error = $stmt->error ?: 'Unknown bind_param error';
-            error_log('save_floorplan: bind_param failed - ' . $error);
-            ob_end_clean();
-            header('Content-Type: application/json');
-            echo json_encode(['success' => false, 'error' => 'bind_param failed: ' . $error]);
-            $stmt->close();
-            exit;
-        }
-        
-        ob_clean(); // Clear any output
-        
-        // Log gallery values for debugging
-        error_log('save_floorplan: About to execute - basement_gallery = ' . substr($basement_gallery, 0, 200));
-        error_log('save_floorplan: About to execute - ground_gallery = ' . substr($ground_gallery, 0, 200));
-        error_log('save_floorplan: About to execute - loft_gallery = ' . substr($loft_gallery, 0, 200));
-        
-        if ($stmt->execute()) {
-            // Verify data was saved including galleries
-            $verify = $conn->query("SELECT ground_description, basement_gallery, ground_gallery, loft_gallery FROM floorplan_settings WHERE id = 1");
-            if ($verify && $verify->num_rows > 0) {
-                $saved = $verify->fetch_assoc();
-                error_log('save_floorplan: Verified saved data - ground_description: ' . substr($saved['ground_description'] ?? '', 0, 100));
-                error_log('save_floorplan: Verified basement_gallery: ' . substr($saved['basement_gallery'] ?? '', 0, 200));
-                error_log('save_floorplan: Verified ground_gallery: ' . substr($saved['ground_gallery'] ?? '', 0, 200));
-                error_log('save_floorplan: Verified loft_gallery: ' . substr($saved['loft_gallery'] ?? '', 0, 200));
-            }
-            ob_end_clean();
-            header('Content-Type: application/json');
-            echo json_encode(['success' => true]);
-        } else {
-            $error = $stmt->error ?: $conn->error;
-            error_log('save_floorplan: Database error - ' . $error);
-            error_log('save_floorplan: SQL state - ' . ($stmt->sqlstate ?? 'unknown'));
-            
-            // Check if error is about missing columns
-            if (strpos($error, 'floorplan_title') !== false || strpos($error, 'floorplan_subtitle') !== false) {
-                ob_end_clean();
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success' => false, 
-                    'error' => 'Database columns missing. Please run add_floorplan_title_fields.php to add the required columns.',
-                    'error_details' => $error
-                ]);
-            } else {
-                ob_end_clean();
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'error' => $error, 'error_details' => $error]);
-            }
-        }
-        if (isset($stmt)) {
-            $stmt->close();
-        }
+        $result = function_exists('btb_save_floorplan_from_post')
+            ? btb_save_floorplan_from_post($conn, $_POST)
+            : ['success' => false, 'error' => 'btb_save_floorplan_from_post missing'];
+        ob_end_clean();
+        echo json_encode($result);
     } catch (Throwable $e) {
-        // Catch any fatal errors or exceptions
         error_log('save_floorplan: Fatal error - ' . $e->getMessage());
-        error_log('save_floorplan: Stack trace - ' . $e->getTraceAsString());
         ob_end_clean();
         header('Content-Type: application/json');
         echo json_encode([
-            'success' => false, 
+            'success' => false,
             'error' => 'Fatal error: ' . $e->getMessage(),
             'error_type' => get_class($e),
             'error_file' => $e->getFile(),
-            'error_line' => $e->getLine()
+            'error_line' => $e->getLine(),
         ]);
     }
-    ob_end_flush();
     exit;
 }
 
 if ($action === 'get_guest_reviews') {
     header('Content-Type: application/json; charset=utf-8');
-    $defaultsV = [
-        ['name' => 'Emily R.', 'text' => 'A wonderful stay. The home is even better than the photos, surrounded by trees and so peaceful. We would happily return.', 'rating' => 5],
-        ['name' => 'James K.', 'text' => 'Spotless, spacious, and thoughtfully equipped. The hosts were warm and the location is perfect for exploring Nelson.', 'rating' => 5],
-        ['name' => 'Olivia T.', 'text' => 'Loved the quiet setting and the comfortable beds. Mornings on the deck with coffee were a highlight.', 'rating' => 5],
-        ['name' => 'Michael P.', 'text' => 'Great for a group retreat. Kitchen and common areas are ideal for cooking together. Minor wish: faster Wi‑Fi, but that is a small point in such a restful place.', 'rating' => 4],
-        ['name' => 'Anna L.', 'text' => 'Truly a place to slow down. Every detail made us feel welcome from check‑in to departure.', 'rating' => 5],
+    $data = function_exists('btb_guest_reviews_admin_api_data') ? btb_guest_reviews_admin_api_data($conn) : [
+        'section_title' => 'Guest reviews',
+        'section_subtitle' => 'What recent guests have shared on Vrbo and Airbnb.',
+        'vrbo' => [],
+        'airbnb' => [],
     ];
-    $defaultsA = [
-        ['name' => 'Sofia M.', 'text' => 'The house felt like a private lodge — cozy, light‑filled, and every room had character. We did not want to leave.', 'rating' => 5],
-        ['name' => 'David C.', 'text' => 'Immaculate, relaxed vibe, and easy communication. Perfect base for ski days and evenings by the fire.', 'rating' => 5],
-        ['name' => 'Rachel B.', 'text' => 'A gem in the Kootenays. Forest walks nearby and a comfortable, stylish interior.', 'rating' => 5],
-        ['name' => 'Tom W.', 'text' => 'We booked the whole place for a long weekend. Everyone had their own space and the shared areas brought us together.', 'rating' => 5],
-        ['name' => 'Nina F.', 'text' => 'Hospitality was top‑tier, and the setting is magical. Already recommending to friends.', 'rating' => 5],
-    ];
-    $pad = function (array $list) {
-        $a = $list;
-        for ($i = 0; $i < 5; $i++) {
-            if (!isset($a[$i]) || !is_array($a[$i])) {
-                $a[$i] = ['name' => '', 'text' => '', 'rating' => 5];
-            }
-            $a[$i]['name'] = (string)($a[$i]['name'] ?? '');
-            $a[$i]['text'] = (string)($a[$i]['text'] ?? '');
-            $a[$i]['rating'] = max(1, min(5, (int)($a[$i]['rating'] ?? 5)));
-        }
-        return array_slice($a, 0, 5);
-    };
-    $title = 'Guest reviews';
-    $sub = 'What recent guests have shared on Vrbo and Airbnb.';
-    $vr = $pad($defaultsV);
-    $ar = $pad($defaultsA);
-    $tc = $conn->query("SHOW TABLES LIKE 'guest_reviews_settings'");
-    if ($tc && $tc->num_rows > 0) {
-        $row = $conn->query("SELECT * FROM guest_reviews_settings WHERE id = 1");
-        if ($row && $row->num_rows > 0) {
-            $d = $row->fetch_assoc();
-            if (!empty(trim((string)($d['section_title'] ?? '')))) {
-                $title = (string) $d['section_title'];
-            }
-            if (array_key_exists('section_subtitle', $d) && $d['section_subtitle'] !== null) {
-                $sub = (string) $d['section_subtitle'];
-            }
-            $jV = json_decode((string)($d['vrbo_reviews_json'] ?? '[]'), true);
-            $jA = json_decode((string)($d['airbnb_reviews_json'] ?? '[]'), true);
-            if (is_array($jV)) {
-                $vr = $pad($jV);
-            }
-            if (is_array($jA)) {
-                $ar = $pad($jA);
-            }
-        }
-    }
-    echo json_encode([
-        'success' => true,
-        'data' => [
-            'section_title' => $title,
-            'section_subtitle' => $sub,
-            'vrbo' => $vr,
-            'airbnb' => $ar,
-        ],
-    ], JSON_UNESCAPED_UNICODE);
+    echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
 if ($action === 'save_guest_reviews') {
     header('Content-Type: application/json; charset=utf-8');
-    $create = "CREATE TABLE IF NOT EXISTS `guest_reviews_settings` (
-      `id` TINYINT UNSIGNED NOT NULL PRIMARY KEY,
-      `section_title` VARCHAR(500) NOT NULL DEFAULT 'Guest reviews',
-      `section_subtitle` TEXT NULL,
-      `vrbo_reviews_json` LONGTEXT NULL,
-      `airbnb_reviews_json` LONGTEXT NULL
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
-    if (!$conn->query($create)) {
-        echo json_encode(['success' => false, 'error' => 'Could not create guest_reviews_settings: ' . $conn->error]);
-        exit;
+    try {
+        $result = function_exists('btb_save_guest_reviews_from_post')
+            ? btb_save_guest_reviews_from_post($conn, $_POST)
+            : ['success' => false, 'error' => 'btb_save_guest_reviews_from_post missing'];
+        echo json_encode($result);
+    } catch (Throwable $e) {
+        error_log('save_guest_reviews: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Fatal error: ' . $e->getMessage()]);
     }
+    exit;
+}
 
-    $title = trim((string)($_POST['section_title'] ?? 'Guest reviews'));
-    if ($title === '') {
-        $title = 'Guest reviews';
-    }
-    $sub = (string)($_POST['section_subtitle'] ?? '');
-    $jVr = (string)($_POST['vrbo_reviews'] ?? '[]');
-    $jA = (string)($_POST['airbnb_reviews'] ?? '[]');
-    json_decode($jVr, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        echo json_encode(['success' => false, 'error' => 'Invalid vrbo_reviews JSON']);
-        exit;
-    }
-    json_decode($jA, true);
-    if (json_last_error() !== JSON_ERROR_NONE) {
-        echo json_encode(['success' => false, 'error' => 'Invalid airbnb_reviews JSON']);
-        exit;
-    }
+if ($action === 'get_booking_success_banner') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    $data = function_exists('btb_booking_success_banner_api_data')
+        ? btb_booking_success_banner_api_data($conn)
+        : array_merge(
+            [
+                'heading' => 'Your booking has been submitted!',
+                'paragraph' => "We've sent you a confirmation email. Once your booking is approved, you'll be able to proceed with the payment.\n\nYou can also make changes to your booking in your personal account.",
+                'button_label' => 'My Account',
+                'button_url' => 'dashboard.html',
+            ],
+            function_exists('btb_booking_success_auth_login_defaults') ? btb_booking_success_auth_login_defaults() : [
+                'auth_login_message' => "Welcome back!\n\nAll your bookings are available in your personal account.\n\nYou can find it in the menu in the top right corner of the site",
+                'auth_login_close_label' => 'Close',
+                'auth_login_account_label' => 'To my account',
+                'auth_login_account_url' => 'dashboard.html',
+            ],
+        );
+    echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
-    $sql = "INSERT INTO `guest_reviews_settings` (`id`, `section_title`, `section_subtitle`, `vrbo_reviews_json`, `airbnb_reviews_json`) VALUES (1, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE `section_title` = VALUES(`section_title`), `section_subtitle` = VALUES(`section_subtitle`), `vrbo_reviews_json` = VALUES(`vrbo_reviews_json`), `airbnb_reviews_json` = VALUES(`airbnb_reviews_json`)";
-    $stmt = $conn->prepare($sql);
-    if (!$stmt) {
-        echo json_encode(['success' => false, 'error' => $conn->error]);
-        exit;
+if ($action === 'save_booking_success_banner') {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        $result = function_exists('btb_save_booking_success_banner_from_post')
+            ? btb_save_booking_success_banner_from_post($conn, $_POST)
+            : ['success' => false, 'error' => 'btb_save_booking_success_banner_from_post missing'];
+        echo json_encode($result);
+    } catch (Throwable $e) {
+        error_log('save_booking_success_banner: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Fatal error: ' . $e->getMessage()]);
     }
-    $stmt->bind_param('ssss', $title, $sub, $jVr, $jA);
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'error' => $stmt->error ?: 'Save failed']);
+    exit;
+}
+
+if ($action === 'get_email_templates') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    $data = function_exists('btb_email_templates_api_data')
+        ? btb_email_templates_api_data($conn)
+        : [
+            'templates' => [],
+            'branding' => function_exists('btb_email_branding_api_data')
+                ? btb_email_branding_api_data($conn)
+                : (function_exists('btb_email_branding_defaults') ? btb_email_branding_defaults() : []),
+        ];
+    echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'save_email_template') {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        $result = function_exists('btb_save_email_template_from_post')
+            ? btb_save_email_template_from_post($conn, $_POST)
+            : ['success' => false, 'error' => 'btb_save_email_template_from_post missing'];
+        echo json_encode($result);
+    } catch (Throwable $e) {
+        error_log('save_email_template: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Fatal error: ' . $e->getMessage()]);
     }
-    $stmt->close();
+    exit;
+}
+
+if ($action === 'save_email_branding') {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        $result = function_exists('btb_save_email_branding_from_post')
+            ? btb_save_email_branding_from_post($conn, $_POST)
+            : ['success' => false, 'error' => 'btb_save_email_branding_from_post missing'];
+        echo json_encode($result);
+    } catch (Throwable $e) {
+        error_log('save_email_branding: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Fatal error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action === 'get_email_delivery_overview') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    require_once __DIR__ . '/email_service.php';
+    $data = function_exists('btb_email_delivery_overview')
+        ? btb_email_delivery_overview($conn)
+        : [];
+    echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'get_email_delivery_log') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    require_once __DIR__ . '/email_service.php';
+    $limit = intval($_GET['limit'] ?? $_POST['limit'] ?? 50);
+    $offset = intval($_GET['offset'] ?? $_POST['offset'] ?? 0);
+    $data = function_exists('btb_email_delivery_log')
+        ? btb_email_delivery_log($conn, $limit, $offset)
+        : ['rows' => [], 'total' => 0];
+    echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'retry_email_delivery') {
+    header('Content-Type: application/json; charset=utf-8');
+    require_once __DIR__ . '/email_service.php';
+    $id = intval($_POST['id'] ?? 0);
+    try {
+        $result = function_exists('btb_email_delivery_retry')
+            ? btb_email_delivery_retry($conn, $id)
+            : ['success' => false, 'error' => 'btb_email_delivery_retry missing'];
+        echo json_encode($result, JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        error_log('retry_email_delivery: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Fatal error: ' . $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    }
+    exit;
+}
+
+if ($action === 'get_my_bookings_pricing') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    $data = function_exists('btb_my_bookings_pricing_api_data')
+        ? btb_my_bookings_pricing_api_data($conn)
+        : [
+            'cleaning_label' => 'Cleaning fee',
+            'cleaning_amount_cad' => 60.0,
+            'cleaning_kelder_amount_cad' => 100.0,
+            'pets_label' => 'Dogs',
+            'pets_max_qty' => 2,
+            'pets_amount_per_dog_cad' => 75.0,
+            'tax1_label' => 'GST',
+            'tax1_percent' => 0.0,
+            'tax2_label' => 'PST',
+            'tax2_percent' => 0.0,
+        ];
+    echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'save_my_bookings_pricing') {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        $result = function_exists('btb_save_my_bookings_pricing_from_post')
+            ? btb_save_my_bookings_pricing_from_post($conn, $_POST)
+            : ['success' => false, 'error' => 'btb_save_my_bookings_pricing_from_post missing'];
+        echo json_encode($result);
+    } catch (Throwable $e) {
+        error_log('save_my_bookings_pricing: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Fatal error: ' . $e->getMessage()]);
+    }
     exit;
 }
 
@@ -1046,6 +879,23 @@ if ($action === 'save_content') {
     ob_start(); // Start output buffering to prevent any output before JSON
     
     try {
+    if (function_exists('btb_ensure_special_block2_columns')) {
+        btb_ensure_special_block2_columns($conn);
+    }
+    if (function_exists('btb_ensure_special_addon_panels_json_column')) {
+        btb_ensure_special_addon_panels_json_column($conn);
+    }
+    if (function_exists('btb_ensure_booking_button_label_columns')) {
+        btb_ensure_booking_button_label_columns($conn);
+    }
+    if (function_exists('btb_dual_write_post_keys_to_table_id1')) {
+        btb_dual_write_post_keys_to_table_id1($conn, 'rooms_settings', ['room_book_now_button_label']);
+    }
+    if (isset($_POST['special_addon_panels_json']) && function_exists('btb_special_addon_panels_normalize_json_string')) {
+        $_POST['special_addon_panels_json'] = btb_special_addon_panels_normalize_json_string(
+            (string) ($_POST['special_addon_panels_json'] ?? '[]')
+        );
+    }
     btb_sync_room_price_legacy_fields_from_post($_POST);
     
     // Note: rooms_title and rooms_subtitle columns must be added manually using add_rooms_title_fields.php
@@ -1056,241 +906,43 @@ if ($action === 'save_content') {
     $values = [];
     $types = '';
     
-    $exploreSettingsTableExists = false;
-    $esTblChk = $conn->query("SHOW TABLES LIKE 'explore_settings'");
-    if ($esTblChk && $esTblChk->num_rows > 0) {
-        $exploreSettingsTableExists = true;
+    $exploreOpts = ['explore_settings_saved' => false, 'explore_parks_saved' => false, 'explore_community_extra_saved' => false];
+    if (function_exists('btb_dual_write_explore_canonical_from_post')) {
+        $exploreOpts = btb_dual_write_explore_canonical_from_post($conn, $fields, $values, $types);
     }
-    $exploreSettingsSaved = false;
-    $esKeys = [
-        'explore_hero_title',
-        'explore_hero_subtitle',
-        'explore_hero_image_url',
-        'explore_accommodation_title',
-        'explore_accommodation_description',
-        'explore_accommodation_image_url',
-    ];
-    $exploreSettingsColNames = [];
-    if ($exploreSettingsTableExists) {
-        $esColChk = $conn->query('SHOW COLUMNS FROM explore_settings');
-        if ($esColChk) {
-            while ($cRow = $esColChk->fetch_assoc()) {
-                if (!empty($cRow['Field'])) {
-                    $exploreSettingsColNames[$cRow['Field']] = true;
-                }
-            }
-        }
-    }
-    if ($exploreSettingsTableExists) {
-        $esToUpdate = [];
-        foreach ($esKeys as $k) {
-            if (!array_key_exists($k, $_POST)) {
-                continue;
-            }
-            if (empty($exploreSettingsColNames[$k])) {
-                error_log("save_content: Skipping explore_settings — column not present: $k (run create_explore_settings_table.php to upgrade table)");
-                continue;
-            }
-            $esToUpdate[$k] = $_POST[$k];
-        }
-        if (!empty($esToUpdate)) {
-            $esRowChk = $conn->query("SELECT id FROM explore_settings WHERE id = 1");
-            if (!$esRowChk || $esRowChk->num_rows === 0) {
-                $conn->query("INSERT INTO explore_settings (id) VALUES (1)");
-            }
-            $esSets = [];
-            $esVals = [];
-            $esTypes = '';
-            foreach ($esToUpdate as $k => $v) {
-                $esSets[] = "$k = ?";
-                $esVals[] = $v;
-                $esTypes .= 's';
-            }
-            $esSql = "UPDATE explore_settings SET " . implode(', ', $esSets) . " WHERE id = 1";
-            $esStmt = $conn->prepare($esSql);
-            if ($esStmt) {
-                $esStmt->bind_param($esTypes, ...$esVals);
-                if ($esStmt->execute()) {
-                    $exploreSettingsSaved = true;
-                    error_log('save_content: Saved explore fields to explore_settings: ' . implode(', ', array_keys($esToUpdate)));
-                } else {
-                    error_log('save_content: explore_settings update failed: ' . $esStmt->error);
-                }
-                $esStmt->close();
-            }
-        }
-    }
-    // If explore_settings is missing, or a column exists only in content_settings (older explore_settings), save there.
-    foreach ($esKeys as $ef) {
-        if (!isset($_POST[$ef])) {
-            continue;
-        }
-        if ($exploreSettingsTableExists && !empty($exploreSettingsColNames[$ef])) {
-            continue;
-        }
-        $cEx = $conn->query("SHOW COLUMNS FROM content_settings LIKE '" . $conn->real_escape_string($ef) . "'");
-        if ($cEx && $cEx->num_rows > 0) {
-            $fields[] = "`$ef` = ?";
-            $values[] = $_POST[$ef];
-            $types .= 's';
-            error_log("save_content: Explore field $ef → content_settings (not in explore_settings or table missing column)");
-        }
-    }
+    $exploreSettingsSaved = $exploreOpts['explore_settings_saved'];
+    $exploreParksSaved = $exploreOpts['explore_parks_saved'];
+    $exploreCommunityExtraSaved = $exploreOpts['explore_community_extra_saved'];
+    $exploreSettingsTableExists = function_exists('btb_db_table_exists') && btb_db_table_exists($conn, 'explore_settings');
+    $exploreParksTableExists = function_exists('btb_db_table_exists') && btb_db_table_exists($conn, 'explore_parks_settings');
 
-    $exploreParksTableExists = false;
-    $epTblChk0 = $conn->query("SHOW TABLES LIKE 'explore_parks_settings'");
-    if ($epTblChk0 && $epTblChk0->num_rows > 0) {
-        $exploreParksTableExists = true;
-    }
-    $exploreParksSaved = false;
-    if ($exploreParksTableExists) {
-        $epPostMap = [
-            'about_parks_title' => 'title',
-            'about_parks_intro' => 'intro',
-            'about_parks_list' => 'parks_list',
-            'about_parks_map_lat' => 'map_lat',
-            'about_parks_map_lng' => 'map_lng',
-            'about_parks_hero_image_url' => 'hero_image_url',
-            'about_parks_gallery' => 'gallery',
-            'about_parks_cards' => 'parks_cards',
-        ];
-        $epToUpdate = [];
-        foreach ($epPostMap as $postKey => $col) {
-            if (array_key_exists($postKey, $_POST)) {
-                $epToUpdate[$col] = $_POST[$postKey];
-            }
-        }
-        if (!empty($epToUpdate)) {
-            $epRowChk = $conn->query("SELECT id FROM explore_parks_settings WHERE id = 1");
-            if (!$epRowChk || $epRowChk->num_rows === 0) {
-                $conn->query("INSERT INTO explore_parks_settings (id) VALUES (1)");
-            }
-            $epSets = [];
-            $epVals = [];
-            $epTypes = '';
-            foreach ($epToUpdate as $col => $v) {
-                $epSets[] = "`$col` = ?";
-                $epVals[] = $v;
-                $epTypes .= 's';
-            }
-            $epSql = "UPDATE explore_parks_settings SET " . implode(', ', $epSets) . " WHERE id = 1";
-            $epStmt = $conn->prepare($epSql);
-            if ($epStmt) {
-                $epStmt->bind_param($epTypes, ...$epVals);
-                if ($epStmt->execute()) {
-                    $exploreParksSaved = true;
-                    error_log('save_content: Saved explore_parks_settings: ' . implode(', ', array_keys($epToUpdate)));
-                } else {
-                    error_log('save_content: explore_parks_settings update failed: ' . $epStmt->error);
-                }
-                $epStmt->close();
-            }
-        }
-    }
+    /** True when POST was persisted only to canonical section tables (no content_settings UPDATE). */
+    $canonicalTablesWritten = false;
 
-    $exploreCommunityExtraTableExists = false;
-    $ecTblChkCommunity = $conn->query("SHOW TABLES LIKE 'explore_community_extra'");
-    if ($ecTblChkCommunity && $ecTblChkCommunity->num_rows > 0) {
-        $exploreCommunityExtraTableExists = true;
-    }
-    $exploreCommunityExtraSaved = false;
-    if ($exploreCommunityExtraTableExists) {
-        $ecExtraKeys = [
-            'about_nelson_image_url',
-            'about_kaslo_title',
-            'about_kaslo_distance',
-            'about_kaslo_description',
-            'about_kaslo_image_url',
-            'about_kaslo_gallery',
-            'about_crawford_title',
-            'about_crawford_distance',
-            'about_crawford_description',
-            'about_crawford_image_url',
-            'about_crawford_gallery',
-            'about_museum_title',
-            'about_museum_distance',
-            'about_museum_description',
-            'about_museum_image_url',
-            'about_museum_gallery',
-            'explore_communities_h2',
-            'explore_culture_h2',
-            'explore_parks_h2',
-            'explore_activities_h2',
-            'explore_communities_intro',
-            'explore_culture_intro',
-            'explore_activities_intro',
-            'explore_communities_cards',
-            'explore_culture_cards',
-            'explore_activities_cards',
-        ];
-        $ecToUpdate = [];
-        foreach ($ecExtraKeys as $k) {
-            if (array_key_exists($k, $_POST)) {
-                $ecToUpdate[$k] = $_POST[$k];
-            }
-        }
-        if (!empty($ecToUpdate)) {
-            $ecRowChk = $conn->query('SELECT id FROM explore_community_extra WHERE id = 1');
-            if (!$ecRowChk || $ecRowChk->num_rows === 0) {
-                $conn->query('INSERT IGNORE INTO explore_community_extra (id) VALUES (1)');
-            }
-            $ecSets = [];
-            $ecVals = [];
-            $ecTypes = '';
-            foreach ($ecToUpdate as $col => $v) {
-                $ecSets[] = "`$col` = ?";
-                $ecVals[] = $v;
-                $ecTypes .= 's';
-            }
-            $ecSql = 'UPDATE explore_community_extra SET ' . implode(', ', $ecSets) . ' WHERE id = 1';
-            $ecStmt = $conn->prepare($ecSql);
-            if ($ecStmt) {
-                $ecStmt->bind_param($ecTypes, ...$ecVals);
-                if ($ecStmt->execute()) {
-                    $exploreCommunityExtraSaved = true;
-                    error_log('save_content: Saved explore_community_extra: ' . implode(', ', array_keys($ecToUpdate)));
-                } else {
-                    error_log('save_content: explore_community_extra update failed: ' . $ecStmt->error);
-                }
-                $ecStmt->close();
-            } else {
-                error_log('save_content: explore_community_extra prepare failed: ' . ($conn->error ?: 'unknown'));
-            }
-        }
-    }
-
-    // If section card JSON (Explore Communities/Culture/Activities) did not persist to explore_community_extra,
-    // also write to content_settings when those columns exist — otherwise the admin shows "Saved" from other
-    // fields (about_*) but card text is lost on reload.
-    $exploreCardJsonKeys = ['explore_communities_cards', 'explore_culture_cards', 'explore_activities_cards'];
-    foreach ($exploreCardJsonKeys as $ek) {
-        if (!array_key_exists($ek, $_POST)) {
-            continue;
-        }
-        if (!empty($exploreCommunityExtraSaved)) {
-            continue;
-        }
-        $cEx = $conn->query("SHOW COLUMNS FROM content_settings LIKE '" . $conn->real_escape_string($ek) . "'");
-        if ($cEx && $cEx->num_rows > 0) {
-            $fields[] = "`$ek` = ?";
-            $values[] = $_POST[$ek];
-            $types .= 's';
-            error_log("save_content: Explore card JSON fallback → content_settings.$ek");
-        } else {
-            error_log("save_content: Explore card JSON not saved (no working explore_community_extra save and no content_settings.$ek column). Run create_explore_community_extra_table.php on the server.");
-        }
-    }
     
-    // Homepage fields
+    // Homepage fields (skip content_settings when homepage_settings owns the column — dual-write fills canonical table)
+    $homepageSettingsTableExists = false;
+    $homepageTblChk = $conn->query("SHOW TABLES LIKE 'homepage_settings'");
+    if ($homepageTblChk && $homepageTblChk->num_rows > 0) {
+        $homepageSettingsTableExists = true;
+    }
     if (isset($_POST['homepage_description'])) {
-        $fields[] = 'homepage_description = ?';
-        $values[] = $_POST['homepage_description'];
-        $types .= 's';
+        if (!($homepageSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'homepage_settings', 'homepage_description'))) {
+            $fields[] = 'homepage_description = ?';
+            $values[] = $_POST['homepage_description'];
+            $types .= 's';
+        } else {
+            error_log('save_content: Skipping homepage_description — column on homepage_settings (canonical)');
+        }
     }
     if (isset($_POST['homepage_subtitle'])) {
-        $fields[] = 'homepage_subtitle = ?';
-        $values[] = $_POST['homepage_subtitle'];
-        $types .= 's';
+        if (!($homepageSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'homepage_settings', 'homepage_subtitle'))) {
+            $fields[] = 'homepage_subtitle = ?';
+            $values[] = $_POST['homepage_subtitle'];
+            $types .= 's';
+        } else {
+            error_log('save_content: Skipping homepage_subtitle — column on homepage_settings (canonical)');
+        }
     }
     // Save rooms_title and rooms_subtitle to rooms_settings table if it exists
     // This is done separately and doesn't require other fields to be present
@@ -1344,30 +996,137 @@ if ($action === 'save_content') {
             }
         }
     }
+    $contactSettingsTableExists = false;
+    $contactTblChk = $conn->query("SHOW TABLES LIKE 'contact_settings'");
+    if ($contactTblChk && $contactTblChk->num_rows > 0) {
+        $contactSettingsTableExists = true;
+    }
     if (isset($_POST['contact_phone'])) {
-        $fields[] = 'contact_phone = ?';
-        $values[] = $_POST['contact_phone'];
-        $types .= 's';
+        if (!($contactSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'contact_settings', 'contact_phone'))) {
+            $fields[] = 'contact_phone = ?';
+            $values[] = $_POST['contact_phone'];
+            $types .= 's';
+        } else {
+            error_log('save_content: Skipping contact_phone — column on contact_settings (canonical)');
+        }
     }
     if (isset($_POST['contact_email'])) {
-        $fields[] = 'contact_email = ?';
-        $values[] = $_POST['contact_email'];
-        $types .= 's';
+        if (!($contactSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'contact_settings', 'contact_email'))) {
+            $fields[] = 'contact_email = ?';
+            $values[] = $_POST['contact_email'];
+            $types .= 's';
+        } else {
+            error_log('save_content: Skipping contact_email — column on contact_settings (canonical)');
+        }
     }
     if (isset($_POST['contact_address'])) {
-        $fields[] = 'contact_address = ?';
-        $values[] = $_POST['contact_address'];
-        $types .= 's';
+        if (!($contactSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'contact_settings', 'contact_address'))) {
+            $fields[] = 'contact_address = ?';
+            $values[] = $_POST['contact_address'];
+            $types .= 's';
+        } else {
+            error_log('save_content: Skipping contact_address — column on contact_settings (canonical)');
+        }
     }
     if (isset($_POST['hero_image_url'])) {
-        $fields[] = 'hero_image_url = ?';
-        $values[] = $_POST['hero_image_url'];
-        $types .= 's';
+        if (!($homepageSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'homepage_settings', 'hero_image_url'))) {
+            $fields[] = 'hero_image_url = ?';
+            $values[] = $_POST['hero_image_url'];
+            $types .= 's';
+        } else {
+            error_log('save_content: Skipping hero_image_url — column on homepage_settings (canonical)');
+        }
     }
     if (isset($_POST['hero2_image_url'])) {
-        $fields[] = 'hero2_image_url = ?';
-        $values[] = $_POST['hero2_image_url'];
-        $types .= 's';
+        if (!($homepageSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'homepage_settings', 'hero2_image_url'))) {
+            $fields[] = 'hero2_image_url = ?';
+            $values[] = $_POST['hero2_image_url'];
+            $types .= 's';
+        } else {
+            error_log('save_content: Skipping hero2_image_url — column on homepage_settings (canonical)');
+        }
+    }
+
+    // Homepage row: single canonical table (not duplicated via tail flush)
+    if ($homepageSettingsTableExists && function_exists('dbTableHasColumn')) {
+        $hpBatch = [];
+        foreach (['homepage_description', 'homepage_subtitle', 'hero_image_url', 'hero2_image_url'] as $hpKey) {
+            if (!array_key_exists($hpKey, $_POST)) {
+                continue;
+            }
+            if (!dbTableHasColumn($conn, 'homepage_settings', $hpKey)) {
+                continue;
+            }
+            $hpBatch[$hpKey] = $_POST[$hpKey];
+        }
+        if (!empty($hpBatch)) {
+            $conn->query('INSERT IGNORE INTO homepage_settings (id) VALUES (1)');
+            $hpSets = [];
+            $hpVals = [];
+            $hpTypes = '';
+            foreach ($hpBatch as $kH => $vH) {
+                $ks = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $kH);
+                if ($ks === '') {
+                    continue;
+                }
+                $hpSets[] = "`{$ks}` = ?";
+                $hpVals[] = (string) ($vH ?? '');
+                $hpTypes .= 's';
+            }
+            if (!empty($hpSets)) {
+                $hpSql = 'UPDATE homepage_settings SET ' . implode(', ', $hpSets) . ' WHERE id = 1';
+                $hpSt = $conn->prepare($hpSql);
+                if ($hpSt) {
+                    $hpSt->bind_param($hpTypes, ...$hpVals);
+                    if ($hpSt->execute()) {
+                        $canonicalTablesWritten = true;
+                    }
+                    $hpSt->close();
+                    error_log('save_content: homepage_settings batch: ' . implode(', ', array_keys($hpBatch)));
+                }
+            }
+        }
+    }
+
+    // Contact row: single canonical table
+    if ($contactSettingsTableExists && function_exists('dbTableHasColumn')) {
+        $ctBatch = [];
+        foreach (['contact_phone', 'contact_email', 'contact_address'] as $ctKey) {
+            if (!array_key_exists($ctKey, $_POST)) {
+                continue;
+            }
+            if (!dbTableHasColumn($conn, 'contact_settings', $ctKey)) {
+                continue;
+            }
+            $ctBatch[$ctKey] = $_POST[$ctKey];
+        }
+        if (!empty($ctBatch)) {
+            $conn->query('INSERT IGNORE INTO contact_settings (id) VALUES (1)');
+            $ctSets = [];
+            $ctVals = [];
+            $ctTypes = '';
+            foreach ($ctBatch as $kC => $vC) {
+                $ks = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $kC);
+                if ($ks === '') {
+                    continue;
+                }
+                $ctSets[] = "`{$ks}` = ?";
+                $ctVals[] = (string) ($vC ?? '');
+                $ctTypes .= 's';
+            }
+            if (!empty($ctSets)) {
+                $ctSql = 'UPDATE contact_settings SET ' . implode(', ', $ctSets) . ' WHERE id = 1';
+                $ctSt = $conn->prepare($ctSql);
+                if ($ctSt) {
+                    $ctSt->bind_param($ctTypes, ...$ctVals);
+                    if ($ctSt->execute()) {
+                        $canonicalTablesWritten = true;
+                    }
+                    $ctSt->close();
+                    error_log('save_content: contact_settings batch: ' . implode(', ', array_keys($ctBatch)));
+                }
+            }
+        }
     }
     
     // Retreat and Workshop content fields
@@ -1384,13 +1143,14 @@ if ($action === 'save_content') {
     ];
     
     // Special page content fields
-    $specialFields = [
+    $specialFields = array_merge([
         'special_hero_title', 'special_hero_subtitle',
         'special_pools_title', 'special_pools_description_1', 'special_pools_description_2',
-        'special_dining_title', 'special_dining_description_1', 'special_dining_description_2',
+        'special_dining_title', 'special_dining_description_1',
         'special_extra_title', 'special_extra_description_1', 'special_extra_description_2',
-        'special_offer_title', 'special_offer_main_text', 'special_offer_description'
-    ];
+        'special_offer_title', 'special_offer_main_text', 'special_offer_rooms_cta_label',
+        function_exists('btb_special_addon_panels_json_column_name') ? btb_special_addon_panels_json_column_name() : 'special_addon_panels_json',
+    ], array_keys(function_exists('btb_special_block2_column_sql_definitions') ? btb_special_block2_column_sql_definitions() : []));
     
     // Massage page content fields
     $massageFields = [
@@ -1400,8 +1160,11 @@ if ($action === 'save_content') {
         'massage_reiki_title', 'massage_reiki_description',
         'massage_sauna_title', 'massage_sauna_description',
         'massage_booking_title', 'massage_booking_intro',
+        'massage_book_service_button_label',
+        'massage_cart_submit_button_label',
         'massage_pricing_relaxing', 'massage_pricing_deep_tissue', 'massage_pricing_reiki', 'massage_pricing_sauna',
         'mini_hotel_title', 'mini_hotel_description',
+        'wellness_stay_gallery_overlay',
     ];
     
     // Room Second floor page content fields
@@ -1478,15 +1241,17 @@ if ($action === 'save_content') {
     ];
     
     // Homepage room cards content fields
+    // Price on card = from detail page (room_page_settings/merge); room_*_card_price is not entered into the database from the CMS.
     $roomCardFields = [
-        'room_basement_card_title', 'room_basement_card_description', 'room_basement_card_price',
+        'room_basement_card_title', 'room_basement_card_description',
         'room_basement_card_image_url',
-        'room_ground_queen_card_title', 'room_ground_queen_card_description', 'room_ground_queen_card_price',
+        'room_ground_queen_card_title', 'room_ground_queen_card_description',
         'room_ground_queen_card_image_url',
-        'room_ground_twin_card_title', 'room_ground_twin_card_description', 'room_ground_twin_card_price',
+        'room_ground_twin_card_title', 'room_ground_twin_card_description',
         'room_ground_twin_card_image_url',
-        'room_second_card_title', 'room_second_card_description', 'room_second_card_price',
-        'room_second_card_image_url'
+        'room_second_card_title', 'room_second_card_description',
+        'room_second_card_image_url',
+        'homepage_book_a_stay_button_label',
     ];
     
     // Mini-hotel fields that should be saved to room_cards_settings
@@ -1520,7 +1285,7 @@ if ($action === 'save_content') {
         $roomCardsTableCheck = $conn->query("SHOW TABLES LIKE 'room_cards_settings'");
         if ($roomCardsTableCheck && $roomCardsTableCheck->num_rows > 0) {
             error_log('save_content: room_cards_settings table exists, saving there');
-            // Ensure CMS row exists — otherwise UPDATE matches 0 rows, site keeps reading empty values from room_cards
+            // Ensure CMS row exists â€” otherwise UPDATE matches 0 rows, site keeps reading empty values from room_cards
             $rcIdRow = $conn->query("SELECT id FROM room_cards_settings WHERE id = 1");
             if ($rcIdRow && $rcIdRow->num_rows === 0) {
                 if ($conn->query("INSERT INTO room_cards_settings (id) VALUES (1)")) {
@@ -1537,7 +1302,7 @@ if ($action === 'save_content') {
             $hasRoomMiniDescCol = function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'room_cards_settings', 'mini_hotel_description');
             foreach ($roomCardFieldsToSave as $field => $value) {
                 if ($field === 'mini_hotel_description' && !$hasRoomMiniDescCol) {
-                    error_log('save_content: Skipping mini_hotel_description — column missing in room_cards_settings. Run add_mini_hotel_description_column.php once.');
+                    error_log('save_content: Skipping mini_hotel_description â€” column missing in room_cards_settings. Run add_mini_hotel_description_column.php once.');
                     continue;
                 }
                 $updateFields[] = "$field = ?";
@@ -1560,13 +1325,13 @@ if ($action === 'save_content') {
                         error_log('save_content: room_cards_settings UPDATE returned affected_rows=0 (values may be unchanged, or no matching row; row id=1 was ensured above)');
                     }
                     $roomCardsSaved = true;
-                    error_log('save_content: ✓ Successfully saved room card fields to room_cards_settings table');
+                    error_log('save_content: âœ“ Successfully saved room card fields to room_cards_settings table');
                 } else {
-                    error_log('save_content: ✗ Failed to save to room_cards_settings: ' . $stmt->error);
+                    error_log('save_content: âœ— Failed to save to room_cards_settings: ' . $stmt->error);
                 }
                 $stmt->close();
             } else {
-                error_log('save_content: ✗ Failed to prepare statement for room_cards_settings: ' . $conn->error);
+                error_log('save_content: âœ— Failed to prepare statement for room_cards_settings: ' . $conn->error);
             }
             }
         } else {
@@ -1591,7 +1356,7 @@ if ($action === 'save_content') {
         error_log('save_content: No room card fields found in POST data');
     }
     
-    // Track which room card fields to skip in content_settings loops — only if they were written to room_cards_settings
+    // Track which room card fields to skip in content_settings loops â€” only if they were written to room_cards_settings
     // Previously we excluded even when room_cards UPDATE failed, so the site (reading room_cards first) showed empty until a later save.
     $roomCardFieldsSaved = [];
     $roomCardsTableExists = false;
@@ -1602,25 +1367,98 @@ if ($action === 'save_content') {
             $roomCardFieldsSaved = array_keys($roomCardFieldsToSave);
             error_log('save_content: Excluding room card/mini-hotel fields from content_settings (stored in room_cards_settings): ' . implode(', ', $roomCardFieldsSaved));
         } elseif (!empty($roomCardFieldsToSave) && !$roomCardsSaved) {
-            error_log('save_content: room_cards_settings save did not complete — mirroring to content_settings where columns exist (site can read from either table).');
+            error_log('save_content: room_cards_settings save did not complete â€” mirroring to content_settings where columns exist (site can read from either table).');
             foreach ($roomCardFieldsToSave as $field => $fieldValue) {
+                if (function_exists('btb_room_field_skip_content_settings_for_room_card_price_column') && btb_room_field_skip_content_settings_for_room_card_price_column($conn, $field)) {
+                    error_log("save_content: Fallback skip $field — homepage card price is derived from room detail pricing, not room_*_card_price");
+                    continue;
+                }
                 $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '" . $conn->real_escape_string($field) . "'");
                 if ($columnCheck && $columnCheck->num_rows > 0) {
                     $fields[] = "$field = ?";
                     $values[] = $fieldValue;
                     $types .= 's';
-                    error_log("save_content: Fallback: room card field → content_settings: $field");
+                    error_log("save_content: Fallback: room card field â†’ content_settings: $field");
                 }
             }
         }
     }
+
+    // Retreat: write text + hero/location images to retreat_settings first; skip mirroring those columns into content_settings.
+    $retreatCollaborationImageSaved = false;
+    $retreatFieldsSaved = [];
+    $retreatSettingsForSaveExists = false;
+    $retreatTblEarly = $conn->query("SHOW TABLES LIKE 'retreat_settings'");
+    if ($retreatTblEarly && $retreatTblEarly->num_rows > 0) {
+        $retreatSettingsForSaveExists = true;
+    }
+    if ($retreatSettingsForSaveExists) {
+        $retreatKeysForSectionTable = array_merge($retreatFields, [
+            'retreat_hero_image_url', 'retreat_forest_image_url', 'retreat_indoor_image_url', 'retreat_theatre_image_url',
+            'retreat_collaboration_image_url',
+        ]);
+        $retreatToSave = [];
+        foreach ($retreatKeysForSectionTable as $rf) {
+            if (!isset($_POST[$rf])) {
+                continue;
+            }
+            $ccR = $conn->query("SHOW COLUMNS FROM retreat_settings LIKE '" . $conn->real_escape_string($rf) . "'");
+            if ($ccR && $ccR->num_rows > 0) {
+                $retreatToSave[$rf] = $_POST[$rf];
+            }
+        }
+        if (!empty($retreatToSave)) {
+            $chkR = $conn->query('SELECT id FROM retreat_settings WHERE id = 1');
+            if (!$chkR || $chkR->num_rows === 0) {
+                $conn->query('INSERT INTO retreat_settings (id) VALUES (1)');
+            }
+            $rSets = [];
+            $rVals = [];
+            $rTypes = '';
+            foreach ($retreatToSave as $kR => $vR) {
+                $kSafe = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $kR);
+                if ($kSafe === '') {
+                    continue;
+                }
+                $rSets[] = "`{$kSafe}` = ?";
+                $rVals[] = (string) $vR;
+                $rTypes .= 's';
+            }
+            if (!empty($rSets)) {
+                $rSql = 'UPDATE retreat_settings SET ' . implode(', ', $rSets) . ' WHERE id = 1';
+                $rSt = $conn->prepare($rSql);
+                if ($rSt) {
+                    $rSt->bind_param($rTypes, ...$rVals);
+                    if ($rSt->execute()) {
+                        $retreatFieldsSaved = array_keys($retreatToSave);
+                        if (isset($retreatToSave['retreat_collaboration_image_url'])) {
+                            $retreatCollaborationImageSaved = true;
+                        }
+                        error_log('save_content: Saved retreat fields to retreat_settings: ' . implode(', ', $retreatFieldsSaved));
+                    } else {
+                        error_log('save_content: retreat_settings batch update failed: ' . $rSt->error);
+                    }
+                    $rSt->close();
+                }
+            }
+        }
+    }
+    $retreatSettingsTableExists = $retreatSettingsForSaveExists;
     
     foreach ($retreatFields as $field) {
         // Skip room card fields that were already saved to room_cards_settings
         if (in_array($field, $roomCardFieldsSaved)) {
             continue;
         }
-        
+        if (in_array($field, $retreatFieldsSaved, true)) {
+            error_log("save_content: Skipping retreat field '$field' - stored in retreat_settings");
+            continue;
+        }
+        if ($retreatSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'retreat_settings', $field)) {
+            error_log("save_content: Skipping retreat field '$field' — column on retreat_settings (canonical, dual-write)");
+            continue;
+        }
+
         if (isset($_POST[$field])) {
             // Log gallery fields specifically
             if (strpos($field, '_gallery') !== false) {
@@ -1662,7 +1500,7 @@ if ($action === 'save_content') {
                 if ($currentLength > $newLength * 1.3) {
                     // Check if new value looks like a shortened version (contains ellipsis or ends with ...)
                     if (strpos($newValue, '...') !== false || 
-                        strpos($newValue, '…') !== false ||
+                        strpos($newValue, 'â€¦') !== false ||
                         ($newLength < 100 && $currentLength > 150)) {
                         // Skip this update - keep the full text
                         error_log("Skipping update for $field: current text is longer and new text appears to be shortened");
@@ -1674,6 +1512,47 @@ if ($action === 'save_content') {
             $fields[] = "$field = ?";
             $values[] = $newValue;
             $types .= 's';
+        }
+    }
+    
+    // Retreat: gallery hover line (per location) â€” store in retreat_settings
+    $retreatRsTbl = $conn->query("SHOW TABLES LIKE 'retreat_settings'");
+    if ($retreatRsTbl && $retreatRsTbl->num_rows > 0 && function_exists('dbTableHasColumn')) {
+        foreach (['retreat_gallery_overlay_forest' => 'TEXT', 'retreat_gallery_overlay_indoor' => 'TEXT', 'retreat_gallery_overlay_theatre' => 'TEXT'] as $rGcol => $rGtype) {
+            if (!dbTableHasColumn($conn, 'retreat_settings', $rGcol)) {
+                @$conn->query("ALTER TABLE `retreat_settings` ADD COLUMN `{$rGcol}` {$rGtype} NULL");
+            }
+        }
+        $rGUpdate = [];
+        foreach (['retreat_gallery_overlay_forest', 'retreat_gallery_overlay_indoor', 'retreat_gallery_overlay_theatre'] as $rGk) {
+            if (array_key_exists($rGk, $_POST)) {
+                $rGUpdate[$rGk] = $_POST[$rGk];
+            }
+        }
+        if (!empty($rGUpdate)) {
+            $rGChk = $conn->query("SELECT id FROM retreat_settings WHERE id = 1");
+            if (!$rGChk || $rGChk->num_rows === 0) {
+                $conn->query("INSERT INTO retreat_settings (id) VALUES (1)");
+            }
+            $rGSets = [];
+            $rGVals = [];
+            $rGTypes = '';
+            foreach ($rGUpdate as $kG => $vG) {
+                $rGSets[] = "`{$kG}` = ?";
+                $rGVals[] = $vG;
+                $rGTypes .= 's';
+            }
+            $rGSql = "UPDATE retreat_settings SET " . implode(', ', $rGSets) . " WHERE id = 1";
+            $rGSt = $conn->prepare($rGSql);
+            if ($rGSt) {
+                $rGSt->bind_param($rGTypes, ...$rGVals);
+                if ($rGSt->execute()) {
+                    error_log('save_content: Saved retreat gallery overlay fields: ' . implode(', ', array_keys($rGUpdate)));
+                } else {
+                    error_log('save_content: retreat gallery overlay update failed: ' . $rGSt->error);
+                }
+                $rGSt->close();
+            }
         }
     }
     
@@ -1722,6 +1601,36 @@ if ($action === 'save_content') {
                     $specialUpdateStmt->bind_param($specialUpdateTypes, ...$specialUpdateValues);
                     if ($specialUpdateStmt->execute()) {
                         error_log("save_content: Successfully saved special fields to special_settings: " . implode(', ', $specialFieldsSaved));
+                        // Mirror into content_settings when columns exist so reads never resurrect stale text
+                        // after a clear, and merge_special_settings_into_data can safely skip empty canonical values.
+                        foreach ($specialFieldsSaved as $mirrorField) {
+                            if (!in_array($mirrorField, $specialFields, true)) {
+                                continue;
+                            }
+                            $mf = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $mirrorField);
+                            if ($mf === '') {
+                                continue;
+                            }
+                            $csCol = $conn->query("SHOW COLUMNS FROM content_settings LIKE '" . $conn->real_escape_string($mf) . "'");
+                            if (!$csCol || $csCol->num_rows === 0) {
+                                continue;
+                            }
+                            if (!array_key_exists($mirrorField, $specialFieldsToSave)) {
+                                continue;
+                            }
+                            $mirrorVal = (string) ($specialFieldsToSave[$mirrorField] ?? '');
+                            $mirrorSql = "UPDATE content_settings SET `{$mf}` = ? WHERE id = 1";
+                            $mirrorSt = $conn->prepare($mirrorSql);
+                            if ($mirrorSt) {
+                                $mirrorSt->bind_param('s', $mirrorVal);
+                                if ($mirrorSt->execute()) {
+                                    error_log("save_content: Mirrored special field to content_settings: {$mirrorField}");
+                                } else {
+                                    error_log("save_content: Mirror to content_settings failed for {$mirrorField}: " . $mirrorSt->error);
+                                }
+                                $mirrorSt->close();
+                            }
+                        }
                     } else {
                         error_log("save_content: Failed to save special fields to special_settings: " . $specialUpdateStmt->error);
                     }
@@ -1742,7 +1651,11 @@ if ($action === 'save_content') {
             error_log("save_content: Skipping special field '$field' - already saved to special_settings");
             continue;
         }
-        
+        if ($specialTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'special_settings', $field)) {
+            error_log("save_content: Skipping special field '$field' — column on special_settings (canonical, dual-write)");
+            continue;
+        }
+
         if (isset($_POST[$field])) {
             // Check if column exists - don't add automatically to avoid "Row size too large" errors
             $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
@@ -1759,48 +1672,66 @@ if ($action === 'save_content') {
     // Check if massage_settings table exists
     $massageTableCheck = $conn->query("SHOW TABLES LIKE 'massage_settings'");
     $massageTableExists = $massageTableCheck && $massageTableCheck->num_rows > 0;
-    
-    // Massage image fields that should be saved to massage_settings if table exists
-    $massageImageFields = ['massage_hero_image_url', 'massage_relaxing_image_url', 'massage_deep_tissue_image_url', 'massage_reiki_image_url', 'massage_sauna_image_url'];
-    $massageImageFieldsSaved = [];
-    
-    // Save massage image fields to massage_settings if table exists
-    if ($massageTableExists && isset($_POST['massage_hero_image_url'])) {
-        $massageImageFieldsToSave = [];
-        foreach ($massageImageFields as $field) {
-            if (isset($_POST[$field])) {
-                $massageImageFieldsToSave[$field] = $_POST[$field];
+
+    $wellnessTableExists = false;
+    $wellnessTblChkEarly = $conn->query("SHOW TABLES LIKE 'wellness_settings'");
+    if ($wellnessTblChkEarly && $wellnessTblChkEarly->num_rows > 0) {
+        $wellnessTableExists = true;
+    }
+
+    // Massage: single batch into massage_settings (canonical — tail flush does not repeat this table)
+    $massageSettingsFieldsSaved = [];
+    if ($massageTableExists && function_exists('btb_massage_service_cards_normalize_json_string') && function_exists('btb_massage_service_cards_json_column_name')) {
+        $mj = btb_massage_service_cards_json_column_name();
+        if (isset($_POST[$mj])) {
+            if (function_exists('btb_ensure_massage_service_cards_json_column')) {
+                btb_ensure_massage_service_cards_json_column($conn);
             }
+            $_POST[$mj] = btb_massage_service_cards_normalize_json_string((string) ($_POST[$mj] ?? ''));
         }
-        
-        if (!empty($massageImageFieldsToSave)) {
-            // Build UPDATE query for massage_settings
-            $massageUpdateFields = [];
-            $massageUpdateValues = [];
-            $massageUpdateTypes = '';
-            
-            foreach ($massageImageFieldsToSave as $field => $value) {
-                // Check if column exists in massage_settings
-                $columnCheck = $conn->query("SHOW COLUMNS FROM massage_settings LIKE '$field'");
-                if ($columnCheck && $columnCheck->num_rows > 0) {
-                    $massageUpdateFields[] = "$field = ?";
-                    $massageUpdateValues[] = $value;
-                    $massageUpdateTypes .= 's';
-                    $massageImageFieldsSaved[] = $field;
-                }
+    }
+    if ($massageTableExists && function_exists('btb_cms_massage_dual_write_post_keys')) {
+        $massageKeys = btb_cms_massage_dual_write_post_keys();
+        $massageToSave = [];
+        foreach ($massageKeys as $mk) {
+            if (!array_key_exists($mk, $_POST)) {
+                continue;
             }
-            
-            if (!empty($massageUpdateFields)) {
-                $massageUpdateSql = "UPDATE massage_settings SET " . implode(', ', $massageUpdateFields) . " WHERE id = 1";
-                $massageUpdateStmt = $conn->prepare($massageUpdateSql);
-                if ($massageUpdateStmt) {
-                    $massageUpdateStmt->bind_param($massageUpdateTypes, ...$massageUpdateValues);
-                    if ($massageUpdateStmt->execute()) {
-                        error_log("save_content: Successfully saved massage image fields to massage_settings: " . implode(', ', $massageImageFieldsSaved));
+            if (!function_exists('dbTableHasColumn') || !dbTableHasColumn($conn, 'massage_settings', $mk)) {
+                continue;
+            }
+            $massageToSave[$mk] = $_POST[$mk];
+        }
+        if (!empty($massageToSave)) {
+            $chkM = $conn->query('SELECT id FROM massage_settings WHERE id = 1');
+            if (!$chkM || $chkM->num_rows === 0) {
+                $conn->query('INSERT INTO massage_settings (id) VALUES (1)');
+            }
+            $mSets = [];
+            $mVals = [];
+            $mTypes = '';
+            foreach ($massageToSave as $kM => $vM) {
+                $kSafe = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $kM);
+                if ($kSafe === '') {
+                    continue;
+                }
+                $mSets[] = "`{$kSafe}` = ?";
+                $mVals[] = (string) ($vM ?? '');
+                $mTypes .= 's';
+            }
+            if (!empty($mSets)) {
+                $mSql = 'UPDATE massage_settings SET ' . implode(', ', $mSets) . ' WHERE id = 1';
+                $mSt = $conn->prepare($mSql);
+                if ($mSt) {
+                    $mSt->bind_param($mTypes, ...$mVals);
+                    if ($mSt->execute()) {
+                        $massageSettingsFieldsSaved = array_keys($massageToSave);
+                        $canonicalTablesWritten = true;
+                        error_log('save_content: Saved massage_settings fields: ' . implode(', ', $massageSettingsFieldsSaved));
                     } else {
-                        error_log("save_content: Failed to save massage image fields to massage_settings: " . $massageUpdateStmt->error);
+                        error_log('save_content: massage_settings batch failed: ' . $mSt->error);
                     }
-                    $massageUpdateStmt->close();
+                    $mSt->close();
                 }
             }
         }
@@ -1813,12 +1744,20 @@ if ($action === 'save_content') {
             continue;
         }
         
-        // Skip massage image fields that were already saved to massage_settings
-        if (in_array($field, $massageImageFieldsSaved)) {
+        // Skip massage fields already persisted to massage_settings in batch
+        if (in_array($field, $massageSettingsFieldsSaved, true)) {
             error_log("save_content: Skipping massage field '$field' - already saved to massage_settings");
             continue;
         }
-        
+        if ($massageTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'massage_settings', $field)) {
+            error_log("save_content: Skipping massage field '$field' - column exists on massage_settings (canonical)");
+            continue;
+        }
+        if ($wellnessTableExists && $field === 'wellness_stay_gallery_overlay' && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'wellness_settings', $field)) {
+            error_log("save_content: Skipping massage field '$field' — column on wellness_settings (canonical)");
+            continue;
+        }
+
         // Skip mini-hotel fields if room_cards_settings table exists (they should be saved there)
         if (strpos($field, 'mini_hotel') === 0) {
             $roomCardsTableCheck = $conn->query("SHOW TABLES LIKE 'room_cards_settings'");
@@ -1899,6 +1838,28 @@ if ($action === 'save_content') {
                         error_log("save_content: Exception while creating column '$field': " . $e->getMessage());
                     }
                 }
+            } elseif (!$columnExists && $field === 'wellness_stay_gallery_overlay') {
+                $columnType = 'TEXT DEFAULT NULL';
+                error_log("save_content: Column '$field' does not exist. Attempting to create (wellness mini-hotel gallery hover) with type '$columnType'");
+                try {
+                    $alterResult = $conn->query("ALTER TABLE content_settings ADD COLUMN wellness_stay_gallery_overlay $columnType");
+                    if ($alterResult) {
+                        $columnExists = true;
+                    } else {
+                        $error = $conn->error;
+                        if (strpos($error, 'Duplicate column name') !== false || strpos($error, 'already exists') !== false) {
+                            $columnExists = true;
+                        } else {
+                            error_log("save_content: Failed to create column '$field': $error");
+                        }
+                    }
+                } catch (Exception $e) {
+                    if (strpos($e->getMessage(), 'Duplicate column name') !== false || strpos($e->getMessage(), 'already exists') !== false) {
+                        $columnExists = true;
+                    } else {
+                        error_log("save_content: Exception while creating column '$field': " . $e->getMessage());
+                    }
+                }
             } elseif (!$columnExists && strpos($field, 'massage_pricing_') === 0) {
                 $columnType = 'TEXT DEFAULT NULL';
                 error_log("save_content: Column '$field' does not exist. Attempting to create (massage pricing JSON) with type '$columnType'");
@@ -1940,6 +1901,10 @@ if ($action === 'save_content') {
         if (in_array($field, $roomCardFieldsSaved)) {
             continue;
         }
+        if (function_exists('btb_room_field_skip_content_settings_for_room_pricing') && btb_room_field_skip_content_settings_for_room_pricing($conn, $field)) {
+            error_log("save_content: Skipping room_second field '$field' — stored in room_page_settings (canonical)");
+            continue;
+        }
         
         if (isset($_POST[$field])) {
             // Check if column exists - don't add automatically to avoid "Row size too large" errors
@@ -1957,6 +1922,10 @@ if ($action === 'save_content') {
     foreach ($roomGroundTwinFields as $field) {
         // Skip room card fields that were already saved to room_cards_settings
         if (in_array($field, $roomCardFieldsSaved)) {
+            continue;
+        }
+        if (function_exists('btb_room_field_skip_content_settings_for_room_pricing') && btb_room_field_skip_content_settings_for_room_pricing($conn, $field)) {
+            error_log("save_content: Skipping room_ground_twin field '$field' — stored in room_page_settings (canonical)");
             continue;
         }
         
@@ -1978,6 +1947,10 @@ if ($action === 'save_content') {
         if (in_array($field, $roomCardFieldsSaved)) {
             continue;
         }
+        if (function_exists('btb_room_field_skip_content_settings_for_room_pricing') && btb_room_field_skip_content_settings_for_room_pricing($conn, $field)) {
+            error_log("save_content: Skipping room_ground_queen field '$field' — stored in room_page_settings (canonical)");
+            continue;
+        }
         
         if (isset($_POST[$field])) {
             // Check if column exists - don't add automatically to avoid "Row size too large" errors
@@ -1997,23 +1970,8 @@ if ($action === 'save_content') {
         if (in_array($field, $roomCardFieldsSaved)) {
             continue;
         }
-        
-        if (isset($_POST[$field])) {
-            // Check if column exists - don't add automatically to avoid "Row size too large" errors
-            $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
-            if ($columnCheck->num_rows > 0) {
-                $fields[] = "$field = ?";
-                $values[] = $_POST[$field];
-                $types .= 's';
-            } else {
-                error_log("save_content: Column '$field' does not exist. Skipping update to avoid 'Row size too large' error.");
-            }
-        }
-    }
-    
-    foreach ($wellnessFields as $field) {
-        // Skip room card fields that were already saved to room_cards_settings
-        if (in_array($field, $roomCardFieldsSaved)) {
+        if (function_exists('btb_room_field_skip_content_settings_for_room_pricing') && btb_room_field_skip_content_settings_for_room_pricing($conn, $field)) {
+            error_log("save_content: Skipping room_basement field '$field' — stored in room_page_settings (canonical)");
             continue;
         }
         
@@ -2030,23 +1988,165 @@ if ($action === 'save_content') {
         }
     }
     
-    if (isset($_POST['about_contact_form_title'])) {
-        $acftCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE 'about_contact_form_title'");
-        if ($acftCheck && $acftCheck->num_rows === 0) {
-            if ($conn->query("ALTER TABLE content_settings ADD COLUMN about_contact_form_title VARCHAR(255) DEFAULT NULL")) {
-                error_log('save_content: Added column about_contact_form_title');
-            } else {
-                error_log('save_content: Could not add about_contact_form_title: ' . $conn->error);
+    // Wellness: batch into wellness_settings (canonical)
+    $wellnessSettingsFieldsSaved = [];
+    if ($wellnessTableExists && function_exists('btb_cms_wellness_dual_write_post_keys')) {
+        $wellnessToSave = [];
+        foreach (btb_cms_wellness_dual_write_post_keys() as $wk) {
+            if (!array_key_exists($wk, $_POST)) {
+                continue;
+            }
+            if (!function_exists('dbTableHasColumn') || !dbTableHasColumn($conn, 'wellness_settings', $wk)) {
+                continue;
+            }
+            $wellnessToSave[$wk] = $_POST[$wk];
+        }
+        if (!empty($wellnessToSave)) {
+            $chkW = $conn->query('SELECT id FROM wellness_settings WHERE id = 1');
+            if (!$chkW || $chkW->num_rows === 0) {
+                $conn->query('INSERT INTO wellness_settings (id) VALUES (1)');
+            }
+            $wSets = [];
+            $wVals = [];
+            $wTypes = '';
+            foreach ($wellnessToSave as $kW => $vW) {
+                $kSafe = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $kW);
+                if ($kSafe === '') {
+                    continue;
+                }
+                $wSets[] = "`{$kSafe}` = ?";
+                $wVals[] = (string) ($vW ?? '');
+                $wTypes .= 's';
+            }
+            if (!empty($wSets)) {
+                $wSql = 'UPDATE wellness_settings SET ' . implode(', ', $wSets) . ' WHERE id = 1';
+                $wSt = $conn->prepare($wSql);
+                if ($wSt) {
+                    $wSt->bind_param($wTypes, ...$wVals);
+                    if ($wSt->execute()) {
+                        $wellnessSettingsFieldsSaved = array_keys($wellnessToSave);
+                        $canonicalTablesWritten = true;
+                        error_log('save_content: Saved wellness_settings fields: ' . implode(', ', $wellnessSettingsFieldsSaved));
+                    } else {
+                        error_log('save_content: wellness_settings batch failed: ' . $wSt->error);
+                    }
+                    $wSt->close();
+                }
             }
         }
     }
-    if (isset($_POST['about_contact_form_description'])) {
-        $acfdCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE 'about_contact_form_description'");
-        if ($acfdCheck && $acfdCheck->num_rows === 0) {
-            if ($conn->query("ALTER TABLE content_settings ADD COLUMN about_contact_form_description TEXT NULL")) {
-                error_log('save_content: Added column about_contact_form_description');
+
+    foreach ($wellnessFields as $field) {
+        // Skip room card fields that were already saved to room_cards_settings
+        if (in_array($field, $roomCardFieldsSaved)) {
+            continue;
+        }
+        if (in_array($field, $wellnessSettingsFieldsSaved, true)) {
+            error_log("save_content: Skipping wellness field '$field' - already saved to wellness_settings");
+            continue;
+        }
+        if ($wellnessTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'wellness_settings', $field)) {
+            error_log("save_content: Skipping wellness field '$field' - column exists on wellness_settings (canonical)");
+            continue;
+        }
+        
+        if (isset($_POST[$field])) {
+            // Check if column exists - don't add automatically to avoid "Row size too large" errors
+            $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
+            if ($columnCheck->num_rows > 0) {
+                $fields[] = "$field = ?";
+                $values[] = $_POST[$field];
+                $types .= 's';
             } else {
-                error_log('save_content: Could not add about_contact_form_description: ' . $conn->error);
+                error_log("save_content: Column '$field' does not exist. Skipping update to avoid 'Row size too large' error.");
+            }
+        }
+    }
+
+    $aboutSettingsTableExists = false;
+    $aboutSettingsTblChk = $conn->query("SHOW TABLES LIKE 'about_settings'");
+    if ($aboutSettingsTblChk && $aboutSettingsTblChk->num_rows > 0) {
+        $aboutSettingsTableExists = true;
+    }
+
+    if (isset($_POST['about_contact_form_title'])) {
+        $skipAcft = $aboutSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'about_settings', 'about_contact_form_title');
+        if (!$skipAcft) {
+            $acftCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE 'about_contact_form_title'");
+            if ($acftCheck && $acftCheck->num_rows === 0) {
+                if ($conn->query("ALTER TABLE content_settings ADD COLUMN about_contact_form_title VARCHAR(255) DEFAULT NULL")) {
+                    error_log('save_content: Added column about_contact_form_title');
+                } else {
+                    error_log('save_content: Could not add about_contact_form_title: ' . $conn->error);
+                }
+            }
+        } else {
+            error_log('save_content: Skipping ALTER about_contact_form_title — column on about_settings (canonical)');
+        }
+    }
+    if (isset($_POST['about_contact_form_description'])) {
+        $skipAcfd = $aboutSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'about_settings', 'about_contact_form_description');
+        if (!$skipAcfd) {
+            $acfdCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE 'about_contact_form_description'");
+            if ($acfdCheck && $acfdCheck->num_rows === 0) {
+                if ($conn->query("ALTER TABLE content_settings ADD COLUMN about_contact_form_description TEXT NULL")) {
+                    error_log('save_content: Added column about_contact_form_description');
+                } else {
+                    error_log('save_content: Could not add about_contact_form_description: ' . $conn->error);
+                }
+            }
+        } else {
+            error_log('save_content: Skipping ALTER about_contact_form_description — column on about_settings (canonical)');
+        }
+    }
+
+    // About: batch into about_settings (canonical)
+    $aboutFieldsSaved = [];
+    if ($aboutSettingsTableExists && function_exists('btb_cms_about_dual_write_post_keys')) {
+        $aboutToSave = [];
+        foreach (btb_cms_about_dual_write_post_keys() as $ak) {
+            if (!array_key_exists($ak, $_POST)) {
+                continue;
+            }
+            if (!empty($exploreParksTableExists) && $exploreParksTableExists && function_exists('btb_explore_parks_post_field_names') && in_array($ak, btb_explore_parks_post_field_names(), true)) {
+                continue;
+            }
+            if (!function_exists('dbTableHasColumn') || !dbTableHasColumn($conn, 'about_settings', $ak)) {
+                continue;
+            }
+            $aboutToSave[$ak] = $_POST[$ak];
+        }
+        if (!empty($aboutToSave)) {
+            $chkAb = $conn->query('SELECT id FROM about_settings WHERE id = 1');
+            if (!$chkAb || $chkAb->num_rows === 0) {
+                $conn->query('INSERT INTO about_settings (id) VALUES (1)');
+            }
+            $abSets = [];
+            $abVals = [];
+            $abTypes = '';
+            foreach ($aboutToSave as $kAb => $vAb) {
+                $kSafe = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $kAb);
+                if ($kSafe === '') {
+                    continue;
+                }
+                $abSets[] = "`{$kSafe}` = ?";
+                $abVals[] = (string) ($vAb ?? '');
+                $abTypes .= 's';
+            }
+            if (!empty($abSets)) {
+                $abSql = 'UPDATE about_settings SET ' . implode(', ', $abSets) . ' WHERE id = 1';
+                $abSt = $conn->prepare($abSql);
+                if ($abSt) {
+                    $abSt->bind_param($abTypes, ...$abVals);
+                    if ($abSt->execute()) {
+                        $aboutFieldsSaved = array_keys($aboutToSave);
+                        $canonicalTablesWritten = true;
+                        error_log('save_content: Saved about_settings fields: ' . implode(', ', $aboutFieldsSaved));
+                    } else {
+                        error_log('save_content: about_settings batch failed: ' . $abSt->error);
+                    }
+                    $abSt->close();
+                }
             }
         }
     }
@@ -2056,7 +2156,15 @@ if ($action === 'save_content') {
         if (in_array($field, $roomCardFieldsSaved)) {
             continue;
         }
-        if (!empty($exploreParksTableExists) && $exploreParksTableExists && in_array($field, ['about_parks_title', 'about_parks_intro', 'about_parks_list'], true)) {
+        if (!empty($exploreParksTableExists) && $exploreParksTableExists && function_exists('btb_explore_parks_post_field_names') && in_array($field, btb_explore_parks_post_field_names(), true)) {
+            continue;
+        }
+        if (in_array($field, $aboutFieldsSaved, true)) {
+            error_log("save_content: Skipping about field '$field' - already saved to about_settings");
+            continue;
+        }
+        if ($aboutSettingsTableExists && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'about_settings', $field)) {
+            error_log("save_content: Skipping about field '$field' - column exists on about_settings (canonical)");
             continue;
         }
         
@@ -2073,14 +2181,8 @@ if ($action === 'save_content') {
         }
     }
     
-    // Retreat "Invitation to Collaborate" image URL → retreat_settings when that table exists
-    $retreatSettingsTableExists = false;
-    $retreatCollaborationImageSaved = false;
-    $retreatSettingsTblChk = $conn->query("SHOW TABLES LIKE 'retreat_settings'");
-    if ($retreatSettingsTblChk && $retreatSettingsTblChk->num_rows > 0) {
-        $retreatSettingsTableExists = true;
-    }
-    if ($retreatSettingsTableExists && isset($_POST['retreat_collaboration_image_url'])) {
+    // Retreat collaboration image (fallback if batch above did not persist it)
+    if ($retreatSettingsTableExists && !$retreatCollaborationImageSaved && isset($_POST['retreat_collaboration_image_url'])) {
         $colChkRs = $conn->query("SHOW COLUMNS FROM retreat_settings LIKE 'retreat_collaboration_image_url'");
         if ($colChkRs && $colChkRs->num_rows > 0) {
             $checkRsRow = $conn->query("SELECT id FROM retreat_settings WHERE id = 1");
@@ -2100,7 +2202,7 @@ if ($action === 'save_content') {
                 $rsUpdate->close();
             }
         } else {
-            error_log("save_content: retreat_settings missing column retreat_collaboration_image_url — run add_retreat_collaboration_image_column.php");
+            error_log("save_content: retreat_settings missing column retreat_collaboration_image_url â€” run add_retreat_collaboration_image_column.php");
         }
     }
     
@@ -2141,8 +2243,30 @@ if ($action === 'save_content') {
             continue;
         }
         
-        if ($retreatSettingsTableExists && $field === 'retreat_collaboration_image_url') {
-            error_log("save_content: Skipping retreat_collaboration_image_url in content_settings (use retreat_settings)");
+        if (function_exists('btb_room_field_skip_content_settings_for_room_pricing') && btb_room_field_skip_content_settings_for_room_pricing($conn, $field)) {
+            error_log("save_content: Skipping $field in imageFields (room_page_settings canonical)");
+            continue;
+        }
+        
+        if (in_array($field, $retreatFieldsSaved, true)) {
+            error_log("save_content: Skipping $field in content_settings (already written to retreat_settings)");
+            continue;
+        }
+        if ($retreatSettingsTableExists && preg_match('/^retreat_.*_image_url$/', $field) && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'retreat_settings', $field)) {
+            error_log("save_content: Skipping $field in content_settings (retreat_settings canonical)");
+            continue;
+        }
+        
+        if ($massageTableExists && strpos($field, 'massage_') === 0 && strpos($field, '_image_url') !== false && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'massage_settings', $field)) {
+            error_log("save_content: Skipping $field in content_settings (massage_settings canonical)");
+            continue;
+        }
+        if (!empty($wellnessTableExists) && in_array($field, ['wellness_massage_image_url', 'wellness_yoga_image_url'], true) && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'wellness_settings', $field)) {
+            error_log("save_content: Skipping $field in content_settings (wellness_settings canonical)");
+            continue;
+        }
+        if (!empty($aboutSettingsTableExists) && strpos($field, 'about_') === 0 && strpos($field, '_image_url') !== false && $field !== 'about_parks_hero_image_url' && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'about_settings', $field)) {
+            error_log("save_content: Skipping $field in content_settings (about_settings canonical)");
             continue;
         }
         
@@ -2159,7 +2283,15 @@ if ($action === 'save_content') {
             error_log("save_content: Skipping about_parks_hero_image_url in content_settings (use explore_parks_settings)");
             continue;
         }
-        
+        if (!empty($specialTableExists) && strpos($field, 'special_') === 0 && strpos($field, '_image_url') !== false && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'special_settings', $field)) {
+            error_log("save_content: Skipping $field in content_settings (special_settings canonical)");
+            continue;
+        }
+        if ($roomCardsTableExists && $field === 'mini_hotel_image_url' && function_exists('dbTableHasColumn') && dbTableHasColumn($conn, 'room_cards_settings', 'mini_hotel_image_url')) {
+            error_log("save_content: Skipping $field in content_settings (room_cards_settings canonical)");
+            continue;
+        }
+
         if (isset($_POST[$field])) {
             
             // Check if column exists - don't add automatically to avoid "Row size too large" errors
@@ -2176,6 +2308,21 @@ if ($action === 'save_content') {
         }
     }
     
+    $saveContentPostLooksLikeCms = false;
+    foreach (array_keys($_POST) as $_cmsKey) {
+        if (!is_string($_cmsKey) || $_cmsKey === '') {
+            continue;
+        }
+        if (strpos($_cmsKey, 'massage_') === 0 || strpos($_cmsKey, 'wellness_') === 0 || strpos($_cmsKey, 'about_') === 0
+            || strpos($_cmsKey, 'retreat_') === 0 || strpos($_cmsKey, 'special_') === 0
+            || strpos($_cmsKey, 'homepage_') === 0 || strpos($_cmsKey, 'contact_') === 0
+            || strpos($_cmsKey, 'explore_') === 0 || strpos($_cmsKey, 'room_') === 0
+            || strpos($_cmsKey, 'mini_hotel') === 0 || $_cmsKey === 'hero_image_url' || $_cmsKey === 'hero2_image_url') {
+            $saveContentPostLooksLikeCms = true;
+            break;
+        }
+    }
+    
     // Log what fields we're about to save
     error_log('save_content: Fields to update: ' . count($fields) . ' fields');
     if (count($fields) > 0) {
@@ -2185,8 +2332,11 @@ if ($action === 'save_content') {
     // If only rooms_title/rooms_subtitle were provided and they were saved to rooms_settings,
     // or if only room card fields were provided and they were saved to room_cards_settings,
     // and there are no other fields to update, we can return success immediately
-    if (empty($fields) && ($roomsSaved || $roomCardsSaved || $retreatCollaborationImageSaved || $exploreSettingsSaved || $exploreParksSaved || $exploreCommunityExtraSaved)) {
+    if (empty($fields) && ($roomsSaved || $roomCardsSaved || $retreatCollaborationImageSaved || !empty($retreatFieldsSaved) || $exploreSettingsSaved || $exploreParksSaved || $exploreCommunityExtraSaved || $canonicalTablesWritten || !empty($specialFieldsSaved))) {
         error_log('save_content: Only rooms/room cards / retreat collaboration image / explore_settings / explore_parks / explore_community_extra were saved, no content_settings update needed');
+        if (function_exists('btb_dual_write_phase1_canonical_from_post')) {
+            btb_dual_write_phase1_canonical_from_post($conn);
+        }
         ob_end_clean();
         $response = ['success' => true];
         if ($roomsSubtitleColumnMissing) {
@@ -2199,8 +2349,15 @@ if ($action === 'save_content') {
         exit;
     }
     
-    // If no fields to update and rooms/room cards weren't saved, return error
-    if (empty($fields) && !$roomsSaved && !$roomCardsSaved && !$retreatCollaborationImageSaved && !$exploreSettingsSaved && !$exploreParksSaved && !$exploreCommunityExtraSaved) {
+    // If no fields to update and rooms/room cards weren't saved, return error (unless room_page_settings tail or CMS-only POST)
+    if (empty($fields) && !$roomsSaved && !$roomCardsSaved && !$retreatCollaborationImageSaved && empty($retreatFieldsSaved) && !$exploreSettingsSaved && !$exploreParksSaved && !$exploreCommunityExtraSaved && !$canonicalTablesWritten && empty($specialFieldsSaved)) {
+        if ($saveContentPostLooksLikeCms && function_exists('btb_dual_write_phase1_canonical_from_post')) {
+            error_log('save_content: No content_settings rows to update; writing Phase-1 canonical tables from POST only');
+            btb_dual_write_phase1_canonical_from_post($conn);
+            ob_end_clean();
+            echo json_encode(['success' => true]);
+            exit;
+        }
         error_log('save_content: No fields to update and rooms/room cards / explore_settings / explore_parks / explore_community_extra were not saved');
         ob_end_clean();
         echo json_encode(['success' => false, 'error' => 'No fields to update']);
@@ -2260,6 +2417,9 @@ if ($action === 'save_content') {
     ob_clean(); // Clear any output
     
     if ($stmt->execute()) {
+        if (function_exists('btb_dual_write_phase1_canonical_from_post')) {
+            btb_dual_write_phase1_canonical_from_post($conn);
+        }
         // Verify mini-hotel fields were saved - check room_cards_settings first, then content_settings
         if (isset($_POST['mini_hotel_title']) || isset($_POST['mini_hotel_description']) || isset($_POST['mini_hotel_description_1']) || isset($_POST['mini_hotel_description_2'])) {
             try {
@@ -2430,9 +2590,50 @@ if ($action === 'save_content') {
     }
 }
 
+// Batch audit: image path + image_type → heavy / limits (admin badges). Same auth exposure as get_content.
+if ($action === 'audit_image_assets') {
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    $items = null;
+    if (!empty($_POST['items'])) {
+        $decoded = json_decode((string) $_POST['items'], true);
+        $items = is_array($decoded) ? $decoded : null;
+    }
+    if (!is_array($items) || count($items) === 0) {
+        $raw = file_get_contents('php://input');
+        if ($raw) {
+            $j = json_decode($raw, true);
+            if (is_array($j) && isset($j['items']) && is_array($j['items'])) {
+                $items = $j['items'];
+            }
+        }
+    }
+    if (!is_array($items)) {
+        echo json_encode(['success' => false, 'error' => 'Invalid items']);
+        exit;
+    }
+    if (count($items) > 100) {
+        echo json_encode(['success' => false, 'error' => 'Too many items (max 100)']);
+        exit;
+    }
+    $out = [];
+    foreach ($items as $it) {
+        if (!is_array($it)) {
+            continue;
+        }
+        $path = $it['path'] ?? $it['url'] ?? '';
+        $type = $it['imageType'] ?? $it['image_type'] ?? '';
+        $key = (string) $path . '|' . (string) $type;
+        $out[$key] = btb_admin_audit_image_asset($path, $type);
+    }
+    echo json_encode(['success' => true, 'data' => $out]);
+    exit;
+}
+
 // Include API handlers after action is defined
 require_once 'floorplan_api.php';
 require_once 'booking_api.php';
+require_once 'host_chat_api.php';
 require_once 'auth_api.php';
 
 if ($action === 'get_rooms') {
@@ -2454,11 +2655,11 @@ if ($action === 'save_room') {
     $room_id = $_POST['room_id'] ?? null;
     
     if ($room_id) {
-        // Обновление существующей комнаты
+        // ÐžÐ±Ð½Ð¾Ð²Ð»ÐµÐ½Ð¸Ðµ ÑÑƒÑ‰ÐµÑÑ‚Ð²ÑƒÑŽÑ‰ÐµÐ¹ ÐºÐ¾Ð¼Ð½Ð°Ñ‚Ñ‹
         $stmt = $conn->prepare("UPDATE rooms SET name = ?, price = ?, capacity = ?, type = ?, description = ? WHERE id = ?");
         $stmt->bind_param("siissi", $name, $price, $capacity, $type, $description, $room_id);
     } else {
-        // Создание новой комнаты
+        // Ð¡Ð¾Ð·Ð´Ð°Ð½Ð¸Ðµ Ð½Ð¾Ð²Ð¾Ð¹ ÐºÐ¾Ð¼Ð½Ð°Ñ‚Ñ‹
         $stmt = $conn->prepare("INSERT INTO rooms (name, price, capacity, type, description) VALUES (?, ?, ?, ?, ?)");
         $stmt->bind_param("siiss", $name, $price, $capacity, $type, $description);
     }
@@ -2486,188 +2687,6 @@ if ($action === 'delete_room') {
     exit;
 }
 
-if ($action === 'get_floorplan') {
-    $result = $conn->query("SELECT * FROM floorplan_settings WHERE id = 1");
-    if ($result && $result->num_rows > 0) {
-        $data = $result->fetch_assoc();
-        echo json_encode([
-            'success' => true,
-            'data' => [
-                'basementSubtitle' => $data['basement_subtitle'] ?? '',
-                'basementDescription' => $data['basement_description'] ?? '',
-                'basementImageUrl' => $data['basement_image_url'] ?? '',
-                'groundSubtitle' => $data['ground_subtitle'] ?? '',
-                'groundDescription' => $data['ground_description'] ?? '',
-                'groundQueenImage' => ($data['ground_image_url'] ?? $data['ground_queen_image'] ?? ''), // Universal: use ground_image_url first
-                'groundTwinImage' => $data['ground_twin_image'] ?? '',
-                'loftSubtitle' => $data['loft_subtitle'] ?? '',
-                'loftDescription' => $data['loft_description'] ?? '',
-                'loftImageUrl' => $data['loft_image_url'] ?? ''
-            ]
-        ]);
-    } else {
-        echo json_encode(['success' => false, 'error' => 'No floorplan data found']);
-    }
-    exit;
-}
-
-// Floor plan handler moved above - see line ~270
-
 echo json_encode(['success' => false, 'error' => 'Unknown action: ' . $action]);
 $conn->close();
-?>
-
-
-
-
-
-
-
-
-
-
-
-
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-require_once 'config.php';
-
-// Проверка подключения
-if (!$conn) {
-    echo json_encode(['success' => false, 'error' => 'Database connection failed']);
-    exit;
-}
-
-header('Content-Type: application/json');
-
-$action = getApiAction();
-
-if ($action === 'get_content') {
-    try {
-        $result = $conn->query("SELECT * FROM content_settings WHERE id = 1");
-        
-        if (!$result) {
-            echo json_encode(['success' => false, 'error' => 'Query failed: ' . $conn->error]);
-            exit;
-        }
-        
-        if ($result->num_rows > 0) {
-            $data = $result->fetch_assoc();
-            echo json_encode([
-                'success' => true,
-                'data' => [
-                    'homepageDescription' => $data['homepage_description'],
-                    'homepageSubtitle' => $data['homepage_subtitle'],
-                    'contactPhone' => $data['contact_phone'],
-                    'contactEmail' => $data['contact_email'],
-                    'contactAddress' => $data['contact_address'],
-                    'heroImageUrl' => $data['hero_image_url'] ?? '',
-                    'hero2ImageUrl' => $data['hero2_image_url'] ?? ''
-                ]
-            ]);
-        } else {
-            echo json_encode(['success' => false, 'error' => 'No data found in content_settings']);
-        }
-    } catch (Exception $e) {
-        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
-    }
-    exit;
-}
-
-if ($action === 'get_rooms') {
-    $result = $conn->query("SELECT * FROM rooms ORDER BY created_at DESC");
-    $rooms = [];
-    while ($row = $result->fetch_assoc()) {
-        $rooms[] = $row;
-    }
-    echo json_encode(['success' => true, 'data' => $rooms]);
-    exit;
-}
-
-if ($action === 'save_room') {
-    $name = $_POST['name'] ?? '';
-    $price = $_POST['price'] ?? 0;
-    $capacity = $_POST['capacity'] ?? 0;
-    $type = $_POST['type'] ?? '';
-    $description = $_POST['description'] ?? '';
-    $room_id = $_POST['room_id'] ?? null;
-    
-    if ($room_id) {
-        // Обновление существующей комнаты
-        $stmt = $conn->prepare("UPDATE rooms SET name = ?, price = ?, capacity = ?, type = ?, description = ? WHERE id = ?");
-        $stmt->bind_param("siissi", $name, $price, $capacity, $type, $description, $room_id);
-    } else {
-        // Создание новой комнаты
-        $stmt = $conn->prepare("INSERT INTO rooms (name, price, capacity, type, description) VALUES (?, ?, ?, ?, ?)");
-        $stmt->bind_param("siiss", $name, $price, $capacity, $type, $description);
-    }
-    
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'error' => $conn->error]);
-    }
-    $stmt->close();
-    exit;
-}
-
-if ($action === 'delete_room') {
-    $room_id = $_POST['room_id'] ?? 0;
-    $stmt = $conn->prepare("DELETE FROM rooms WHERE id = ?");
-    $stmt->bind_param("i", $room_id);
-    
-    if ($stmt->execute()) {
-        echo json_encode(['success' => true]);
-    } else {
-        echo json_encode(['success' => false, 'error' => $conn->error]);
-    }
-    $stmt->close();
-    exit;
-}
-
-if ($action === 'get_floorplan') {
-    $result = $conn->query("SELECT * FROM floorplan_settings WHERE id = 1");
-    if ($result && $result->num_rows > 0) {
-        $data = $result->fetch_assoc();
-        echo json_encode([
-            'success' => true,
-            'data' => [
-                'basementSubtitle' => $data['basement_subtitle'] ?? '',
-                'basementDescription' => $data['basement_description'] ?? '',
-                'basementImageUrl' => $data['basement_image_url'] ?? '',
-                'groundSubtitle' => $data['ground_subtitle'] ?? '',
-                'groundDescription' => $data['ground_description'] ?? '',
-                'groundQueenImage' => ($data['ground_image_url'] ?? $data['ground_queen_image'] ?? ''), // Universal: use ground_image_url first
-                'groundTwinImage' => $data['ground_twin_image'] ?? '',
-                'loftSubtitle' => $data['loft_subtitle'] ?? '',
-                'loftDescription' => $data['loft_description'] ?? '',
-                'loftImageUrl' => $data['loft_image_url'] ?? ''
-            ]
-        ]);
-    } else {
-        echo json_encode(['success' => false, 'error' => 'No floorplan data found']);
-    }
-    exit;
-}
-
-
-echo json_encode(['success' => false, 'error' => 'Unknown action: ' . $action]);
-$conn->close();
-?>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+exit;

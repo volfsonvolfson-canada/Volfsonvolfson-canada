@@ -2,40 +2,54 @@
 class Dashboard {
   constructor() {
     this.currentUser = null;
-    this.init();
+    void this.bootstrap();
   }
 
-  init() {
-    this.checkAuth();
+  async bootstrap() {
+    if (!(await this.ensureGuestSession())) {
+      return;
+    }
     this.setupEventListeners();
     this.loadUserData();
   }
 
-  // Проверка аутентификации
-  checkAuth() {
-    const token = localStorage.getItem('btb_auth_token');
-    const userData = localStorage.getItem('btb_user_data');
-    
-    if (!token || !userData) {
-      // Пользователь не авторизован - перенаправляем на страницу входа
-      window.location.href = 'login.html';
-      return;
+  /** @returns {Promise<boolean>} */
+  async ensureGuestSession() {
+    if (typeof window.btbVerifyGuestSession === 'function') {
+      const { ok, user } = await window.btbVerifyGuestSession();
+      if (!ok || !user) {
+        window.location.href = 'login.html';
+        return false;
+      }
+      const mapped = window.btbMapVerifyUser ? window.btbMapVerifyUser(user) : user;
+      this.currentUser = mapped;
+      try {
+        localStorage.setItem('btb_user_data', JSON.stringify(mapped));
+      } catch (_) {}
+      return true;
     }
-
+    const userData = localStorage.getItem('btb_user_data');
+    const token = localStorage.getItem('btb_auth_token');
+    if (!token || !userData) {
+      window.location.href = 'login.html';
+      return false;
+    }
     try {
       this.currentUser = JSON.parse(userData);
     } catch (error) {
-      // Ошибка в данных пользователя - перенаправляем на страницу входа
-      localStorage.removeItem('btb_auth_token');
-      localStorage.removeItem('btb_user_data');
+      try {
+        localStorage.removeItem('btb_auth_token');
+        localStorage.removeItem('btb_user_data');
+      } catch (_) {}
       window.location.href = 'login.html';
-      return;
+      return false;
     }
+    return true;
   }
 
-  // Настройка обработчиков событий
+  // Setting up event handlers
   setupEventListeners() {
-    // Кнопка Account Information
+    // Account Information button
     const accountInfoBtn = document.getElementById('btn-account-info');
     if (accountInfoBtn) {
       accountInfoBtn.addEventListener('click', (e) => {
@@ -44,7 +58,7 @@ class Dashboard {
       });
     }
 
-    // Кнопка выхода
+    // Exit button
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
       logoutBtn.addEventListener('click', () => {
@@ -52,7 +66,7 @@ class Dashboard {
       });
     }
 
-    // Кнопка редактирования
+    // Edit button
     const editDetailsBtn = document.getElementById('edit-details');
     if (editDetailsBtn) {
       editDetailsBtn.addEventListener('click', () => {
@@ -60,7 +74,7 @@ class Dashboard {
       });
     }
 
-    // Кнопка сохранения изменений
+    // Save changes button
     const saveChangesBtn = document.getElementById('save-changes');
     if (saveChangesBtn) {
       saveChangesBtn.addEventListener('click', () => {
@@ -68,7 +82,7 @@ class Dashboard {
       });
     }
 
-    // Кнопка смены пароля
+    // Change password button
     const changePasswordBtn = document.getElementById('change-password');
     if (changePasswordBtn) {
       changePasswordBtn.addEventListener('click', () => {
@@ -76,7 +90,7 @@ class Dashboard {
       });
     }
 
-    // Закрытие модального окна смены пароля
+    // Closing the password change modal window
     const closePasswordModalBtn = document.getElementById('close-password-modal');
     if (closePasswordModalBtn) {
       closePasswordModalBtn.addEventListener('click', () => {
@@ -84,7 +98,7 @@ class Dashboard {
       });
     }
 
-    // Кнопка отмены смены пароля
+    // Cancel password change button
     const cancelPasswordChangeBtn = document.getElementById('cancel-password-change');
     if (cancelPasswordChangeBtn) {
       cancelPasswordChangeBtn.addEventListener('click', () => {
@@ -92,21 +106,22 @@ class Dashboard {
       });
     }
 
-    // Форма смены пароля
+    // Password change form
     const changePasswordForm = document.getElementById('change-password-form');
     if (changePasswordForm) {
+      changePasswordForm.dataset.hasSubmitHandler = 'true';
       changePasswordForm.addEventListener('submit', (e) => {
         e.preventDefault();
-        this.handlePasswordChange();
+        void this.handlePasswordChange();
       });
     }
   }
 
-  // Загрузка данных пользователя
+  // Loading user data
   loadUserData() {
     if (!this.currentUser) return;
 
-    // Заполняем поля просмотра
+    // Filling out the viewing fields
     const viewNameEl = document.getElementById('view-name');
     const viewEmailEl = document.getElementById('view-email');
     const viewPhoneEl = document.getElementById('view-phone');
@@ -140,7 +155,7 @@ class Dashboard {
       });
     }
 
-    // Заполняем поля редактирования
+    // Filling out the editing fields
     const editNameEl = document.getElementById('edit-name');
     const editEmailEl = document.getElementById('edit-email');
     const editPhoneEl = document.getElementById('edit-phone');
@@ -177,7 +192,7 @@ class Dashboard {
 
 
 
-  // Показ информации об аккаунте
+  // Show account information
   showAccountInfo() {
     const accountInfo = document.getElementById('account-info');
     if (accountInfo) {
@@ -185,7 +200,7 @@ class Dashboard {
     }
   }
 
-  // Показ режима редактирования
+  // Show edit mode
   showEditMode() {
     const viewMode = document.getElementById('view-mode');
     const editMode = document.getElementById('edit-mode');
@@ -197,12 +212,12 @@ class Dashboard {
       editMode.style.display = 'block';
     }
     
-    // Скрываем кнопки Change Password и Logout в режиме редактирования
+    // Hiding the Change Password and Logout buttons in edit mode
     if (changePasswordBtn) changePasswordBtn.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
   }
 
-  // Показ режима просмотра
+  // Show view mode
   showViewMode() {
     const viewMode = document.getElementById('view-mode');
     const editMode = document.getElementById('edit-mode');
@@ -214,12 +229,12 @@ class Dashboard {
       editMode.style.display = 'none';
     }
     
-    // Показываем кнопки Change Password и Logout в режиме просмотра
+    // Showing the Change Password and Logout buttons in view mode
     if (changePasswordBtn) changePasswordBtn.style.display = 'inline-block';
     if (logoutBtn) logoutBtn.style.display = 'inline-block';
   }
 
-  // Сохранение изменений
+  // Saving changes
   saveChanges() {
     const name = document.getElementById('edit-name').value;
     const phone2 = document.getElementById('edit-phone2').value;
@@ -230,21 +245,21 @@ class Dashboard {
     }
 
     try {
-      // Обновляем данные пользователя
+      // Updating user data
       this.currentUser.name = name;
       this.currentUser.phone2 = phone2;
       this.currentUser.lastSession = new Date().toISOString();
 
-      // Сохраняем в localStorage
+      // Save to localStorage
       localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
 
-      // Обновляем пользователей в базе
+      // Updating users in the database
       this.updateUserInDatabase();
 
-      // Обновляем отображение
+      // Updating the display
       this.loadUserData();
 
-      // Возвращаемся в режим просмотра
+      // Returning to viewing mode
       this.showViewMode();
 
       this.showMessage('Changes saved successfully!', 'success');
@@ -253,7 +268,7 @@ class Dashboard {
     }
   }
 
-  // Обновление пользователя в базе
+  // Updating a user in the database
   updateUserInDatabase() {
     try {
       const users = JSON.parse(localStorage.getItem('btb_users') || '[]');
@@ -268,23 +283,24 @@ class Dashboard {
     }
   }
 
-  // Показ модального окна смены пароля
+  // Show modal window for changing password
   showPasswordModal() {
     const modal = document.getElementById('password-modal');
-    if (modal) {
-      modal.style.display = 'flex';
-      // Очищаем поля формы
-      document.getElementById('current-password').value = '';
-      document.getElementById('new-password').value = '';
-      document.getElementById('confirm-password').value = '';
-      // Очищаем все ошибки
-      this.clearPasswordErrors();
-      // Фокус на первое поле
-      document.getElementById('current-password').focus();
+    if (!modal) {
+      return;
     }
+    modal.style.display = 'flex';
+    const cur = document.getElementById('current-password');
+    const neu = document.getElementById('new-password');
+    const conf = document.getElementById('confirm-password');
+    if (cur) cur.value = '';
+    if (neu) neu.value = '';
+    if (conf) conf.value = '';
+    this.clearPasswordErrors();
+    if (cur) cur.focus();
   }
 
-  // Скрытие модального окна смены пароля
+  // Hiding the password change modal window
   hidePasswordModal() {
     const modal = document.getElementById('password-modal');
     if (modal) {
@@ -292,30 +308,34 @@ class Dashboard {
     }
   }
 
-  // Обработка смены пароля
-  handlePasswordChange() {
-    // Очищаем все предыдущие ошибки
+  // Password change processing (the server checks the current password; the password is not stored in btb_user_data)
+  async handlePasswordChange() {
     this.clearPasswordErrors();
 
-    const currentPassword = document.getElementById('current-password').value;
-    const newPassword = document.getElementById('new-password').value;
-    const confirmPassword = document.getElementById('confirm-password').value;
+    const curEl = document.getElementById('current-password');
+    const newEl = document.getElementById('new-password');
+    const confEl = document.getElementById('confirm-password');
+    if (!curEl || !newEl || !confEl) {
+      this.showMessage('Password form is missing. Please reload the page.', 'error');
+      return;
+    }
+
+    const currentPassword = curEl.value;
+    const newPassword = newEl.value;
+    const confirmPassword = confEl.value;
 
     let hasErrors = false;
 
-    // Проверяем текущий пароль
-    if (currentPassword !== this.currentUser.password) {
-      this.showPasswordError('current-password', 'Current password is incorrect');
+    if (!currentPassword) {
+      this.showPasswordError('current-password', 'Enter your current password');
       hasErrors = true;
     }
 
-    // Проверяем новый пароль
     if (!newPassword || newPassword.length < 6) {
       this.showPasswordError('new-password', 'New password must be at least 6 characters long');
       hasErrors = true;
     }
 
-    // Проверяем подтверждение пароля
     if (newPassword !== confirmPassword) {
       this.showPasswordError('confirm-password', 'New passwords do not match');
       hasErrors = true;
@@ -325,57 +345,104 @@ class Dashboard {
       return;
     }
 
+    if (typeof window.btbVerifyGuestSession === 'function') {
+      const { ok } = await window.btbVerifyGuestSession();
+      if (!ok) {
+        this.showMessage('Session expired. Please sign in again.', 'error');
+        return;
+      }
+    }
+
+    const submitBtn = document.querySelector('#change-password-form button[type="submit"]');
+    const prevBtnText = submitBtn ? submitBtn.textContent : '';
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving…';
+    }
+
     try {
-      // Обновляем пароль
-      this.currentUser.password = newPassword;
-      this.currentUser.lastSession = new Date().toISOString();
+      const fd = new FormData();
+      fd.append('action', 'change_password');
+      fd.append('current_password', currentPassword);
+      fd.append('new_password', newPassword);
 
-      // Сохраняем в localStorage
-      localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
+      const apiHref = typeof window.btbApiPhp === 'function' ? window.btbApiPhp() : 'api.php';
+      const res = await fetch(
+        apiHref,
+        typeof window.btbGuestFetchInit === 'function'
+          ? window.btbGuestFetchInit({ method: 'POST', body: fd })
+          : { method: 'POST', body: fd, credentials: 'same-origin' },
+      );
+      const json = await res.json().catch(() => ({}));
 
-      // Обновляем пользователей в базе
-      this.updateUserInDatabase();
+      if (!json.success) {
+        const err = (json && json.error) ? String(json.error) : 'Could not change password';
+        const low = err.toLowerCase();
+        if (low.includes('current password')) {
+          this.showPasswordError('current-password', err);
+        } else if (low.includes('at least 6') || low.includes('new password')) {
+          this.showPasswordError('new-password', err);
+        } else {
+          this.showMessage(err, 'error');
+        }
+        return;
+      }
 
-      // Скрываем модальное окно
+      try {
+        delete this.currentUser.password;
+      } catch (_) {}
+      if (this.currentUser) {
+        this.currentUser.lastSession = new Date().toISOString();
+        localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
+      }
+
+      curEl.value = '';
+      newEl.value = '';
+      confEl.value = '';
       this.hidePasswordModal();
-
-      // Показываем сообщение об успехе
       this.showMessage('Password changed successfully!', 'success');
     } catch (error) {
-      this.showMessage('Failed to change password. Please try again.', 'error');
+      this.showMessage((error && error.message) || 'Network error. Please try again.', 'error');
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = prevBtnText || 'Change Password';
+      }
     }
   }
 
-  // Показ ошибки для конкретного поля пароля
+  // Showing an error for a specific password field
   showPasswordError(fieldId, message) {
     const errorElement = document.getElementById(`${fieldId}-error`);
     const inputElement = document.getElementById(fieldId);
-    
+
     if (errorElement && inputElement) {
       errorElement.textContent = message;
       errorElement.classList.add('show');
       inputElement.classList.add('error');
+    } else {
+      this.showMessage(message, 'error');
     }
   }
 
-  // Очистка всех ошибок паролей
+  // Clearing errors only inside the password change modal
   clearPasswordErrors() {
-    const errorElements = document.querySelectorAll('.error-message');
-    const inputElements = document.querySelectorAll('.form-group input');
-    
-    errorElements.forEach(element => {
+    const modal = document.getElementById('password-modal');
+    if (!modal) {
+      return;
+    }
+    modal.querySelectorAll('.error-message').forEach((element) => {
       element.classList.remove('show');
       element.textContent = '';
     });
-    
-    inputElements.forEach(element => {
+    modal.querySelectorAll('.form-group input').forEach((element) => {
       element.classList.remove('error');
     });
   }
 
-  // Показ сообщений
+  // Show messages
   showMessage(message, type = 'info') {
-    // Создаем временное сообщение
+    // Create a temporary message
     const messageEl = document.createElement('div');
     messageEl.className = `auth-message auth-message--${type}`;
     messageEl.textContent = message;
@@ -383,13 +450,13 @@ class Dashboard {
     messageEl.style.top = '50%';
     messageEl.style.left = '50%';
     messageEl.style.transform = 'translate(-50%, -50%)';
-    messageEl.style.zIndex = '1000';
+    messageEl.style.zIndex = '100010';
     messageEl.style.maxWidth = '300px';
     messageEl.style.textAlign = 'center';
 
     document.body.appendChild(messageEl);
 
-    // Автоматически убираем сообщение через 5 секунд
+    // Automatically remove the message after 5 seconds
     setTimeout(() => {
       if (messageEl.parentNode) {
         messageEl.parentNode.removeChild(messageEl);
@@ -397,23 +464,43 @@ class Dashboard {
     }, 5000);
   }
 
-  // Выход из системы
+  // Logout
   logout() {
-    if (confirm('Are you sure you want to log out?')) {
-      // Очищаем localStorage
-      localStorage.removeItem('btb_auth_token');
-      localStorage.removeItem('btb_user_data');
-      
-      // Перенаправляем на главную страницу
-      window.location.href = 'index.html';
+    if (!confirm('Are you sure you want to log out?')) {
+      return;
     }
+    void (async () => {
+      try {
+        const fd = new FormData();
+        fd.append('action', 'logout');
+        const apiHref = typeof window.btbApiPhp === 'function' ? window.btbApiPhp() : 'api.php';
+        await fetch(
+          apiHref,
+          typeof window.btbGuestFetchInit === 'function'
+            ? window.btbGuestFetchInit({ method: 'POST', body: fd })
+            : { method: 'POST', body: fd, credentials: 'same-origin' },
+        );
+      } catch (_) {}
+      try {
+        localStorage.removeItem('btb_auth_token');
+        localStorage.removeItem('btb_user_data');
+      } catch (_) {}
+      window.location.href = 'index.html';
+    })();
   }
 }
 
-// Инициализация дашборда
-document.addEventListener('DOMContentLoaded', () => {
-  window.dashboard = new Dashboard();
-});
+// Initializing the dashboard (immediately if the DOM is already ready - otherwise the submit will not be attached)
+function initDashboardApp() {
+  if (!window.dashboard) {
+    window.dashboard = new Dashboard();
+  }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initDashboardApp);
+} else {
+  initDashboardApp();
+}
 
-// Экспорт для использования в других файлах
+// Export for use in other files
 window.Dashboard = Dashboard;

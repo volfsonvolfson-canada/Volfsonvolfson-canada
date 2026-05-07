@@ -2,91 +2,56 @@
 // Server-Side Rendering for Wellness page (massage.php)
 require_once 'common.php';
 
-if (!function_exists('btb_default_massage_pricing_map')) {
-    /**
-     * @return array<string, list<array{duration:int,label:string,price:string}>>
-     */
-    function btb_default_massage_pricing_map() {
-        return [
-            'relaxing' => [
-                ['duration' => 60, 'label' => '60 minutes', 'price' => '110 CAD'],
-                ['duration' => 90, 'label' => '90 minutes', 'price' => '160 CAD'],
-            ],
-            'deep_tissue' => [
-                ['duration' => 60, 'label' => '60 minutes', 'price' => '120 CAD'],
-                ['duration' => 90, 'label' => '90 minutes', 'price' => '170 CAD'],
-            ],
-            'reiki' => [
-                ['duration' => 15, 'label' => '15 minutes on the go', 'price' => '25 CAD'],
-                ['duration' => 30, 'label' => '30 minutes as an add-on', 'price' => '50 CAD'],
-            ],
-            'sauna' => [
-                ['duration' => 60, 'label' => '1 hour', 'price' => '25 CAD'],
-            ],
-        ];
-    }
-
-    function btb_parse_massage_pricing($jsonOrNull, $key) {
-        $defaults = btb_default_massage_pricing_map();
-        $default = $defaults[$key] ?? [];
-        $decoded = json_decode((string)($jsonOrNull ?? ''), true);
-        if (!is_array($decoded) || $decoded === []) {
-            return $default;
-        }
-        $byDur = [];
-        foreach ($decoded as $row) {
-            if (is_array($row) && isset($row['duration'])) {
-                $byDur[(int)$row['duration']] = $row;
-            }
-        }
-        $out = [];
-        foreach ($default as $rowDef) {
-            $dur = (int)($rowDef['duration'] ?? 0);
-            if (isset($byDur[$dur]) && is_array($byDur[$dur])) {
-                $r = $byDur[$dur];
-                $label = trim((string)($r['label'] ?? $rowDef['label']));
-                $price = trim((string)($r['price'] ?? $rowDef['price']));
-                if ($label === '') {
-                    $label = $rowDef['label'];
-                }
-                if ($price === '') {
-                    $price = $rowDef['price'];
-                }
-                $out[] = ['duration' => $dur, 'label' => $label, 'price' => $price];
-            } else {
-                $out[] = $rowDef;
-            }
-        }
-        return $out;
-    }
-
+if (!function_exists('btb_render_massage_price_lis')) {
     function btb_render_massage_price_lis($mType, $items) {
         $mTypeEsc = htmlspecialchars($mType, ENT_QUOTES, 'UTF-8');
         foreach ($items as $row) {
             $dur = (int)($row['duration'] ?? 0);
             $label = htmlspecialchars($row['label'] ?? '', ENT_QUOTES, 'UTF-8');
-            $price = htmlspecialchars($row['price'] ?? '', ENT_QUOTES, 'UTF-8');
+            $priceRaw = trim((string)($row['price'] ?? ''));
+            if ($priceRaw === '') {
+                $pAmt = trim((string)($row['priceAmount'] ?? ''));
+                $pCur = trim((string)($row['priceCurrency'] ?? 'CAD'));
+                if ($pAmt !== '') {
+                    $priceRaw = trim($pAmt . ' ' . ($pCur !== '' ? $pCur : 'CAD'));
+                }
+            }
+            $price = htmlspecialchars($priceRaw, ENT_QUOTES, 'UTF-8');
             $line = $label . ' — ' . $price;
-            echo '<li data-m-type="' . $mTypeEsc . '" data-m-duration="' . $dur . '" role="button" tabindex="0" aria-pressed="false">' . $line . "</li>\n";
+            echo '<li data-m-type="' . $mTypeEsc . '" data-m-duration="' . $dur . '" role="button" tabindex="0" aria-pressed="false">'
+                . '<span class="massage-price-btn__row"><span class="massage-price-btn__info">' . $line
+                . '</span><span class="massage-price-btn__cta">add to cart</span></span></li>' . "\n";
         }
     }
 }
 
-// Prevent caching
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Pragma: no-cache');
-header('Expires: 0');
+if (function_exists('btb_public_cms_cache_headers')) {
+    btb_public_cms_cache_headers(120);
+} else {
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
 
 // Load content from database
 $content = fetchOne($conn, "SELECT * FROM content_settings WHERE id = 1");
 if (!$content) {
     $content = []; // Ensure $content is always an array
 }
+btb_merge_phase1_canonical_into_content_row($conn, $content);
 
-$pricingRelaxing = btb_parse_massage_pricing($content['massage_pricing_relaxing'] ?? null, 'relaxing');
-$pricingDeepTissue = btb_parse_massage_pricing($content['massage_pricing_deep_tissue'] ?? null, 'deep_tissue');
-$pricingReiki = btb_parse_massage_pricing($content['massage_pricing_reiki'] ?? null, 'reiki');
-$pricingSauna = btb_parse_massage_pricing($content['massage_pricing_sauna'] ?? null, 'sauna');
+$massageBookServiceBtn = trim((string)($content['massage_book_service_button_label'] ?? ''));
+if ($massageBookServiceBtn === '') {
+    $massageBookServiceBtn = 'Book service';
+}
+$massageBookServiceBtnEsc = htmlspecialchars($massageBookServiceBtn, ENT_QUOTES, 'UTF-8');
+
+$massageCartSubmitBtn = trim((string) ($content['massage_cart_submit_button_label'] ?? ''));
+$massageCartSubmitBtnEsc = htmlspecialchars($massageCartSubmitBtn, ENT_QUOTES, 'UTF-8');
+
+$massageServiceCards = function_exists('btb_massage_service_cards_effective_list')
+    ? btb_massage_service_cards_effective_list($content)
+    : [];
 
 // Load mini-hotel data from room_cards_settings if it exists, otherwise from content_settings
 $miniHotelData = [];
@@ -115,13 +80,18 @@ if ($massageTableCheck && $massageTableCheck->num_rows > 0) {
 // Extract content with fallback values
 // Note: safeOutput($x, 'Wellness') does not replace empty string — only null. DB often has ''.
 $heroTitleRaw = trim((string)($content['massage_hero_title'] ?? ''));
-$heroTitle = safeOutput($heroTitleRaw !== '' ? $heroTitleRaw : 'Wellness', '');
+$heroTitle = safeOutput(
+    $heroTitleRaw !== ''
+        ? $heroTitleRaw
+        : btb_default_text('content_settings.massage_hero_title', 'Wellness'),
+    ''
+);
 
 // Use massage_hero_subtitle if available, otherwise fall back to massage_intro; empty → long default
 $heroSubtitleText = trim((string)($content['massage_hero_subtitle'] ?? $content['massage_intro'] ?? ''));
 $heroSubtitle = safeOutputWithBreaks(
     $heroSubtitleText !== '' ? $heroSubtitleText : null,
-    'Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.'
+    btb_default_text('content_settings.massage_hero_subtitle', 'Massage is available as an add-on to your apartment rental or as a stand-alone booking. Whether you want to release tension, restore energy, or simply relax, our experienced therapists are always ready to help.')
 );
 // Get hero image from massage_settings if available, otherwise from content_settings
 $heroImageUrl = '';
@@ -131,50 +101,34 @@ if (!empty($massageImagesData) && isset($massageImagesData['massage_hero_image_u
     $heroImageUrl = safeOutput($content['massage_hero_image_url'], '');
 }
 
-// Relaxing Massage
-$relaxingTitle = safeOutput($content['massage_relaxing_title'] ?? '', 'Relaxing Massage');
-$relaxingDescription = safeOutputWithBreaks($content['massage_relaxing_description'] ?? '', 'This gentle massage, perfect for those who want to unwind and restore their energy, uses smooth strokes and calming techniques that relieve stress, improve circulation, and promote relaxation. After the session, you will feel refreshed and relaxed.');
-$relaxingImageUrl = '';
-if (!empty($massageImagesData) && !empty(trim($massageImagesData['massage_relaxing_image_url'] ?? ''))) {
-    $relaxingImageUrl = safeOutput($massageImagesData['massage_relaxing_image_url'], '');
-} elseif (isset($content['massage_relaxing_image_url']) && !empty(trim($content['massage_relaxing_image_url']))) {
-    $relaxingImageUrl = safeOutput($content['massage_relaxing_image_url'], '');
-}
-
-// Deep Tissue Massage
-$deepTissueTitle = safeOutput($content['massage_deep_tissue_title'] ?? '', 'Deep Tissue Massage');
-$deepTissueDescription = safeOutputWithBreaks($content['massage_deep_tissue_description'] ?? '', 'For targeted relief of muscle tension and pain, we offer deep tissue massage, designed to address chronic stiffness and discomfort in the deeper layers of muscle. It is ideal for those experiencing pain or tightness in specific areas.');
-$deepTissueImageUrl = '';
-if (!empty($massageImagesData) && !empty(trim($massageImagesData['massage_deep_tissue_image_url'] ?? ''))) {
-    $deepTissueImageUrl = safeOutput($massageImagesData['massage_deep_tissue_image_url'], '');
-} elseif (isset($content['massage_deep_tissue_image_url']) && !empty(trim($content['massage_deep_tissue_image_url']))) {
-    $deepTissueImageUrl = safeOutput($content['massage_deep_tissue_image_url'], '');
-}
-
-// Reiki Energy Healing
-$reikiTitle = safeOutput($content['massage_reiki_title'] ?? '', 'Reiki Energy Healing');
-$reikiDescription = safeOutputWithBreaks($content['massage_reiki_description'] ?? '', 'Experience the gentle yet powerful effect of Reiki — a Japanese energy healing technique that promotes relaxation and balances the body\'s energy. This hands-on healing method helps remove energy blockages, restore inner harmony, and reduce stress levels.');
-$reikiImageUrl = '';
-if (!empty($massageImagesData) && !empty(trim($massageImagesData['massage_reiki_image_url'] ?? ''))) {
-    $reikiImageUrl = safeOutput($massageImagesData['massage_reiki_image_url'], '');
-} elseif (isset($content['massage_reiki_image_url']) && !empty(trim($content['massage_reiki_image_url']))) {
-    $reikiImageUrl = safeOutput($content['massage_reiki_image_url'], '');
-}
-
-// Sauna
-$saunaTitle = safeOutput($content['massage_sauna_title'] ?? '', 'Sauna');
-$saunaDescription = safeOutputWithBreaks($content['massage_sauna_description'] ?? '', 'After a day spent in nature, sometimes you just want to warm up. We understand how important comfort is, so we offer our guests access to a small sauna. It is located right in the house, on the basement floor.');
-$saunaImageUrl = '';
-if (!empty($massageImagesData) && !empty(trim($massageImagesData['massage_sauna_image_url'] ?? ''))) {
-    $saunaImageUrl = safeOutput($massageImagesData['massage_sauna_image_url'], '');
-} elseif (isset($content['massage_sauna_image_url']) && !empty(trim($content['massage_sauna_image_url']))) {
-    $saunaImageUrl = safeOutput($content['massage_sauna_image_url'], '');
-}
-
 // Mini-hotel section - use room_cards_settings if available, otherwise content_settings
-$miniHotelTitle = safeOutput(!empty($miniHotelData) ? ($miniHotelData['mini_hotel_title'] ?? '') : ($content['mini_hotel_title'] ?? ''), 'Book a room in our mini-hotel');
-$miniHotelDescription1 = safeOutputWithBreaks(!empty($miniHotelData) ? ($miniHotelData['mini_hotel_description_1'] ?? '') : ($content['mini_hotel_description_1'] ?? ''), 'After your relaxing massage session, why not extend your stay? Our cozy mini-hotel offers comfortable rooms and apartments where you can fully unwind and enjoy the peaceful atmosphere of Back to Base.');
-$miniHotelDescription2 = safeOutputWithBreaks(!empty($miniHotelData) ? ($miniHotelData['mini_hotel_description_2'] ?? '') : ($content['mini_hotel_description_2'] ?? ''), 'Located just 35 km from Nelson, BC, surrounded by forest near Kootenay Lake with beautiful views of Mount Loki. Easy online booking — perfect for a peaceful vacation and retreat in nature.');
+$miniHotelTitle = safeOutput(
+    btb_field_or_default(
+        !empty($miniHotelData) ? $miniHotelData : $content,
+        'mini_hotel_title',
+        'room_cards_settings.mini_hotel_title',
+        btb_default_text('content_settings.mini_hotel_title', 'Book a room in our mini-hotel')
+    ),
+    ''
+);
+$miniHotelDescription1 = safeOutputWithBreaks(
+    btb_field_or_default(
+        !empty($miniHotelData) ? $miniHotelData : $content,
+        'mini_hotel_description_1',
+        'room_cards_settings.mini_hotel_description_1',
+        btb_default_text('content_settings.mini_hotel_description_1', 'After your relaxing massage session, why not extend your stay? Our cozy mini-hotel offers comfortable rooms and apartments where you can fully unwind and enjoy the peaceful atmosphere of Back to Base.')
+    ),
+    ''
+);
+$miniHotelDescription2 = safeOutputWithBreaks(
+    btb_field_or_default(
+        !empty($miniHotelData) ? $miniHotelData : $content,
+        'mini_hotel_description_2',
+        'room_cards_settings.mini_hotel_description_2',
+        btb_default_text('content_settings.mini_hotel_description_2', 'Located just 35 km from Nelson, BC, surrounded by forest near Kootenay Lake with beautiful views of Mount Loki. Easy online booking — perfect for a peaceful vacation and retreat in nature.')
+    ),
+    ''
+);
 $miniHotelUseSingleBlock = false;
 $miniHotelBodyHtml = '';
 $miniHotelDescSingleRaw = (string) (!empty($miniHotelData) ? ($miniHotelData['mini_hotel_description'] ?? '') : ($content['mini_hotel_description'] ?? ''));
@@ -220,10 +174,16 @@ if (!function_exists('wellness_stay_gallery_hook')) {
         return $line;
     }
 }
-$wellnessStayGalleryHook = wellness_stay_gallery_hook($miniHotelGalleryTitlePlain);
+$wov = trim((string)($content['wellness_stay_gallery_overlay'] ?? ''));
+$wellnessStayGalleryHook = $wov !== ''
+    ? str_replace('{t}', $miniHotelGalleryTitlePlain, $wov)
+    : wellness_stay_gallery_hook($miniHotelGalleryTitlePlain);
 
 // Booking section title and short how-to (shown under the heading)
-$bookingTitle = safeOutput($content['massage_booking_title'] ?? '', 'Book a Massage or Sauna');
+$bookingTitle = safeOutput(
+    btb_field_or_default($content, 'massage_booking_title', 'content_settings.massage_booking_title', 'Book a Massage or Sauna'),
+    ''
+);
 $bookingIntroRaw = trim((string) ($content['massage_booking_intro'] ?? ''));
 $bookingIntro = $bookingIntroRaw !== '' ? safeOutput($bookingIntroRaw) : '';
 // Cache buster for images
@@ -246,6 +206,16 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>Wellness — Back to Base</title>
+  <?php
+  $__seo_title = 'Wellness — Back to Base';
+  $__seo_desc = 'Massage and wellness add-ons at Back to Base guesthouse near Nelson, BC — relax during your countryside stay.';
+  ?>
+  <meta name="description" content="<?php echo htmlspecialchars($__seo_desc, ENT_QUOTES, 'UTF-8'); ?>">
+  <?php
+  btb_seo_emit_link_and_meta('/massage.php', $__seo_title, $__seo_desc, [
+      'og_image' => '/assets/massage-hero.jpg',
+  ]);
+  ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -400,85 +370,36 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
 
   <main class="section massage-page-main">
     <div class="container">
-      <section class="card card-massage" data-massage-card-type="Relaxing Massage">
+      <?php foreach ($massageServiceCards as $cardIndex => $svcCard) :
+          $bt = (string) ($svcCard['bookingTitle'] ?? '');
+          $cardTypeAttr = htmlspecialchars($bt, ENT_QUOTES, 'UTF-8');
+          $titleHtml = safeOutput(trim((string) ($svcCard['title'] ?? '')), '');
+          $descHtml = safeOutputWithBreaks((string) ($svcCard['description'] ?? ''), '');
+          $imgRaw = trim((string) ($svcCard['imageUrl'] ?? ''));
+          $imgUrl = $imgRaw !== '' ? safeOutput($imgRaw, '') : '';
+          $pricingRows = isset($svcCard['pricing']) && is_array($svcCard['pricing']) ? $svcCard['pricing'] : [];
+          $altClass = ($cardIndex % 2 === 1) ? ' card-massage--alt' : '';
+          $imgAlt = htmlspecialchars($bt !== '' ? $bt : 'Wellness service', ENT_QUOTES, 'UTF-8');
+          ?>
+      <section class="card card-massage<?php echo $altClass; ?>" data-massage-card-type="<?php echo $cardTypeAttr; ?>">
         <div class="card-img">
-          <?php if (!empty($relaxingImageUrl)): ?>
-            <img class="floor-photo media-43" src="<?php echo htmlspecialchars($relaxingImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Relaxation massage" />
-          <?php else: ?>
-            <img class="floor-photo media-43" data-src-base="assets/Relaxation Massage|assets/relaxation|assets/relaxation-massage|assets/Relaxation_Massage|assets/Relaxing Massage|assets/Relaxing_Massage|assets/RelaxationMassage|assets/RelaxingMassage|assets/relax" alt="Relaxation massage" />
+          <?php if ($imgUrl !== '') : ?>
+            <img class="floor-photo media-43" src="<?php echo htmlspecialchars($imgUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo $imgAlt; ?>" />
+          <?php else : ?>
+            <img class="floor-photo media-43" data-src-base="assets/massage|assets/wellness|assets/relax" alt="<?php echo $imgAlt; ?>" />
           <?php endif; ?>
         </div>
         <div class="card-body">
-          <h2><?php echo $relaxingTitle; ?></h2>
-          <p><?php echo $relaxingDescription; ?></p>
+          <h2><?php echo $titleHtml; ?></h2>
+          <p><?php echo $descHtml; ?></p>
           <div class="massage-price-hover-zone">
           <ul class="massage-list">
-            <?php btb_render_massage_price_lis('Relaxing Massage', $pricingRelaxing); ?>
+            <?php btb_render_massage_price_lis($bt, $pricingRows); ?>
           </ul>
-          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
           </div>
         </div>
       </section>
-
-      <section class="card card-massage card-massage--alt" data-massage-card-type="Deep Tissue Massage">
-        <div class="card-img">
-          <?php if (!empty($deepTissueImageUrl)): ?>
-            <img class="floor-photo media-43" src="<?php echo htmlspecialchars($deepTissueImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Deep tissue massage" />
-          <?php else: ?>
-            <img class="floor-photo media-43" data-src-base="assets/Deep Tissue Massage|assets/deep|assets/deep-tissue-massage|assets/Deep_Tissue_Massage" alt="Deep tissue massage" />
-          <?php endif; ?>
-        </div>
-        <div class="card-body">
-          <h2><?php echo $deepTissueTitle; ?> <span class="massage-card-badge" data-massage-badge-for="Deep Tissue Massage" hidden aria-label="Added to booking request">0</span></h2>
-          <p><?php echo $deepTissueDescription; ?></p>
-          <div class="massage-price-hover-zone">
-          <ul class="massage-list">
-            <?php btb_render_massage_price_lis('Deep Tissue Massage', $pricingDeepTissue); ?>
-          </ul>
-          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="card card-massage" data-massage-card-type="Reiki Energy Healing">
-        <div class="card-img">
-          <?php if (!empty($reikiImageUrl)): ?>
-            <img class="floor-photo media-43" src="<?php echo htmlspecialchars($reikiImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Reiki energy healing" />
-          <?php else: ?>
-            <img class="floor-photo media-43" data-src-base="assets/Reiki Energy Healing|assets/reiki|assets/reiki-energy-healing|assets/Reiki_Energy_Healing" alt="Reiki energy healing" />
-          <?php endif; ?>
-        </div>
-        <div class="card-body">
-          <h2><?php echo $reikiTitle; ?></h2>
-          <p><?php echo $reikiDescription; ?></p>
-          <div class="massage-price-hover-zone">
-          <ul class="massage-list">
-            <?php btb_render_massage_price_lis('Reiki Energy Healing', $pricingReiki); ?>
-          </ul>
-          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
-          </div>
-        </div>
-      </section>
-
-      <section class="card card-massage card-massage--alt" data-massage-card-type="Sauna">
-        <div class="card-img">
-          <?php if (!empty($saunaImageUrl)): ?>
-            <img class="floor-photo media-43" src="<?php echo htmlspecialchars($saunaImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="Sauna at Back to Base" />
-          <?php else: ?>
-            <img class="floor-photo media-43" data-src-base="assets/plan-basement-bedroom|assets/sauna|assets/Sauna" alt="Sauna at Back to Base" />
-          <?php endif; ?>
-        </div>
-        <div class="card-body">
-          <h2><?php echo $saunaTitle; ?></h2>
-          <p><?php echo $saunaDescription; ?></p>
-          <div class="massage-price-hover-zone">
-          <ul class="massage-list">
-            <?php btb_render_massage_price_lis('Sauna', $pricingSauna); ?>
-          </ul>
-          <p class="massage-price-tap-hint" aria-hidden="true">Click a price to add to your cart.</p>
-          </div>
-        </div>
-      </section>
+      <?php endforeach; ?>
 
       <section class="card" id="book">
         <h2 id="massage-booking-title"><?php echo $bookingTitle; ?></h2>
@@ -513,7 +434,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
               <input id="phone" name="phone" type="tel" placeholder="+1 555 123‑4567" required />
             </div>
           </div>
-          <button class="btn primary" id="massage-submit-btn" type="submit">Book service</button>
+          <button class="btn primary" id="massage-submit-btn" type="submit" data-btb-default-service-label="<?php echo $massageBookServiceBtnEsc; ?>" data-btb-cart-submit-label="<?php echo $massageCartSubmitBtnEsc; ?>"><?php echo $massageBookServiceBtnEsc; ?></button>
         </form>
       </section>
 
@@ -579,8 +500,10 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -751,12 +674,8 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       }
     }
     .massage-list li[data-m-type] {
-      transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
-    }
-    .massage-list li[data-m-type].massage-li-in-cart {
-      background: var(--brand, #3b82f6);
-      color: #fff;
-      box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.25);
+      transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease,
+        transform 0.15s ease;
     }
     body:has(#book) .card-massage .massage-price-hover-zone {
       display: block;
@@ -829,47 +748,6 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
     .massage-booking-intro:empty {
       display: none;
     }
-    .massage-price-tap-hint {
-      display: block;
-      box-sizing: border-box;
-      text-align: center;
-      font-size: 0.82rem;
-      line-height: 1.4;
-      font-weight: 400;
-      font-style: normal;
-      margin: 0;
-      padding: 0;
-      border: none;
-      color: var(--muted, #64748b);
-      overflow: hidden;
-      pointer-events: none;
-      transform-origin: top;
-      transition: opacity 0.2s ease, max-height 0.22s ease, margin 0.22s ease;
-    }
-    @supports (selector(:has(*))) {
-      @media (hover: hover) {
-        .card-massage:has(.massage-price-hover-zone) .massage-price-tap-hint {
-          max-height: 0;
-          opacity: 0;
-        }
-        .card-massage:has(.massage-price-hover-zone:hover) .massage-price-tap-hint,
-        .card-massage:has(.massage-price-hover-zone:focus-within) .massage-price-tap-hint {
-          max-height: 3.5rem;
-          opacity: 1;
-          margin: 0.4rem 0 0;
-        }
-      }
-    }
-    @media (hover: none) {
-      .massage-price-tap-hint {
-        display: none;
-      }
-    }
-    @supports not (selector(:has(*))) {
-      .massage-price-tap-hint {
-        display: none;
-      }
-    }
     .massage-cart-panel {
       margin-bottom: 1.25rem;
       padding: 1rem 1.1rem;
@@ -938,6 +816,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
   <script src="script.js?v=32"></script>
+  <script src="auth-menu.js?v=26"></script>
   <script src="booking.js"></script>
   <script src="auth.js?v=26"></script>
   <script>

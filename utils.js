@@ -464,8 +464,8 @@ const ValidationUtils = {
   // Show validation bubble
   showBubble: function(target, message) {
     try {
-      // DEBUG: Логируем все вызовы ValidationUtils.showBubble
-      console.trace('🔍 ValidationUtils.showBubble вызван:', {
+      // DEBUG: Log all calls to ValidationUtils.showBubble
+      console.trace('🔍 ValidationUtils.showBubble called:', {
         message: message,
         target: target,
         targetId: target?.id,
@@ -488,41 +488,41 @@ const ValidationUtils = {
       
       document.body.appendChild(bubble);
       
-      // КРИТИЧНО: Для полей дат используется Flatpickr с altInput
-      // Оригинальный input скрыт (1px x 1px), поэтому нужно использовать видимый altInput для позиционирования
-      // ВАЖНО: Если target уже является altInput (передан из showDateErrorNotification), используем его напрямую
-      // Если target - оригинальный input, ищем altInput через _flatpickr
+      // CRITICAL: Flatpickr with altInput is used for date fields
+      // The original input is hidden (1px x 1px), so you need to use the visible altInput for positioning
+      // IMPORTANT: If target is already an altInput (passed from showDateErrorNotification), use it directly
+      // If target is the original input, look for altInput via _flatpickr
       let targetInput = target;
       
-      // Проверяем, является ли target уже altInput (у altInput нет _flatpickr, но есть класс flatpickr-input)
-      // Если target - оригинальный input, у него есть _flatpickr
+      // Check if target is already altInput (altInput does not have _flatpickr, but there is a class flatpickr-input)
+      // If target is the original input, it has _flatpickr
       if (typeof flatpickr !== 'undefined' && target._flatpickr) {
-        // target - оригинальный input, ищем altInput
+        // target - original input, look for altInput
         const fpInstance = target._flatpickr;
         if (fpInstance.altInput) {
           targetInput = fpInstance.altInput;
         }
       }
-      // Если target уже является altInput (нет _flatpickr), используем его напрямую
+      // If target is already altInput (no _flatpickr), use it directly
       
-      // Position bubble - используем ТОЧНО ТУ ЖЕ логику позиционирования, что и в fallback showDateErrorNotification
-      // Это гарантирует идентичное поведение для первого и второго сообщений
+      // Position bubble - we use EXACTLY THE SAME positioning logic as in fallback showDateErrorNotification
+      // This guarantees identical behavior for the first and second messages
       setTimeout(() => {
         const rect = targetInput.getBoundingClientRect();
         const windowWidth = window.innerWidth || document.documentElement.clientWidth;
         
-        // Получаем реальные размеры уведомления после рендеринга
+        // Getting the real notification sizes after rendering
         const bubbleWidth = bubble.offsetWidth || 360;
         const bubbleHeight = bubble.offsetHeight || 100;
         
-        // Позиция по вертикали - СРАЗУ ПОД инпутом (ТОЧНО как в fallback showDateErrorNotification, строка 499)
-        const top = rect.bottom + 8; // 8px отступ снизу от инпута
+        // Vertical position - IMMEDIATELY BELOW the input (EXACTLY as in fallback showDateErrorNotification, line 499)
+        const top = rect.bottom + 8; // 8px space below the input
         
-        // Позиция по горизонтали - ТОЧНО как в fallback showDateErrorNotification (строка 503)
-        // Math.min гарантирует, что уведомление не выйдет за правый край viewport
+        // Horizontal position - EXACTLY as in fallback showDateErrorNotification (line 503)
+        // Math.min ensures that the notification does not extend beyond the right edge of the viewport
         const left = Math.min(windowWidth - bubbleWidth - 8, rect.right + 12);
         
-        // Убеждаемся, что left не отрицательное (ТОЧНО как в fallback, строка 506)
+        // Make sure left is not negative (EXACTLY like in fallback, line 506)
         const finalLeft = Math.max(8, left);
         
         bubble.style.top = `${top}px`;
@@ -581,3 +581,94 @@ window.AnimationUtils = AnimationUtils;
 window.ThemeUtils = ThemeUtils;
 window.DateUtils = DateUtils;
 window.ValidationUtils = ValidationUtils;
+
+/**
+ * Admin CMS: scaled JPEG via admin_image_thumb.php so previews load faster than full assets/.
+ * Shared by admin.js and admin-content.js (both load utils.js first).
+ */
+var BTB_ADMIN_PREVIEW_THUMB_W = 520;
+
+/**
+ * @param {string|null|undefined} pathOrUrl
+ * @param {boolean} [bustCache]
+ */
+function btbAdminDisplayUrlForAsset(pathOrUrl, bustCache) {
+  if (pathOrUrl == null) {
+    return '';
+  }
+  const raw = String(pathOrUrl).trim();
+  if (!raw) {
+    return '';
+  }
+  if (raw.startsWith('data:') || raw.startsWith('blob:')) {
+    return raw;
+  }
+  const path = btbAdminStripAssetPath(raw);
+  if (path && path.indexOf('assets/') === 0) {
+    let out =
+      'admin_image_thumb.php?p=' +
+      encodeURIComponent(path) +
+      '&w=' +
+      BTB_ADMIN_PREVIEW_THUMB_W;
+    if (bustCache) {
+      out += '&v=' + Date.now();
+    }
+    return out;
+  }
+  if (!bustCache) {
+    return raw;
+  }
+  const base = raw.split('&v=')[0].split('?v=')[0];
+  const sep = base.indexOf('?') >= 0 ? '&' : '?';
+  return base + sep + 'v=' + Date.now();
+}
+
+function btbAdminStripAssetPath(url) {
+  let s = String(url || '').trim();
+  if (!s) return '';
+  try {
+    const u = new URL(s, window.location.href);
+    const leaf = u.pathname.split('/').pop() || '';
+    if (leaf === 'admin_image_thumb.php') {
+      const inner = u.searchParams.get('p');
+      if (inner && String(inner).indexOf('assets/') >= 0) {
+        return String(inner).split('?')[0].replace(/^\/+/, '');
+      }
+    }
+  } catch (e) {
+    // relative or invalid URL — fall through
+  }
+  s = s.split('?')[0];
+  const idx = s.indexOf('assets/');
+  if (idx >= 0) {
+    s = s.slice(idx);
+  }
+  return s.replace(/^\/+/, '');
+}
+
+/** Matches btb_upload_image_max_file_bytes() in common.php (admin uploads). */
+var BTB_ADMIN_MAX_UPLOAD_BYTES = 32 * 1024 * 1024;
+
+/**
+ * Client-side check before upload_image.php (MIME/extension + max bytes).
+ * @param {File|null|undefined} file
+ * @returns {string|null} Error message, or null if OK.
+ */
+function btbAdminValidateImageUploadFile(file) {
+  if (!file) {
+    return 'No file selected.';
+  }
+  const okMime = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/pjpeg'];
+  const type = String(file.type || '').toLowerCase();
+  const name = String(file.name || '').toLowerCase();
+  const extOk = /\.(jpe?g|png|gif)$/i.test(name);
+  if (type && okMime.indexOf(type) === -1 && !extOk) {
+    return 'Invalid file type. Only JPEG, PNG, and GIF are allowed.';
+  }
+  const size = typeof file.size === 'number' ? file.size : 0;
+  if (size > BTB_ADMIN_MAX_UPLOAD_BYTES) {
+    const mb = Math.max(1, Math.round(BTB_ADMIN_MAX_UPLOAD_BYTES / (1024 * 1024)));
+    return `File is too large. Maximum size is ${mb} MB before upload (the server will resize after upload).`;
+  }
+  return null;
+}

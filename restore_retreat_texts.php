@@ -1,12 +1,12 @@
 <?php
 /**
- * Скрипт для восстановления полных текстов страницы Retreats and Workshops из HTML
- * Сохраняет полные тексты в базу данных, чтобы они не перезаписывались сокращенными версиями
+ * Script to restore full texts of Retreats and Workshops page from HTML
+ * Saves full texts to a database so they are not overwritten by shortened versions
  */
 
 require_once 'config.php';
 
-// Полные тексты из HTML файла retreat-and-workshop.html
+// Full texts from the HTML file retreat-and-workshop.html
 $fullTexts = [
     // Hero section
     'retreat_hero_title' => 'Activities and Practices at Back to Base',
@@ -53,7 +53,7 @@ $fullTexts = [
     'retreat_collaboration_conclusion' => ''
 ];
 
-echo "<h2>Восстановление полных текстов страницы Retreats and Workshops</h2>";
+echo "<h2>Restoring full page texts Retreats and Workshops</h2>";
 echo "<style>
     body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
     .success { color: green; }
@@ -64,20 +64,20 @@ echo "<style>
     .field-value { margin-top: 5px; color: #666; font-size: 0.9em; }
 </style>";
 
-// Проверяем подключение к базе данных
+// Checking the connection to the database
 if ($conn->connect_error) {
-    die("<p class='error'>Ошибка подключения к базе данных: " . $conn->connect_error . "</p>");
+    die("<p class='error'>Error connecting to database: " . $conn->connect_error . "</p>");
 }
 
-// Проверяем, существует ли запись с id=1
+// Checking if a record with id=1 exists
 $checkResult = $conn->query("SELECT id FROM content_settings WHERE id = 1");
 if ($checkResult->num_rows === 0) {
-    // Создаем запись, если её нет
+    // Create a record if it doesn’t exist
     $conn->query("INSERT INTO content_settings (id) VALUES (1)");
-    echo "<p class='info'>Создана новая запись в content_settings (id=1)</p>";
+    echo "<p class='info'>A new entry has been created in content_settings (id=1)</p>";
 }
 
-// Получаем текущие значения из базы данных
+// Getting current values ​​from the database
 $currentResult = $conn->query("SELECT * FROM content_settings WHERE id = 1");
 $currentData = $currentResult->fetch_assoc();
 
@@ -85,88 +85,88 @@ $updated = 0;
 $skipped = 0;
 $errors = [];
 
-// Обновляем каждое поле
+// Update every field
 foreach ($fullTexts as $field => $fullText) {
-    // Проверяем, существует ли колонка
+    // Checking if a column exists
     $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
     if ($columnCheck->num_rows === 0) {
-        // Создаем колонку, если её нет
+        // Create a column if it doesn’t exist
         $alterTableSql = "ALTER TABLE content_settings ADD COLUMN $field TEXT NULL";
         if (!$conn->query($alterTableSql)) {
-            $errors[] = "Ошибка создания колонки $field: " . $conn->error;
+            $errors[] = "Column creation error $field: " . $conn->error;
             continue;
         }
-        echo "<p class='info'>Создана колонка: $field</p>";
+        echo "<p class='info'>Column created: $field</p>";
     }
     
-    // Получаем текущее значение
+    // Get the current value
     $currentValue = $currentData[$field] ?? '';
     
-    // Проверяем, нужно ли обновлять
-    // Обновляем только если:
-    // 1. Текущее значение пустое
-    // 2. Текущее значение короче полного текста (сокращенная версия)
-    // 3. Текущее значение содержит многоточие (признак сокращения)
+    // Checking to see if it needs to be updated
+    // We update only if:
+    // 1. Current value is empty
+    // 2. The current value is shorter than the full text (shortened version)
+    // 3. The current value contains an ellipsis (abbreviation sign)
     $shouldUpdate = false;
     
     if (empty($currentValue)) {
         $shouldUpdate = true;
-        $reason = "пустое значение";
+        $reason = "empty value";
     } elseif (strlen($currentValue) < strlen($fullText) * 0.7) {
-        // Если текущий текст значительно короче (менее 70% от полного)
+        // If the current text is significantly shorter (less than 70% of the full text)
         $shouldUpdate = true;
-        $reason = "сокращенная версия (текущая длина: " . strlen($currentValue) . ", полная: " . strlen($fullText) . ")";
+        $reason = "shortened version (current length: " . strlen($currentValue) . ", full: " . strlen($fullText) . ")";
     } elseif (strpos($currentValue, '...') !== false || strpos($currentValue, '…') !== false) {
-        // Если содержит многоточие (признак сокращения)
+        // If contains an ellipsis (abbreviation sign)
         $shouldUpdate = true;
-        $reason = "содержит многоточие (сокращенная версия)";
+        $reason = "contains an ellipsis (shortened version)";
     }
     
     if ($shouldUpdate) {
-        // Обновляем значение
+        // Update the value
         $stmt = $conn->prepare("UPDATE content_settings SET $field = ? WHERE id = 1");
         if ($stmt) {
             $stmt->bind_param("s", $fullText);
             if ($stmt->execute()) {
                 echo "<div class='field'>";
-                echo "<div class='field-name'>✓ Обновлено: $field</div>";
-                echo "<div class='field-value'>Причина: $reason</div>";
+                echo "<div class='field-name'>✓ Updated: $field</div>";
+                echo "<div class='field-value'>Cause: $reason</div>";
                 echo "</div>";
                 $updated++;
             } else {
-                $errors[] = "Ошибка обновления $field: " . $stmt->error;
+                $errors[] = "Update error $field: " . $stmt->error;
             }
             $stmt->close();
         } else {
-            $errors[] = "Ошибка подготовки запроса для $field: " . $conn->error;
+            $errors[] = "Error preparing request for $field: " . $conn->error;
         }
     } else {
         echo "<div class='field'>";
-        echo "<div class='field-name'>⊘ Пропущено: $field</div>";
-        echo "<div class='field-value'>Полный текст уже сохранен (длина: " . strlen($currentValue) . ")</div>";
+        echo "<div class='field-name'>⊘ Missed: $field</div>";
+        echo "<div class='field-value'>Full text has already been saved (length: " . strlen($currentValue) . ")</div>";
         echo "</div>";
         $skipped++;
     }
 }
 
-// Выводим итоги
+// Let's sum it up
 echo "<hr>";
-echo "<h3>Итоги:</h3>";
-echo "<p class='success'>Обновлено полей: $updated</p>";
-echo "<p class='info'>Пропущено полей (уже полные): $skipped</p>";
+echo "<h3>Results:</h3>";
+echo "<p class='success'>Updated fields: $updated</p>";
+echo "<p class='info'>Missing fields (already full): $skipped</p>";
 
 if (!empty($errors)) {
-    echo "<h3 class='error'>Ошибки:</h3>";
+    echo "<h3 class='error'>Errors:</h3>";
     foreach ($errors as $error) {
         echo "<p class='error'>$error</p>";
     }
 } else {
-    echo "<p class='success'>✓ Все тексты успешно восстановлены!</p>";
+    echo "<p class='success'>✓ All texts were successfully restored!</p>";
 }
 
 echo "<hr>";
-echo "<p><a href='admin.html#content'>Вернуться в админ-панель</a></p>";
-echo "<p><strong>Важно:</strong> После проверки удалите этот файл с сервера для безопасности.</p>";
+echo "<p><a href='admin.html#content'>Return to admin panel</a></p>";
+echo "<p><strong>Important:</strong> After checking, delete this file from the server for security.</p>";
 
 $conn->close();
 ?>

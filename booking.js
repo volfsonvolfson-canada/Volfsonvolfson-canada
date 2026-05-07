@@ -1,19 +1,147 @@
 /**
  * Booking.js
- * Обработка форм бронирования и интеграция с API
+ * Processing of booking forms and integration with API
  */
 
-// Конфигурация API
+// API configuration
 const BOOKING_API_URL = 'api.php';
 
+/** Room booking dog count 0–2 (bookings.pets). Legacy: add / yes / true → 1, no → 0. */
+function btbNormalizeRoomDogCountFromFormValue(raw) {
+  if (raw === true) {
+    return 1;
+  }
+  const s = String(raw ?? '').trim().toLowerCase();
+  if (s === 'add' || s === 'yes' || s === 'true') {
+    return 1;
+  }
+  if (s === 'no' || s === '') {
+    return 0;
+  }
+  const n = parseInt(s, 10);
+  if (!Number.isFinite(n)) {
+    return 0;
+  }
+  return Math.min(2, Math.max(0, n));
+}
+
+/** Fallback copy for post-booking overlay (rooms + massage) if API fails */
+const DEFAULT_BOOKING_SUCCESS_BANNER = {
+  heading: 'Your booking has been submitted!',
+  paragraph:
+    "We've sent you a confirmation email. Once your booking is approved, you'll be able to proceed with the payment.\n\nYou can also make changes to your booking in your personal account.",
+  button_label: 'My Account',
+  button_url: 'dashboard.html',
+  auth_login_message:
+    'Welcome back!\n\nAll your bookings are available in your personal account.\n\nYou can find it in the menu in the top right corner of the site',
+  auth_login_close_label: 'Close',
+  auth_login_account_label: 'To my account',
+  auth_login_account_url: 'dashboard.html',
+};
+
+function btbMergeLegacyBannerParagraphs(p1, p2) {
+  const a = String(p1 || '').trim();
+  const b = String(p2 || '').trim();
+  if (!b) {
+    return String(p1 || '');
+  }
+  if (!a) {
+    return b;
+  }
+  return `${a}\n\n${b}`;
+}
+
+function btbSafeBannerButtonHref(url) {
+  const h = String(url || '').trim();
+  if (!h) {
+    return DEFAULT_BOOKING_SUCCESS_BANNER.button_url;
+  }
+  const lower = h.toLowerCase();
+  if (lower.startsWith('javascript:') || lower.startsWith('data:')) {
+    return DEFAULT_BOOKING_SUCCESS_BANNER.button_url;
+  }
+  return h;
+}
+
+async function fetchBookingSuccessBannerCopy() {
+  try {
+    const res = await fetch(`${BOOKING_API_URL}?action=get_booking_success_banner`, { cache: 'no-store' });
+    const json = await res.json();
+    if (json && json.success && json.data && typeof json.data === 'object') {
+      const d = json.data;
+      const heading =
+        d.heading != null && String(d.heading).trim() !== ''
+          ? String(d.heading)
+          : DEFAULT_BOOKING_SUCCESS_BANNER.heading;
+      let paragraph = d.paragraph != null ? String(d.paragraph) : '';
+      if (paragraph.trim() === '' && (d.paragraph_1 != null || d.paragraph_2 != null)) {
+        paragraph = btbMergeLegacyBannerParagraphs(d.paragraph_1, d.paragraph_2);
+      }
+      if (paragraph.trim() === '') {
+        paragraph = DEFAULT_BOOKING_SUCCESS_BANNER.paragraph;
+      }
+      const buttonLabel =
+        d.button_label != null && String(d.button_label).trim() !== ''
+          ? String(d.button_label)
+          : DEFAULT_BOOKING_SUCCESS_BANNER.button_label;
+      const buttonUrl = btbSafeBannerButtonHref(d.button_url);
+      let authLoginMessage =
+        d.auth_login_message != null && String(d.auth_login_message).trim() !== ''
+          ? String(d.auth_login_message)
+          : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_message;
+      const authClose =
+        d.auth_login_close_label != null && String(d.auth_login_close_label).trim() !== ''
+          ? String(d.auth_login_close_label)
+          : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_close_label;
+      const authAcctLabel =
+        d.auth_login_account_label != null && String(d.auth_login_account_label).trim() !== ''
+          ? String(d.auth_login_account_label)
+          : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_account_label;
+      const authAcctUrl = btbSafeBannerButtonHref(
+        d.auth_login_account_url != null && String(d.auth_login_account_url).trim() !== ''
+          ? String(d.auth_login_account_url)
+          : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_account_url,
+      );
+      return {
+        heading,
+        paragraph,
+        button_label: buttonLabel,
+        button_url: buttonUrl,
+        auth_login_message: authLoginMessage,
+        auth_login_close_label: authClose,
+        auth_login_account_label: authAcctLabel,
+        auth_login_account_url: authAcctUrl,
+      };
+    }
+  } catch (e) {
+    console.warn('fetchBookingSuccessBannerCopy:', e);
+  }
+  return { ...DEFAULT_BOOKING_SUCCESS_BANNER };
+}
+
 /**
- * «Корзина» услуг на странице Massage: несколько позиций (тип + длительность) с количеством.
- * Ключ — type + NUL + duration. После успешной отправки очищается.
+ * “Basket” of services on the Massage page: several items (type + duration) with quantity.
+ * The key is type + NUL + duration. After successful sending it is cleared.
  */
 const massageBookingCart = Object.create(null);
 
 function massageCartLineKey(type, duration) {
   return `${String(type || '').trim()}\u0000${String(duration || '').trim()}`;
+}
+
+/** Collect allowed durations for a booking type from rendered price lines on the page. */
+function massageAllowedDurationsFromDom(type) {
+  const t = String(type || '').trim();
+  const set = new Set();
+  if (!t || typeof document === 'undefined' || !document.querySelectorAll) {
+    return set;
+  }
+  document.querySelectorAll('.massage-list li[data-m-type][data-m-duration]').forEach((li) => {
+    if ((li.getAttribute('data-m-type') || '').trim() === t) {
+      set.add(String(li.getAttribute('data-m-duration') || '').trim());
+    }
+  });
+  return set;
 }
 
 /** @returns {string|null} error message or null if OK */
@@ -22,6 +150,10 @@ function validateMassageServiceCombo(type, durationStr) {
   const d = String(durationStr || '').trim();
   if (!t) return 'Service type is required';
   if (!d) return 'Duration is required';
+  const fromDom = massageAllowedDurationsFromDom(t);
+  if (fromDom.size > 0) {
+    return fromDom.has(d) ? null : 'Choose a duration from the list for this service';
+  }
   if (t === 'Sauna') {
     return d === '60' ? null : 'Sauna is booked as 1 hour (60 minutes)';
   }
@@ -66,10 +198,26 @@ function removeMassageCartLineCompletely(type, duration) {
   delete massageBookingCart[key];
 }
 
+const MASSAGE_CART_SS_KEY = 'btb_massage_cart_draft';
+
+function persistMassageCartDraft() {
+  try {
+    const lines = getMassageCartLines();
+    if (lines.length === 0) {
+      sessionStorage.removeItem(MASSAGE_CART_SS_KEY);
+    } else {
+      sessionStorage.setItem(MASSAGE_CART_SS_KEY, JSON.stringify(lines));
+    }
+  } catch (_) {}
+}
+
 function clearMassageBookingCart() {
   Object.keys(massageBookingCart).forEach((k) => {
     delete massageBookingCart[k];
   });
+  try {
+    sessionStorage.removeItem(MASSAGE_CART_SS_KEY);
+  } catch (_) {}
 }
 
 function formatMassageDurationLabel(type, minutesStr) {
@@ -142,11 +290,25 @@ function renderMassageCartUI(form) {
 
   if (submitBtn) {
     const total = getMassageCartTotalCount();
-    submitBtn.textContent =
-      total > 0 ? `Book ${total} service request${total === 1 ? '' : 's'}` : 'Book service';
+    const defaultSvc =
+      (submitBtn.getAttribute('data-btb-default-service-label') || '').trim() || 'Book service';
+    const cartTpl = (submitBtn.getAttribute('data-btb-cart-submit-label') || '').trim();
+    if (total > 0) {
+      if (cartTpl !== '') {
+        submitBtn.textContent = cartTpl.includes('{n}')
+          ? cartTpl.split('{n}').join(String(total))
+          : cartTpl;
+      } else {
+        submitBtn.textContent = `Book ${total} service request${total === 1 ? '' : 's'}`;
+      }
+    } else {
+      submitBtn.textContent = defaultSvc;
+    }
   }
 
   syncMassagePriceLinePressedState();
+
+  persistMassageCartDraft();
 
   const typeEl = form.querySelector('#type');
   const durationEl = form.querySelector('#duration');
@@ -218,8 +380,56 @@ async function postSingleMassageBookingRequest(formData) {
   return result;
 }
 
-// parseLocalDate - парсинг даты YYYY-MM-DD как локальной даты (без часового пояса)
-// Используется для избежания проблем с часовыми поясами
+/**
+ * Save successful massage/sauna booking to localStorage (btb_orders) and emit btb:order:record — same idea as room bookings.
+ * @param {object} apiJson Parsed API response { success, data: { booking_id, confirmation_code } }
+ * @param {{ type?: string, duration?: string, date?: string, time?: string, name?: string, email?: string, phone?: string }} payload
+ */
+function appendMassageOrderToLocalStorage(apiJson, payload) {
+  const data = apiJson && apiJson.data ? apiJson.data : {};
+  const bookingId = data.booking_id;
+  if (!bookingId) {
+    console.warn('appendMassageOrderToLocalStorage: missing booking_id in API response');
+    return;
+  }
+  const confirmationCode = data.confirmation_code || '';
+  const ta = data.total_amount;
+  const totalAmount = ta != null && ta !== '' ? Number(ta) : NaN;
+  const order = {
+    id: `massage_${bookingId}`,
+    kind: 'massage',
+    type: String(payload.type || ''),
+    duration: String(payload.duration || ''),
+    date: payload.date || '',
+    time: payload.time || '',
+    name: payload.name || '',
+    email: payload.email || '',
+    phone: payload.phone || '',
+    booking_id: bookingId,
+    confirmation_code: confirmationCode,
+    status: 'pending',
+    ts: Date.now()
+  };
+  if (Number.isFinite(totalAmount) && totalAmount >= 0) {
+    order.total_amount = totalAmount;
+  }
+  if (data.currency) {
+    order.currency = String(data.currency);
+  }
+  try {
+    const raw = localStorage.getItem('btb_orders') || '[]';
+    const orders = JSON.parse(raw);
+    if (!Array.isArray(orders)) return;
+    orders.push(order);
+    localStorage.setItem('btb_orders', JSON.stringify(orders));
+    document.dispatchEvent(new CustomEvent('btb:order:record', { detail: order }));
+  } catch (e) {
+    console.error('appendMassageOrderToLocalStorage:', e);
+  }
+}
+
+// parseLocalDate - parses YYYY-MM-DD date as a local date (without time zone)
+// Used to avoid time zone issues
 function parseLocalDate(iso) {
   if (!iso) return null;
   const parts = String(iso).split('-');
@@ -232,10 +442,10 @@ function parseLocalDate(iso) {
 }
 
 /**
- * Проверка доступности дат для комнаты
- * @param {string} roomName Название комнаты
- * @param {string} checkinDate Дата заезда (YYYY-MM-DD)
- * @param {string} checkoutDate Дата выезда (YYYY-MM-DD)
+ * Checking date availability for a room
+ * @param {string} roomName Room name
+ * @param {string} checkinDate Check-in date (YYYY-MM-DD)
+ * @param {string} checkoutDate Check-out date (YYYY-MM-DD)
  * @returns {Promise<{available: boolean, message: string}>}
  */
 async function checkAvailability(roomName, checkinDate, checkoutDate) {
@@ -294,8 +504,8 @@ async function checkAvailability(roomName, checkinDate, checkoutDate) {
 }
 
 /**
- * Создание бронирования
- * @param {Object} bookingData Данные бронирования
+ * Making a reservation
+ * @param {Object} bookingData Booking data
  * @returns {Promise<{success: boolean, booking?: Object, error?: string, payment_intent_id?: string, client_secret?: string}>}
  */
 async function createBooking(bookingData) {
@@ -311,14 +521,14 @@ async function createBooking(bookingData) {
     formData.append('email', bookingData.email || '');
     formData.append('phone', bookingData.phone || '');
     formData.append('guests_count', bookingData.guests_count || 1);
-    formData.append('pets', bookingData.pets ? '1' : '0');
+    formData.append('pets', String(btbNormalizeRoomDogCountFromFormValue(bookingData.pets)));
     if (bookingData.special_requests) {
       formData.append('special_requests', bookingData.special_requests);
     }
 
     console.log('BookingAPI.createBooking: Sending request to:', BOOKING_API_URL);
 
-    // Показываем индикатор загрузки
+    // Showing the loading indicator
     showLoadingState();
 
     const response = await fetch(BOOKING_API_URL, {
@@ -351,6 +561,7 @@ async function createBooking(bookingData) {
       booking: result.data?.booking,
       booking_id: result.data?.booking_id,
       confirmation_code: result.data?.confirmation_code,
+      nightly_rate: result.data?.nightly_rate,
       payment_intent_id: result.data?.payment_intent_id,
       client_secret: result.data?.client_secret,
       payment_required: result.data?.payment_required || false,
@@ -367,8 +578,8 @@ async function createBooking(bookingData) {
 }
 
 /**
- * Получение бронирования по ID или коду подтверждения
- * @param {number|string} bookingIdOrCode ID бронирования или код подтверждения
+ * Receiving a reservation by ID or confirmation code
+ * @param {number|string} bookingIdOrCode Booking ID or confirmation code
  * @returns {Promise<{success: boolean, booking?: Object, error?: string}>}
  */
 async function getBooking(bookingIdOrCode) {
@@ -414,28 +625,28 @@ async function getBooking(bookingIdOrCode) {
 }
 
 /**
- * Валидация данных формы бронирования
- * @param {Object} formData Данные формы
+ * Validation of booking form data
+ * @param {Object} formData Form data
  * @returns {Object} {valid: boolean, errors: Object}
  */
 function validateBookingForm(formData) {
   const errors = {};
 
-  // Валидация в правильной последовательности:
-  // 1. Сначала check-in (въезд)
+  // Validation in the correct sequence:
+  // 1. First check-in (entry)
   if (!formData.checkin_date || !formData.checkin_date.trim()) {
     errors.checkin_date = 'Check-in date is required';
   }
 
-  // 2. Потом check-out (выезд)
+  // 2. Then check-out (departure)
   if (!formData.checkout_date || !formData.checkout_date.trim()) {
     errors.checkout_date = 'Check-out date is required';
   }
 
-  // 3. Проверка порядка дат (только если обе даты заполнены)
+  // 3. Checking the order of dates (only if both dates are filled in)
   if (formData.checkin_date && formData.checkout_date) {
-    // ИСПРАВЛЕНО: Используем parseLocalDate для правильной обработки дат без часового пояса
-    // parseLocalDate парсит YYYY-MM-DD как локальную дату (без времени)
+    // FIXED: Using parseLocalDate to correctly handle dates without a time zone
+    // parseLocalDate parses YYYY-MM-DD as a local date (without time)
     const checkin = parseLocalDate(formData.checkin_date);
     const checkout = parseLocalDate(formData.checkout_date);
     
@@ -443,7 +654,7 @@ function validateBookingForm(formData) {
       if (!checkin) errors.checkin_date = 'Invalid check-in date format';
       if (!checkout) errors.checkout_date = 'Invalid check-out date format';
     } else {
-      // Сравниваем только даты (без времени)
+      // We compare only dates (without time)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const checkinDateOnly = new Date(checkin.getFullYear(), checkin.getMonth(), checkin.getDate());
@@ -460,38 +671,44 @@ function validateBookingForm(formData) {
     }
   }
 
-  // 4. Потом name (имя)
+  // 4. Then name
   if (!formData.guest_name || !formData.guest_name.trim()) {
     errors.guest_name = 'Name is required';
   }
 
-  // 5. Потом phone (телефон)
+  // 5. Then phone (telephone)
   if (!formData.phone || !formData.phone.trim()) {
     errors.phone = 'Phone number is required';
   } else {
-    // Проверяем формат телефона (минимум 10 цифр)
+    // Checking the phone format (minimum 10 digits)
     const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
     if (!phoneRegex.test(formData.phone.trim())) {
       errors.phone = 'Invalid phone number';
     }
   }
 
-  // 6. Потом email (почта)
+  // 6. Then email (mail)
   if (!formData.email || !formData.email.trim()) {
     errors.email = 'Email is required';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
     errors.email = 'Invalid email address';
   }
 
-  // 7. Потом guests (количество гостей)
+  // 7. Then guests (number of guests)
   if (!formData.guests_count || formData.guests_count < 1) {
     errors.guests_count = 'At least 1 guest is required';
   }
 
-  // 8. Потом pets (наличие питомцев)
-  // Примечание: pets может быть boolean или string, проверка не требуется, так как это опциональное поле
+  // 8. Dogs (0–2)
+  const dogN =
+    typeof formData.pets === 'number'
+      ? formData.pets
+      : btbNormalizeRoomDogCountFromFormValue(formData.pets);
+  if (dogN < 0 || dogN > 2) {
+    errors.pets = 'Please select how many dogs';
+  }
 
-  // Проверка комнаты (не критично для последовательности, но оставляем)
+  // Checking the room (not critical for consistency, but we leave it)
   if (!formData.room_name || !formData.room_name.trim()) {
     errors.room_name = 'Room selection is required';
   }
@@ -503,29 +720,29 @@ function validateBookingForm(formData) {
 }
 
 /**
- * Обработка формы бронирования
- * @param {HTMLFormElement} form Элемент формы
- * @returns {Promise<boolean>} Успешность обработки
+ * Processing the booking form
+ * @param {HTMLFormElement} form Form element
+ * @returns {Promise<boolean>} Processing success
  */
 async function handleBookingForm(form) {
   try {
     console.log('BookingAPI.handleBookingForm: Starting...');
     console.log('BookingAPI.handleBookingForm: Form element:', form);
     
-    // Собираем данные формы
-    // Получаем название комнаты из атрибута формы или скрытого поля
+    // Collecting form data
+    // Getting the room name from a form attribute or hidden field
     let roomName = form.querySelector('[name="room_name"]')?.value || '';
     if (!roomName && form.getAttribute('data-room')) {
       roomName = form.getAttribute('data-room');
     }
     console.log('BookingAPI.handleBookingForm: Room name:', roomName);
     
-    // Получаем даты - проверяем разные возможные селекторы
-    // Сначала пробуем получить значения напрямую из inputs
+    // Getting dates - checking different possible selectors
+    // First we try to get the values ​​directly from inputs
     let checkinEl = form.querySelector('#checkin') || form.querySelector('[name="checkin"]') || form.querySelector('[name="checkin_date"]');
     let checkoutEl = form.querySelector('#checkout') || form.querySelector('[name="checkout"]') || form.querySelector('[name="checkout_date"]');
     
-    // Если используется Flatpickr, синхронизируем значения перед чтением
+    // If Flatpicr is used, synchronize the values ​​before reading
     if (typeof flatpickr !== 'undefined' && checkinEl) {
       try {
         const checkinFp = checkinEl._flatpickr || (checkinEl.dataset.flatpickrInitialized ? flatpickr(checkinEl, {}) : null);
@@ -580,45 +797,47 @@ async function handleBookingForm(form) {
       email: form.querySelector('[name="email"]')?.value || form.querySelector('#email')?.value || '',
       phone: form.querySelector('[name="phone"]')?.value || form.querySelector('#phone')?.value || '',
       guests_count: parseInt(form.querySelector('[name="guests_count"]')?.value || form.querySelector('[name="guests"]')?.value || form.querySelector('#guests')?.value || '1', 10),
-      pets: form.querySelector('[name="pets"]')?.value === 'add' || form.querySelector('[name="pets"]')?.checked || (form.querySelector('#pets')?.value === 'add'),
+      pets: btbNormalizeRoomDogCountFromFormValue(
+        (form.querySelector('#pets') || form.querySelector('[name="pets"]'))?.value
+      ),
       special_requests: form.querySelector('[name="special_requests"]')?.value || ''
     };
     
     console.log('BookingAPI.handleBookingForm: Collected form data:', formData);
 
-    // HTML5 валидация - для обычных полей используем .field-error элементы
-    // (не используем reportValidity(), так как он показывает .btb-bubble, а не .field-error)
-    // Валидация будет выполнена через validateBookingForm ниже
+    // HTML5 validation - for regular fields we use .field-error elements
+    // (we don't use reportValidity() since it shows .btb-bubble and not .field-error)
+    // Validation will be done via validateBookingForm below
 
-    // Валидация
+    // Validation
     console.log('BookingAPI: Validating form data...', formData);
     const validation = validateBookingForm(formData);
     console.log('BookingAPI: Validation result:', validation);
     if (!validation.valid) {
       console.error('BookingAPI: Validation failed:', validation.errors);
       
-      // Находим первое поле с ошибкой в правильной последовательности:
-      // 1. check-in, 2. check-out, 3. name, 4. остальные
+      // Find the first field with the error in the correct sequence:
+      // 1. check-in, 2. check-out, 3. name, 4. others
       const checkinEl = form.querySelector('#checkin') || form.querySelector('[name="checkin"]') || form.querySelector('[name="checkin_date"]');
       const checkoutEl = form.querySelector('#checkout') || form.querySelector('[name="checkout"]') || form.querySelector('[name="checkout_date"]');
       const nameEl = form.querySelector('#name') || form.querySelector('[name="name"]') || form.querySelector('[name="guest_name"]');
       
-      // 1. Сначала проверяем check-in
+      // 1. First we check the check-in
       if (validation.errors.checkin_date && checkinEl) {
-        // Для полей дат используем .field-error элементы (как для обычных полей)
+        // For date fields we use .field-error elements (as for regular fields)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkinEl, validation.errors.checkin_date);
         }
         if (window.flashDateField) {
           window.flashDateField(checkinEl);
         }
-        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+        // Don't call focus() on date fields to avoid scrolling the page
         return false;
       }
       
-      // 2. Потом check-out
+      // 2. Then check-out
       if (validation.errors.checkout_date && checkoutEl) {
-        // Для полей дат используем .field-error элементы (как для обычных полей)
+        // For date fields we use .field-error elements (as for regular fields)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkoutEl, validation.errors.checkout_date);
         }
@@ -626,13 +845,13 @@ async function handleBookingForm(form) {
           if (checkinEl) window.flashDateField(checkinEl);
           window.flashDateField(checkoutEl);
         }
-        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+        // Don't call focus() on date fields to avoid scrolling the page
         return false;
       }
       
-      // 3. Потом name (имя)
+      // 3. Then name (name)
       if (validation.errors.guest_name && nameEl) {
-        // Используем .field-error элементы (как для полей дат)
+        // Using .field-error elements (as for date fields)
         if (window.showFieldError) {
           window.showFieldError(nameEl, validation.errors.guest_name);
         }
@@ -643,7 +862,7 @@ async function handleBookingForm(form) {
         return false;
       }
       
-      // 4. Потом phone (телефон)
+      // 4. Then phone (telephone)
       const phoneEl = form.querySelector('#phone') || form.querySelector('[name="phone"]');
       if (validation.errors.phone && phoneEl) {
         if (window.showFieldError) {
@@ -656,7 +875,7 @@ async function handleBookingForm(form) {
         return false;
       }
       
-      // 5. Потом email (почта)
+      // 5. Then email (mail)
       const emailEl = form.querySelector('#email') || form.querySelector('[name="email"]');
       if (validation.errors.email && emailEl) {
         if (window.showFieldError) {
@@ -669,7 +888,7 @@ async function handleBookingForm(form) {
         return false;
       }
       
-      // 6. Потом guests (количество гостей)
+      // 6. Then guests (number of guests)
       const guestsEl = form.querySelector('#guests') || form.querySelector('[name="guests"]') || form.querySelector('[name="guests_count"]');
       if (validation.errors.guests_count && guestsEl) {
         if (window.showFieldError) {
@@ -682,7 +901,7 @@ async function handleBookingForm(form) {
         return false;
       }
       
-      // 7. Потом pets (наличие питомцев)
+      // 7. Then pets (presence of pets)
       const petsEl = form.querySelector('#pets') || form.querySelector('[name="pets"]');
       if (validation.errors.pets && petsEl) {
         if (window.showFieldError) {
@@ -695,7 +914,7 @@ async function handleBookingForm(form) {
         return false;
       }
       
-      // 8. Потом остальные поля - показываем первую ошибку
+      // 8. Then the rest of the fields - show the first error
       const firstErrorField = Object.keys(validation.errors)[0];
       if (firstErrorField) {
         const field = form.querySelector(`[name="${firstErrorField}"]`) || form.querySelector(`#${firstErrorField}`);
@@ -711,10 +930,10 @@ async function handleBookingForm(form) {
       return false;
     }
 
-    // Очищаем предыдущие ошибки
+    // Clearing previous errors
     clearFormErrors(form);
 
-    // Проверяем доступность
+    // Checking availability
     console.log('BookingAPI: Checking availability...', {
       room: formData.room_name,
       checkin: formData.checkin_date,
@@ -733,7 +952,7 @@ async function handleBookingForm(form) {
       return false;
     }
 
-    // Создаем бронирование
+    // Create a reservation
     console.log('BookingAPI: Creating booking with data:', formData);
     const result = await createBooking(formData);
     console.log('BookingAPI: Booking creation result:', result);
@@ -744,21 +963,23 @@ async function handleBookingForm(form) {
       return false;
     }
 
-    // Успешное создание бронирования
-    // Сохраняем данные бронирования в sessionStorage для страницы подтверждения
+    // Successful creation of a reservation
+    // Saving booking data in sessionStorage for the confirmation page
     if (result.booking_id) {
       sessionStorage.setItem('last_booking_id', result.booking_id.toString());
       sessionStorage.setItem('last_confirmation_code', result.confirmation_code || '');
       
-      // Если требуется оплата, сохраняем данные платежа
+      // If payment is required, we save payment details
       if (result.payment_required && result.client_secret) {
         sessionStorage.setItem('payment_intent_id', result.payment_intent_id || '');
         sessionStorage.setItem('client_secret', result.client_secret);
       }
       
-      // Сохраняем бронирование в localStorage для отображения значка домика и редактирования
+      // We save the reservation in localStorage to display the house icon and edit it
       try {
         const orders = JSON.parse(localStorage.getItem('btb_orders') || '[]');
+        const nr = result.nightly_rate;
+        const nightlyNum = typeof nr === 'number' ? nr : parseFloat(String(nr ?? ''), 10);
         const bookingOrder = {
           id: `booking_${result.booking_id}`,
           kind: 'room',
@@ -766,38 +987,39 @@ async function handleBookingForm(form) {
           checkin: formData.checkin_date,
           checkout: formData.checkout_date,
           guests: formData.guests_count,
-          pets: formData.pets === 'add' ? 'add' : 'no',
+          pets: String(btbNormalizeRoomDogCountFromFormValue(formData.pets)),
           name: formData.guest_name,
           email: formData.email,
           phone: formData.phone,
           booking_id: result.booking_id,
           confirmation_code: result.confirmation_code,
+          nightly_rate: Number.isFinite(nightlyNum) && nightlyNum > 0 ? nightlyNum : undefined,
           status: 'pending',
           ts: Date.now()
         };
         orders.push(bookingOrder);
         localStorage.setItem('btb_orders', JSON.stringify(orders));
         
-        // Создаем событие для обновления значка домика
+        // Create an event to update the house icon
         document.dispatchEvent(new CustomEvent('btb:order:record', { detail: bookingOrder }));
         
         console.log('BookingAPI: Booking saved to localStorage for editing');
       } catch (error) {
         console.error('BookingAPI: Failed to save booking to localStorage:', error);
-        // Не прерываем процесс, если не удалось сохранить в localStorage
+        // We do not interrupt the process if it was not possible to save to localStorage
       }
     }
 
-    // Показываем сообщение об успешном бронировании на той же странице
+    // We display a message about successful booking on the same page
     console.log('BookingAPI: Booking created successfully');
     console.log('BookingAPI: Booking ID:', result.booking_id);
     console.log('BookingAPI: Confirmation code:', result.confirmation_code);
     
-    // Проверяем статус авторизации
+    // Checking the authorization status
     const isAuthenticated = window.authSystem && window.authSystem.isAuthenticated;
     
-    // Показываем сообщение об успешном бронировании
-    showBookingSuccessMessage(form, {
+    // Show a message about successful booking
+    await showBookingSuccessMessage(form, {
       isAuthenticated: isAuthenticated,
       bookingData: {
         name: formData.guest_name,
@@ -816,15 +1038,15 @@ async function handleBookingForm(form) {
 }
 
 /**
- * Показать ошибки формы
- * @param {HTMLFormElement} form Элемент формы
- * @param {Object} errors Объект с ошибками
+ * Show form errors
+ * @param {HTMLFormElement} form Form element
+ * @param {Object} errors Object with errors
  */
 function showFormErrors(form, errors) {
-  // Очищаем предыдущие ошибки
+  // Clearing previous errors
   clearFormErrors(form);
 
-  // Показываем ошибки для каждого поля
+  // Showing errors for each field
   Object.keys(errors).forEach(fieldName => {
     const field = form.querySelector(`[name="${fieldName}"]`) || 
                   form.querySelector(`#${fieldName}`) ||
@@ -834,8 +1056,8 @@ function showFormErrors(form, errors) {
     if (field) {
       field.classList.add('invalid-field');
       
-      // Для всех полей (включая даты) используем одинаковые .field-error элементы
-      // которые вставляются после поля
+      // For all fields (including dates) we use the same .field-error elements
+      // which are inserted after the field
       const errorMsg = document.createElement('div');
       errorMsg.className = 'field-error';
       errorMsg.textContent = errors[fieldName];
@@ -846,16 +1068,16 @@ function showFormErrors(form, errors) {
 }
 
 /**
- * Показать ошибку для конкретного поля
- * @param {HTMLFormElement} form Элемент формы
- * @param {string} fieldName Имя поля
- * @param {string} message Сообщение об ошибке
+ * Show error for a specific field
+ * @param {HTMLFormElement} form Form element
+ * @param {string} fieldName Field name
+ * @param {string} message Error message
  */
 function showFormError(form, fieldName, message) {
-  // Определяем, какое поле связано с ошибкой
+  // Determining which field is associated with the error
   let field = null;
   
-  // Специальные случаи для ошибок с сервера
+  // Special cases for errors from the server
   if (message.includes('phone') || message.includes('Phone')) {
     field = form.querySelector('#phone') || form.querySelector('[name="phone"]');
     fieldName = 'phone';
@@ -872,11 +1094,11 @@ function showFormError(form, fieldName, message) {
     field = form.querySelector('#checkout') || form.querySelector('[name="checkout"]') || form.querySelector('[name="checkout_date"]');
     fieldName = 'checkout_date';
   } else {
-    // Пытаемся найти поле по имени
+    // Trying to find a field by name
     field = form.querySelector(`[name="${fieldName}"]`) || form.querySelector(`#${fieldName}`);
   }
   
-  // Если поле найдено, показываем ошибку рядом с ним
+  // If the field is found, we show an error next to it
   if (field && window.showFieldError) {
     window.showFieldError(field, message);
     if (window.flashDateField) {
@@ -884,7 +1106,7 @@ function showFormError(form, fieldName, message) {
     }
     field.focus();
   } else {
-    // Если поле не найдено, показываем ошибку в контейнере (fallback)
+    // If the field is not found, show an error in the container (fallback)
     const errorContainer = form.querySelector('.form-errors') || document.createElement('div');
     errorContainer.className = 'form-errors';
     if (!errorContainer.parentNode) {
@@ -903,21 +1125,21 @@ function showFormError(form, fieldName, message) {
 }
 
 /**
- * Очистить ошибки формы
- * @param {HTMLFormElement} form Элемент формы
+ * Clear form errors
+ * @param {HTMLFormElement} form Form element
  */
 function clearFormErrors(form) {
-  // Удаляем классы ошибок с полей
+  // Removing error classes from fields
   form.querySelectorAll('.invalid-field').forEach(field => {
     field.classList.remove('invalid-field');
   });
 
-  // Удаляем сообщения об ошибках
+  // Removing error messages
   form.querySelectorAll('.field-error').forEach(error => {
     error.remove();
   });
 
-  // Очищаем общий контейнер ошибок
+  // Clearing the general error container
   const errorContainer = form.querySelector('.form-errors');
   if (errorContainer) {
     errorContainer.innerHTML = '';
@@ -925,10 +1147,10 @@ function clearFormErrors(form) {
 }
 
 /**
- * Показать состояние загрузки
+ * Show download status
  */
 function showLoadingState() {
-  // Создаем overlay загрузки, если его еще нет
+  // Create a download overlay if it doesn’t exist yet
   let overlay = document.getElementById('booking-loading-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -953,7 +1175,7 @@ function showLoadingState() {
     `;
     document.body.appendChild(overlay);
 
-    // Добавляем CSS анимацию для спиннера
+    // Adding CSS animation for the spinner
     if (!document.getElementById('loading-spinner-style')) {
       const style = document.createElement('style');
       style.id = 'loading-spinner-style';
@@ -970,7 +1192,7 @@ function showLoadingState() {
 }
 
 /**
- * Скрыть состояние загрузки
+ * Hide loading status
  */
 function hideLoadingState() {
   const overlay = document.getElementById('booking-loading-overlay');
@@ -979,16 +1201,52 @@ function hideLoadingState() {
   }
 }
 
+function closeBookingSuccessOverlay() {
+  document.getElementById('btb-booking-success-overlay')?.remove();
+  try {
+    document.body.style.overflow = '';
+    const y = document.body.dataset.btbBookingSuccessScroll;
+    if (y != null && y !== '') {
+      window.scrollTo(0, parseInt(y, 10) || 0);
+    }
+    delete document.body.dataset.btbBookingSuccessScroll;
+  } catch (_) {}
+}
+
 /**
- * Показать сообщение об успешной авторизации/регистрации
- * @param {string} message - Текст сообщения
+ * Green nested box after sign-in / register inside the post-booking overlay.
+ * @param {string} messageText - Body (use newlines for paragraphs). Ignored if useDbLoginMessage.
+ * @param {{ useDbLoginMessage?: boolean }} [options]
  */
-function showAuthSuccessMessage(message) {
-  // Находим контейнер сообщения о бронировании
+async function showAuthSuccessMessage(messageText, options = {}) {
+  const { useDbLoginMessage = false } = options;
   const messageContainer = document.querySelector('.booking-success-message');
-  if (!messageContainer) return;
-  
-  // Находим или создаем контейнер для сообщения об авторизации
+  if (!messageContainer) {
+    return;
+  }
+
+  const copy = await fetchBookingSuccessBannerCopy();
+  let text = String(messageText || '');
+  if (useDbLoginMessage) {
+    text =
+      copy.auth_login_message && String(copy.auth_login_message).trim() !== ''
+        ? String(copy.auth_login_message)
+        : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_message;
+  }
+  const closeLabel =
+    copy.auth_login_close_label && String(copy.auth_login_close_label).trim() !== ''
+      ? String(copy.auth_login_close_label)
+      : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_close_label;
+  const acctLabel =
+    copy.auth_login_account_label && String(copy.auth_login_account_label).trim() !== ''
+      ? String(copy.auth_login_account_label)
+      : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_account_label;
+  const acctHref = btbSafeBannerButtonHref(
+    copy.auth_login_account_url && String(copy.auth_login_account_url).trim() !== ''
+      ? String(copy.auth_login_account_url)
+      : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_account_url,
+  );
+
   let authMessageContainer = messageContainer.querySelector('.auth-success-message');
   if (!authMessageContainer) {
     authMessageContainer = document.createElement('div');
@@ -1003,74 +1261,115 @@ function showAuthSuccessMessage(message) {
     `;
     messageContainer.appendChild(authMessageContainer);
   }
-  
-  // Форматируем сообщение с переносами строк
-  const formattedMessage = message.split('\n').map(line => {
+
+  authMessageContainer.innerHTML = '';
+
+  const bodyWrap = document.createElement('div');
+  String(text).split('\n').forEach((line) => {
     if (line.trim() === '') {
-      return '<br>';
+      bodyWrap.appendChild(document.createElement('br'));
+      return;
     }
-    return `<p style="margin: 0 0 8px; color: var(--text); font-size: 16px; line-height: 1.6;">${line}</p>`;
-  }).join('');
-  
-  authMessageContainer.innerHTML = formattedMessage;
-  
-  // Прокручиваем к сообщению
+    const p = document.createElement('p');
+    p.style.cssText = 'margin: 0 0 8px; color: var(--text); font-size: 16px; line-height: 1.6;';
+    p.textContent = line;
+    bodyWrap.appendChild(p);
+  });
+  authMessageContainer.appendChild(bodyWrap);
+
+  const btnRow = document.createElement('div');
+  btnRow.style.cssText =
+    'display: flex; flex-wrap: wrap; gap: 12px; margin-top: 16px; align-items: center;';
+
+  const closeBtn = document.createElement('button');
+  closeBtn.type = 'button';
+  closeBtn.className = 'btn outline';
+  closeBtn.textContent = closeLabel;
+  closeBtn.addEventListener('click', () => closeBookingSuccessOverlay());
+
+  const acctA = document.createElement('a');
+  acctA.href = acctHref;
+  acctA.className = 'btn primary';
+  acctA.textContent = acctLabel;
+
+  btnRow.appendChild(closeBtn);
+  btnRow.appendChild(acctA);
+  authMessageContainer.appendChild(btnRow);
+
   authMessageContainer.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 /**
- * Показать сообщение об успешном бронировании
- * @param {HTMLFormElement} form - Форма бронирования
- * @param {Object} options - Опции
- * @param {boolean} options.isAuthenticated - Авторизован ли пользователь
- * @param {Object} options.bookingData - Данные бронирования {name, email, phone}
+ * Show booking success message
+ * @param {HTMLFormElement} form - Booking form
+ * @param {Object} options - Options
+ * @param {boolean} options.isAuthenticated - Whether the user is authorized
+ * @param {Object} options.bookingData - Booking data {name, email, phone}
  */
-function showBookingSuccessMessage(form, options = {}) {
+async function showBookingSuccessMessage(form, options = {}) {
   const { isAuthenticated = false, bookingData = {} } = options;
-  
-  // Создаем контейнер для сообщения
+  const copy = await fetchBookingSuccessBannerCopy();
+
+  document.getElementById('btb-booking-success-overlay')?.remove();
+  try {
+    document.body.dataset.btbBookingSuccessScroll = String(window.scrollY || 0);
+    document.body.style.overflow = 'hidden';
+  } catch (_) {}
+
+  const overlay = document.createElement('div');
+  overlay.id = 'btb-booking-success-overlay';
+  overlay.className = 'btb-booking-success-overlay';
+  overlay.setAttribute('role', 'dialog');
+  overlay.setAttribute('aria-modal', 'true');
+  overlay.setAttribute('aria-labelledby', 'btb-booking-success-title');
+
   const messageContainer = document.createElement('div');
-  messageContainer.className = 'booking-success-message';
-  messageContainer.style.cssText = `
-    margin: 20px 0;
-    padding: 24px;
-    background: var(--card);
-    border: 1px solid rgba(61, 220, 151, 0.2);
-    border-radius: 16px;
-    text-align: left;
-  `;
-  
-  // Текст сообщения
+  messageContainer.className = 'booking-success-message btb-booking-success-dialog';
+
   const messageText = document.createElement('div');
-  messageText.style.cssText = 'margin-bottom: 20px;';
-  messageText.innerHTML = `
-    <h2 style="margin: 0 0 12px; color: var(--text); font-size: 24px; text-align: left;">Your booking has been submitted!</h2>
-    <p style="margin: 0 0 8px; color: var(--text); font-size: 16px; line-height: 1.6; text-align: left;">
-      We've sent you a confirmation email. Once your booking is approved, you'll be able to proceed with the payment.
-    </p>
-    <p style="margin: 0; color: var(--text); font-size: 16px; line-height: 1.6; text-align: left;">
-      You can also make changes to your booking in your personal account.
-    </p>
-  `;
+  messageText.className = 'booking-success-body';
+  messageText.style.marginBottom = '20px';
+  const titleHeading = document.createElement('h2');
+  titleHeading.id = 'btb-booking-success-title';
+  titleHeading.className = 'booking-success-heading';
+  titleHeading.textContent = copy.heading || DEFAULT_BOOKING_SUCCESS_BANNER.heading;
+  messageText.appendChild(titleHeading);
+  const bodyText = String(copy.paragraph != null ? copy.paragraph : '').trim()
+    ? String(copy.paragraph)
+    : DEFAULT_BOOKING_SUCCESS_BANNER.paragraph;
+  if (String(bodyText).trim()) {
+    const bodyEl = document.createElement('p');
+    bodyEl.textContent = bodyText;
+    bodyEl.style.whiteSpace = 'pre-line';
+    bodyEl.style.margin = '0 0 8px';
+    messageText.appendChild(bodyEl);
+  }
   messageContainer.appendChild(messageText);
-  
-  // Если пользователь не залогинен - показываем меню Sign In / Create Account
+
+  if (form && form.id === 'massage-form') {
+    const cart = document.getElementById('massage-cart-panel');
+    if (cart) {
+      cart.hidden = true;
+    }
+  }
+
   if (!isAuthenticated) {
     const authMenuContainer = document.createElement('div');
     authMenuContainer.id = 'booking-success-auth-menu';
     authMenuContainer.style.cssText = 'margin-top: 24px;';
     messageContainer.appendChild(authMenuContainer);
+
+    overlay.appendChild(messageContainer);
+    document.body.appendChild(overlay);
+
+    if (form) {
+      form.style.display = 'none';
+    }
     
-    // Вставляем сообщение перед формой
-    form.parentNode.insertBefore(messageContainer, form);
-    
-    // Скрываем форму
-    form.style.display = 'none';
-    
-    // Инициализируем меню авторизации с предзаполненными данными
+    // Initialize the authorization menu with pre-filled data
     if (window.createAuthMenu) {
       setTimeout(async () => {
-        // Проверяем, существует ли пользователь с таким email
+        // Checking if a user with this email exists
         let defaultTab = 'register';
         if (window.authSystem && bookingData.email) {
           try {
@@ -1091,15 +1390,15 @@ function showBookingSuccessMessage(form, options = {}) {
             phone: bookingData.phone || ''
           },
           onReady: () => {
-            // Применяем стили для установки ширины формы равной ширине сообщения
+            // Apply styles to set the width of the form to the width of the message
             const authContainer = document.querySelector('#booking-success-auth-menu .auth-container');
             if (authContainer) {
-              // Форма должна соответствовать ширине сообщения выше
+              // The shape should match the width of the message above
               authContainer.style.maxWidth = '100%';
               authContainer.style.width = '100%';
               authContainer.style.minWidth = '0';
               
-              // Инпуты остаются идеального размера (используют всю доступную ширину контейнера)
+              // Inputs remain perfectly sized (use the entire available width of the container)
               const inputs = authContainer.querySelectorAll('input[type="text"], input[type="email"], input[type="tel"], input[type="password"]');
               inputs.forEach(input => {
                 input.style.width = '100%';
@@ -1107,7 +1406,7 @@ function showBookingSuccessMessage(form, options = {}) {
                 input.style.minWidth = '0';
               });
               
-              // Контейнеры полей используют всю доступную ширину
+              // Field containers use all available width
               const formRows = authContainer.querySelectorAll('.form-row > div');
               formRows.forEach(div => {
                 div.style.width = '100%';
@@ -1116,33 +1415,36 @@ function showBookingSuccessMessage(form, options = {}) {
               });
             }
           },
-          onLogin: (user) => {
-            // После входа показываем сообщение и обновляем интерфейс
-            showAuthSuccessMessage('Welcome back! \n\nAll your bookings are available in your personal account. \n\nYou can find it in the menu in the top right corner of the site');
+          onLogin: async (user) => {
+            // After logging in, show a message and update the interface
+            await showAuthSuccessMessage('', { useDbLoginMessage: true });
             
-            // Обновляем кнопки в заголовке
+            // Updating the buttons in the header
             if (window.authSystem) {
               window.authSystem.updateHeaderButtons();
             }
             
-            // Скрываем форму авторизации и показываем сообщение
+            // Hide the authorization form and show the message
             const authMenuContainer = document.getElementById('booking-success-auth-menu');
             if (authMenuContainer) {
               authMenuContainer.style.display = 'none';
             }
           },
           onRegister: async (user) => {
-            // После регистрации автоматически логиним пользователя
+            // After registration, we automatically log in the user
             if (window.authSystem && user) {
               await window.authSystem.loginUser(user);
               
-              // Показываем сообщение
-              showAuthSuccessMessage('Congratulations! You have created an account on our website. \n\nNow all your bookings are available in your personal account. \n\nYou can find it in the menu in the top right corner of the site');
+              // Showing the message
+              await showAuthSuccessMessage(
+                'Congratulations! You have created an account on our website. \n\nNow all your bookings are available in your personal account. \n\nYou can find it in the menu in the top right corner of the site',
+                { useDbLoginMessage: false },
+              );
               
-              // Обновляем кнопки в заголовке
+              // Updating the buttons in the header
               window.authSystem.updateHeaderButtons();
               
-              // Скрываем форму авторизации и показываем сообщение
+              // Hide the authorization form and show the message
               const authMenuContainer = document.getElementById('booking-success-auth-menu');
               if (authMenuContainer) {
                 authMenuContainer.style.display = 'none';
@@ -1153,28 +1455,25 @@ function showBookingSuccessMessage(form, options = {}) {
       }, 100);
     }
   } else {
-    // Если пользователь залогинен - показываем кнопку "My Account"
     const accountButton = document.createElement('a');
-    accountButton.href = 'dashboard.html';
+    accountButton.href = btbSafeBannerButtonHref(copy.button_url);
     accountButton.className = 'btn primary';
-    accountButton.textContent = 'My Account';
+    accountButton.textContent = copy.button_label || DEFAULT_BOOKING_SUCCESS_BANNER.button_label;
     accountButton.style.cssText = 'margin-top: 20px; display: inline-block; text-align: left;';
     messageContainer.appendChild(accountButton);
-    
-    // Вставляем сообщение перед формой
-    form.parentNode.insertBefore(messageContainer, form);
-    
-    // Скрываем форму
-    form.style.display = 'none';
+
+    overlay.appendChild(messageContainer);
+    document.body.appendChild(overlay);
+
+    if (form) {
+      form.style.display = 'none';
+    }
   }
-  
-  // Прокручиваем к сообщению
-  messageContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 /**
- * Валидация данных формы бронирования массажа
- * @param {Object} formData Данные формы
+ * Validation of massage booking form data
+ * @param {Object} formData Form data
  * @param {{ skipServiceFields?: boolean }} [options]
  * @returns {Object} {valid: boolean, errors: Object}
  */
@@ -1182,14 +1481,14 @@ function validateMassageForm(formData, options = {}) {
   const errors = {};
   const skipService = options.skipServiceFields === true;
 
-  // Валидация в правильной последовательности:
-  // 1. Сначала type (тип массажа)
+  // Validation in the correct sequence:
+  // 1. First type (type of massage)
   if (!skipService) {
     if (!formData.type || !formData.type.trim()) {
       errors.type = 'Massage type is required';
     }
 
-    // 2. Потом duration (длительность)
+    // 2. Then duration
     if (!formData.duration || !formData.duration.trim()) {
       errors.duration = 'Duration is required';
     } else {
@@ -1200,11 +1499,11 @@ function validateMassageForm(formData, options = {}) {
     }
   }
 
-  // 3. Потом date (дата)
+  // 3. Then date (date)
   if (!formData.date || !formData.date.trim()) {
     errors.date = 'Date is required';
   } else {
-    // Проверяем, что дата не в прошлом
+    // Checking that the date is not in the past
     const date = parseLocalDate(formData.date);
     if (date) {
       const today = new Date();
@@ -1220,11 +1519,11 @@ function validateMassageForm(formData, options = {}) {
     }
   }
 
-  // 4. Потом time (время)
+  // 4. Then time (time)
   if (!formData.time || !formData.time.trim()) {
     errors.time = 'Time is required';
   } else {
-    // Проверяем, что время в допустимом диапазоне (9:00 - 21:00)
+    // We check that the time is within the acceptable range (9:00 - 21:00)
     const timeValue = formData.time;
     const [hours, minutes] = timeValue.split(':').map(Number);
     const timeInMinutes = hours * 60 + minutes;
@@ -1236,23 +1535,23 @@ function validateMassageForm(formData, options = {}) {
     }
   }
 
-  // 5. Потом name (имя)
+  // 5. Then name
   if (!formData.name || !formData.name.trim()) {
     errors.name = 'Name is required';
   }
 
-  // 6. Потом email (почта)
+  // 6. Then email (mail)
   if (!formData.email || !formData.email.trim()) {
     errors.email = 'Email is required';
   } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
     errors.email = 'Invalid email address';
   }
 
-  // 7. Потом phone (телефон)
+  // 7. Then phone (telephone)
   if (!formData.phone || !formData.phone.trim()) {
     errors.phone = 'Phone number is required';
   } else {
-    // Проверяем формат телефона (минимум 10 цифр)
+    // Checking the phone format (minimum 10 digits)
     const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
     if (!phoneRegex.test(formData.phone.trim())) {
       errors.phone = 'Invalid phone number';
@@ -1266,9 +1565,9 @@ function validateMassageForm(formData, options = {}) {
 }
 
 /**
- * Обработка формы бронирования массажа
- * @param {HTMLFormElement} form Элемент формы
- * @returns {Promise<boolean>} Успешность обработки
+ * Processing the massage booking form
+ * @param {HTMLFormElement} form Form element
+ * @returns {Promise<boolean>} Processing success
  */
 async function handleMassageForm(form) {
   try {
@@ -1415,33 +1714,9 @@ async function handleMassageForm(form) {
             };
             const result = await postSingleMassageBookingRequest(payload);
             created += 1;
-            document.dispatchEvent(
-              new CustomEvent('btb:order:record', {
-                detail: {
-                  kind: 'massage',
-                  type: payload.type || '',
-                  duration: payload.duration || '',
-                  date: payload.date || '',
-                  time: payload.time || '',
-                  name: payload.name || '',
-                  phone: payload.phone || '',
-                  email: payload.email || '',
-                  withRoom: payload.withRoom || '',
-                  confirmationCode: result?.data?.confirmation_code || '',
-                  ts: Date.now()
-                }
-              })
-            );
+            appendMassageOrderToLocalStorage(result, payload);
           }
         }
-        const summaryLines = cartLines.map(
-          (l) => `${l.type} (${formatMassageDurationLabel(l.type, l.duration)}) ×${l.qty}`
-        );
-        alert(
-          `${created} booking request${created === 1 ? '' : 's'} sent.\n${summaryLines.join(
-            '\n'
-          )}\n${formData.date} at ${formData.time}.\nWe will confirm by email.`
-        );
         clearMassageBookingCart();
         renderMassageCartUI(form);
         form.reset();
@@ -1449,35 +1724,21 @@ async function handleMassageForm(form) {
           prefillContact(form);
         }
         afterMassageBookSuccess();
+        const isAuthCart = window.authSystem && window.authSystem.isAuthenticated;
+        await showBookingSuccessMessage(form, {
+          isAuthenticated: isAuthCart,
+          bookingData: {
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone
+          }
+        });
         return true;
       }
 
       console.log('MassageAPI: Creating single massage booking...', formData);
-      await postSingleMassageBookingRequest(formData);
-
-      document.dispatchEvent(
-        new CustomEvent('btb:order:record', {
-          detail: {
-            kind: 'massage',
-            type: formData.type || '',
-            duration: formData.duration || '',
-            date: formData.date || '',
-            time: formData.time || '',
-            name: formData.name || '',
-            phone: formData.phone || '',
-            email: formData.email || '',
-            withRoom: formData.withRoom || '',
-            ts: Date.now()
-          }
-        })
-      );
-
-      const serviceType = formData.type === 'Sauna' ? 'Sauna' : 'Massage';
-      const durationText =
-        formData.type === 'Sauna' ? '1 hour' : `${formData.duration} min`;
-      alert(
-        `${serviceType} booking (${formData.type}, ${durationText}) sent!\n${formData.date} at ${formData.time}. We will confirm by email.`
-      );
+      const singleResult = await postSingleMassageBookingRequest(formData);
+      appendMassageOrderToLocalStorage(singleResult, formData);
 
       afterMassageBookSuccess();
 
@@ -1486,6 +1747,15 @@ async function handleMassageForm(form) {
         prefillContact(form);
       }
       renderMassageCartUI(form);
+      const isAuthSingle = window.authSystem && window.authSystem.isAuthenticated;
+      await showBookingSuccessMessage(form, {
+        isAuthenticated: isAuthSingle,
+        bookingData: {
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone
+        }
+      });
       return true;
     } catch (error) {
       console.error('MassageAPI: Failed to create massage booking:', error);
@@ -1503,7 +1773,7 @@ async function handleMassageForm(form) {
   }
 }
 
-// Экспорт функций для использования в других модулях
+// Exporting functions for use in other modules
 window.BookingAPI = {
   checkAvailability,
   createBooking,
@@ -1522,6 +1792,6 @@ window.BookingAPI = {
   showAuthSuccessMessage
 };
 
-// Экспорт функции для использования в других модулях
+// Exporting a function for use in other modules
 window.showAuthSuccessMessage = showAuthSuccessMessage;
 

@@ -5,6 +5,8 @@
   <link rel="stylesheet" href="cookie-consent.css">
   <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://backtobase.ca/login.html">
   <title>Guest login — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -78,7 +80,7 @@
 
   <main class="section">
     <div class="container">
-      <!-- Контейнер для формы авторизации (будет создан через createAuthMenu) -->
+      <!-- Container for the authorization form (will be created via createAuthMenu) -->
       <div id="auth-container"></div>
     </div>
   </main>
@@ -106,8 +108,10 @@
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -118,17 +122,17 @@
   <script src="auth.js?v=26"></script>
   <script src="auth-menu.js?v=26"></script>
   <script>
-    // Инициализация формы авторизации с полным функционалом
+    // Initializing an authorization form with full functionality
     document.addEventListener('DOMContentLoaded', () => {
       if (window.createAuthMenu) {
         window.createAuthMenu('#auth-container', {
           defaultTab: 'signin',
           onLogin: (user) => {
-            // После успешного входа перенаправляем на dashboard
+            // After successful login we are redirected to the dashboard
             window.location.href = 'dashboard.html';
           },
           onRegister: (user) => {
-            // После успешной регистрации перенаправляем на dashboard
+            // After successful registration we are redirected to the dashboard
             window.location.href = 'dashboard.html';
           }
         });

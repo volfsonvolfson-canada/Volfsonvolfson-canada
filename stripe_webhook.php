@@ -1,25 +1,25 @@
 <?php
 /**
  * Stripe Webhook Handler
- * Обработчик webhook событий от Stripe
+ * Stripe webhook event handler
  * 
- * Настройка webhook в Stripe Dashboard:
+ * Setting up a webhook in Stripe Dashboard:
  * 1. Developers → Webhooks → Add endpoint
- * 2. Endpoint URL: https://new.backtobase.ca/stripe_webhook.php
+ * 2. Endpoint URL: https://backtobase.ca/stripe_webhook.php
  * 3. Events to send: payment_intent.succeeded, payment_intent.payment_failed, payment_intent.canceled
- * 4. Скопируйте Signing secret и добавьте в config.php как STRIPE_WEBHOOK_SECRET
+ * 4. Copy Signing secret and add to config.php as STRIPE_WEBHOOK_SECRET
  */
 
 require_once 'config.php';
 require_once 'common.php';
 require_once 'payment_service.php';
 
-// Подключаем email сервис если настроен Mailgun
+// We connect the email service if Mailgun is configured
 if (!empty(MAILGUN_API_KEY)) {
     require_once 'email_service.php';
 }
 
-// Получаем raw POST data
+// We get raw POST data
 $payload = @file_get_contents('php://input');
 $sig_header = $_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '';
 
@@ -29,7 +29,7 @@ if (empty($payload) || empty($sig_header)) {
     exit;
 }
 
-// Проверяем подпись webhook
+// Checking the webhook signature
 if (!empty(STRIPE_WEBHOOK_SECRET)) {
     try {
         verifyWebhookSignature($payload, $sig_header, STRIPE_WEBHOOK_SECRET);
@@ -39,11 +39,11 @@ if (!empty(STRIPE_WEBHOOK_SECRET)) {
         exit;
     }
 } else {
-    // Если webhook secret не настроен, логируем предупреждение но продолжаем
+    // If webhook secret is not configured, log the warning but continue
     error_log("Warning: STRIPE_WEBHOOK_SECRET is not configured. Webhook signature verification skipped.");
 }
 
-// Декодируем JSON payload
+// Decoding JSON payload
 $event = json_decode($payload, true);
 
 if (!$event) {
@@ -52,10 +52,10 @@ if (!$event) {
     exit;
 }
 
-// Логируем событие
+// Logging the event
 logActivity("Stripe webhook received: {$event['type']}, ID: {$event['id']}");
 
-// Обрабатываем событие
+// Processing the event
 try {
     $eventType = $event['type'] ?? '';
     $eventData = $event['data']['object'] ?? [];
@@ -74,18 +74,18 @@ try {
             break;
             
         default:
-            // Логируем неизвестное событие, но не возвращаем ошибку
+            // Logging an unknown event but not returning an error
             logActivity("Stripe webhook: Unknown event type: {$eventType}", 'INFO');
             break;
     }
     
-    // Возвращаем успешный ответ Stripe
+    // Returning a successful response to Stripe
     http_response_code(200);
     echo json_encode(['received' => true]);
     
 } catch (Exception $e) {
-    // Логируем ошибку, но возвращаем успешный ответ Stripe
-    // (чтобы Stripe не повторял событие бесконечно)
+    // Log the error but return a successful response to Stripe
+    // (so Stripe doesn't repeat the event endlessly)
     error_log("Stripe webhook processing error: " . $e->getMessage());
     logActivity("Stripe webhook processing error: " . $e->getMessage(), 'ERROR');
     
@@ -94,10 +94,10 @@ try {
 }
 
 /**
- * Проверка подписи webhook
+ * Webhook signature verification
  */
 function verifyWebhookSignature($payload, $sig_header, $secret) {
-    // Если установлен Stripe SDK, используем его для проверки
+    // If Stripe SDK is installed, use it to check
     if (class_exists('\Stripe\Webhook')) {
         try {
             \Stripe\Webhook::constructEvent($payload, $sig_header, $secret);
@@ -107,8 +107,8 @@ function verifyWebhookSignature($payload, $sig_header, $secret) {
         }
     }
     
-    // Иначе проверяем вручную (упрощенная версия)
-    // Для продакшена рекомендуется использовать Stripe SDK
+    // Otherwise, check manually (simplified version)
+    // For production it is recommended to use Stripe SDK
     $timestamp = '';
     $signatures = explode(',', $sig_header);
     
@@ -130,7 +130,7 @@ function verifyWebhookSignature($payload, $sig_header, $secret) {
 }
 
 /**
- * Обработка успешного платежа
+ * Processing a successful payment
  */
 function handlePaymentIntentSucceeded($paymentIntent) {
     global $conn;
@@ -143,27 +143,27 @@ function handlePaymentIntentSucceeded($paymentIntent) {
             throw new Exception("Booking ID not found in payment intent metadata");
         }
         
-        // Обрабатываем платеж
+        // Processing the payment
         $result = processSuccessfulPayment($paymentIntentId);
         
         if (!$result['success']) {
             throw new Exception($result['error'] ?? 'Failed to process payment');
         }
         
-        // Получаем бронирование
+        // We receive a reservation
         $booking = fetchOne($conn, "SELECT * FROM bookings WHERE id = ?", [$bookingId]);
         
         if (!$booking) {
             throw new Exception("Booking not found: {$bookingId}");
         }
         
-        // Отправляем email подтверждения (если email сервис настроен)
-        if (!empty(MAILGUN_API_KEY) && function_exists('sendBookingConfirmation')) {
+        // Send payment-success emails to guest and host (if email service is configured)
+        if (!empty(MAILGUN_API_KEY) && function_exists('sendRoomPaymentSucceededToGuestAndHost')) {
             try {
-                sendBookingConfirmation($booking);
+                sendRoomPaymentSucceededToGuestAndHost($booking, $paymentIntentId);
             } catch (Exception $e) {
-                // Логируем ошибку email, но не прерываем обработку
-                error_log("Failed to send booking confirmation email: " . $e->getMessage());
+                // Log the email error, but do not interrupt processing
+                error_log("Failed to send payment success emails: " . $e->getMessage());
             }
         }
         
@@ -176,7 +176,7 @@ function handlePaymentIntentSucceeded($paymentIntent) {
 }
 
 /**
- * Обработка неудачного платежа
+ * Processing a failed payment
  */
 function handlePaymentIntentFailed($paymentIntent) {
     global $conn;
@@ -186,10 +186,10 @@ function handlePaymentIntentFailed($paymentIntent) {
         $bookingId = $paymentIntent['metadata']['booking_id'] ?? null;
         
         if (!$bookingId) {
-            return; // Не критично, просто логируем
+            return; // Not critical, just logging
         }
         
-        // Обновляем статус оплаты на failed
+        // Update the payment status to failed
         updateRecord($conn, 'bookings', [
             'payment_status' => 'failed',
             'updated_at' => date('Y-m-d H:i:s')
@@ -203,7 +203,7 @@ function handlePaymentIntentFailed($paymentIntent) {
 }
 
 /**
- * Обработка отмененного платежа
+ * Processing a canceled payment
  */
 function handlePaymentIntentCanceled($paymentIntent) {
     global $conn;
@@ -213,10 +213,10 @@ function handlePaymentIntentCanceled($paymentIntent) {
         $bookingId = $paymentIntent['metadata']['booking_id'] ?? null;
         
         if (!$bookingId) {
-            return; // Не критично, просто логируем
+            return; // Not critical, just logging
         }
         
-        // Обновляем статус оплаты
+        // Update payment status
         updateRecord($conn, 'bookings', [
             'payment_status' => 'pending',
             'updated_at' => date('Y-m-d H:i:s')

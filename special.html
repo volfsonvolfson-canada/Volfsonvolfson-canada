@@ -84,43 +84,73 @@
       background: var(--bg-alt);
     }
 
-    .exclusive-offer-card {
+    .special-hot-springs-unified.special-section {
+      padding: clamp(1.5rem, 4vw, 2.75rem) 0 clamp(2.5rem, 5vw, 3.5rem);
+      background: transparent;
+    }
+    .special-hot-springs-unified .explore-content-band {
+      background: transparent;
+      padding: 0;
+    }
+    .special-hot-springs-unified .explore-section-panel {
       background: var(--card);
-      border: 1px solid rgba(255,255,255,.06);
-      border-radius: 20px;
-      padding: 40px;
-      color: var(--text);
-      text-align: center;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-      margin: 10px 0 40px 0;
-      position: relative;
-      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: clamp(1.25rem, 3vw, 2rem) clamp(1.1rem, 2.5vw, 2rem) clamp(1.35rem, 3.2vw, 2.35rem);
+      box-sizing: border-box;
+      text-align: left;
     }
-    .exclusive-offer-card-content {
-      position: relative;
-      z-index: 2;
+    [data-theme="light"] .special-hot-springs-unified .explore-section-panel {
+      border-color: rgba(0, 0, 0, 0.08);
     }
-    .exclusive-offer-card h2 {
-      font-size: clamp(2rem, 4vw, 3rem);
-      margin-bottom: 20px;
-      color: var(--text);
+    .special-hot-springs-unified .explore-section-h2 {
+      font-size: 2.5rem;
+      margin: 0 0 0.5rem;
+      color: var(--text, #1e293b);
+      text-align: left;
     }
-    .exclusive-offer-card p {
-      font-size: clamp(1.1rem, 2vw, 1.4rem);
-      line-height: 1.8;
-      margin-bottom: 30px;
+    .special-hot-springs-unified .section-lead {
+      text-align: left;
+      margin-top: 0;
+      margin-bottom: clamp(0.85rem, 2vw, 1.25rem);
       color: var(--text-muted);
+      font-size: 1.05rem;
+      line-height: 1.8;
     }
-    .exclusive-offer-badge {
-      display: inline-block;
-      background: var(--bg-alt);
-      padding: 12px 24px;
-      border-radius: 50px;
+    .special-hot-springs-unified .section-lead:last-of-type {
+      margin-bottom: clamp(1rem, 2.5vw, 1.5rem);
+    }
+    .special-hot-springs-unified .section-lead strong {
+      color: inherit;
       font-weight: 600;
-      font-size: 0.9rem;
-      margin-bottom: 20px;
-      border: 1px solid var(--border);
-      color: var(--text);
+    }
+    .special-hot-springs-unified .special-offer-cta-wrap {
+      margin-top: 0.25rem;
+      text-align: left;
+    }
+    .special-hot-springs-unified .special-offer-cta-wrap .btn {
+      display: inline-block;
+      text-decoration: none;
+    }
+    .special-hot-springs-unified .special-unified-cards {
+      margin-top: clamp(1.25rem, 3vw, 2rem);
+      padding-top: clamp(1.1rem, 2.8vw, 1.75rem);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    [data-theme="light"] .special-hot-springs-unified .special-unified-cards {
+      border-top-color: rgba(0, 0, 0, 0.08);
+    }
+    .special-hot-springs-unified .hot-springs-card {
+      margin-bottom: clamp(2rem, 4vw, 2.75rem);
+    }
+    .special-hot-springs-unified .hot-springs-card:last-child {
+      margin-bottom: 0;
+    }
+    .special-hot-springs-unified .hot-springs-card.reverse {
+      margin-bottom: clamp(2rem, 4vw, 2.75rem);
+    }
+    .special-hot-springs-unified .hot-springs-image {
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
     }
 
 
@@ -204,8 +234,8 @@
       .hot-springs-card.reverse > * {
         direction: ltr;
       }
-      .exclusive-offer-card {
-        padding: 30px 20px;
+      .special-hot-springs-unified .explore-section-h2 {
+        font-size: 1.85rem;
       }
     }
   </style>
@@ -268,51 +298,51 @@
   </div>
 
   <main>
-    <section class="special-section">
-      <div class="container">
-        <div class="hot-springs-card">
-          <div class="hot-springs-content">
-            <h3 id="special-pools-title">Mineral-Rich Pools & Limestone Cave</h3>
-            <p id="special-pools-description-1">The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge.</p>
-            <p id="special-pools-description-2">Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.</p>
-          </div>
-          <div>
-            <img class="hot-springs-image" src="https://images.unsplash.com/photo-1519824145371-296894a0daa9?q=80&w=1600&auto=format&fit=crop" alt="Ainsworth Hot Springs pools" />
-          </div>
-        </div>
+    <section class="special-section special-hot-springs-unified" aria-labelledby="special-offer-title">
+      <div class="explore-content-band">
+        <div class="container">
+          <div class="explore-section-panel">
+            <h2 id="special-offer-title" class="explore-section-h2">Free Hot Springs Access</h2>
+            <p class="section-lead reveal" id="special-offer-body">Book a minimum 5-night stay at Kelder and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!
 
-        <div class="hot-springs-card reverse">
-          <div class="hot-springs-content">
-            <h3 id="special-dining-title">Dining & Spa Experience</h3>
-            <p id="special-dining-description-1">After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight.</p>
-            <p id="special-dining-description-2">Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.</p>
-          </div>
-          <div>
-            <img class="hot-springs-image" src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1600&auto=format&fit=crop" alt="Ktunaxa Grill restaurant and spa" />
-          </div>
-        </div>
+This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.</p>
+            <div class="special-offer-cta-wrap">
+              <a class="btn primary" id="special-offer-rooms-cta" href="index.php#rooms">Choose your room</a>
+            </div>
 
-        <div class="hot-springs-card">
-          <div class="hot-springs-content">
-            <h3 id="special-extra-title">Discover Nelson & the Kootenays</h3>
-            <p id="special-extra-description-1">Beyond the hot springs, the lively town of Nelson offers galleries, cafés, and lakefront strolls — an ideal complement to your retreat.</p>
-            <p id="special-extra-description-2">Ask us for tips on hikes, paddling on Kootenay Lake, or seasonal events during your stay.</p>
-          </div>
-          <div>
-            <img class="hot-springs-image" src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1600&auto=format&fit=crop" alt="Nelson and Kootenay region" />
-          </div>
-        </div>
-      </div>
-    </section>
+            <div class="special-unified-cards">
+              <div class="hot-springs-card">
+                <div class="hot-springs-content">
+                  <h3 id="special-pools-title">Mineral-Rich Pools & Limestone Cave</h3>
+                  <p id="special-pools-description-1">The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge.</p>
+                  <p id="special-pools-description-2">Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.</p>
+                </div>
+                <div>
+                  <img class="hot-springs-image" src="https://images.unsplash.com/photo-1519824145371-296894a0daa9?q=80&w=1600&auto=format&fit=crop" alt="Ainsworth Hot Springs pools" />
+                </div>
+              </div>
 
+              <div class="hot-springs-card reverse">
+                <div class="hot-springs-content">
+                  <h3 id="special-dining-title">Dining & Spa Experience</h3>
+                  <p id="special-dining-description-1">After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight. Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.</p>
+                </div>
+                <div>
+                  <img class="hot-springs-image" src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1600&auto=format&fit=crop" alt="Ktunaxa Grill restaurant and spa" />
+                </div>
+              </div>
 
-    <section class="special-section">
-      <div class="container">
-        <div class="exclusive-offer-card">
-          <div class="exclusive-offer-card-content">
-            <h2 id="special-offer-title">Free Hot Springs Access</h2>
-            <p><strong id="special-offer-main-text">Book a minimum 5-night stay at Kelder and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!</strong></p>
-            <p id="special-offer-description">This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.</p>
+              <div class="hot-springs-card">
+                <div class="hot-springs-content">
+                  <h3 id="special-extra-title">Discover Nelson & the Kootenays</h3>
+                  <p id="special-extra-description-1">Beyond the hot springs, the lively town of Nelson offers galleries, cafés, and lakefront strolls — an ideal complement to your retreat.</p>
+                  <p id="special-extra-description-2">Ask us for tips on hikes, paddling on Kootenay Lake, or seasonal events during your stay.</p>
+                </div>
+                <div>
+                  <img class="hot-springs-image" src="https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1600&auto=format&fit=crop" alt="Nelson and Kootenay region" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -342,8 +372,10 @@
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -465,10 +497,8 @@
               
               const diningTitle = document.getElementById('special-dining-title');
               const diningDesc1 = document.getElementById('special-dining-description-1');
-              const diningDesc2 = document.getElementById('special-dining-description-2');
               if (diningTitle && data.specialDiningTitle) diningTitle.textContent = data.specialDiningTitle;
               if (diningDesc1 && data.specialDiningDescription1) diningDesc1.textContent = data.specialDiningDescription1;
-              if (diningDesc2 && data.specialDiningDescription2) diningDesc2.textContent = data.specialDiningDescription2;
 
               const extraTitle = document.getElementById('special-extra-title');
               const extraDesc1 = document.getElementById('special-extra-description-1');
@@ -478,11 +508,11 @@
               if (extraDesc2 && data.specialExtraDescription2) extraDesc2.textContent = data.specialExtraDescription2;
               
               const offerTitle = document.getElementById('special-offer-title');
-              const offerMain = document.getElementById('special-offer-main-text');
-              const offerDesc = document.getElementById('special-offer-description');
+              const offerBody = document.getElementById('special-offer-body');
+              const offerCta = document.getElementById('special-offer-rooms-cta');
               if (offerTitle && data.specialOfferTitle) offerTitle.textContent = data.specialOfferTitle;
-              if (offerMain && data.specialOfferMainText) offerMain.textContent = data.specialOfferMainText;
-              if (offerDesc && data.specialOfferDescription) offerDesc.textContent = data.specialOfferDescription;
+              if (offerBody && data.specialOfferMainText) offerBody.textContent = data.specialOfferMainText;
+              if (offerCta && data.specialOfferRoomsCtaLabel) offerCta.textContent = data.specialOfferRoomsCtaLabel;
             }
           }
         } catch (error) {

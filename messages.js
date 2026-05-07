@@ -1,172 +1,263 @@
-// Messages functionality for Back to Base
+// Messages with the host — server-backed chat (host_chat_api.php)
 class MessagesSystem {
   constructor() {
     this.currentUser = null;
+    /** @type {any[]} last successful `guest_chat_my_threads` list (DESC by activity) */
+    this.lastThreads = [];
     this.init();
   }
 
-  init() {
-    this.checkAuth();
-    this.setupEventListeners();
-    this.loadMessages();
-  }
-
-  // Проверка аутентификации
-  checkAuth() {
-    const token = localStorage.getItem('btb_auth_token');
-    const userData = localStorage.getItem('btb_user_data');
-    
-    if (!token || !userData) {
-      // Пользователь не авторизован - перенаправляем на страницу входа
-      window.location.href = 'login.html';
+  async init() {
+    if (!(await this.ensureGuestSession())) {
       return;
     }
+    this.setupEventListeners();
+    void this.loadMessages();
+  }
 
+  /** @returns {Promise<boolean>} */
+  async ensureGuestSession() {
+    if (typeof window.btbVerifyGuestSession === 'function') {
+      const { ok, user } = await window.btbVerifyGuestSession();
+      if (!ok || !user) {
+        window.location.href = 'login.html';
+        return false;
+      }
+      this.currentUser = window.btbMapVerifyUser ? window.btbMapVerifyUser(user) : user;
+      try {
+        localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
+      } catch (_) {}
+      return true;
+    }
+    const token = localStorage.getItem('btb_auth_token');
+    const userData = localStorage.getItem('btb_user_data');
+    if (!token || !userData) {
+      window.location.href = 'login.html';
+      return false;
+    }
     try {
       this.currentUser = JSON.parse(userData);
     } catch (error) {
-      // Ошибка в данных пользователя - перенаправляем на страницу входа
-      localStorage.removeItem('btb_auth_token');
-      localStorage.removeItem('btb_user_data');
+      try {
+        localStorage.removeItem('btb_auth_token');
+        localStorage.removeItem('btb_user_data');
+      } catch (_) {}
       window.location.href = 'login.html';
-      return;
+      return false;
     }
+    return true;
   }
 
-  // Настройка обработчиков событий
+  guestApiFetch(fd) {
+    const apiHref = typeof window.btbApiPhp === 'function' ? window.btbApiPhp() : 'api.php';
+    const base = { method: 'POST', body: fd, cache: 'no-store' };
+    if (typeof window.btbGuestFetchInit === 'function') {
+      return fetch(apiHref, window.btbGuestFetchInit(base));
+    }
+    const token = localStorage.getItem('btb_auth_token');
+    const headers = token ? { Authorization: 'Bearer ' + token } : {};
+    return fetch(apiHref, { ...base, credentials: 'same-origin', headers });
+  }
+
   setupEventListeners() {
-    // Форма отправки сообщения
-    const messageForm = document.getElementById('message-form');
-    if (messageForm) {
-      messageForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        this.sendMessage();
+    const btn = document.getElementById('guest-chat-send-btn');
+    if (btn && !btn.dataset.btbBound) {
+      btn.dataset.btbBound = '1';
+      btn.addEventListener('click', () => void this.sendFromComposer());
+    }
+    const ta = document.getElementById('guest-chat-compose-input');
+    if (ta && !ta.dataset.btbEnterBound) {
+      ta.dataset.btbEnterBound = '1';
+      ta.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          void this.sendFromComposer();
+        }
       });
     }
   }
 
-  // Отправка сообщения
-  async sendMessage() {
-    const subject = document.getElementById('message-subject').value;
-    const message = document.getElementById('message-text').value;
+  getLatestThreadId(threads) {
+    if (!Array.isArray(threads) || threads.length === 0) {
+      return 0;
+    }
+    const id = parseInt(threads[0].id, 10);
+    return id > 0 ? id : 0;
+  }
 
-    if (!subject || !message) {
-      this.showMessage('Please fill in all fields', 'error');
+  updateCardTitle(hasThreads) {
+    const titleEl = document.getElementById('guest-chat-card-title');
+    if (titleEl) {
+      titleEl.textContent = hasThreads ? 'Message History' : 'Send a message';
+    }
+  }
+
+  async sendFromComposer() {
+    const ta = document.getElementById('guest-chat-compose-input');
+    if (!ta) {
+      return;
+    }
+    const body = (ta.value || '').trim();
+    if (!body) {
+      this.showMessage('Please enter a message', 'error');
       return;
     }
 
+    const latestId = this.getLatestThreadId(this.lastThreads);
+
     try {
-      // Создаем новое сообщение
-      const newMessage = {
-        id: `msg_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
-        subject: subject,
-        message: message,
-        from: this.currentUser.email,
-        fromName: this.currentUser.name,
-        timestamp: new Date().toISOString(),
-        status: 'sent'
-      };
-
-      // Сохраняем в localStorage
-      this.saveMessage(newMessage);
-
-      // Очищаем форму
-      document.getElementById('message-subject').value = '';
-      document.getElementById('message-text').value = '';
-
-      // Показываем сообщение об успехе
-      this.showMessage('Message sent successfully!', 'success');
-
-      // Обновляем список сообщений
-      this.loadMessages();
-
-    } catch (error) {
-      this.showMessage('Failed to send message. Please try again.', 'error');
+      const fd = new FormData();
+      fd.append('action', 'guest_chat_send');
+      fd.append('body', body);
+      if (latestId > 0) {
+        fd.append('thread_id', String(latestId));
+      }
+      const res = await this.guestApiFetch(fd);
+      if (res.status === 429) {
+        this.showMessage('Too many requests. Please wait a minute and try again.', 'error');
+        return;
+      }
+      const json = await res.json().catch(() => ({}));
+      if (!json.success) {
+        this.showMessage((json && json.error) || 'Could not send message', 'error');
+        return;
+      }
+      ta.value = '';
+      this.showMessage('Sent.', 'success');
+      await this.loadMessages();
+    } catch (e) {
+      this.showMessage('Network error. Please try again.', 'error');
     }
   }
 
-  // Сохранение сообщения
-  saveMessage(message) {
-    try {
-      const messages = JSON.parse(localStorage.getItem('btb_messages') || '[]');
-      messages.push(message);
-      localStorage.setItem('btb_messages', JSON.stringify(messages));
-    } catch (error) {
-      console.error('Error saving message:', error);
+  async markThreadsRead(threads) {
+    if (!Array.isArray(threads)) {
+      return;
     }
+    for (const t of threads) {
+      if (!t || !t.guest_unread) {
+        continue;
+      }
+      try {
+        const fd = new FormData();
+        fd.append('action', 'guest_chat_mark_read');
+        fd.append('thread_id', String(t.id));
+        await this.guestApiFetch(fd);
+      } catch (_) {}
+    }
+    try {
+      window.dispatchEvent(new CustomEvent('btb:messages:updated'));
+    } catch (_) {}
   }
 
-  // Загрузка сообщений
-  loadMessages() {
-    try {
-      const messages = JSON.parse(localStorage.getItem('btb_messages') || '[]');
-      const userMessages = messages.filter(msg => msg.from === this.currentUser.email);
-      
-      this.renderMessages(userMessages);
-    } catch (error) {
-      console.error('Error loading messages:', error);
+  fillListHint(container, text, opts) {
+    const err = opts && opts.error;
+    container.textContent = '';
+    const p = document.createElement('p');
+    p.className = 'guest-chat-empty-hint';
+    if (err) {
+      p.style.color = '#f87171';
     }
+    p.textContent = text;
+    container.appendChild(p);
   }
 
-  // Отображение сообщений
-  renderMessages(messages) {
+  async loadMessages() {
     const container = document.getElementById('messages-list');
-    if (!container) return;
-
-    if (messages.length === 0) {
-      container.innerHTML = '<p class="notice">No messages yet. Start a conversation with your host!</p>';
+    if (!container) {
       return;
     }
-
-    // Сортируем сообщения по времени (новые сверху)
-    messages.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    const messagesHtml = messages.map(message => this.renderMessageCard(message)).join('');
-    container.innerHTML = messagesHtml;
+    this.fillListHint(container, 'Loading…', {});
+    try {
+      const fd = new FormData();
+      fd.append('action', 'guest_chat_my_threads');
+      const res = await this.guestApiFetch(fd);
+      const json = await res.json().catch(() => ({}));
+      if (!json.success) {
+        this.lastThreads = [];
+        this.fillListHint(
+          container,
+          (json && json.error) || 'Could not load messages. Try signing in again.',
+          { error: true },
+        );
+        this.updateCardTitle(false);
+        return;
+      }
+      const threads = (json.data && json.data.threads) || [];
+      this.lastThreads = threads;
+      void this.markThreadsRead(threads);
+      this.updateCardTitle(threads.length > 0);
+      this.renderChatStream(container, threads);
+      try {
+        window.dispatchEvent(new CustomEvent('btb:messages:updated'));
+      } catch (_) {}
+    } catch (e) {
+      this.lastThreads = [];
+      this.fillListHint(container, 'Network error loading messages.', { error: true });
+      this.updateCardTitle(false);
+    }
   }
 
-  // Создание карточки сообщения
-  renderMessageCard(message) {
-    const messageDate = new Date(message.timestamp);
-    const formattedDate = messageDate.toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
+  formatDate(iso) {
+    if (!iso) {
+      return '';
+    }
+    try {
+      const d = new Date(iso);
+      if (Number.isNaN(d.getTime())) {
+        return String(iso);
+      }
+      return d.toLocaleString();
+    } catch (_) {
+      return String(iso);
+    }
+  }
+
+  /**
+   * One chat stream: show messages from the most recently active thread only
+   * (API returns threads sorted by last_message_at DESC).
+   */
+  renderChatStream(container, threads) {
+    if (!threads.length) {
+      this.fillListHint(container, 'No messages yet — write your first message below.', {});
+      return;
+    }
+    const primary = threads[0];
+    const msgs = Array.isArray(primary.messages) ? primary.messages : [];
+    container.textContent = '';
+    if (msgs.length === 0) {
+      this.fillListHint(container, 'No messages in this thread yet.', {});
+      return;
+    }
+    msgs.forEach((m) => {
+      const isGuest = m.sender !== 'staff';
+      const bubble = document.createElement('div');
+      bubble.className =
+        'guest-chat-bubble ' + (isGuest ? 'guest-chat-bubble--guest' : 'guest-chat-bubble--host');
+      const meta = document.createElement('div');
+      meta.className = 'guest-chat-bubble-meta';
+      meta.textContent = (isGuest ? 'You' : 'Host') + ' · ' + this.formatDate(m.created_at);
+      const body = document.createElement('div');
+      body.textContent = m.body != null ? String(m.body) : '';
+      bubble.appendChild(meta);
+      bubble.appendChild(body);
+      container.appendChild(bubble);
     });
-
-    return `
-      <div class="message-card">
-        <div class="message-header">
-          <h3>${message.subject}</h3>
-          <span class="message-date">${formattedDate}</span>
-        </div>
-        <div class="message-content">
-          <p>${message.message}</p>
-        </div>
-        <div class="message-status">
-          <span class="status-badge status-${message.status}">${message.status}</span>
-        </div>
-      </div>
-    `;
+    container.scrollTop = container.scrollHeight;
   }
 
-  // Показ сообщений
   showMessage(message, type = 'info') {
-    // Создаем временное сообщение
     const messageEl = document.createElement('div');
     messageEl.className = `auth-message auth-message--${type}`;
     messageEl.textContent = message;
     messageEl.style.position = 'fixed';
     messageEl.style.top = '20px';
     messageEl.style.right = '20px';
-    messageEl.style.zIndex = '1000';
-    messageEl.style.maxWidth = '300px';
+    messageEl.style.zIndex = '100010';
+    messageEl.style.maxWidth = '320px';
 
     document.body.appendChild(messageEl);
 
-    // Автоматически убираем сообщение через 5 секунд
     setTimeout(() => {
       if (messageEl.parentNode) {
         messageEl.parentNode.removeChild(messageEl);
@@ -175,12 +266,15 @@ class MessagesSystem {
   }
 }
 
-// Инициализация системы сообщений
-document.addEventListener('DOMContentLoaded', () => {
-  window.messagesSystem = new MessagesSystem();
-});
+function initMessagesApp() {
+  if (!window.messagesSystem) {
+    window.messagesSystem = new MessagesSystem();
+  }
+}
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMessagesApp);
+} else {
+  initMessagesApp();
+}
 
-// Экспорт для использования в других файлах
 window.MessagesSystem = MessagesSystem;
-
-

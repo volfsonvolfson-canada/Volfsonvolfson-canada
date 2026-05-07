@@ -5,12 +5,23 @@
   <link rel="stylesheet" href="cookie-consent.css">
   <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://backtobase.ca/messages.html">
   <title>Messages — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    (function() {
+      const savedTheme = localStorage.getItem('btb_theme');
+      const userSetTheme = localStorage.getItem('btb_theme_user') === '1';
+      const initialTheme = userSetTheme && savedTheme ? savedTheme : 'dark';
+      document.documentElement.setAttribute('data-theme', initialTheme);
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="dashboard.css">
+  <link rel="stylesheet" href="messages.css">
 </head>
 <body>
   <header class="site-header">
@@ -22,10 +33,14 @@
       <nav class="nav">
         <a href="index.html#rooms">Rooms</a>
         <a href="massage.php">Wellness</a>
-        <a href="yoga.html">Yoga</a>
+        <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+        <a href="explore.php">Explore</a>
         <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-label="Toggle mobile menu">
+        ☰
+      </button>
       <div class="header-actions">
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
           <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -38,45 +53,40 @@
     </div>
   </header>
 
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+  <nav class="mobile-nav" id="mobile-nav">
+    <a href="index.html#rooms">Rooms</a>
+    <a href="massage.php">Wellness</a>
+    <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
+    <a href="about.php">About us</a>
+    <a href="dashboard.html" class="mobile-nav-signin" id="mobile-nav-signin">My Account</a>
+    <button class="theme-toggle" id="mobile-theme-toggle" type="button" aria-label="Toggle theme">
+      <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="mobile-theme-text">Light</span>
+    </button>
+  </nav>
+
   <div class="page-header">
     <div class="container">
       <div class="breadcrumbs"><a href="index.html">Home</a> / <a href="dashboard.html">My Account</a> / Messages</div>
       <h1>Messages with the host</h1>
-      <p class="section-lead">Communicate directly with your host for any questions or special requests.</p>
+      <p class="section-lead">Messages are saved to your account and the host is notified by email. The host replies from the admin panel under <strong>Chat management</strong> (top menu); you will see replies here.</p>
     </div>
   </div>
 
   <main class="section">
     <div class="container">
-      <section class="card">
-        <h2>Send a message</h2>
-        <form id="message-form">
-          <div class="form-row">
-            <div>
-              <label for="message-subject">Subject</label>
-              <input id="message-subject" name="subject" type="text" required 
-                     placeholder="What is your message about?" />
-            </div>
-          </div>
-          <div class="form-row">
-            <div>
-              <label for="message-text">Message</label>
-              <textarea id="message-text" name="message" rows="6" required 
-                        placeholder="Type your message here..."></textarea>
-            </div>
-          </div>
-          <div class="form-row">
-            <div>
-              <button type="submit" class="btn primary">Send Message</button>
-            </div>
-          </div>
-        </form>
-      </section>
-
-      <section class="card" style="margin-top: 24px;">
-        <h2>Message History</h2>
-        <div id="messages-list">
-          <p class="notice">No messages yet. Start a conversation with your host!</p>
+      <section class="card guest-chat-card">
+        <h2 id="guest-chat-card-title">Send a message</h2>
+        <div id="messages-list" class="guest-chat-stream" aria-live="polite"></div>
+        <div class="guest-chat-compose">
+          <label for="guest-chat-compose-input">Message</label>
+          <textarea id="guest-chat-compose-input" rows="4" placeholder="Write your message to the host…"></textarea>
+          <button type="button" id="guest-chat-send-btn" class="btn primary">Send</button>
         </div>
       </section>
     </div>
@@ -95,7 +105,8 @@
         <ul class="footer-nav">
           <li><a href="index.html#rooms">Rooms</a></li>
           <li><a href="massage.php">Wellness</a></li>
-          <li><a href="yoga.html">Yoga</a></li>
+          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
+          <li><a href="explore.php">Explore</a></li>
           <li><a href="special.php">Specials</a></li>
           <li><a href="about.php">About us</a></li>
         </ul>
@@ -103,8 +114,10 @@
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:0.5rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>

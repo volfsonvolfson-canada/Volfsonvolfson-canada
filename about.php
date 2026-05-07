@@ -2,16 +2,20 @@
 // Server-Side Rendering for About us page
 require_once 'common.php';
 
-// Prevent caching for this page to ensure fresh data
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Pragma: no-cache');
-header('Expires: 0');
+if (function_exists('btb_public_cms_cache_headers')) {
+    btb_public_cms_cache_headers(120);
+} else {
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
 
 // Load content from database
 $content = fetchOne($conn, "SELECT * FROM content_settings WHERE id = 1");
 if (!$content) {
     $content = []; // Ensure $content is always an array
 }
+btb_merge_phase1_canonical_into_content_row($conn, $content);
 
 // Helper function for safe HTML output (allows certain tags)
 function safeHtmlOutput($value, $fallback = '') {
@@ -25,11 +29,20 @@ function safeHtmlOutput($value, $fallback = '') {
 }
 
 // Extract content with fallback values
-$heroTitle = safeOutput($content['about_hero_title'] ?? '', 'About Back to Base');
-$heroSubtitle = safeOutputWithBreaks($content['about_hero_subtitle'] ?? '', 'A personal retreat in the heart of British Columbia');
+$heroTitle = safeOutput(
+    btb_field_or_default($content, 'about_hero_title', 'about_settings.about_hero_title', btb_default_text('content_settings.about_hero_title', 'About Back to Base')),
+    ''
+);
+$heroSubtitle = safeOutputWithBreaks(
+    btb_field_or_default($content, 'about_hero_subtitle', 'about_settings.about_hero_subtitle', btb_default_text('content_settings.about_hero_subtitle', 'A personal retreat in the heart of British Columbia')),
+    ''
+);
 $heroImageUrl = isset($content['about_hero_image_url']) && !empty(trim($content['about_hero_image_url'])) ? safeOutput($content['about_hero_image_url'], '') : '';
 
-$ideaTitle = safeOutput($content['about_idea_title'] ?? '', 'Idea and Origins');
+$ideaTitle = safeOutput(
+    btb_field_or_default($content, 'about_idea_title', 'about_settings.about_idea_title', btb_default_text('content_settings.about_idea_title', 'Idea and Origins')),
+    ''
+);
 
 // Visible teaser vs collapsed continuation:
 // - By default: intro is always visible; paragraphs 1–3 merge into one collapsed body (safeOutputWithBreaks).
@@ -62,18 +75,45 @@ if ($hasIdeaContinuation) {
     $ideaContinuationHtml = safeOutputWithBreaks($continuationPlain, '');
 }
 
-$ideaSignature = safeOutputWithBreaks($content['about_idea_signature'] ?? '', 'I look forward to welcoming you!');
+$ideaSignature = safeOutputWithBreaks(
+    btb_field_or_default($content, 'about_idea_signature', 'about_settings.about_idea_signature', btb_default_text('content_settings.about_idea_signature', 'I look forward to welcoming you!')),
+    ''
+);
 $founderImageUrl = isset($content['about_founder_image_url']) && !empty(trim($content['about_founder_image_url'])) ? safeOutput($content['about_founder_image_url'], '') : 'assets/Rob Vuik.jpg';
 
-$locTitle = safeOutput($content['about_location_title'] ?? '', 'How to Find Us');
-$locP1 = safeOutputWithBreaks($content['about_location_paragraph_1'] ?? '', 'Back to Base is located in the village of Procter, 35 km from Nelson, B.C.');
-$locP2 = safeOutputWithBreaks($content['about_location_paragraph_2'] ?? '', 'You\'ll need to take the 24/7 Harrop–Procter ferry,');
-$locP3 = safeOutputWithBreaks($content['about_location_paragraph_3'] ?? '', 'then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.');
-$locP4 = safeOutputWithBreaks($content['about_location_paragraph_4'] ?? '', 'From there, it\'s just a 3-minute drive up the mountain road — and you\'re here!');
-$locCoords = safeOutput($content['about_location_coordinates'] ?? '', 'Coordinates: 49.6125, -116.9579');
-$locDeerWarning = safeHtmlOutput($content['about_location_deer_warning'] ?? '', '🦌 <strong>Be careful</strong> — we have a lot of deer in the area!');
+$locTitle = safeOutput(
+    btb_field_or_default($content, 'about_location_title', 'about_settings.about_location_title', btb_default_text('content_settings.about_location_title', 'How to Find Us')),
+    ''
+);
+$locP1 = safeOutputWithBreaks(
+    btb_field_or_default($content, 'about_location_paragraph_1', 'about_settings.about_location_paragraph_1', btb_default_text('content_settings.about_location_paragraph_1', 'Back to Base is located in the village of Procter, 35 km from Nelson, B.C.')),
+    ''
+);
+$locP2 = safeOutputWithBreaks(
+    btb_field_or_default($content, 'about_location_paragraph_2', 'about_settings.about_location_paragraph_2', btb_default_text('content_settings.about_location_paragraph_2', 'You\'ll need to take the 24/7 Harrop–Procter ferry,')),
+    ''
+);
+$locP3 = safeOutputWithBreaks(
+    btb_field_or_default($content, 'about_location_paragraph_3', 'about_settings.about_location_paragraph_3', btb_default_text('content_settings.about_location_paragraph_3', 'then continue straight for another 6 minutes until you see the Back to Base sign on the right side of the road.')),
+    ''
+);
+$locP4 = safeOutputWithBreaks(
+    btb_field_or_default($content, 'about_location_paragraph_4', 'about_settings.about_location_paragraph_4', btb_default_text('content_settings.about_location_paragraph_4', 'From there, it\'s just a 3-minute drive up the mountain road — and you\'re here!')),
+    ''
+);
+$locCoords = safeOutput(
+    btb_field_or_default($content, 'about_location_coordinates', 'about_settings.about_location_coordinates', btb_default_text('content_settings.about_location_coordinates', 'Coordinates: 49.6125, -116.9579')),
+    ''
+);
+$locDeerWarning = safeHtmlOutput(
+    btb_field_or_default($content, 'about_location_deer_warning', 'about_settings.about_location_deer_warning', btb_default_text('content_settings.about_location_deer_warning', '🦌 <strong>Be careful</strong> — we have a lot of deer in the area!')),
+    ''
+);
 
-$contactFormTitle = safeOutput($content['about_contact_form_title'] ?? '', 'Contact us');
+$contactFormTitle = safeOutput(
+    btb_field_or_default($content, 'about_contact_form_title', 'about_settings.about_contact_form_title', btb_default_text('content_settings.about_contact_form_title', 'Contact us')),
+    ''
+);
 
 $rawContactFormDescription = trim((string) ($content['about_contact_form_description'] ?? ''));
 if ($rawContactFormDescription === '') {
@@ -83,7 +123,13 @@ if ($rawContactFormDescription === '') {
         $rawContactFormDescription = $legacyL . ($legacyL !== '' && $legacyE !== '' ? "\n\n" : '') . $legacyE;
     }
 }
-$contactFormDescriptionDefault = "At Back to Base, you can find exactly the kind of rest you need.\n\nWe'll be happy to help you plan your stay and answer any questions!";
+$contactFormDescriptionDefault = btb_default_text(
+    'about_settings.about_contact_form_description',
+    btb_default_text(
+        'content_settings.about_contact_form_description',
+        "At Back to Base, you can find exactly the kind of rest you need.\n\nWe'll be happy to help you plan your stay and answer any questions!"
+    )
+);
 $contactFormDescription = safeOutputWithBreaks(
     $rawContactFormDescription !== '' ? $rawContactFormDescription : $contactFormDescriptionDefault,
     ''
@@ -106,6 +152,16 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>About us — Back to Base</title>
+  <?php
+  $__seo_title = 'About us — Back to Base';
+  $__seo_desc = 'Meet the host and story of Back to Base — a personal retreat guesthouse near Nelson, British Columbia, with rooms, wellness, and nature.';
+  ?>
+  <meta name="description" content="<?php echo htmlspecialchars($__seo_desc, ENT_QUOTES, 'UTF-8'); ?>">
+  <?php
+  btb_seo_emit_link_and_meta('/about.php', $__seo_title, $__seo_desc, [
+      'og_image' => '/assets/about_procter.jpg',
+  ]);
+  ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -1053,8 +1109,10 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
@@ -1463,7 +1521,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
               <polyline points="15 3 21 3 21 9"></polyline>
               <line x1="10" y1="14" x2="21" y2="3"></line>
             </svg>
-            Открыть в Google Maps
+            Open in Google Maps
           </a>
           <button class="map-modal-close" onclick="closeMapModal()" aria-label="Close map">
             ×

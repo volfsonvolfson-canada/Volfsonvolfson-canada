@@ -5,6 +5,8 @@
   <link rel="stylesheet" href="cookie-consent.css">
   <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="canonical" href="https://backtobase.ca/booking-confirmation.html">
   <title>Booking Confirmation — Back to Base</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -107,6 +109,9 @@
         <a href="special.php">Specials</a>
         <a href="about.php">About us</a>
       </nav>
+      <button class="mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-label="Toggle mobile menu">
+        ☰
+      </button>
       <div class="header-actions">
         <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
           <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -119,6 +124,23 @@
     </div>
   </header>
 
+  <div class="mobile-nav-overlay" id="mobile-nav-overlay"></div>
+  <nav class="mobile-nav" id="mobile-nav">
+    <a href="index.html#rooms">Rooms</a>
+    <a href="massage.php">Wellness</a>
+    <a href="retreat-and-workshop.php">Retreats and Workshops</a>
+    <a href="explore.php">Explore</a>
+    <a href="special.php">Specials</a>
+    <a href="about.php">About us</a>
+    <a href="login.html" class="mobile-nav-signin" id="mobile-nav-signin">Guest login</a>
+    <button class="theme-toggle" id="mobile-theme-toggle" type="button" aria-label="Toggle theme">
+      <svg class="theme-toggle-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 3v1m0 16v1m9-9h1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span id="mobile-theme-text">Light</span>
+    </button>
+  </nav>
+
   <div class="page-header">
     <div class="container">
       <div class="breadcrumbs"><a href="index.html">Home</a> / Booking Confirmation</div>
@@ -129,12 +151,12 @@
 
   <main class="section">
     <div class="container">
-      <!-- Загрузка данных -->
+      <!-- Loading data -->
       <div id="loading-message" class="card" style="text-align: center; padding: 40px;">
         <p>Loading booking details...</p>
       </div>
 
-      <!-- Ошибка загрузки -->
+      <!-- Loading error -->
       <div id="error-message" class="card" style="display: none; background-color: #fed7d7; border: 1px solid #e53e3e; color: #e53e3e;">
         <h2>Error</h2>
         <p id="error-text"></p>
@@ -143,9 +165,9 @@
         </p>
       </div>
 
-      <!-- Контент подтверждения -->
+      <!-- Confirmation content -->
       <div id="confirmation-content" style="display: none;">
-        <!-- Код подтверждения -->
+        <!-- Verification code -->
         <section class="card">
           <h2>Confirmation Code</h2>
           <div class="confirmation-code" id="confirmation-code">—</div>
@@ -154,12 +176,12 @@
           </p>
         </section>
 
-        <!-- Статус бронирования -->
+        <!-- Booking status -->
         <section class="card" style="margin-top: 20px;">
           <div class="booking-status" id="booking-status">Pending</div>
         </section>
 
-        <!-- Детали бронирования -->
+        <!-- Booking details -->
         <section class="card" style="margin-top: 20px;">
           <h2>Booking Details</h2>
           <div class="booking-details-grid">
@@ -180,7 +202,7 @@
               <div class="booking-detail-value" id="booking-guests">—</div>
             </div>
             <div class="booking-detail-item">
-              <div class="booking-detail-label">Pets</div>
+              <div class="booking-detail-label">Dogs</div>
               <div class="booking-detail-value" id="booking-pets">—</div>
             </div>
             <div class="booking-detail-item">
@@ -190,7 +212,7 @@
           </div>
         </section>
 
-        <!-- Информация о госте -->
+        <!-- Guest information -->
         <section class="card" style="margin-top: 20px;">
           <h2>Guest Information</h2>
           <div class="booking-details-grid">
@@ -209,7 +231,7 @@
           </div>
         </section>
 
-        <!-- Раздел оплаты (если требуется) -->
+        <!-- Payment section (if required) -->
         <section class="card payment-section" id="payment-section" style="display: none; margin-top: 20px;">
           <h2>Payment</h2>
           <p>Complete your payment to confirm your booking.</p>
@@ -222,13 +244,13 @@
           </form>
         </section>
 
-        <!-- Сообщение после успешной оплаты -->
+        <!-- Message after successful payment -->
         <section class="card" id="payment-success" style="display: none; margin-top: 20px; background-color: #c6f6d5; border: 1px solid #38a169;">
           <h2 style="color: #2f855a;">Payment Successful!</h2>
           <p style="color: #2f855a;">Your payment has been processed successfully. Your booking is now confirmed.</p>
         </section>
 
-        <!-- Действия -->
+        <!-- Actions -->
         <section class="card" style="margin-top: 20px; text-align: center;">
           <p style="margin-bottom: 20px;">
             <a href="index.html" class="btn">Back to Home</a>
@@ -261,19 +283,22 @@
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>
   </footer>
 
   <script src="script.js"></script>
+  <script src="auth.js"></script>
   <script src="booking.js"></script>
   <script src="payment.js"></script>
   <script>
     (async function() {
-      // Получаем код подтверждения из URL или sessionStorage
+      // Getting confirmation code from URL or sessionStorage
       const urlParams = new URLSearchParams(window.location.search);
       const confirmationCode = urlParams.get('code') || sessionStorage.getItem('last_confirmation_code');
       const paidParam = urlParams.get('paid') === 'true';
@@ -284,7 +309,7 @@
       const contentEl = document.getElementById('confirmation-content');
 
       if (!confirmationCode) {
-        // Если нет кода подтверждения, пытаемся получить из sessionStorage
+        // If there is no confirmation code, we try to get it from sessionStorage
         const bookingId = sessionStorage.getItem('last_booking_id');
         if (!bookingId) {
           loadingEl.style.display = 'none';
@@ -295,7 +320,7 @@
       }
 
       try {
-        // Загружаем данные бронирования
+        // Loading booking data
         const bookingResult = await window.BookingAPI.getBooking(confirmationCode || sessionStorage.getItem('last_booking_id'));
 
         if (!bookingResult.success || !bookingResult.booking) {
@@ -304,13 +329,13 @@
 
         const booking = bookingResult.booking;
 
-        // Скрываем загрузку
+        // Hiding the download
         loadingEl.style.display = 'none';
 
-        // Отображаем данные бронирования
+        // Displaying booking details
         document.getElementById('confirmation-code').textContent = booking.confirmation_code || '—';
         
-        // Статус бронирования
+        // Booking status
         const statusEl = document.getElementById('booking-status');
         statusEl.textContent = booking.status === 'confirmed' ? 'Confirmed' : 
                                booking.status === 'cancelled' ? 'Cancelled' : 'Pending';
@@ -320,39 +345,45 @@
           statusEl.textContent = 'Paid & Confirmed';
         }
 
-        // Детали бронирования
+        // Booking details
         document.getElementById('booking-room').textContent = booking.room_name || '—';
         document.getElementById('booking-checkin').textContent = formatDate(booking.checkin_date) || '—';
         document.getElementById('booking-checkout').textContent = formatDate(booking.checkout_date) || '—';
         document.getElementById('booking-guests').textContent = booking.guests_count || '—';
-        document.getElementById('booking-pets').textContent = booking.pets ? 'Yes' : 'No';
+        (function () {
+          let n = parseInt(String(booking.pets != null ? booking.pets : '0'), 10);
+          if (!Number.isFinite(n)) n = booking.pets ? 1 : 0;
+          n = Math.min(2, Math.max(0, n));
+          const label = n === 0 ? 'No dogs' : n === 1 ? '1 dog' : '2 dogs';
+          document.getElementById('booking-pets').textContent = label;
+        })();
         document.getElementById('booking-total').textContent = 
           (booking.currency || 'CAD') + ' ' + (parseFloat(booking.total_amount || 0).toFixed(2));
 
-        // Информация о госте
+        // Guest information
         document.getElementById('guest-name').textContent = booking.guest_name || '—';
         document.getElementById('guest-email').textContent = booking.email || '—';
         document.getElementById('guest-phone').textContent = booking.phone || '—';
 
-        // Показываем контент
+        // Showing content
         contentEl.style.display = 'block';
 
-        // Если требуется оплата и еще не оплачено
+        // If payment is required and has not yet been paid
         const clientSecret = sessionStorage.getItem('client_secret');
         const paymentIntentId = sessionStorage.getItem('payment_intent_id');
-        // Получаем Stripe Publishable Key из config.php (для безопасности лучше получать через API)
-        // Пока используем из config.php напрямую (в продакшене лучше получать через API endpoint)
-        const stripePublishableKey = 'YOUR_STRIPE_PUBLISHABLE_KEY_HERE'; // TODO: Получать через API endpoint
+        // Getting the Stripe Publishable Key from config.php (for security it’s better to get it via the API)
+        // For now we use it directly from config.php (in production it is better to get it via the API endpoint)
+        const stripePublishableKey = 'YOUR_STRIPE_PUBLISHABLE_KEY_HERE'; // TODO: Receive via API endpoint
 
         if (paidParam || booking.payment_status === 'paid') {
-          // Успешная оплата
+          // Successful payment
           document.getElementById('payment-section').style.display = 'none';
           document.getElementById('payment-success').style.display = 'block';
         } else if (clientSecret && booking.payment_status === 'pending' && stripePublishableKey) {
-          // Показываем форму оплаты
+          // Showing the payment form
           document.getElementById('payment-section').style.display = 'block';
           
-          // Инициализируем Stripe
+          // Initializing Stripe
           await window.PaymentAPI.initPaymentForm(stripePublishableKey, clientSecret);
         }
 
@@ -363,7 +394,7 @@
         errorTextEl.textContent = error.message || 'Failed to load booking details';
       }
 
-      // Форматирование даты
+      // Date formatting
       function formatDate(dateString) {
         if (!dateString) return '—';
         try {

@@ -1,22 +1,22 @@
 /**
  * Payment.js
- * Интеграция Stripe Elements для обработки платежей
+ * Stripe Elements integration for payment processing
  */
 
-// Stripe Publishable Key - должен быть установлен в config.php
-// Для тестирования можно использовать: pk_test_...
+// Stripe Publishable Key - must be set in config.php
+// For testing you can use: pk_test_...
 let STRIPE_PUBLISHABLE_KEY = '';
 
-// Инициализация Stripe
+// Initializing Stripe
 let stripe = null;
 let elements = null;
 let paymentElement = null;
 
 /**
- * Инициализация Stripe и элементов платежа
+ * Initializing Stripe and Payment Elements
  * @param {string} publishableKey Stripe Publishable Key
- * @param {string} clientSecret Client Secret от Payment Intent
- * @returns {Promise<boolean>} Успешность инициализации
+ * @param {string} clientSecret Client Secret from Payment Intent
+ * @returns {Promise<boolean>} Initialization success
  */
 async function initStripe(publishableKey, clientSecret) {
   try {
@@ -32,7 +32,7 @@ async function initStripe(publishableKey, clientSecret) {
 
     STRIPE_PUBLISHABLE_KEY = publishableKey;
 
-    // Загружаем Stripe.js
+    // Loading Stripe.js
     if (!window.Stripe) {
       const script = document.createElement('script');
       script.src = 'https://js.stripe.com/v3/';
@@ -44,10 +44,10 @@ async function initStripe(publishableKey, clientSecret) {
       });
     }
 
-    // Инициализируем Stripe
+    // Initializing Stripe
     stripe = window.Stripe(publishableKey);
 
-    // Создаем элементы платежа
+    // Creating payment elements
     elements = stripe.elements({
       clientSecret: clientSecret,
       appearance: {
@@ -72,9 +72,9 @@ async function initStripe(publishableKey, clientSecret) {
 }
 
 /**
- * Создание Payment Element
- * @param {string} containerSelector Селектор контейнера для элемента платежа
- * @returns {Promise<boolean>} Успешность создания
+ * Creating a Payment Element
+ * @param {string} containerSelector Container selector for the payment element
+ * @returns {Promise<boolean>} Creation success
  */
 async function createPaymentElement(containerSelector) {
   try {
@@ -89,15 +89,15 @@ async function createPaymentElement(containerSelector) {
       return false;
     }
 
-    // Очищаем контейнер
+    // Cleaning the container
     container.innerHTML = '';
 
-    // Создаем Payment Element
+    // Create a Payment Element
     paymentElement = elements.create('payment', {
       layout: 'tabs'
     });
 
-    // Монтируем элемент в контейнер
+    // Mounting the element into a container
     paymentElement.mount(containerSelector);
 
     return true;
@@ -108,11 +108,11 @@ async function createPaymentElement(containerSelector) {
 }
 
 /**
- * Обработка формы оплаты
- * @param {string} clientSecret Client Secret от Payment Intent
- * @param {Function} onSuccess Callback при успешной оплате
- * @param {Function} onError Callback при ошибке
- * @returns {Promise<boolean>} Успешность обработки
+ * Payment form processing
+ * @param {string} clientSecret Client Secret from Payment Intent
+ * @param {Function} onSuccess Callback upon successful payment
+ * @param {Function} onError Callback on error
+ * @returns {Promise<boolean>} Processing success
  */
 async function handlePayment(clientSecret, onSuccess, onError) {
   try {
@@ -120,10 +120,10 @@ async function handlePayment(clientSecret, onSuccess, onError) {
       throw new Error('Stripe not initialized');
     }
 
-    // Показываем индикатор загрузки
+    // Showing the loading indicator
     showPaymentLoading();
 
-    // Подтверждаем платеж
+    // We confirm the payment
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements: elements,
       clientSecret: clientSecret,
@@ -136,7 +136,7 @@ async function handlePayment(clientSecret, onSuccess, onError) {
     hidePaymentLoading();
 
     if (error) {
-      // Показываем ошибку
+      // Showing the error
       showPaymentError(error.message);
       if (onError) {
         onError(error);
@@ -145,16 +145,16 @@ async function handlePayment(clientSecret, onSuccess, onError) {
     }
 
     if (paymentIntent && paymentIntent.status === 'succeeded') {
-      // Успешная оплата
+      // Successful payment
       if (onSuccess) {
         onSuccess(paymentIntent);
       }
       return true;
     }
 
-    // Если требуется редирект (для некоторых методов оплаты)
+    // If a redirect is required (for some payment methods)
     if (paymentIntent && paymentIntent.status === 'requires_action') {
-      // Stripe автоматически обработает редирект
+      // Stripe will automatically handle the redirect
       return true;
     }
 
@@ -171,11 +171,11 @@ async function handlePayment(clientSecret, onSuccess, onError) {
 }
 
 /**
- * Показать ошибку оплаты
- * @param {string} message Сообщение об ошибке
+ * Show payment error
+ * @param {string} message Error message
  */
 function showPaymentError(message) {
-  // Удаляем предыдущие ошибки
+  // Removing previous errors
   hidePaymentError();
 
   const errorContainer = document.getElementById('payment-errors') || document.createElement('div');
@@ -191,7 +191,7 @@ function showPaymentError(message) {
   `;
   errorContainer.textContent = message || 'Payment failed';
 
-  // Вставляем ошибку перед формой оплаты
+  // Insert an error before the payment form
   const paymentForm = document.getElementById('payment-form') || document.querySelector('.payment-form');
   if (paymentForm) {
     paymentForm.insertBefore(errorContainer, paymentForm.firstChild);
@@ -201,7 +201,7 @@ function showPaymentError(message) {
 }
 
 /**
- * Скрыть ошибку оплаты
+ * Hide payment error
  */
 function hidePaymentError() {
   const errorContainer = document.getElementById('payment-errors');
@@ -211,7 +211,7 @@ function hidePaymentError() {
 }
 
 /**
- * Показать состояние загрузки оплаты
+ * Show payment loading status
  */
 function showPaymentLoading() {
   const submitButton = document.getElementById('payment-submit') || document.querySelector('#payment-form button[type="submit"]');
@@ -220,7 +220,7 @@ function showPaymentLoading() {
     submitButton.textContent = 'Processing...';
   }
 
-  // Показываем overlay загрузки
+  // Showing loading overlay
   let overlay = document.getElementById('payment-loading-overlay');
   if (!overlay) {
     overlay = document.createElement('div');
@@ -245,7 +245,7 @@ function showPaymentLoading() {
     `;
     document.body.appendChild(overlay);
 
-    // Добавляем CSS анимацию для спиннера
+    // Adding CSS animation for the spinner
     if (!document.getElementById('loading-spinner-style')) {
       const style = document.createElement('style');
       style.id = 'loading-spinner-style';
@@ -262,7 +262,7 @@ function showPaymentLoading() {
 }
 
 /**
- * Скрыть состояние загрузки оплаты
+ * Hide payment loading status
  */
 function hidePaymentLoading() {
   const submitButton = document.getElementById('payment-submit') || document.querySelector('#payment-form button[type="submit"]');
@@ -278,46 +278,46 @@ function hidePaymentLoading() {
 }
 
 /**
- * Инициализация формы оплаты на странице
+ * Initializing the payment form on the page
  * @param {string} publishableKey Stripe Publishable Key
- * @param {string} clientSecret Client Secret от Payment Intent
+ * @param {string} clientSecret Client Secret from Payment Intent
  */
 async function initPaymentForm(publishableKey, clientSecret) {
   try {
-    // Инициализируем Stripe
+    // Initializing Stripe
     const initialized = await initStripe(publishableKey, clientSecret);
     if (!initialized) {
       showPaymentError('Failed to initialize payment system');
       return;
     }
 
-    // Создаем Payment Element
+    // Create a Payment Element
     const elementCreated = await createPaymentElement('#payment-element');
     if (!elementCreated) {
       showPaymentError('Failed to create payment form');
       return;
     }
 
-    // Привязываем обработчик формы оплаты
+    // Bind the payment form handler
     const paymentForm = document.getElementById('payment-form');
     if (paymentForm) {
       paymentForm.addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        // Обрабатываем платеж
+        // Processing the payment
         await handlePayment(
           clientSecret,
           (paymentIntent) => {
-            // Успешная оплата
+            // Successful payment
             console.log('Payment succeeded:', paymentIntent);
             
-            // Редирект на страницу подтверждения с обновленными данными
+            // Redirect to confirmation page with updated data
             const confirmationCode = sessionStorage.getItem('last_confirmation_code') || '';
             window.location.href = 'booking-confirmation.html' + 
               (confirmationCode ? `?code=${encodeURIComponent(confirmationCode)}&paid=true` : '');
           },
           (error) => {
-            // Ошибка оплаты
+            // Payment error
             console.error('Payment error:', error);
           }
         );
@@ -329,7 +329,7 @@ async function initPaymentForm(publishableKey, clientSecret) {
   }
 }
 
-// Экспорт функций для использования в других модулях
+// Exporting functions for use in other modules
 window.PaymentAPI = {
   initStripe,
   createPaymentElement,

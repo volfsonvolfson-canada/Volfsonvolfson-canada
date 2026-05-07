@@ -1,12 +1,12 @@
 /**
  * Availability Calendar Widget
- * Виджет календаря доступности для страниц комнат
+ * Availability calendar widget for room pages
  */
 
 /**
- * Создание виджета календаря доступности
- * @param {string} containerSelector Селектор контейнера для календаря
- * @param {string} roomName Название комнаты
+ * Create an Availability Calendar Widget
+ * @param {string} containerSelector Container selector for the calendar
+ * @param {string} roomName Room name
  */
 function createAvailabilityCalendar(containerSelector, roomName) {
   const container = document.querySelector(containerSelector);
@@ -15,7 +15,7 @@ function createAvailabilityCalendar(containerSelector, roomName) {
     return;
   }
 
-  // Создаем календарь
+  // Creating a calendar
   container.innerHTML = `
     <div class="availability-calendar">
       <h3>Availability Calendar</h3>
@@ -38,28 +38,28 @@ function createAvailabilityCalendar(containerSelector, roomName) {
     </div>
   `;
 
-  // Добавляем стили
+  // Adding styles
   addCalendarStyles();
 
-  // Загружаем доступность
+  // Loading availability
   loadAvailability(roomName, container);
 }
 
 /**
- * Загрузка доступности для комнаты
- * @param {string} roomName Название комнаты
- * @param {HTMLElement} container Контейнер календаря
+ * Loading accessibility for a room
+ * @param {string} roomName Room name
+ * @param {HTMLElement} container Calendar container
  */
 async function loadAvailability(roomName, container) {
   try {
-    // Получаем заблокированные даты (getBlockedDates уже возвращает объединенный список 
-    // включая ручные блокировки и Airbnb блокировки)
+    // Getting blocked dates (getBlockedDates already returns a combined list
+    // including manual blocking and Airbnb blocking)
     const blockedDates = await getBlockedDates(roomName);
     
-    // Получаем существующие бронирования
+    // Receiving existing bookings
     const bookings = await getBookingsForRoom(roomName);
 
-    // Создаем календарь на 3 месяца вперед
+    // Create a calendar for 3 months ahead
     const today = new Date();
     const months = [];
     for (let i = 0; i < 3; i++) {
@@ -67,7 +67,7 @@ async function loadAvailability(roomName, container) {
       months.push(date);
     }
 
-    // Генерируем календарь
+    // Generating a calendar
     generateCalendar(container, months, blockedDates, bookings, roomName);
 
   } catch (error) {
@@ -80,9 +80,9 @@ async function loadAvailability(roomName, container) {
 }
 
 /**
- * Получение заблокированных дат для комнаты (ручная блокировка)
- * @param {string} roomName Название комнаты
- * @returns {Promise<Array>} Массив заблокированных дат
+ * Getting blocked dates for a room (manual blocking)
+ * @param {string} roomName Room name
+ * @returns {Promise<Array>} Array of blocked dates
  */
 async function getBlockedDates(roomName) {
   try {
@@ -106,7 +106,7 @@ async function getBlockedDates(roomName) {
       blockedDates = result.data.blocked_dates.map(block => block.blocked_date);
     }
     
-    // Также получаем Airbnb заблокированные даты
+    // We also receive Airbnb blocked dates
     if (result.success && result.data?.airbnb_blocked_dates) {
       blockedDates = [...blockedDates, ...result.data.airbnb_blocked_dates];
     }
@@ -119,15 +119,15 @@ async function getBlockedDates(roomName) {
 }
 
 /**
- * Получение заблокированных дат из Airbnb для комнаты
- * @param {string} roomName Название комнаты
- * @returns {Promise<Array>} Массив заблокированных дат из Airbnb
+ * Getting Blocked Dates from Airbnb for a Room
+ * @param {string} roomName Room name
+ * @returns {Promise<Array>} Array of blocked dates from Airbnb
  */
 async function getAirbnbBlockedDates(roomName) {
   try {
-    // Airbnb заблокированные даты теперь возвращаются через get_blocked_dates
-    // в поле airbnb_blocked_dates
-    // Поэтому эта функция больше не нужна - используем getBlockedDates который объединяет оба списка
+    // Airbnb blocked dates are now returned via get_blocked_dates
+    // in the airbnb_blocked_dates field
+    // Therefore, this function is no longer needed - we use getBlockedDates which combines both lists
     return [];
   } catch (error) {
     console.error('Get Airbnb blocked dates error:', error);
@@ -136,19 +136,19 @@ async function getAirbnbBlockedDates(roomName) {
 }
 
 /**
- * Получение бронирований для комнаты
- * @param {string} roomName Название комнаты
- * @returns {Promise<Array>} Массив бронирований
+ * Receiving room reservations
+ * @param {string} roomName Room name
+ * @returns {Promise<Array>} Array of reservations
  */
 async function getBookingsForRoom(roomName) {
   try {
-    // Используем GET запрос для публичного доступа
-    // ИСПРАВЛЕНО: Показываем только confirmed бронирования как занятые
-    // pending бронирования НЕ блокируют даты для других клиентов
+    // We use a GET request for public access
+    // FIXED: Showing only confirmed bookings as occupied
+    // pending bookings DO NOT block dates for other clients
     const params = new URLSearchParams({
       action: 'get_bookings',
       room_name: roomName,
-      status: 'confirmed' // Только подтвержденные бронирования блокируют даты
+      status: 'confirmed' // Only confirmed bookings block dates
     });
 
     const response = await fetch('api.php?' + params.toString(), {
@@ -172,12 +172,12 @@ async function getBookingsForRoom(roomName) {
 }
 
 /**
- * Генерация календаря
- * @param {HTMLElement} container Контейнер календаря
- * @param {Array<Date>} months Массив месяцев для отображения
- * @param {Array<string>} blockedDates Заблокированные даты
- * @param {Array<Object>} bookings Бронирования
- * @param {string} roomName Название комнаты
+ * Calendar generation
+ * @param {HTMLElement} container Calendar container
+ * @param {Array<Date>} months Array of months to display
+ * @param {Array<string>} blockedDates Blocked dates
+ * @param {Array<Object>} bookings Reservations
+ * @param {string} roomName Room name
  */
 function generateCalendar(container, months, blockedDates, bookings, roomName) {
   const grid = container.querySelector(`#calendar-grid-${roomName.replace(/\s+/g, '-')}`);
@@ -196,13 +196,13 @@ function generateCalendar(container, months, blockedDates, bookings, roomName) {
     const daysInMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0).getDate();
     const firstDay = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1).getDay();
 
-    // Создаем заголовок месяца
+    // Creating a Month Header
     const monthHeader = document.createElement('div');
     monthHeader.className = 'calendar-month-header';
     monthHeader.textContent = monthYear;
     grid.appendChild(monthHeader);
 
-    // Создаем заголовки дней недели
+    // Creating weekday headers
     const weekdays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
     weekdays.forEach(day => {
       const dayHeader = document.createElement('div');
@@ -211,14 +211,14 @@ function generateCalendar(container, months, blockedDates, bookings, roomName) {
       grid.appendChild(dayHeader);
     });
 
-    // Создаем пустые ячейки для дней до первого дня месяца
+    // Create empty cells for days before the first day of the month
     for (let i = 0; i < firstDay; i++) {
       const emptyCell = document.createElement('div');
       emptyCell.className = 'calendar-day-empty';
       grid.appendChild(emptyCell);
     }
 
-    // Создаем ячейки дней
+    // Creating day cells
     for (let day = 1; day <= daysInMonth; day++) {
       const date = new Date(monthDate.getFullYear(), monthDate.getMonth(), day);
       const dateString = formatDateString(date);
@@ -227,23 +227,23 @@ function generateCalendar(container, months, blockedDates, bookings, roomName) {
       dayCell.className = 'calendar-day';
       dayCell.textContent = day;
 
-      // Проверяем доступность даты
+      // Checking date availability
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const cellDate = new Date(date);
       cellDate.setHours(0, 0, 0, 0);
 
       if (cellDate < today) {
-        // Прошедшая дата
+        // Past date
         dayCell.classList.add('past');
       } else if (blockedDates.includes(dateString)) {
-        // Заблокированная дата
+        // Blocked date
         dayCell.classList.add('blocked');
       } else if (isDateBooked(dateString, bookings)) {
-        // Забронированная дата
+        // Booked date
         dayCell.classList.add('booked');
       } else {
-        // Доступная дата
+        // Available date
         dayCell.classList.add('available');
       }
 
@@ -253,17 +253,17 @@ function generateCalendar(container, months, blockedDates, bookings, roomName) {
 }
 
 /**
- * Проверка, забронирована ли дата
- * @param {string} dateString Дата в формате YYYY-MM-DD
- * @param {Array<Object>} bookings Массив бронирований
- * @returns {boolean} Забронирована ли дата
+ * Checking if the date is booked
+ * @param {string} dateString Date in YYYY-MM-DD format
+ * @param {Array<Object>} bookings Array of bookings
+ * @returns {boolean} Is the date booked?
  */
 function isDateBooked(dateString, bookings) {
   const checkDate = new Date(dateString + 'T00:00:00');
   
   return bookings.some(booking => {
-    // ИСПРАВЛЕНО: Учитываем только confirmed бронирования
-    // pending бронирования НЕ должны блокировать даты в календаре
+    // FIXED: We only take into account confirmed bookings
+    // pending bookings should NOT block dates on the calendar
     if (booking.status !== 'confirmed' && booking.status !== 'paid') {
       return false;
     }
@@ -271,15 +271,15 @@ function isDateBooked(dateString, bookings) {
     const checkin = new Date(booking.checkin_date + 'T00:00:00');
     const checkout = new Date(booking.checkout_date + 'T00:00:00');
     
-    // Дата забронирована, если она в диапазоне checkin (включительно) до checkout (исключительно)
+    // A date is booked if it is in the range checkin (inclusive) to checkout (exclusive)
     return checkDate >= checkin && checkDate < checkout;
   });
 }
 
 /**
- * Форматирование даты в строку YYYY-MM-DD
- * @param {Date} date Дата
- * @returns {string} Отформатированная дата
+ * Formatting a date into the string YYYY-MM-DD
+ * @param {Date} date Date
+ * @returns {string} Formatted date
  */
 function formatDateString(date) {
   const year = date.getFullYear();
@@ -289,11 +289,11 @@ function formatDateString(date) {
 }
 
 /**
- * Добавление стилей календаря
+ * Adding calendar styles
  */
 function addCalendarStyles() {
   if (document.getElementById('availability-calendar-styles')) {
-    return; // Стили уже добавлены
+    return; // Styles have already been added
   }
 
   const style = document.createElement('style');
@@ -423,7 +423,7 @@ function addCalendarStyles() {
   document.head.appendChild(style);
 }
 
-// Экспорт функций
+// Export functions
 window.AvailabilityCalendar = {
   createAvailabilityCalendar,
   loadAvailability,

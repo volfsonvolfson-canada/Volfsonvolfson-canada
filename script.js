@@ -40,22 +40,22 @@ function flashInvalid(el) {
 }
 
 // Ensure flashing is visible for enhanced date inputs (flash both real and display proxy)
-// КРИТИЧНО: Для полей дат используется Flatpickr с altInput
-// Нужно мигать видимым altInput, а не скрытым input
+// CRITICAL: Flatpickr with altInput is used for date fields
+// You need to flash the visible altInput, not the hidden input
 function flashDateField(realInput) {
   if (!realInput) return;
   
-  // Проверяем, используется ли Flatpickr с altInput
+  // Checking if Flatpickr is used with altInput
   if (typeof flatpickr !== 'undefined' && realInput._flatpickr) {
     const fpInstance = realInput._flatpickr;
-    // Если есть altInput (видимое поле), мигаем его
+    // If there is an altInput (visible field), flash it
     if (fpInstance.altInput) {
       flashInvalid(fpInstance.altInput);
     }
-    // Также мигаем скрытым input для браузерной валидации
+    // We also flash hidden input for browser validation
     flashInvalid(realInput);
   } else {
-    // Fallback: используем старую логику для полей без Flatpickr
+    // Fallback: using old logic for fields without Flatpickr
     flashInvalid(realInput);
     try {
       const proxy = realInput.previousElementSibling;
@@ -66,11 +66,11 @@ function flashDateField(realInput) {
   }
 }
 
-// Показать ошибку для поля в стиле .field-error (универсальная функция для всех полей)
+// Show error for field in .field-error style (universal function for all fields)
 function showFieldError(input, message) {
   if (!input || !message) return;
   
-  // Находим видимое поле (altInput для Flatpickr или само поле)
+  // Find the visible field (altInput for Flatpickr or the field itself)
   let visibleField = input;
   if (typeof flatpickr !== 'undefined' && input._flatpickr) {
     const fpInstance = input._flatpickr;
@@ -79,41 +79,41 @@ function showFieldError(input, message) {
     }
   }
   
-  // Удаляем предыдущую ошибку, если есть
+  // Remove the previous error, if any
   const errorId = `error-${input.id || input.name || 'field'}`;
   const existingError = visibleField.parentNode?.querySelector(`#${errorId}`);
   if (existingError) {
     existingError.remove();
   }
   
-  // Добавляем класс invalid-field к видимому полю
+  // Adding the invalid-field class to the visible field
   visibleField.classList.add('invalid-field');
   if (input !== visibleField) {
     input.classList.add('invalid-field');
   }
   
-  // Создаем элемент ошибки
+  // Create an error element
   const errorMsg = document.createElement('div');
   errorMsg.className = 'field-error';
   errorMsg.textContent = message;
   errorMsg.id = errorId;
   
-  // Вставляем ошибку после видимого поля
+  // Insert an error after the visible field
   if (visibleField.parentNode) {
     visibleField.parentNode.insertBefore(errorMsg, visibleField.nextSibling);
   }
 }
 
-// Показать ошибку для поля даты в стиле .field-error (как для обычных полей)
+// Show error for date field in .field-error style (as for regular fields)
 function showDateFieldError(input, message) {
   showFieldError(input, message);
 }
 
-// Очистить ошибку для поля (универсальная функция для всех полей)
+// Clear error for field (universal function for all fields)
 function clearFieldError(input) {
   if (!input) return;
   
-  // Находим видимое поле (altInput для Flatpickr или само поле)
+  // Find the visible field (altInput for Flatpickr or the field itself)
   let visibleField = input;
   if (typeof flatpickr !== 'undefined' && input._flatpickr) {
     const fpInstance = input._flatpickr;
@@ -122,21 +122,21 @@ function clearFieldError(input) {
     }
   }
   
-  // Удаляем ошибку, если есть
+  // Remove the error if there is one
   const errorId = `error-${input.id || input.name || 'field'}`;
   const existingError = visibleField.parentNode?.querySelector(`#${errorId}`);
   if (existingError) {
     existingError.remove();
   }
   
-  // Удаляем классы invalid-field и flash-invalid
+  // Removing the invalid-field and flash-invalid classes
   visibleField.classList.remove('invalid-field', 'flash-invalid');
   if (input !== visibleField) {
     input.classList.remove('invalid-field', 'flash-invalid');
   }
 }
 
-// Очистить ошибку для поля даты (алиас для обратной совместимости)
+// Clear error for date field (alias for backwards compatibility)
 function clearDateFieldError(input) {
   clearFieldError(input);
 }
@@ -176,8 +176,18 @@ function showValidationBubble(target, message) {
   }
 }
 function hideValidationBubble() {
+  try {
+    if (window.ValidationUtils && typeof window.ValidationUtils.hideBubble === 'function') {
+      window.ValidationUtils.hideBubble();
+    }
+  } catch (_) {}
   const ex = document.getElementById('btb-bubble');
   if (ex && ex.parentNode) ex.parentNode.removeChild(ex);
+  try {
+    document.querySelectorAll('.btb-bubble').forEach((n) => {
+      if (n && n.parentNode) n.parentNode.removeChild(n);
+    });
+  } catch (_) {}
 }
 
 // expose for order.html
@@ -204,10 +214,10 @@ const initBookingForms = () => {
   forms.forEach(form => {
     // enforce checkout >= checkin
     attachCheckinCheckoutConstraint(form, '#checkin', '#checkout');
-    // Настраиваем очистку ошибок для всех форм
+    // Setting up error cleaning for all forms
     setupFieldErrorClearing(form);
     prefillContact(form);
-    // Отмечаем, что форма имеет обработчик submit
+    // Note that the form has a submit handler
     form.dataset.hasSubmitHandler = 'true';
     form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -217,8 +227,8 @@ const initBookingForms = () => {
       const checkin = checkinEl ? checkinEl.value : '';
       const checkout = checkoutEl ? checkoutEl.value : '';
       if (!checkin || !checkout) {
-        // Для полей дат используем кастомные подсказки (.field-error)
-        // Не используем reportValidity(), так как он показывает HTML5 валидацию браузера
+        // For date fields we use custom hints (.field-error)
+        // We don't use reportValidity() because it shows HTML5 browser validation
         if (!checkin && checkinEl) {
           if (window.showDateFieldError) {
             window.showDateFieldError(checkinEl, 'Please select a check-in date.');
@@ -234,9 +244,9 @@ const initBookingForms = () => {
       const outDate = parseLocalDate(checkout);
       if (outDate <= inDate) {
         if (checkoutEl) {
-          // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+          // Clearing setCustomValidity so as not to trigger HTML5 validation
           checkoutEl.setCustomValidity('');
-          // Для полей дат используем .field-error элементы (унифицированная система)
+          // For date fields we use .field-error elements (unified system)
           if (window.showDateFieldError) {
             window.showDateFieldError(checkoutEl, DATE_RANGE_MSG);
           }
@@ -307,26 +317,26 @@ const initMassageForm = () => {
     window.BookingAPI.renderMassageCartUI(form);
   }
   
-  // Настраиваем очистку ошибок
+  // Setting up error cleaning
   setupMassageFieldErrorClearing(form);
   
-  // Отмечаем, что форма имеет обработчик submit
+  // Note that the form has a submit handler
   form.dataset.hasSubmitHandler = 'true';
   
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
     
-    // Используем новую функцию обработки формы массажа
+    // Using the new massage form processing function
     if (window.BookingAPI && window.BookingAPI.handleMassageForm) {
       const success = await window.BookingAPI.handleMassageForm(form);
       if (success) {
-        // Успешное создание бронирования - форма уже обработана в handleMassageForm
+        // Successful booking creation - the form has already been processed in handleMassageForm
       } else {
-        // Ошибка создания бронирования - ошибки уже показаны в handleMassageForm
+        // Error creating booking - errors already shown in handleMassageForm
       }
     } else {
-      // Fallback на старое поведение, если booking.js не загружен
+      // Fallback to old behavior if booking.js is not loaded
       const dateEl = form.querySelector('input[name="date"]');
       const timeEl = form.querySelector('input[name="time"]');
       const nameEl = form.querySelector('input[name="name"]');
@@ -336,7 +346,7 @@ const initMassageForm = () => {
       const dur = durationSel ? durationSel.value : '';
       const withRoom = ''; // Field removed
 
-      // Ordered validation с новым стилем подсказок
+      // Ordered validation with new tooltip style
       if (!type) {
         if (typeSel && typeSel.getAttribute('type') === 'hidden') {
           const scrollTo = document.getElementById('massage-form') || document.getElementById('book');
@@ -440,11 +450,11 @@ const initMassageForm = () => {
   });
 };
 
-// Настройка очистки ошибок для формы массажа
+// Setting up error clearing for the massage form
 function setupMassageFieldErrorClearing(form) {
   if (!form) return;
   
-  // Поле type - очищаем ошибку при выборе значения (только для видимого select)
+  // Type field - clear the error when selecting a value (only for visible select)
   const typeSelect = form.querySelector('#type');
   if (typeSelect && typeSelect.tagName === 'SELECT') {
     typeSelect.addEventListener('change', () => {
@@ -454,7 +464,7 @@ function setupMassageFieldErrorClearing(form) {
     });
   }
 
-  // Поле duration - очищаем ошибку при выборе значения (только для видимого select)
+  // Duration field - clear the error when selecting a value (only for visible select)
   const durationSelect = form.querySelector('#duration');
   if (durationSelect && durationSelect.tagName === 'SELECT') {
     durationSelect.addEventListener('change', () => {
@@ -464,7 +474,7 @@ function setupMassageFieldErrorClearing(form) {
     });
   }
   
-  // Поле date - очищаем ошибку при выборе корректной даты
+  // Date field - clear the error when selecting the correct date
   const dateInput = form.querySelector('#date');
   if (dateInput) {
     const clearDateError = () => {
@@ -486,7 +496,7 @@ function setupMassageFieldErrorClearing(form) {
     dateInput.addEventListener('change', clearDateError);
   }
   
-  // Поле time - очищаем ошибку при выборе корректного времени
+  // Time field - clear the error when choosing the correct time
   const timeInput = form.querySelector('#time');
   if (timeInput) {
     const clearTimeError = () => {
@@ -506,7 +516,7 @@ function setupMassageFieldErrorClearing(form) {
     timeInput.addEventListener('change', clearTimeError);
   }
   
-  // Поле name - очищаем ошибку при вводе текста
+  // Name field - clear the error when entering text
   const nameInput = form.querySelector('#name');
   if (nameInput) {
     nameInput.addEventListener('input', () => {
@@ -516,7 +526,7 @@ function setupMassageFieldErrorClearing(form) {
     });
   }
   
-  // Поле email - очищаем ошибку при вводе корректного email
+  // Email field - clear the error when entering the correct email
   const emailInput = form.querySelector('#email');
   if (emailInput) {
     emailInput.addEventListener('input', () => {
@@ -529,7 +539,7 @@ function setupMassageFieldErrorClearing(form) {
   
   // withRoom field removed - no event listener needed
   
-  // Поле phone - очищаем ошибку при вводе корректного телефона
+  // Phone field - clear the error when entering the correct phone number
   const phoneInput = form.querySelector('#phone');
   if (phoneInput) {
     phoneInput.addEventListener('input', () => {
@@ -542,12 +552,12 @@ function setupMassageFieldErrorClearing(form) {
   }
 }
 
-// Универсальная функция для настройки автоматической очистки ошибок при корректном заполнении
-// Используется для всех форм бронирования комнат
+// A universal function for setting up automatic clearing of errors when filled in correctly
+// Used for all room booking forms
 function setupFieldErrorClearing(form) {
   if (!form) return;
   
-    // Поля дат - очищаем ошибки при выборе корректной даты
+    // Date fields - clear errors when selecting the correct date
     const checkinInput = form.querySelector('#checkin') || form.querySelector('[name="checkin"]');
     const checkoutInput = form.querySelector('#checkout') || form.querySelector('[name="checkout"]');
     
@@ -555,7 +565,7 @@ function setupFieldErrorClearing(form) {
       const clearCheckinError = () => {
         if (!checkinInput.value) return;
         
-        // Проверяем, что дата корректна (не в прошлом и не заблокирована)
+        // We check that the date is correct (not in the past and not blocked)
         const checkinDate = parseLocalDate(checkinInput.value);
         if (checkinDate) {
           const today = new Date();
@@ -563,11 +573,11 @@ function setupFieldErrorClearing(form) {
           const checkinDateOnly = new Date(checkinDate.getFullYear(), checkinDate.getMonth(), checkinDate.getDate());
           const todayDateOnly = new Date(today.getFullYear(), today.getMonth(), today.getDate());
           
-          // Очищаем ошибку только если дата не в прошлом
+          // Clear the error only if the date is not in the past
           if (checkinDateOnly >= todayDateOnly && window.clearFieldError) {
             window.clearFieldError(checkinInput);
             
-            // Если check-out уже выбран и стал корректным после изменения check-in, очищаем его ошибку
+            // If check-out is already selected and becomes correct after changing check-in, clear its error
             if (checkoutInput && checkoutInput.value) {
               const checkoutDate = parseLocalDate(checkoutInput.value);
               if (checkoutDate) {
@@ -589,7 +599,7 @@ function setupFieldErrorClearing(form) {
       const clearCheckoutError = () => {
         if (!checkoutInput.value) return;
         
-        // Проверяем, что дата корректна (позже checkin + 1 день)
+        // We check that the date is correct (later checkin + 1 day)
         const checkoutDate = parseLocalDate(checkoutInput.value);
         if (checkoutDate && checkinInput && checkinInput.value) {
           const checkinDate = parseLocalDate(checkinInput.value);
@@ -597,13 +607,13 @@ function setupFieldErrorClearing(form) {
             const checkinPlusOne = new Date(checkinDate);
             checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
             
-            // Очищаем ошибку только если checkout > checkin + 1
+            // Clear the error only if checkout > checkin + 1
             if (checkoutDate > checkinPlusOne && window.clearFieldError) {
               window.clearFieldError(checkoutInput);
             }
           }
         } else if (checkoutDate && window.clearFieldError) {
-          // Если checkin не выбран, очищаем ошибку checkout
+          // If checkin is not selected, clear the checkout error
           window.clearFieldError(checkoutInput);
         }
       };
@@ -611,7 +621,7 @@ function setupFieldErrorClearing(form) {
       checkoutInput.addEventListener('change', clearCheckoutError);
     }
     
-    // Поле name - очищаем ошибку при вводе текста
+    // Name field - clear the error when entering text
     const nameInput = form.querySelector('#name') || form.querySelector('[name="name"]') || form.querySelector('[name="guest_name"]');
     if (nameInput) {
       nameInput.addEventListener('input', () => {
@@ -621,12 +631,12 @@ function setupFieldErrorClearing(form) {
       });
     }
     
-    // Поле phone - очищаем ошибку при вводе корректного телефона
+    // Phone field - clear the error when entering the correct phone number
     const phoneInput = form.querySelector('#phone') || form.querySelector('[name="phone"]');
     if (phoneInput) {
       phoneInput.addEventListener('input', () => {
         const phoneValue = phoneInput.value.trim();
-        // Проверяем формат телефона (минимум 10 цифр)
+        // Checking the phone format (minimum 10 digits)
         const phoneRegex = /^[\+]?[0-9\s\-\(\)]{10,}$/;
         if (phoneValue && phoneRegex.test(phoneValue) && window.clearFieldError) {
           window.clearFieldError(phoneInput);
@@ -634,7 +644,7 @@ function setupFieldErrorClearing(form) {
       });
     }
     
-    // Поле email - очищаем ошибку при вводе корректного email
+    // Email field - clear the error when entering the correct email
     const emailInput = form.querySelector('#email') || form.querySelector('[name="email"]');
     if (emailInput) {
       emailInput.addEventListener('input', () => {
@@ -645,7 +655,7 @@ function setupFieldErrorClearing(form) {
       });
     }
     
-    // Поле guests - очищаем ошибку при выборе значения
+    // Guests field - clear the error when selecting a value
     const guestsSelect = form.querySelector('#guests') || form.querySelector('[name="guests"]') || form.querySelector('[name="guests_count"]');
     if (guestsSelect) {
       guestsSelect.addEventListener('change', () => {
@@ -655,7 +665,7 @@ function setupFieldErrorClearing(form) {
       });
     }
     
-    // Поле pets - очищаем ошибку при выборе значения
+    // Pets field - clear the error when selecting a value
     const petsSelect = form.querySelector('#pets') || form.querySelector('[name="pets"]');
     if (petsSelect) {
       petsSelect.addEventListener('change', () => {
@@ -666,45 +676,45 @@ function setupFieldErrorClearing(form) {
     }
 }
 
-// Скрыть иконку домика на страницах комнат
+// Hide the house icon on room pages
 function hideOrderIndicatorOnRoomPages() {
-  // Проверяем, находимся ли мы на странице комнаты
+  // Checking if we are on the room page
   const isRoomPage = document.querySelector('form.booking-form[data-room]') !== null ||
                      window.location.pathname.includes('room-') ||
                      window.location.pathname.includes('room_') ||
                      document.querySelector('.room-hero') !== null;
   
   if (isRoomPage) {
-    // Скрываем иконку домика, если она существует (проверяем несколько раз для надежности)
+    // Hide the house icon if it exists (check several times to be sure)
     const hideIndicator = () => {
       const orderIndicator = document.querySelector('.order-indicator');
       if (orderIndicator) {
         orderIndicator.style.display = 'none';
         orderIndicator.style.visibility = 'hidden';
         orderIndicator.style.opacity = '0';
-        orderIndicator.remove(); // Удаляем элемент полностью
+        orderIndicator.remove(); // Removing the element completely
       }
     };
     
-    // Скрываем сразу
+    // We hide it right away
     hideIndicator();
     
-    // Скрываем после небольшой задержки (на случай, если иконка создается асинхронно)
+    // Hide after a short delay (in case the icon is created asynchronously)
     setTimeout(hideIndicator, 100);
     setTimeout(hideIndicator, 500);
     setTimeout(hideIndicator, 1000);
     
-    // Отключаем обработчик событий btb:order:record для страниц комнат
-    // чтобы иконка не появлялась при бронировании
+    // Disabling the btb:order:record event handler for room pages
+    // so that the icon does not appear when booking
     document.addEventListener('btb:order:record', (e) => {
       e.stopImmediatePropagation();
       hideIndicator();
-    }, true); // Используем capture phase для раннего перехвата
+    }, true); // Using capture phase for early interception
     
-    // Также перехватываем события после загрузки DOM
+    // We also intercept events after the DOM is loaded
     document.addEventListener('DOMContentLoaded', hideIndicator);
     
-    // Наблюдаем за изменениями DOM и скрываем иконку, если она появляется
+    // Observe DOM changes and hide the icon if it appears
     const observer = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
@@ -712,7 +722,7 @@ function hideOrderIndicatorOnRoomPages() {
             if (node.classList && node.classList.contains('order-indicator')) {
               hideIndicator();
             }
-            // Также проверяем дочерние элементы
+            // We also check child elements
             const indicator = node.querySelector && node.querySelector('.order-indicator');
             if (indicator) {
               hideIndicator();
@@ -730,26 +740,26 @@ function hideOrderIndicatorOnRoomPages() {
 }
 
 // Room booking form validation (Loki Suite basement form uses data-custom-handler)
-// Единая функция для инициализации формы бронирования
-// Используется для всех страниц комнат
+// Single function to initialize the booking form
+// Used for all room pages
 function initBookingForm(form, roomName) {
   if (!form || !roomName) return;
   
-  // Скрываем иконку домика на страницах комнат
+  // Hiding the house icon on room pages
   hideOrderIndicatorOnRoomPages();
   
   const flash = (el) => flashDateField(el);
   
-  // Устанавливаем constraint для check-in/check-out
+  // Setting a constraint for check-in/check-out
   attachCheckinCheckoutConstraint(form, '#checkin', '#checkout');
   
-  // Настраиваем очистку ошибок после инициализации формы
+  // Setting up error cleaning after form initialization
   setupFieldErrorClearing(form);
   
-  // Инициализируем блокировку занятых дат
+  // Initialize blocking of busy dates
   initBlockedDatesForRoom(form, roomName);
   
-  // Обработка wellness section (только для Basement)
+  // Processing wellness section (only for Basement)
   const wellnessSection = document.getElementById('wellness-section');
   const showWellnessReminder = () => {
     if (wellnessSection) {
@@ -758,8 +768,8 @@ function initBookingForm(form, roomName) {
     }
   };
   
-  // Проверяем, должна ли wellness section быть показана на основе localStorage
-  // По умолчанию показываем секцию, если она не была скрыта пользователем
+  // Checking if the wellness section should be shown based on localStorage
+  // By default, we show a section if it has not been hidden by the user
   if (wellnessSection) {
     const wellnessHidden = localStorage.getItem('btb_wellness_hidden');
     if (wellnessHidden !== '1') {
@@ -769,15 +779,15 @@ function initBookingForm(form, roomName) {
     }
   }
   
-  // Отмечаем, что форма имеет обработчик submit
+  // Note that the form has a submit handler
   form.dataset.hasSubmitHandler = 'true';
   
-  // Обработчик submit формы
+  // Form submit handler
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     e.stopImmediatePropagation();
     
-    // Получаем элементы формы
+    // Getting form elements
     const checkin = form.querySelector('#checkin');
     const checkout = form.querySelector('#checkout');
     const name = form.querySelector('#name');
@@ -786,7 +796,7 @@ function initBookingForm(form, roomName) {
     const pets = form.querySelector('#pets');
     const phone = form.querySelector('#phone');
     
-    // Закрываем календари Flatpickr, если они открыты
+    // Close Flatpickr calendars if they are open
     if (typeof flatpickr !== 'undefined') {
       try {
         const checkinFp = checkin?._flatpickr;
@@ -798,18 +808,18 @@ function initBookingForm(form, roomName) {
           checkoutFp.close();
         }
       } catch (e) {
-        // Игнорируем ошибки при закрытии календарей
+        // Ignore errors when closing calendars
       }
     }
 
-    // Синхронизируем значения из Flatpickr, если они используются
+    // Synchronize values ​​from Flatpickr, if used
     if (typeof flatpickr !== 'undefined') {
       try {
-        // Получаем экземпляры Flatpickr правильным способом
+        // Getting Flatpickr instances the right way
         const checkinFp = checkin._flatpickr || (checkin.dataset.flatpickrInitialized ? flatpickr(checkin) : null);
         const checkoutFp = checkout._flatpickr || (checkout.dataset.flatpickrInitialized ? flatpickr(checkout) : null);
         
-        // Синхронизируем check-in - пробуем разные способы получения значения
+        // Synchronizing check-in - trying different ways to get the value
         let checkinValue = checkin.value;
         if (checkinFp) {
           if (checkinFp.selectedDates && checkinFp.selectedDates.length > 0) {
@@ -817,7 +827,7 @@ function initBookingForm(form, roomName) {
           } else if (checkinFp.input && checkinFp.input.value) {
             checkinValue = checkinFp.input.value;
           } else if (checkinFp.altInput && checkinFp.altInput.value) {
-            // Если используется altInput, нужно получить значение из реального input
+            // If altInput is used, you need to get the value from the real input
             checkinValue = checkin.value || checkinFp.input.value;
           }
           if (checkinValue && checkinValue !== checkin.value) {
@@ -828,7 +838,7 @@ function initBookingForm(form, roomName) {
           }
         }
         
-        // Синхронизируем check-out
+        // Synchronizing check-out
         let checkoutValue = checkout.value;
         if (checkoutFp) {
           if (checkoutFp.selectedDates && checkoutFp.selectedDates.length > 0) {
@@ -847,123 +857,123 @@ function initBookingForm(form, roomName) {
         }
       } catch (error) {
         console.error('Error syncing Flatpickr values:', error);
-        // Продолжаем с текущими значениями inputs
+        // Continue with the current inputs values
       }
     }
 
-    // Валидация полей в правильной последовательности:
-    // 1. Сначала check-in (въезд)
+    // Validating fields in the correct sequence:
+    // 1. First check-in (entry)
     if (!checkin.value) {
       if (window.flashDateField) {
         window.flashDateField(checkin);
       } else {
         flash(checkin);
       }
-      // Для полей дат используем .field-error элементы (как для обычных полей)
+      // For date fields we use .field-error elements (as for regular fields)
       if (window.showDateFieldError) {
         window.showDateFieldError(checkin, 'Please select a check-in date.');
       }
-      // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+      // Don't call focus() on date fields to avoid scrolling the page
       return;
     }
-    // 2. Потом check-out (выезд)
+    // 2. Then check-out (departure)
     if (!checkout.value) {
       if (window.flashDateField) {
         window.flashDateField(checkout);
       } else {
         flash(checkout);
       }
-      // Для полей дат используем .field-error элементы (как для обычных полей)
+      // For date fields we use .field-error elements (as for regular fields)
       if (window.showDateFieldError) {
         window.showDateFieldError(checkout, 'Please select a check-out date.');
       }
-      // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+      // Don't call focus() on date fields to avoid scrolling the page
       return;
     }
-    // 3. Потом name (имя)
+    // 3. Then name (name)
     if (!name.value.trim()) {
       if (window.flashDateField) {
         window.flashDateField(name);
       } else {
         flash(name);
       }
-      // Используем .field-error элементы (как для полей дат)
+      // Using .field-error elements (as for date fields)
       if (window.showFieldError) {
         window.showFieldError(name, 'Name is required');
       }
       name.focus();
       return;
     }
-    // 4. Потом phone (телефон)
+    // 4. Then phone (telephone)
     if (!phone.value.trim()) {
       if (window.flashDateField) {
         window.flashDateField(phone);
       } else {
         flash(phone);
       }
-      // Используем .field-error элементы (как для полей дат)
+      // Using .field-error elements (as for date fields)
       if (window.showFieldError) {
         window.showFieldError(phone, 'Phone number is required');
       }
       phone.focus();
       return;
     }
-    // 5. Потом email (почта)
+    // 5. Then email (mail)
     if (!email.value.trim()) {
       if (window.flashDateField) {
         window.flashDateField(email);
       } else {
         flash(email);
       }
-      // Используем .field-error элементы (как для полей дат)
+      // Using .field-error elements (as for date fields)
       if (window.showFieldError) {
         window.showFieldError(email, 'Email is required');
       }
       email.focus();
       return;
     }
-    // 6. Потом guests (количество гостей)
+    // 6. Then guests (number of guests)
     if (!guests.value) {
       if (window.flashDateField) {
         window.flashDateField(guests);
       } else {
         flash(guests);
       }
-      // Используем .field-error элементы (как для полей дат)
+      // Using .field-error elements (as for date fields)
       if (window.showFieldError) {
         window.showFieldError(guests, 'At least 1 guest is required');
       }
       guests.focus();
       return;
     }
-    // 7. Потом pets (наличие питомцев)
-    if (!pets.value) {
+    // 7. Then dogs (0–2)
+    if (pets && !pets.value) {
       if (window.flashDateField) {
         window.flashDateField(pets);
       } else {
         flash(pets);
       }
-      // Используем .field-error элементы (как для полей дат)
+      // Using .field-error elements (as for date fields)
       if (window.showFieldError) {
-        window.showFieldError(pets, 'Please select an option');
+        window.showFieldError(pets, 'Please select how many dogs');
       }
       pets.focus();
       return;
     }
 
-    // Валидация порядка дат и минимального интервала
+    // Validation of date order and minimum interval
     const inDate = parseLocalDate(checkin.value);
     const outDate = parseLocalDate(checkout.value);
     if (inDate && outDate) {
-      // Проверка 1: дата выезда должна быть позже даты заезда
+      // Check 1: Check out date must be later than check in date
       if (outDate <= inDate) {
-        // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+        // Clearing setCustomValidity so as not to trigger HTML5 validation
         checkout.setCustomValidity('');
-        // Показываем ошибку в стиле .field-error (унифицированная система)
+        // Showing an error in the .field-error style (unified system)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkin, DATE_RANGE_MSG);
         }
-        // Мигаем оба поля красным
+        // Both fields flash red
         if (window.flashDateField) {
           window.flashDateField(checkin);
           window.flashDateField(checkout);
@@ -971,20 +981,20 @@ function initBookingForm(form, roomName) {
           flash(checkin);
           flash(checkout);
         }
-        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+        // Don't call focus() on date fields to avoid scrolling the page
         return;
       }
-      // Проверка 2: дата выезда должна быть минимум на 2 дня позже даты заезда
+      // Check 2: Departure date must be at least 2 days later than arrival date
       const checkinPlusOne = new Date(inDate);
       checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
       if (outDate <= checkinPlusOne) {
-        // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+        // Clearing setCustomValidity so as not to trigger HTML5 validation
         checkout.setCustomValidity('');
-        // Показываем ошибку в стиле .field-error (унифицированная система)
+        // Showing an error in the .field-error style (unified system)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkout, 'Check-out date must be at least 2 days after check-in date.');
         }
-        // Мигаем оба поля красным
+        // Both fields flash red
         if (window.flashDateField) {
           window.flashDateField(checkin);
           window.flashDateField(checkout);
@@ -992,29 +1002,29 @@ function initBookingForm(form, roomName) {
           flash(checkin);
           flash(checkout);
         }
-        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+        // Don't call focus() on date fields to avoid scrolling the page
         return;
       }
-      // Если все проверки пройдены, очищаем ошибки
+      // If all checks are passed, clear the errors
       checkout.setCustomValidity('');
     }
 
-    // Создаем бронирование через API
+    // Create a reservation via API
     if (window.BookingAPI && window.BookingAPI.handleBookingForm) {
-      // Используем новый API
+      // Using the new API
       window.BookingAPI.handleBookingForm(form).then((success) => {
         if (success) {
-          // Успешное создание бронирования - редирект на страницу подтверждения
-          // (редирект происходит в handleBookingForm)
+          // Successful booking creation - redirect to confirmation page
+          // (the redirect occurs in handleBookingForm)
         } else {
-          // Ошибка создания бронирования - ошибки уже показаны в handleBookingForm
+          // Error creating booking - errors already shown in handleBookingForm
         }
       }).catch((error) => {
         console.error('Booking submission error:', error);
         alert('Failed to create booking. Please try again.');
       });
     } else {
-      // Fallback на старое поведение, если booking.js не загружен
+      // Fallback to old behavior if booking.js is not loaded
       document.dispatchEvent(new CustomEvent('btb:order:record', { detail: {
         kind: 'room',
         room: roomName,
@@ -1030,17 +1040,17 @@ function initBookingForm(form, roomName) {
       alert(`${roomName}: booking request sent!\nCheck‑in: ${checkin.value}\nCheck‑out: ${checkout.value}\nGuests: ${guests.value}`);
       form.reset();
       
-      // Show wellness section automatically after successful booking (только для Basement)
+      // Show wellness section automatically after successful booking (only for Basement)
       if (roomName === 'Loki Suite') {
         showWellnessReminder();
-        // Удаляем флаг скрытия, чтобы секция показывалась после бронирования
+        // We remove the hide flag so that the section is shown after booking
         localStorage.removeItem('btb_wellness_hidden');
       }
     }
   });
 }
 
-// Инициализация формы для Basement
+// Initializing the form for Basement
 const initBasementBooking = () => {
   const form = document.querySelector('form.booking-form[data-room="Loki Suite"]');
   if (form) {
@@ -1048,38 +1058,38 @@ const initBasementBooking = () => {
   }
 };
 
-// Показ кастомного уведомления с более долгим временем показа
-// Унифицированная функция для показа ошибок дат (использует .field-error систему)
-// Оставлена для обратной совместимости, но теперь использует showFieldError внутри
+// Show custom notification with longer display time
+// Unified function for showing date errors (uses .field-error system)
+// Kept for backwards compatibility, but now uses showFieldError internally
 function showDateErrorNotification(input, message, isFirstMessage = false) {
-  // Используем унифицированную систему .field-error для всех полей
-  // Это обеспечивает единообразное отображение ошибок для всех типов полей
+  // We use a unified .field-error system for all fields
+  // This ensures consistent error display for all field types
   if (window.showFieldError) {
     window.showFieldError(input, message);
     return;
   }
   
-  // Fallback: если showFieldError недоступна, используем старую систему
-  // (для обратной совместимости, но это не должно происходить в нормальных условиях)
+  // Fallback: if showFieldError is not available, use the old system
+  // (for backwards compatibility, but this should not happen under normal circumstances)
   console.warn('showFieldError not available, using fallback');
   
-  // КРИТИЧНО: Для полей дат используется Flatpickr с altInput
-  // Оригинальный input скрыт (1px x 1px), поэтому нужно использовать видимый altInput для позиционирования
+  // CRITICAL: Flatpickr with altInput is used for date fields
+  // The original input is hidden (1px x 1px), so you need to use the visible altInput for positioning
   let targetInput = input;
   
-  // Проверяем, используется ли Flatpickr с altInput
+  // Checking if Flatpickr is used with altInput
   if (typeof flatpickr !== 'undefined' && input._flatpickr) {
     const fpInstance = input._flatpickr;
-    // Если есть altInput (видимое поле), используем его для позиционирования
+    // If there is an altInput (visible field), use it for positioning
     if (fpInstance.altInput) {
       targetInput = fpInstance.altInput;
     }
   }
   
-  // Используем существующую функцию showValidationBubble, если доступна
+  // Use the existing showValidationBubble function if available
   if (window.ValidationUtils && window.ValidationUtils.showBubble) {
     window.ValidationUtils.showBubble(targetInput, message);
-    // Показываем уведомление на 4 секунды вместо стандартных
+    // We show a notification for 4 seconds instead of the standard ones
     setTimeout(() => {
       if (window.hideValidationBubble) {
         window.hideValidationBubble();
@@ -1088,14 +1098,14 @@ function showDateErrorNotification(input, message, isFirstMessage = false) {
     return;
   }
   
-  // Fallback: используем локальную реализацию в стиле .btb-bubble
-  // Удаляем предыдущее уведомление, если есть
+  // Fallback: using a local implementation in the .btb-bubble style
+  // Delete the previous notification, if any.
   const existing = document.querySelector('#btb-bubble');
   if (existing) {
     existing.remove();
   }
   
-  // Создаем уведомление в стиле .btb-bubble
+  // Create a notification in the .btb-bubble style
   const bubble = document.createElement('div');
   bubble.id = 'btb-bubble';
   bubble.className = 'btb-bubble';
@@ -1112,7 +1122,7 @@ function showDateErrorNotification(input, message, isFirstMessage = false) {
   bubble.appendChild(msg);
   document.body.appendChild(bubble);
   
-  // Позиционируем уведомление СРАЗУ ПОД видимым инпутом
+  // Position the notification IMMEDIATELY UNDER the visible input
   setTimeout(() => {
     const rect = targetInput.getBoundingClientRect();
     const windowWidth = window.innerWidth || document.documentElement.clientWidth;
@@ -1128,7 +1138,7 @@ function showDateErrorNotification(input, message, isFirstMessage = false) {
     bubble.style.left = `${finalLeft}px`;
   }, 0);
   
-  // Показываем уведомление на 4 секунды
+  // Show notification for 4 seconds
   setTimeout(() => {
     if (bubble.parentNode) {
       bubble.style.opacity = '0';
@@ -1141,7 +1151,7 @@ function showDateErrorNotification(input, message, isFirstMessage = false) {
     }
   }, 4000);
   
-  // Убираем уведомление при клике
+  // Remove notification on click
   bubble.addEventListener('click', () => {
     if (bubble.parentNode) {
       bubble.style.opacity = '0';
@@ -1154,22 +1164,22 @@ function showDateErrorNotification(input, message, isFirstMessage = false) {
   });
 }
 
-// Блокировка занятых дат в date picker
+// Blocking busy dates in date picker
 async function initBlockedDatesForRoom(form, roomName) {
-  // Сразу помечаем инпуты, чтобы enhanceDateInputs их не обрабатывал
-  // Это важно, так как enhanceDateInputs вызывается синхронно в DOMContentLoaded,
-  // а initBlockedDatesForRoom - асинхронная функция
+  // We immediately mark the inputs so that enhanceDateInputs does not process them
+  // This is important because enhanceDateInputs is called synchronously on DOMContentLoaded.
+  // and initBlockedDatesForRoom is an asynchronous function
   const checkinInput = form.querySelector('#checkin');
   const checkoutInput = form.querySelector('#checkout');
   
   if (checkinInput && checkoutInput) {
-    // Помечаем инпуты ДО загрузки данных, чтобы enhanceDateInputs их не обработал
+    // We mark inputs BEFORE loading data so that enhanceDateInputs does not process them
     checkinInput.dataset.enhancedDate = '1';
     checkoutInput.dataset.enhancedDate = '1';
   }
   
   try {
-    // Получаем заблокированные даты (confirmed бронирования + ручные блокировки + Airbnb)
+    // We receive blocked dates (confirmed bookings + manual blocks + Airbnb)
     const params = new URLSearchParams({
       action: 'get_blocked_dates',
       room_name: roomName
@@ -1184,36 +1194,36 @@ async function initBlockedDatesForRoom(form, roomName) {
       return;
     }
     
-    // Проверяем, что ответ действительно JSON, а не HTML (ошибка PHP)
+    // Checking that the response is indeed JSON and not HTML (PHP error)
     const contentType = response.headers.get('content-type');
     let result = null;
     
     if (!contentType || !contentType.includes('application/json')) {
       const text = await response.text();
       console.error('API returned non-JSON response for blocked dates:', text.substring(0, 200));
-      // Продолжаем без блокировки дат - календарь должен работать
+      // We continue without blocking dates - the calendar should work
       result = { success: false, data: { blocked_dates: [], airbnb_blocked_dates: [] } };
     } else {
       try {
         result = await response.json();
       } catch (jsonError) {
         console.error('Failed to parse JSON response for blocked dates:', jsonError);
-        // Продолжаем без блокировки дат - календарь должен работать
+        // We continue without blocking dates - the calendar should work
         result = { success: false, data: { blocked_dates: [], airbnb_blocked_dates: [] } };
       }
     }
     
     let blockedDates = [];
     
-    // Получаем ручные блокировки (периоды)
+    // Getting manual blocking (periods)
     if (result && result.success && result.data?.blocked_dates) {
-      // Преобразуем периоды в список дат для календаря
+      // Converting periods into a list of dates for the calendar
       result.data.blocked_dates.forEach(blocked => {
         const dateFrom = blocked.date_from || blocked.blocked_date || '';
         const dateTo = blocked.date_to || blocked.blocked_date || '';
         
         if (dateFrom && dateTo) {
-          // Генерируем все даты в периоде, используя parseLocalDate для правильной обработки
+          // Generate all dates in the period using parseLocalDate for correct processing
           const fromDate = parseLocalDate(dateFrom);
           const toDate = parseLocalDate(dateTo);
           
@@ -1224,18 +1234,18 @@ async function initBlockedDatesForRoom(form, roomName) {
             }
           }
         } else if (blocked.blocked_date) {
-          // Обратная совместимость: если есть только blocked_date
+          // Backward compatibility: if there is only blocked_date
           blockedDates.push(blocked.blocked_date);
         }
       });
     }
     
-    // Получаем Airbnb заблокированные даты
+    // Getting Airbnb blocked dates
     if (result && result.success && result.data?.airbnb_blocked_dates) {
       blockedDates = [...blockedDates, ...result.data.airbnb_blocked_dates];
     }
     
-    // Получаем confirmed бронирования (опционально, не критично для работы календаря)
+    // We receive confirmed reservations (optional, not critical for the calendar)
     try {
       const bookingsParams = new URLSearchParams({
         action: 'get_bookings',
@@ -1253,7 +1263,7 @@ async function initBlockedDatesForRoom(form, roomName) {
           try {
             const bookingsResult = await bookingsResponse.json();
             if (bookingsResult.success && bookingsResult.data?.bookings) {
-        // Добавляем все даты из confirmed бронирований
+        // Adding all dates from confirmed bookings
         bookingsResult.data.bookings.forEach(booking => {
           const checkin = parseLocalDate(booking.checkin_date);
           const checkout = parseLocalDate(booking.checkout_date);
@@ -1271,43 +1281,43 @@ async function initBlockedDatesForRoom(form, roomName) {
             }
           } catch (bookingsError) {
             console.warn('Failed to parse bookings response:', bookingsError);
-            // Продолжаем без бронирований - календарь должен работать
+            // We continue without reservations - the calendar should work
           }
         }
       }
     } catch (bookingsFetchError) {
       console.warn('Failed to fetch bookings:', bookingsFetchError);
-      // Продолжаем без бронирований - календарь должен работать
+      // We continue without reservations - the calendar should work
     }
     
-    // Убираем дубликаты
+    // Removing duplicates
     blockedDates = [...new Set(blockedDates)];
     
-    // Блокируем даты в date inputs
+    // Blocking dates in date inputs
     const checkinInput = form.querySelector('#checkin');
     const checkoutInput = form.querySelector('#checkout');
     
     if (checkinInput && checkoutInput) {
-      // Проверяем, доступен ли Flatpickr
+      // Checking if Flatpickr is available
       const hasFlatpickr = typeof flatpickr !== 'undefined';
       
       if (hasFlatpickr) {
-        // Используем Flatpickr для визуальной блокировки дат
-        // blockedDates уже содержит все даты из периодов
+        // Using Flatpickr to visually block dates
+        // blockedDates already contains all dates from the periods
         const blockedDatesArray = blockedDates.map(date => {
           const d = parseLocalDate(date);
           return d ? d.toISOString().split('T')[0] : null;
         }).filter(Boolean);
         
-        // Отключаем enhanceDateInputs для этих полей (Flatpickr заменит нативный picker)
+        // Disable enhanceDateInputs for these fields (Flatpickr will replace the native picker)
         checkinInput.dataset.enhancedDate = '1';
         checkoutInput.dataset.enhancedDate = '1';
         
-        // Удаляем display proxy inputs от enhanceDateInputs, если они есть (чтобы избежать дублирования)
+        // Remove display proxy inputs from enhanceDateInputs if they exist (to avoid duplication)
         const checkinDisplay = checkinInput.previousElementSibling && checkinInput.previousElementSibling.tagName === 'INPUT' && checkinInput.previousElementSibling.readOnly ? checkinInput.previousElementSibling : null;
         const checkoutDisplay = checkoutInput.previousElementSibling && checkoutInput.previousElementSibling.tagName === 'INPUT' && checkoutInput.previousElementSibling.readOnly ? checkoutInput.previousElementSibling : null;
         
-        // Удаляем display proxy, чтобы избежать дублирования с Flatpickr
+        // Removing display proxy to avoid duplication with Flatpickr
         if (checkinDisplay) {
           checkinDisplay.remove();
         }
@@ -1315,8 +1325,8 @@ async function initBlockedDatesForRoom(form, roomName) {
           checkoutDisplay.remove();
         }
         
-        // Восстанавливаем нормальное состояние inputs для Flatpickr
-        // Flatpickr сам стилизует inputs, поэтому их нужно оставить видимыми
+        // Restoring the normal state of inputs for Flatpickr
+        // Flatpickr styles the inputs itself, so they need to be left visible
         checkinInput.style.position = '';
         checkinInput.style.opacity = '';
         checkinInput.style.pointerEvents = '';
@@ -1337,24 +1347,24 @@ async function initBlockedDatesForRoom(form, roomName) {
         checkoutInput.style.clip = '';
         checkoutInput.removeAttribute('readonly');
         
-        // Объявляем переменные для Flatpickr экземпляров в области видимости функции
+        // Declaring variables for Flatpickr instances in the function scope
         let fpCheckin = null;
         let fpCheckout = null;
         
-        // Функция для получения дат, которые нужно заблокировать для checkout (до checkin + 1 день)
+        // Function for getting dates that need to be blocked for checkout (before checkin + 1 day)
         const getDisabledDatesForCheckout = () => {
           const disabledDates = [...blockedDatesArray];
           
-          // Если выбрана дата checkin, блокируем все даты до checkin + 1 день
+          // If checkin date is selected, we block all dates before checkin + 1 day
           if (checkinInput.value) {
             const checkinDate = parseLocalDate(checkinInput.value);
             if (checkinDate) {
-              // Блокируем все даты до checkin включительно
+              // We block all dates up to and including checkin
               const today = new Date();
               today.setHours(0, 0, 0, 0);
               let currentDate = new Date(today);
               
-              // Блокируем все даты до checkin
+              // We block all dates until checkin
               while (currentDate <= checkinDate) {
                 const dateStr = formatDateString(currentDate);
                 if (!disabledDates.includes(dateStr)) {
@@ -1363,7 +1373,7 @@ async function initBlockedDatesForRoom(form, roomName) {
                 currentDate.setDate(currentDate.getDate() + 1);
               }
               
-              // Блокируем checkin + 1 день
+              // We block checkin + 1 day
               const checkinPlusOne = new Date(checkinDate);
               checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
               const checkinPlusOneStr = formatDateString(checkinPlusOne);
@@ -1376,40 +1386,40 @@ async function initBlockedDatesForRoom(form, roomName) {
           return disabledDates;
         };
         
-        // Инициализируем Flatpickr для check-in
+        // Initializing Flatpickr for check-in
         if (!checkinInput.dataset.flatpickrInitialized) {
-          // Убеждаемся, что тип input остается "date" для HTML5 валидации
+          // Making sure the input type remains "date" for HTML5 validation
           checkinInput.type = 'date';
           
           fpCheckin = flatpickr(checkinInput, {
             dateFormat: 'Y-m-d',
             disable: blockedDatesArray,
             minDate: 'today',
-            allowInput: false, // Отключаем прямой ввод в input
-            clickOpens: true, // Открываем календарь при клике
-            altInput: true, // Используем альтернативный input для отображения с placeholder
-            altFormat: 'F j, Y', // Формат отображения даты (например: "November 7, 2025")
-            placeholder: 'dd.mm.yyyy', // Плейсхолдер для altInput (соответствует формату браузера)
+            allowInput: false, // Disable direct input to input
+            clickOpens: true, // Open the calendar when clicked
+            altInput: true, // Using an alternative input to display with placeholder
+            altFormat: 'F j, Y', // Date display format (for example: "November 7, 2025")
+            placeholder: 'dd.mm.yyyy', // Placeholder for altInput (corresponds to browser format)
             locale: {
               firstDayOfWeek: 1,
               weekdays: {
-                shorthand: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
-                longhand: ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+                shorthand: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                longhand: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
               },
               months: {
-                shorthand: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'],
-                longhand: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+                shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                longhand: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
               }
             },
             onReady: function(selectedDates, dateStr, instance) {
-              // Убеждаемся, что родительский контейнер имеет position: relative
+              // Make sure the parent container has position: relative
               const parent = instance.input.parentElement;
               if (parent && window.getComputedStyle(parent).position === 'static') {
                 parent.style.position = 'relative';
               }
               
-              // Скрываем оригинальный input, так как используем altInput для отображения
-              // Убираем его далеко в сторону, чтобы он не перехватывал клики
+              // We hide the original input because we use altInput for display
+              // We move it far to the side so that it does not intercept clicks
               if (instance.input) {
                 instance.input.style.position = 'absolute';
                 instance.input.style.opacity = '0';
@@ -1421,70 +1431,70 @@ async function initBlockedDatesForRoom(form, roomName) {
                 instance.input.style.pointerEvents = 'none';
                 instance.input.style.left = '-9999px';
                 instance.input.style.top = '-9999px';
-                instance.input.style.visibility = 'visible'; // Видим для браузера, но невидим для пользователя
+                instance.input.style.visibility = 'visible'; // Visible to the browser, but invisible to the user
               }
               
-              // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+              // Making sure altInput has the correct size and clickable area
               if (instance.altInput) {
                 instance.altInput.style.width = '100%';
                 instance.altInput.style.cursor = 'pointer';
-                // Устанавливаем placeholder после полной инициализации
+                // Installing placeholder after full initialization
                 if (!instance.altInput.value) {
                   instance.altInput.placeholder = 'dd.mm.yyyy';
                 }
               }
             },
             onChange: function(selectedDates, dateStr, instance) {
-              // Проверяем, не заблокирована ли выбранная дата
+              // Checking if the selected date is blocked
               if (dateStr && blockedDatesArray.includes(dateStr)) {
                 instance.clear();
                 checkinInput.value = '';
-                // Восстанавливаем placeholder после очистки
+                // Restoring the placeholder after cleaning
                 if (instance.altInput) {
                   instance.altInput.placeholder = 'dd.mm.yyyy';
                   instance.altInput.value = '';
                 }
                 checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
-                // Показываем ошибку в стиле .field-error (как для обычных полей)
+                // Show the error in the .field-error style (as for regular fields)
                 if (window.showDateFieldError) {
                   window.showDateFieldError(checkinInput, 'This date is unavailable. Please select another date.');
                 }
                 flashDateField(checkinInput);
                 return;
               }
-              // Убеждаемся, что значение реального input обновлено
+              // Make sure that the value of the real input is updated
               if (dateStr) {
                 checkinInput.value = dateStr;
-                // Убеждаемся, что тип остается "date"
+                // Make sure the type remains "date"
                 checkinInput.type = 'date';
-                // Очищаем ошибку, если дата выбрана корректно
+                // Clear the error if the date is selected correctly
                 if (window.clearDateFieldError) {
                   window.clearDateFieldError(checkinInput);
                 }
-                // Вызываем события для валидации формы
+                // Calling events to validate the form
                 checkinInput.dispatchEvent(new Event('input', { bubbles: true }));
                 checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
                 
                 
-                // Обновляем заблокированные даты для checkout при изменении checkin
+                // Update blocked dates for checkout when checkin changes
                 if (fpCheckout) {
                   const updatedDisabledDates = getDisabledDatesForCheckout();
                   fpCheckout.set('disable', updatedDisabledDates);
                   
-                  // Если checkout уже выбран и он стал невалидным, показываем уведомление, но не очищаем
-                  // Пользователь сам исправит дату выезда
+                  // If checkout is already selected and it has become invalid, we show a notification, but do not clear it
+                  // The user will correct the departure date himself
                   if (checkoutInput.value) {
                     const checkoutDate = parseLocalDate(checkoutInput.value);
                     const checkinDate = parseLocalDate(dateStr);
                     if (checkinDate && checkoutDate) {
-                      // Проверяем, не выбран ли checkin позже checkout
+                      // Check if checkin is selected later than checkout
                       if (checkinDate >= checkoutDate) {
-                        // Не очищаем checkout - пусть пользователь сам исправляет
-                        // Показываем ошибку в стиле .field-error (как для обычных полей)
+                        // We don’t clear checkout - let the user fix it himself
+                        // Show the error in the .field-error style (as for regular fields)
                         if (window.showDateFieldError) {
                           window.showDateFieldError(checkinInput, 'Check-out cannot be earlier than Check-in.\nPlease select a later date.');
                         }
-                        // Мигаем оба поля красным
+                        // Both fields flash red
                         if (window.flashDateField) {
                           window.flashDateField(checkinInput);
                           window.flashDateField(checkoutInput);
@@ -1495,12 +1505,12 @@ async function initBlockedDatesForRoom(form, roomName) {
                         const checkinPlusOne = new Date(checkinDate);
                         checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
                         if (checkoutDate <= checkinPlusOne) {
-                          // Не очищаем checkout - пусть пользователь сам исправляет
-                          // Показываем ошибку в стиле .field-error (как для обычных полей)
+                          // We don’t clear checkout - let the user fix it himself
+                          // Show the error in the .field-error style (as for regular fields)
                           if (window.showDateFieldError) {
                             window.showDateFieldError(checkoutInput, 'Check-out date must be at least 2 days after check-in date.');
                           }
-                          // Мигаем оба поля красным
+                          // Both fields flash red
                           if (window.flashDateField) {
                             window.flashDateField(checkinInput);
                             window.flashDateField(checkoutInput);
@@ -1514,14 +1524,14 @@ async function initBlockedDatesForRoom(form, roomName) {
                 }
               } else {
                 checkinInput.value = '';
-                // Восстанавливаем placeholder если значение пустое
+                // Restore placeholder if the value is empty
                 if (instance.altInput) {
                   instance.altInput.placeholder = 'dd.mm.yyyy';
                   instance.altInput.value = '';
                 }
                 checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // Обновляем заблокированные даты для checkout при очистке checkin
+                // Update blocked dates for checkout when clearing checkin
                 if (fpCheckout) {
                   fpCheckout.set('disable', blockedDatesArray);
                 }
@@ -1530,16 +1540,16 @@ async function initBlockedDatesForRoom(form, roomName) {
           });
           checkinInput.dataset.flatpickrInitialized = '1';
           
-          // Скрываем оригинальный input сразу после инициализации
+          // Hiding the original input immediately after initialization
           setTimeout(() => {
             if (fpCheckin.input && fpCheckin.altInput) {
-              // Убеждаемся, что родительский контейнер имеет position: relative
+              // Make sure the parent container has position: relative
               const parent = fpCheckin.input.parentElement;
               if (parent && window.getComputedStyle(parent).position === 'static') {
                 parent.style.position = 'relative';
               }
               
-              // Убираем скрытый input далеко в сторону, чтобы он не перехватывал клики
+              // We move the hidden input far to the side so that it does not intercept clicks
               fpCheckin.input.style.position = 'absolute';
               fpCheckin.input.style.opacity = '0';
               fpCheckin.input.style.width = '0';
@@ -1552,11 +1562,11 @@ async function initBlockedDatesForRoom(form, roomName) {
               fpCheckin.input.style.top = '-9999px';
               fpCheckin.input.style.visibility = 'visible';
               
-              // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+              // Making sure altInput has the correct size and clickable area
               fpCheckin.altInput.style.width = '100%';
               fpCheckin.altInput.style.cursor = 'pointer';
               
-              // Убеждаемся, что placeholder установлен в altInput после инициализации
+              // Make sure placeholder is set to altInput after initialization
               if (!fpCheckin.altInput.value) {
                 fpCheckin.altInput.placeholder = 'dd.mm.yyyy';
               }
@@ -1564,40 +1574,40 @@ async function initBlockedDatesForRoom(form, roomName) {
           }, 50);
         }
         
-        // Инициализируем Flatpickr для check-out
+        // Initializing Flatpickr for check-out
         if (!checkoutInput.dataset.flatpickrInitialized) {
-          // Убеждаемся, что тип input остается "date" для HTML5 валидации
+          // Making sure the input type remains "date" for HTML5 validation
           checkoutInput.type = 'date';
           
           fpCheckout = flatpickr(checkoutInput, {
             dateFormat: 'Y-m-d',
             disable: getDisabledDatesForCheckout(),
             minDate: 'today',
-            allowInput: false, // Отключаем прямой ввод в input
-            clickOpens: true, // Открываем календарь при клике
-            altInput: true, // Используем альтернативный input для отображения с placeholder
-            altFormat: 'F j, Y', // Формат отображения даты (например: "November 7, 2025")
-            placeholder: 'dd.mm.yyyy', // Плейсхолдер для altInput (соответствует формату браузера)
+            allowInput: false, // Disable direct input to input
+            clickOpens: true, // Open the calendar when clicked
+            altInput: true, // Using an alternative input to display with placeholder
+            altFormat: 'F j, Y', // Date display format (for example: "November 7, 2025")
+            placeholder: 'dd.mm.yyyy', // Placeholder for altInput (corresponds to browser format)
             locale: {
               firstDayOfWeek: 1,
               weekdays: {
-                shorthand: ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'],
-                longhand: ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье']
+                shorthand: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                longhand: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
               },
               months: {
-                shorthand: ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'],
-                longhand: ['Январь', 'Февраль', 'Март', 'Апрель', 'Май', 'Июнь', 'Июль', 'Август', 'Сентябрь', 'Октябрь', 'Ноябрь', 'Декабрь']
+                shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                longhand: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
               }
             },
             onReady: function(selectedDates, dateStr, instance) {
-              // Убеждаемся, что родительский контейнер имеет position: relative
+              // Make sure the parent container has position: relative
               const parent = instance.input.parentElement;
               if (parent && window.getComputedStyle(parent).position === 'static') {
                 parent.style.position = 'relative';
               }
               
-              // Скрываем оригинальный input, так как используем altInput для отображения
-              // Убираем его далеко в сторону, чтобы он не перехватывал клики
+              // We hide the original input because we use altInput for display
+              // We move it far to the side so that it does not intercept clicks
               if (instance.input) {
                 instance.input.style.position = 'absolute';
                 instance.input.style.opacity = '0';
@@ -1609,40 +1619,40 @@ async function initBlockedDatesForRoom(form, roomName) {
                 instance.input.style.pointerEvents = 'none';
                 instance.input.style.left = '-9999px';
                 instance.input.style.top = '-9999px';
-                instance.input.style.visibility = 'visible'; // Видим для браузера, но невидим для пользователя
+                instance.input.style.visibility = 'visible'; // Visible to the browser, but invisible to the user
               }
               
-              // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+              // Making sure altInput has the correct size and clickable area
               if (instance.altInput) {
                 instance.altInput.style.width = '100%';
                 instance.altInput.style.cursor = 'pointer';
-                // Устанавливаем placeholder после полной инициализации
+                // Installing placeholder after full initialization
                 if (!instance.altInput.value) {
                   instance.altInput.placeholder = 'dd.mm.yyyy';
                 }
               }
             },
             onOpen: function(selectedDates, dateStr, instance) {
-              // Обновляем заблокированные даты при открытии календаря
+              // Update blocked dates when opening the calendar
               const updatedDisabledDates = getDisabledDatesForCheckout();
               instance.set('disable', updatedDisabledDates);
             },
             onChange: function(selectedDates, dateStr, instance) {
-              // Получаем список заблокированных дат (включая даты до checkin + 1)
+              // We get a list of blocked dates (including dates before checkin + 1)
               const disabledDates = getDisabledDatesForCheckout();
               
-              // Проверяем, не заблокирована ли выбранная дата
+              // Checking if the selected date is blocked
               if (dateStr && disabledDates.includes(dateStr)) {
                 instance.clear();
                 checkoutInput.value = '';
-                // Восстанавливаем placeholder после очистки
+                // Restoring the placeholder after cleaning
                 if (instance.altInput) {
                   instance.altInput.placeholder = 'dd.mm.yyyy';
                   instance.altInput.value = '';
                 }
                 checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
                 
-                // Определяем причину блокировки и показываем соответствующее уведомление
+                // We determine the reason for blocking and display the corresponding notification
                 let errorMessage = 'This date is unavailable. Please select another date.';
                 if (checkinInput.value) {
                   const checkinDate = parseLocalDate(checkinInput.value);
@@ -1656,28 +1666,28 @@ async function initBlockedDatesForRoom(form, roomName) {
                   }
                 }
                 
-                // Показываем ошибку в стиле .field-error (как для обычных полей)
+                // Show the error in the .field-error style (as for regular fields)
                 if (window.showDateFieldError) {
                   window.showDateFieldError(checkoutInput, errorMessage);
                 }
                 flashDateField(checkoutInput);
                 return;
               }
-              // Убеждаемся, что значение реального input обновлено
+              // Make sure that the value of the real input is updated
               if (dateStr) {
                 checkoutInput.value = dateStr;
-                // Убеждаемся, что тип остается "date"
+                // Make sure the type remains "date"
                 checkoutInput.type = 'date';
-                // Очищаем ошибку, если дата выбрана корректно
+                // Clear the error if the date is selected correctly
                 if (window.clearDateFieldError) {
                   window.clearDateFieldError(checkoutInput);
                 }
-                // Вызываем события для валидации формы
+                // Calling events to validate the form
                 checkoutInput.dispatchEvent(new Event('input', { bubbles: true }));
                 checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
               } else {
                 checkoutInput.value = '';
-                // Восстанавливаем placeholder если значение пустое
+                // Restore placeholder if the value is empty
                 if (instance.altInput) {
                   instance.altInput.placeholder = 'dd.mm.yyyy';
                   instance.altInput.value = '';
@@ -1688,16 +1698,16 @@ async function initBlockedDatesForRoom(form, roomName) {
           });
           checkoutInput.dataset.flatpickrInitialized = '1';
           
-          // Скрываем оригинальный input сразу после инициализации
+          // Hiding the original input immediately after initialization
           setTimeout(() => {
             if (fpCheckout.input && fpCheckout.altInput) {
-              // Убеждаемся, что родительский контейнер имеет position: relative
+              // Make sure the parent container has position: relative
               const parent = fpCheckout.input.parentElement;
               if (parent && window.getComputedStyle(parent).position === 'static') {
                 parent.style.position = 'relative';
               }
               
-              // Убираем скрытый input далеко в сторону, чтобы он не перехватывал клики
+              // We move the hidden input far to the side so that it does not intercept clicks
               fpCheckout.input.style.position = 'absolute';
               fpCheckout.input.style.opacity = '0';
               fpCheckout.input.style.width = '0';
@@ -1710,19 +1720,19 @@ async function initBlockedDatesForRoom(form, roomName) {
               fpCheckout.input.style.top = '-9999px';
               fpCheckout.input.style.visibility = 'visible';
               
-              // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+              // Making sure altInput has the correct size and clickable area
               fpCheckout.altInput.style.width = '100%';
               fpCheckout.altInput.style.cursor = 'pointer';
             }
           }, 50);
         }
       } else {
-        // Fallback: используем стандартную валидацию с улучшенным уведомлением
+        // Fallback: using standard validation with improved notification
         const validateDateSelection = (input, dateValue) => {
           if (!dateValue) return true;
           const dateStr = dateValue;
           if (blockedDates.includes(dateStr)) {
-            // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+            // Clearing setCustomValidity so as not to trigger HTML5 validation
             input.setCustomValidity('');
             input.value = '';
             return false;
@@ -1756,12 +1766,12 @@ async function initBlockedDatesForRoom(form, roomName) {
     }
   } catch (error) {
     console.error('Error initializing blocked dates:', error);
-    // Не прерываем выполнение - продолжаем инициализацию формы без блокировки дат
-    // Это позволит календарю работать, даже если API недоступен
+    // We do not interrupt execution - we continue to initialize the form without blocking dates
+    // This will allow the calendar to work even if the API is not available
   }
 }
 
-// Форматирование даты в YYYY-MM-DD
+// Formatting date in YYYY-MM-DD
 function formatDateString(date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -1769,7 +1779,7 @@ function formatDateString(date) {
   return `${year}-${month}-${day}`;
 }
 
-// Инициализация форм для остальных комнат
+// Initializing forms for other rooms
 const initOtherRoomWellness = () => {
   const forms = document.querySelectorAll('form.booking-form[data-custom-handler]:not([data-room="Loki Suite"])');
   forms.forEach(form => {
@@ -1827,26 +1837,26 @@ function initMassageTimeRestrictions() {
     if (dateInput && typeof flatpickr !== 'undefined' && !dateInput.dataset.flatpickrInitialized) {
       // Mark as enhanced BEFORE Flatpickr initialization to prevent enhanceDateInputs from processing it
       dateInput.dataset.enhancedDate = '1';
-      // Убеждаемся, что тип input остается "date" для HTML5 валидации
+      // Making sure the input type remains "date" for HTML5 validation
       dateInput.type = 'date';
       
       const fpDate = flatpickr(dateInput, {
         dateFormat: 'Y-m-d',
         minDate: 'today',
-        allowInput: false, // Отключаем прямой ввод в input
-        clickOpens: true, // Открываем календарь при клике
-        altInput: true, // Используем альтернативный input для отображения с placeholder
-        altFormat: 'F j, Y', // Формат отображения даты (например: "November 7, 2025")
-        placeholder: 'dd.mm.yyyy', // Плейсхолдер для altInput (соответствует формату браузера)
+        allowInput: false, // Disable direct input to input
+        clickOpens: true, // Open the calendar when clicked
+        altInput: true, // Using an alternative input to display with placeholder
+        altFormat: 'F j, Y', // Date display format (for example: "November 7, 2025")
+        placeholder: 'dd.mm.yyyy', // Placeholder for altInput (corresponds to browser format)
         onReady: function(selectedDates, dateStr, instance) {
-          // Убеждаемся, что родительский контейнер имеет position: relative
+          // Make sure the parent container has position: relative
           const parent = instance.input.parentElement;
           if (parent && window.getComputedStyle(parent).position === 'static') {
             parent.style.position = 'relative';
           }
           
-          // Скрываем оригинальный input, так как используем altInput для отображения
-          // Убираем его далеко в сторону, чтобы он не перехватывал клики
+          // We hide the original input because we use altInput for display
+          // We move it far to the side so that it does not intercept clicks
           if (instance.input) {
             instance.input.style.position = 'absolute';
             instance.input.style.opacity = '0';
@@ -1858,31 +1868,31 @@ function initMassageTimeRestrictions() {
             instance.input.style.pointerEvents = 'none';
             instance.input.style.left = '-9999px';
             instance.input.style.top = '-9999px';
-            instance.input.style.visibility = 'visible'; // Видим для браузера, но невидим для пользователя
+            instance.input.style.visibility = 'visible'; // Visible to the browser, but invisible to the user
           }
           
-          // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+          // Making sure altInput has the correct size and clickable area
           if (instance.altInput) {
             instance.altInput.style.width = '100%';
             instance.altInput.style.cursor = 'pointer';
-            // Устанавливаем placeholder после полной инициализации
+            // Installing placeholder after full initialization
             if (!instance.altInput.value) {
               instance.altInput.placeholder = 'dd.mm.yyyy';
             }
           }
         },
         onChange: function(selectedDates, dateStr, instance) {
-          // Убеждаемся, что значение реального input обновлено
+          // Make sure that the value of the real input is updated
           if (dateStr) {
             dateInput.value = dateStr;
-            // Убеждаемся, что тип остается "date"
+            // Make sure the type remains "date"
             dateInput.type = 'date';
-            // Вызываем события для валидации формы
+            // Calling events to validate the form
             dateInput.dispatchEvent(new Event('input', { bubbles: true }));
             dateInput.dispatchEvent(new Event('change', { bubbles: true }));
           } else {
             dateInput.value = '';
-            // Восстанавливаем placeholder если значение пустое
+            // Restore placeholder if the value is empty
             if (instance.altInput) {
               instance.altInput.placeholder = 'dd.mm.yyyy';
               instance.altInput.value = '';
@@ -1894,16 +1904,16 @@ function initMassageTimeRestrictions() {
       
       dateInput.dataset.flatpickrInitialized = '1';
       
-      // Скрываем оригинальный input сразу после инициализации
+      // Hiding the original input immediately after initialization
       setTimeout(() => {
         if (fpDate.input && fpDate.altInput) {
-          // Убеждаемся, что родительский контейнер имеет position: relative
+          // Make sure the parent container has position: relative
           const parent = fpDate.input.parentElement;
           if (parent && window.getComputedStyle(parent).position === 'static') {
             parent.style.position = 'relative';
           }
           
-          // Убираем скрытый input далеко в сторону, чтобы он не перехватывал клики
+          // We move the hidden input far to the side so that it does not intercept clicks
           fpDate.input.style.position = 'absolute';
           fpDate.input.style.opacity = '0';
           fpDate.input.style.width = '0';
@@ -1916,29 +1926,29 @@ function initMassageTimeRestrictions() {
           fpDate.input.style.top = '-9999px';
           fpDate.input.style.visibility = 'visible';
           
-          // Убеждаемся, что altInput имеет правильный размер и кликабельную область
+          // Making sure altInput has the correct size and clickable area
           fpDate.altInput.style.width = '100%';
           fpDate.altInput.style.cursor = 'pointer';
           
-          // Убеждаемся, что placeholder установлен в altInput после инициализации
+          // Make sure placeholder is set to altInput after initialization
           if (!fpDate.altInput.value) {
             fpDate.altInput.placeholder = 'dd.mm.yyyy';
           }
         }
       }, 50);
       
-      // Загружаем заблокированные даты для массажа
+      // Loading blocked dates for massage
       initBlockedDatesForMassage(massageForm, fpDate);
     }
   }
 }
 
-// Блокировка занятых дат в date picker для массажа
+// Blocking busy dates in date picker for massage
 async function initBlockedDatesForMassage(form, fpInstance) {
   if (!form || !fpInstance) return;
   
   try {
-    // Получаем заблокированные даты для массажа (ручные блокировки для "Massage" и "__all__")
+    // Getting blocked dates for massage (manual blocking for "Massage" and "__all__")
     const params = new URLSearchParams({
       action: 'get_blocked_dates',
       room_name: 'Massage'
@@ -1953,32 +1963,32 @@ async function initBlockedDatesForMassage(form, fpInstance) {
       return;
     }
     
-    // Проверяем, что ответ действительно JSON, а не HTML (ошибка PHP)
+    // Checking that the response is indeed JSON and not HTML (PHP error)
     const contentType = response.headers.get('content-type');
     let result = null;
     
     if (!contentType || !contentType.includes('application/json')) {
       const text = await response.text();
       console.error('API returned non-JSON response for blocked dates:', text.substring(0, 200));
-      // Продолжаем без блокировки дат - календарь должен работать
+      // We continue without blocking dates - the calendar should work
       result = { success: false, data: { blocked_dates: [] } };
     } else {
       try {
         result = await response.json();
       } catch (jsonError) {
         console.error('Failed to parse JSON response for blocked dates:', jsonError);
-        // Продолжаем без блокировки дат - календарь должен работать
+        // We continue without blocking dates - the calendar should work
         result = { success: false, data: { blocked_dates: [] } };
       }
     }
     
     let blockedDates = [];
     
-    // Получаем ручные блокировки (периоды)
+    // Getting manual blocking (periods)
     if (result && result.success && result.data?.blocked_dates) {
-      // Преобразуем периоды в список дат для календаря
+      // Converting periods into a list of dates for the calendar
       result.data.blocked_dates.forEach(blocked => {
-        // Учитываем блокировки для "Massage" и "__all__" (для всех)
+        // We take into account blocking for "Massage" and "__all__" (for everyone)
         const isRelevant = blocked.room_name === 'Massage' || blocked.room_name === '__all__';
         
         if (isRelevant) {
@@ -1986,7 +1996,7 @@ async function initBlockedDatesForMassage(form, fpInstance) {
           const dateTo = blocked.date_to || blocked.blocked_date || '';
           
           if (dateFrom && dateTo) {
-            // Генерируем все даты в периоде, используя parseLocalDate для правильной обработки
+            // Generate all dates in the period using parseLocalDate for correct processing
             const fromDate = parseLocalDate(dateFrom);
             const toDate = parseLocalDate(dateTo);
             
@@ -1997,33 +2007,33 @@ async function initBlockedDatesForMassage(form, fpInstance) {
               }
             }
           } else if (blocked.blocked_date) {
-            // Обратная совместимость: если есть только blocked_date
+            // Backward compatibility: if there is only blocked_date
             blockedDates.push(blocked.blocked_date);
           }
         }
       });
     }
     
-    // Убираем дубликаты
+    // Removing duplicates
     blockedDates = [...new Set(blockedDates)];
     
-    // Блокируем даты в Flatpickr
+    // Blocking dates in Flatpicr
     if (blockedDates.length > 0) {
-      // Преобразуем даты в формат для Flatpickr (YYYY-MM-DD)
+      // Convert dates to Flatpickr format (YYYY-MM-DD)
       const blockedDatesArray = blockedDates.map(date => {
         const d = parseLocalDate(date);
         return d ? d.toISOString().split('T')[0] : null;
       }).filter(Boolean);
       
-      // Обновляем опцию disable в Flatpickr
+      // Update the disable option in Flatpickr
       if (fpInstance && fpInstance.config) {
-        // Получаем текущие заблокированные даты
+        // Getting the current blocked dates
         const currentDisabled = fpInstance.config.disable || [];
         
-        // Объединяем с новыми заблокированными датами
+        // Combine with new blocked dates
         const allDisabled = [...new Set([...currentDisabled, ...blockedDatesArray])];
         
-        // Обновляем конфигурацию Flatpickr
+        // Updating the Flatpickr configuration
         fpInstance.set('disable', allDisabled);
         
         console.log(`Blocked dates initialized for Massage: ${blockedDates.length} dates`);
@@ -2033,7 +2043,7 @@ async function initBlockedDatesForMassage(form, fpInstance) {
     }
   } catch (error) {
     console.error('Failed to initialize blocked dates for massage:', error);
-    // Продолжаем без блокировки дат - календарь должен работать
+    // We continue without blocking dates - the calendar should work
   }
 }
 
@@ -2210,14 +2220,14 @@ function enhanceDateInputs(root) {
     display.placeholder = 'dd.mm.yyyy';
     display.readOnly = true;
     
-    // Убеждаемся, что родительский контейнер имеет position: relative для правильного позиционирования
+    // Make sure the parent container has position: relative for proper positioning
     const parent = real.parentElement;
     if (parent && window.getComputedStyle(parent).position === 'static') {
       parent.style.position = 'relative';
     }
     
     // Insert display before real; keep real hidden but present for JS/submit
-    // Скрываем реальный input полностью, чтобы он не перехватывал клики
+    // We hide the real input completely so that it does not intercept clicks
     real.style.position = 'absolute';
     real.style.opacity = '0';
     real.style.pointerEvents = 'none';
@@ -2226,10 +2236,10 @@ function enhanceDateInputs(root) {
     real.style.margin = '0';
     real.style.padding = '0';
     real.style.border = 'none';
-    real.style.left = '-9999px'; // Убираем далеко в сторону, чтобы не мешал
+    real.style.left = '-9999px'; // Move it far to the side so as not to interfere
     real.style.top = '-9999px';
     
-    // Убеждаемся, что визуальный display input имеет правильный размер и кликабельную область
+    // Making sure the visual display input has the correct size and clickable area
     display.style.width = '100%';
     display.style.cursor = 'pointer';
     
@@ -2394,14 +2404,14 @@ function attachCheckinCheckoutConstraint(container, checkinSelector, checkoutSel
       if (checkout.value) {
         const out = parseLocalDate(checkout.value);
         if (out <= d) {
-          // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+          // Clearing setCustomValidity so as not to trigger HTML5 validation
           checkout.setCustomValidity('');
-          // Для полей дат используем .field-error элементы (унифицированная система)
+          // For date fields we use .field-error elements (unified system)
           if (window.showDateFieldError) {
             window.showDateFieldError(checkout, DATE_RANGE_MSG);
           }
           flashDateField(checkout);
-          // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+          // Don't call focus() on date fields to avoid scrolling the page
         }
       }
     };
@@ -2410,14 +2420,14 @@ function attachCheckinCheckoutConstraint(container, checkinSelector, checkoutSel
       const dIn = parseLocalDate(checkin.value);
       const dOut = parseLocalDate(checkout.value);
       if (dOut <= dIn) {
-        // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+        // Clearing setCustomValidity so as not to trigger HTML5 validation
         checkout.setCustomValidity('');
-        // Для полей дат используем .field-error элементы (унифицированная система)
+        // For date fields we use .field-error elements (unified system)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkout, DATE_RANGE_MSG);
         }
         flashDateField(checkout);
-        // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+        // Don't call focus() on date fields to avoid scrolling the page
       } else {
         checkout.setCustomValidity('');
         clearDateFieldFlash(checkout);
@@ -2431,9 +2441,9 @@ function attachCheckinCheckoutConstraint(container, checkinSelector, checkoutSel
       const dIn = parseLocalDate(checkin.value);
       const dOut = parseLocalDate(checkout.value);
       if (dIn && dOut && dOut <= dIn) {
-        // Очищаем setCustomValidity, чтобы не вызывать HTML5 валидацию
+        // Clearing setCustomValidity so as not to trigger HTML5 validation
         checkout.setCustomValidity('');
-        // Для полей дат используем .field-error элементы (унифицированная система)
+        // For date fields we use .field-error elements (unified system)
         if (window.showDateFieldError) {
           window.showDateFieldError(checkout, DATE_RANGE_MSG);
         }
@@ -2477,7 +2487,7 @@ window.applyCheckinCheckoutConstraint = function(root) {
   };
 
   const showBubble = () => {
-    // Используем унифицированную систему .field-error вместо .btb-bubble
+    // We use the unified .field-error system instead of .btb-bubble
     if (window.showDateFieldError) {
       window.showDateFieldError(checkout, DATE_RANGE_MSG);
     }
@@ -2496,7 +2506,7 @@ window.applyCheckinCheckoutConstraint = function(root) {
       hideBubble();
       showBubble();
       flash(checkout);
-      // Не вызываем focus() для полей дат, чтобы не прокручивать страницу
+      // Don't call focus() on date fields to avoid scrolling the page
     } else {
       hideBubble();
       clearDateFieldFlash(checkout);
@@ -2557,24 +2567,32 @@ const resolveImages = () => {
 const resolveGalleryImages = resolveImages;
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Глобально отключаем HTML5 валидацию для всех форм на сайте
-  // Это предотвращает появление серых подсказок браузера
+  // Globally disable HTML5 validation for all forms on the site
+  // This prevents browser gray prompts from appearing
   document.querySelectorAll('form').forEach(form => {
     form.setAttribute('novalidate', 'novalidate');
-    // Дополнительно: перехватываем submit на раннем этапе, чтобы предотвратить HTML5 валидацию
+    // We do not touch forms with an explicit handler and the password change modal (dashboard.js - in the bubble phase;
+    // otherwise stopImmediatePropagation here will kill the entire submit and the button “does nothing”).
+    const skipCaptureBlock =
+      form.dataset.hasSubmitHandler ||
+      form.id === 'change-password-form' ||
+      form.id === 'message-form' ||
+      (form.closest && form.closest('#password-modal'));
+    if (skipCaptureBlock) {
+      return;
+    }
     form.addEventListener('submit', (e) => {
-      // Если форма еще не имеет обработчика submit, предотвращаем стандартное поведение
       if (!form.dataset.hasSubmitHandler) {
         e.preventDefault();
         e.stopImmediatePropagation();
       }
-    }, true); // Используем capture phase для раннего перехвата
+    }, true);
   });
   
-  // Дополнительно: отключаем HTML5 валидацию для всех input с атрибутом required
-  // Это предотвращает появление серых подсказок при попытке submit
+  // Additionally: disable HTML5 validation for all inputs with the required attribute
+  // This prevents gray prompts from appearing when attempting to submit
   document.querySelectorAll('input[required], select[required], textarea[required]').forEach(input => {
-    // Удаляем атрибут required, но сохраняем его в data-required для нашей валидации
+    // We remove the required attribute, but save it in data-required for our validation
     if (!input.dataset.required) {
       input.dataset.required = 'true';
       input.removeAttribute('required');
@@ -2590,9 +2608,9 @@ document.addEventListener('DOMContentLoaded', () => {
   resolveImages();
   initBasementBooking();
   initOtherRoomWellness();
-  // initOrderIndicator(); // Отключено - иконка домика больше не показывается
+  // initOrderIndicator(); // Disabled - the house icon is no longer shown
   
-  // Скрываем иконку домика на страницах комнат, если она была создана
+  // Hide the house icon on room pages if it has been created
   hideOrderIndicatorOnRoomPages();
   
   // Initialize Flatpickr for massage form BEFORE enhanceDateInputs to prevent conflicts
@@ -2673,7 +2691,12 @@ function getOrders() {
 }
 
 function setOrders(orders) {
-  try { localStorage.setItem('btb_orders', JSON.stringify(orders)); } catch (_) {}
+  try {
+    localStorage.setItem('btb_orders', JSON.stringify(orders));
+    try {
+      document.dispatchEvent(new CustomEvent('btb:orders:changed'));
+    } catch (_) {}
+  } catch (_) {}
 }
 
 function hasOrder(kind) {
@@ -2715,19 +2738,19 @@ function migrateSingleOrderToArray() {
 }
 
 // Check if wellness section should be shown based on localStorage
-// По умолчанию секция показывается на всех страницах комнат
-// Скрывается только если пользователь явно её закрыл
+// By default, the section is shown on all room pages
+// Hides only if the user has explicitly closed it
 function checkAndShowWellnessSection() {
   try {
     const section = document.getElementById('wellness-section');
     if (section) {
-      // Проверяем, была ли секция скрыта пользователем
+      // Checking whether the section has been hidden by the user
       const wellnessHidden = localStorage.getItem('btb_wellness_hidden');
       if (wellnessHidden !== '1') {
-        // Показываем секцию по умолчанию, если она не была скрыта
+        // Show the section by default if it has not been hidden
         section.style.display = 'block';
       } else {
-        // Скрываем секцию, если пользователь её закрыл
+        // Hide a section if the user has closed it
         section.style.display = 'none';
       }
     }
@@ -2740,7 +2763,7 @@ function hideWellnessSection() {
     const section = document.getElementById('wellness-section');
     if (section) {
       section.style.display = 'none';
-      // Устанавливаем флаг, что секция была скрыта пользователем
+      // Set the flag that the section has been hidden by the user
       localStorage.setItem('btb_wellness_hidden', '1');
     }
   } catch (_) {}
@@ -2881,7 +2904,8 @@ async function loadContactInfo() {
     
     const response = await fetch('api.php', {
       method: 'POST',
-      body: formData
+      body: formData,
+      cache: 'no-store'
     });
     
     if (response.ok) {
@@ -2993,7 +3017,8 @@ async function loadFloorplanFromAdmin() {
     
     const response = await fetch('api.php', {
       method: 'POST',
-      body: formData
+      body: formData,
+      cache: 'no-store'
     });
     
     if (response.ok) {
@@ -3001,10 +3026,8 @@ async function loadFloorplanFromAdmin() {
       
       // Only update if we have actual data from database
       if (result.success && result.data) {
-        const hasData = result.data.basementSubtitle || result.data.groundSubtitle || result.data.loftSubtitle;
-        if (hasData) {
-          updateFloorPlanContent(result.data);
-        }
+        // Always apply API payload (including cleared fields). Old gate skipped updates when all subtitles were empty.
+        updateFloorPlanContent(result.data);
       }
     }
   } catch (error) {
@@ -3021,7 +3044,8 @@ async function loadHomepageFromAdmin() {
     
     const response = await fetch('api.php', {
       method: 'POST',
-      body: formData
+      body: formData,
+      cache: 'no-store'
     });
     
     if (response.ok) {
@@ -3105,17 +3129,22 @@ function updateHomepageContent(data) {
       }
     }
     
-    // Save to localStorage for immediate updates (room cards images only)
+    // Merge into localStorage so we never wipe unrelated keys (admin used to store other fields under btb_content).
+    let prev = {};
+    try {
+      prev = JSON.parse(localStorage.getItem('btb_content') || '{}');
+    } catch (e) {
+      prev = {};
+    }
     const contentData = {
-      // Hero images, descriptions, and Wellness Experiences are loaded via SSR
-      // Only save room cards images for backward compatibility
+      ...prev,
       roomBasementCardImageUrl: roomBasementCardImageUrl,
       roomGroundQueenCardImageUrl: roomGroundQueenCardImageUrl,
       roomGroundTwinCardImageUrl: roomGroundTwinCardImageUrl,
       roomSecondCardImageUrl: roomSecondCardImageUrl
     };
     localStorage.setItem('btb_content', JSON.stringify(contentData));
-    console.log('Homepage data saved to localStorage');
+    console.log('Homepage room card image URLs merged into localStorage');
     
   } catch (error) {
     console.error('Error updating homepage content:', error);
@@ -3146,6 +3175,62 @@ function updateImageElement(selector, imageUrl) {
   return false;
 }
 
+/**
+ * Match PHP safeOutputWithBreaks(): escape HTML; newlines → <br>; "- item" runs → ul.desc-bullets.
+ * Used when Common areas (floorplan) text is applied from API after SSR (textContent would collapse \n).
+ */
+function btbEscapeHtmlForCmsText(s) {
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function btbFormatCmsPlainMultiline(value, fallback) {
+  const fb = fallback != null ? String(fallback) : '';
+  let text = value != null ? String(value) : fb;
+  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = text.split('\n');
+  const runs = [];
+  let bufText = [];
+  let bufList = [];
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const m = /^\s*-\s*(.*)$/u.exec(line);
+    if (m) {
+      if (bufText.length) {
+        runs.push({ type: 't', lines: bufText });
+        bufText = [];
+      }
+      bufList.push(m[1]);
+    } else {
+      if (bufList.length) {
+        runs.push({ type: 'l', items: bufList });
+        bufList = [];
+      }
+      bufText.push(line);
+    }
+  }
+  if (bufText.length) runs.push({ type: 't', lines: bufText });
+  if (bufList.length) runs.push({ type: 'l', items: bufList });
+  let html = '';
+  for (const run of runs) {
+    if (run.type === 't') {
+      const joined = run.lines.join('\n');
+      html += btbEscapeHtmlForCmsText(joined).replace(/\n/g, '<br>');
+    } else {
+      html += '<ul class="desc-bullets">';
+      for (const item of run.items) {
+        html += '<li>' + btbEscapeHtmlForCmsText(item) + '</li>';
+      }
+      html += '</ul>';
+    }
+  }
+  return html;
+}
+
 function updateFloorPlanContent(data) {
   try {
     console.log('Updating floor plan content with data:', data);
@@ -3164,12 +3249,12 @@ function updateFloorPlanContent(data) {
       // Universal: use consistent field names (with fallback for compatibility)
       const basementImage = data.basementImageUrl || data.basement_image_url || '';
       
-      if (basementTitle && basementSubtitle) {
-        basementSubtitle.textContent = basementTitle;
+      if (basementSubtitle) {
+        basementSubtitle.innerHTML = btbFormatCmsPlainMultiline(basementTitle, '');
         console.log('Updated basement subtitle');
       }
-      if (basementDescription && basementDesc) {
-        basementDesc.textContent = basementDescription;
+      if (basementDesc) {
+        basementDesc.innerHTML = btbFormatCmsPlainMultiline(basementDescription, '');
         console.log('Updated basement description');
       }
       
@@ -3203,11 +3288,11 @@ function updateFloorPlanContent(data) {
       // Universal: use consistent field names (with fallback for compatibility)
       const groundQueenImage = data.groundQueenImage || data.ground_image_url || data.ground_queen_image || '';
       
-      if (groundTitle && groundSubtitle) {
-        groundSubtitle.textContent = groundTitle;
+      if (groundSubtitle) {
+        groundSubtitle.innerHTML = btbFormatCmsPlainMultiline(groundTitle, '');
       }
-      if (groundDescription && groundDesc) {
-        groundDesc.textContent = groundDescription;
+      if (groundDesc) {
+        groundDesc.innerHTML = btbFormatCmsPlainMultiline(groundDescription, '');
       }
       
       // Update ground floor image - use same universal function as basement
@@ -3240,11 +3325,11 @@ function updateFloorPlanContent(data) {
       const loftDescription = data.loftDescription || data.loft_description || '';
       const loftImage = data.loftImageUrl || data.loft_image_url || '';
       
-      if (loftTitle && loftSubtitle) {
-        loftSubtitle.textContent = loftTitle;
+      if (loftSubtitle) {
+        loftSubtitle.innerHTML = btbFormatCmsPlainMultiline(loftTitle, '');
       }
-      if (loftDescription && loftDesc) {
-        loftDesc.textContent = loftDescription;
+      if (loftDesc) {
+        loftDesc.innerHTML = btbFormatCmsPlainMultiline(loftDescription, '');
       }
       
       // Update loft image - use same universal function as basement
@@ -3271,22 +3356,10 @@ function updateFloorPlanContent(data) {
   }
 }
 
-// Load floor plan data from storage/localStorage
+// Load floor plan data — prefer API so the public site matches the database (localStorage was stale after CMS saves).
 function loadFloorPlanData() {
   try {
-    console.log('Loading floor plan data...');
-    
-    // Try to get data from localStorage first (from admin panel)
-    const storedData = localStorage.getItem('btb_floorplan_settings');
-    if (storedData) {
-      console.log('Found data in localStorage:', storedData);
-      const data = JSON.parse(storedData);
-      updateFloorPlanContent(data);
-      return;
-    }
-    
-    console.log('No localStorage data, fetching from API...');
-    // If no localStorage data, try to fetch from API
+    console.log('Loading floor plan data from API...');
     fetchFloorPlanFromAPI();
   } catch (error) {
     console.error('Error loading floor plan data:', error);
@@ -3302,7 +3375,8 @@ async function fetchFloorPlanFromAPI() {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: 'action=get_floorplan'
+      body: 'action=get_floorplan',
+      cache: 'no-store'
     });
     
     if (response.ok) {
@@ -3466,3 +3540,20 @@ if (document.readyState === 'loading') {
 } else {
   initMobileMenu();
 }
+
+// Pending booking hint (shared module; one place to load for all pages using script.js)
+(function btbLoadPendingBookingHint() {
+  function inject() {
+    if (document.getElementById('btb-pending-booking-hint-loader')) return;
+    var s = document.createElement('script');
+    s.id = 'btb-pending-booking-hint-loader';
+    s.src = 'pending-booking-hint.js';
+    s.async = true;
+    document.head.appendChild(s);
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', inject);
+  } else {
+    inject();
+  }
+})();

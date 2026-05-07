@@ -1,86 +1,86 @@
 <?php
 /**
- * Проверка: Какой домен используется для отправки писем
+ * Check: Which domain is used to send emails
  * 
- * Использование:
- * 1. Загрузите этот файл на хостинг
- * 2. Откройте в браузере: https://new.backtobase.ca/check_mailgun_domain.php
- * 3. Проверьте результат
+ * Usage:
+ * 1. Upload this file to your hosting
+ * 2. Open in your browser: https://new.backtobase.ca/check_mailgun_domain.php
+ * 3. Check the result
  */
 
 require_once 'config.php';
 
 echo "<h1>Mailgun Domain Check</h1>";
 
-echo "<h2>Текущие настройки в config.php:</h2>";
+echo "<h2>Current settings in config.php:</h2>";
 echo "<ul>";
-echo "<li><strong>MAILGUN_DOMAIN:</strong> " . (defined('MAILGUN_DOMAIN') ? htmlspecialchars(MAILGUN_DOMAIN) : 'НЕ НАСТРОЕН') . "</li>";
-echo "<li><strong>MAILGUN_FROM_EMAIL:</strong> " . (defined('MAILGUN_FROM_EMAIL') ? htmlspecialchars(MAILGUN_FROM_EMAIL) : 'НЕ НАСТРОЕН') . "</li>";
-echo "<li><strong>MAILGUN_API_KEY:</strong> " . (defined('MAILGUN_API_KEY') && !empty(MAILGUN_API_KEY) ? 'Настроен (' . substr(MAILGUN_API_KEY, 0, 10) . '...)' : 'НЕ НАСТРОЕН') . "</li>";
+echo "<li><strong>MAILGUN_DOMAIN:</strong> " . (defined('MAILGUN_DOMAIN') ? htmlspecialchars(MAILGUN_DOMAIN) : 'NOT CONFIGURED') . "</li>";
+echo "<li><strong>MAILGUN_FROM_EMAIL:</strong> " . (defined('MAILGUN_FROM_EMAIL') ? htmlspecialchars(MAILGUN_FROM_EMAIL) : 'NOT CONFIGURED') . "</li>";
+echo "<li><strong>MAILGUN_API_KEY:</strong> " . (defined('MAILGUN_API_KEY') && !empty(MAILGUN_API_KEY) ? 'Configured (' . substr(MAILGUN_API_KEY, 0, 10) . '...)' : 'NOT CONFIGURED') . "</li>";
 echo "</ul>";
 
-echo "<h2>Какой домен используется для отправки:</h2>";
+echo "<h2>What domain is used for sending:</h2>";
 
 if (defined('MAILGUN_DOMAIN') && !empty(MAILGUN_DOMAIN)) {
-    echo "<p><strong>Текущий домен:</strong> <code>" . htmlspecialchars(MAILGUN_DOMAIN) . "</code></p>";
+    echo "<p><strong>Current domain:</strong> <code>" . htmlspecialchars(MAILGUN_DOMAIN) . "</code></p>";
     
     if (strpos(MAILGUN_DOMAIN, 'sandbox') !== false) {
-        echo "<p style='color: orange;'><strong>⚠️ Используется Sandbox Domain</strong></p>";
-        echo "<p>Sandbox Domain имеет ограничения:</p>";
+        echo "<p style='color: orange;'><strong>⚠️ Used Sandbox Domain</strong></p>";
+        echo "<p>Sandbox Domain has limitations:</p>";
         echo "<ul>";
-        echo "<li>Можно отправлять только на авторизованные email-адреса</li>";
-        echo "<li>Письма могут попадать в спам</li>";
-        echo "<li>Ограничения по доставляемости</li>";
+        echo "<li>Can only be sent to authorized email-addresses</li>";
+        echo "<li>Emails may end up in spam</li>";
+        echo "<li>Deliverability restrictions</li>";
         echo "</ul>";
-        echo "<p><strong>Рекомендация:</strong> Если домен <code>new.backtobase.ca</code> верифицирован в Mailgun, переключитесь на него!</p>";
+        echo "<p><strong>Recommendation:</strong> If the domain <code>new.backtobase.ca</code> verified in Mailgun, switch to it!</p>";
     } else {
-        echo "<p style='color: green;'><strong>✅ Используется верифицированный домен</strong></p>";
-        echo "<p>Это хорошо! Верифицированный домен имеет лучшую доставляемость.</p>";
+        echo "<p style='color: green;'><strong>✅ Verified domain is used</strong></p>";
+        echo "<p>This is good! A verified domain has better deliverability.</p>";
     }
 } else {
-    echo "<p style='color: red;'><strong>❌ MAILGUN_DOMAIN не настроен!</strong></p>";
+    echo "<p style='color: red;'><strong>❌ MAILGUN_DOMAIN not configured!</strong></p>";
 }
 
 echo "<hr>";
 
-echo "<h2>Проверка в Mailgun Dashboard:</h2>";
-echo "<p>Проверьте статус домена <code>new.backtobase.ca</code> в Mailgun:</p>";
+echo "<h2>Check in Mailgun Dashboard:</h2>";
+echo "<p>Check domain status <code>new.backtobase.ca</code> V Mailgun:</p>";
 echo "<ol>";
 echo "<li>Mailgun Dashboard → <strong>Sending</strong> → <strong>Domains</strong></li>";
-echo "<li>Найдите домен <code>new.backtobase.ca</code></li>";
-echo "<li>Проверьте статус:</li>";
+echo "<li>Find a domain <code>new.backtobase.ca</code></li>";
+echo "<li>Check status:</li>";
 echo "<ul>";
-echo "<li>✅ <strong>Verified</strong> - домен верифицирован, можно использовать</li>";
-echo "<li>⏳ <strong>Pending</strong> - ожидает верификации (подождите)</li>";
-echo "<li>⚠️ <strong>Unverified</strong> - DNS записи не найдены или неправильные</li>";
+echo "<li>✅ <strong>Verified</strong> - domain verified, can be used</li>";
+echo "<li>⏳ <strong>Pending</strong> - awaiting verification (Wait)</li>";
+echo "<li>⚠️ <strong>Unverified</strong> - DNS records not found or incorrect</li>";
 echo "</ul>";
 echo "</ol>";
 
-echo "<h2>Рекомендация:</h2>";
+echo "<h2>Recommendation:</h2>";
 
 if (defined('MAILGUN_DOMAIN') && strpos(MAILGUN_DOMAIN, 'sandbox') !== false) {
-    echo "<p>Если домен <code>new.backtobase.ca</code> имеет статус <strong>Verified</strong> в Mailgun:</p>";
+    echo "<p>If the domain <code>new.backtobase.ca</code> has the status <strong>Verified</strong> V Mailgun:</p>";
     echo "<ol>";
-    echo "<li>Обновите <code>config.php</code>:</li>";
+    echo "<li>Update <code>config.php</code>:</li>";
     echo "<pre>";
-    echo "define('MAILGUN_DOMAIN', 'new.backtobase.ca'); // ✅ Вместо Sandbox\n";
-    echo "define('MAILGUN_FROM_EMAIL', 'bookings@new.backtobase.ca'); // ✅ Опционально\n";
+    echo "define('MAILGUN_DOMAIN', 'new.backtobase.ca'); // ✅ Instead of Sandbox\n";
+    echo "define('MAILGUN_FROM_EMAIL', 'bookings@new.backtobase.ca'); // ✅ Optional\n";
     echo "</pre>";
-    echo "<li>Загрузите обновленный <code>config.php</code> на хостинг</li>";
-    echo "<li>Протестируйте отправку писем</li>";
+    echo "<li>Download the updated <code>config.php</code> for hosting</li>";
+    echo "<li>Test sending emails</li>";
     echo "</ol>";
-    echo "<p><strong>Преимущества верифицированного домена:</strong></p>";
+    echo "<p><strong>Benefits of a verified domain:</strong></p>";
     echo "<ul>";
-    echo "<li>✅ Можно отправлять на любые email-адреса (без ограничений)</li>";
-    echo "<li>✅ Лучшая доставляемость (не попадает в спам)</li>";
-    echo "<li>✅ Профессионально - письма от @new.backtobase.ca</li>";
+    echo "<li>✅ Can be sent to any email-addresses (without restrictions)</li>";
+    echo "<li>✅ Better deliverability (doesn't go to spam)</li>";
+    echo "<li>✅ Professionally - letters from @new.backtobase.ca</li>";
     echo "</ul>";
 } else {
-    echo "<p>Текущая настройка использует верифицированный домен - это хорошо!</p>";
+    echo "<p>The current setup uses a verified domain - this is good!</p>";
 }
 
 echo "<hr>";
-echo "<p><small>Для удаления этого файла после проверки: удалите check_mailgun_domain.php с хостинга</small></p>";
+echo "<p><small>To delete this file after verification: delete check_mailgun_domain.php from hosting</small></p>";
 ?>
 
 

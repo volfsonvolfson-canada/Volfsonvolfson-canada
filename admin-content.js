@@ -151,7 +151,7 @@ async function loadFloorplanData() {
           const pathDisplay = document.getElementById('basement-image-path');
           if (preview && pathDisplay) {
             const img = document.createElement('img');
-            img.src = result.data.basement_image_url + '?v=' + Date.now();
+            img.src = btbAdminDisplayUrlForAsset(result.data.basement_image_url, true);
             preview.innerHTML = '';
             preview.appendChild(img);
             preview.style.display = 'block';
@@ -172,7 +172,7 @@ async function loadFloorplanData() {
           const pathDisplay = document.getElementById('ground-image-path');
           if (preview && pathDisplay) {
             const img = document.createElement('img');
-            img.src = groundImage + '?v=' + Date.now();
+            img.src = btbAdminDisplayUrlForAsset(groundImage, true);
             preview.innerHTML = '';
             preview.appendChild(img);
             preview.style.display = 'block';
@@ -191,7 +191,7 @@ async function loadFloorplanData() {
           const pathDisplay = document.getElementById('loft-image-path');
           if (preview && pathDisplay) {
             const img = document.createElement('img');
-            img.src = result.data.loft_image_url + '?v=' + Date.now();
+            img.src = btbAdminDisplayUrlForAsset(result.data.loft_image_url, true);
             preview.innerHTML = '';
             preview.appendChild(img);
             preview.style.display = 'block';
@@ -260,13 +260,20 @@ function initFloorplanImageUpload() {
 
 // Upload floorplan image function
 async function uploadFloorplanImage(file, imageType, previewElement, pathElement) {
+  const bad = typeof btbAdminValidateImageUploadFile === 'function' ? btbAdminValidateImageUploadFile(file) : null;
+  if (bad) {
+    showStatus(bad, 'error');
+    return;
+  }
+
   const formData = new FormData();
   formData.append('image', file);
   formData.append('image_type', imageType);
 
   try {
     console.log(`Uploading ${imageType} image:`, file.name);
-    
+    showStatus('Uploading image — please wait…', 'info');
+
     const response = await fetch('upload_image.php', {
       method: 'POST',
       body: formData
@@ -282,7 +289,7 @@ async function uploadFloorplanImage(file, imageType, previewElement, pathElement
       
       // Show preview
       const img = document.createElement('img');
-      img.src = filepath + '?v=' + Date.now();
+      img.src = btbAdminDisplayUrlForAsset(filepath, true);
       previewElement.innerHTML = '';
       previewElement.appendChild(img);
       previewElement.style.display = 'block';
@@ -616,12 +623,14 @@ function setStoredData(key, data) {
 
 function showStatus(message, type = 'success') {
   const statusDiv = document.createElement('div');
+  const bg =
+    type === 'error' ? '#e53e3e' : type === 'info' ? '#3182ce' : '#2f855a';
   statusDiv.style.cssText = `
     position: fixed;
     top: 20px;
     right: 20px;
     padding: 16px 24px;
-    background: ${type === 'error' ? '#e53e3e' : '#2f855a'};
+    background: ${bg};
     color: white;
     border-radius: 8px;
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);

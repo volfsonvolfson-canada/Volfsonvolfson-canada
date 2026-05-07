@@ -2,16 +2,21 @@
 // Server-Side Rendering for Homepage with Wellness Experiences
 require_once 'common.php';
 
-// Prevent caching
-header('Cache-Control: no-cache, no-store, must-revalidate');
-header('Pragma: no-cache');
-header('Expires: 0');
+// Public HTML: short CDN-friendly cache (content still updates via must-revalidate)
+if (function_exists('btb_public_cms_cache_headers')) {
+    btb_public_cms_cache_headers(120);
+} else {
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+}
 
 // Load content from database
 $content = fetchOne($conn, "SELECT * FROM content_settings WHERE id = 1");
 if (!$content) {
     $content = []; // Ensure $content is always an array
 }
+btb_merge_phase1_canonical_into_content_row($conn, $content);
 
 // Load wellness images from dedicated table if available
 $wellnessImages = [];
@@ -24,22 +29,34 @@ if ($wellnessTableCheck && $wellnessTableCheck->num_rows > 0) {
 }
 
 // Extract Home Page content with fallback values
-$homepageDescription = safeOutputWithBreaks($content['homepage_description'] ?? '', 'Back to Base is a countryside guesthouse in Nelson, British Columbia, where you can rent a room or book the entire house for a vacation, retreat, or wellness getaway. Guests can restore their energy with a relaxing massage and enjoy comfortable accommodation surrounded by mountains and forest.');
-$homepageSubtitle = safeOutputWithBreaks($content['homepage_subtitle'] ?? '', 'Our cozy rooms and inspiring atmosphere make this the perfect place for solitude, meditation, yoga retreats, or simply a peaceful holiday in nature.');
+$homepageDescription = safeOutputWithBreaks(
+    $content['homepage_description'] ?? '',
+    btb_default_text(
+        'content_settings.homepage_description',
+        'Back to Base is a countryside guesthouse in Nelson, British Columbia, where you can rent a room or book the entire house for a vacation, retreat, or wellness getaway. Guests can restore their energy with a relaxing massage and enjoy comfortable accommodation surrounded by mountains and forest.'
+    )
+);
+$homepageSubtitle = safeOutputWithBreaks(
+    $content['homepage_subtitle'] ?? '',
+    btb_default_text(
+        'content_settings.homepage_subtitle',
+        'Our cozy rooms and inspiring atmosphere make this the perfect place for solitude, meditation, yoga retreats, or simply a peaceful holiday in nature.'
+    )
+);
 
 // Rooms section title and subtitle - try rooms_settings table first, fall back to content_settings
-$roomsTitle = 'Choose your room';
+$roomsTitle = btb_default_text('rooms_settings.rooms_title', 'Choose your room');
 $roomsSubtitle = '';
 $roomsTableCheck = $conn->query("SHOW TABLES LIKE 'rooms_settings'");
 if ($roomsTableCheck && $roomsTableCheck->num_rows > 0) {
     $roomsData = fetchOne($conn, "SELECT * FROM rooms_settings WHERE id = 1");
     if ($roomsData) {
-        $roomsTitle = safeOutput($roomsData['rooms_title'] ?? '', 'Choose your room');
+        $roomsTitle = safeOutput($roomsData['rooms_title'] ?? '', btb_default_text('rooms_settings.rooms_title', 'Choose your room'));
         $roomsSubtitle = safeOutputWithBreaks($roomsData['rooms_subtitle'] ?? '', '');
     }
 } else {
     // Fall back to content_settings for backward compatibility
-    $roomsTitle = safeOutput($content['rooms_title'] ?? '', 'Choose your room');
+    $roomsTitle = safeOutput($content['rooms_title'] ?? '', btb_default_text('content_settings.rooms_title', 'Choose your room'));
     $roomsSubtitle = safeOutputWithBreaks($content['rooms_subtitle'] ?? '', '');
 }
 
@@ -66,34 +83,37 @@ function safeOutputHTML($value, $fallback = '') {
     return $text;
 }
 
-// Extract room card content with fallback values
-$roomBasementCardTitle = safeOutputHTML($roomCardData['room_basement_card_title'] ?? '', 'Loki Suite');
-$roomBasementCardDescription = safeOutputWithBreaks($roomCardData['room_basement_card_description'] ?? '', 'Cozy room next to the home cinema and sauna. Perfect for two.');
-$roomBasementCardPrice = btb_room_price_line_html($content, 'basement', btb_room_price_default_line_html('basement'));
-$roomBasementCardImageUrl = isset($roomCardData['room_basement_card_image_url']) && !empty(trim($roomCardData['room_basement_card_image_url'])) 
-    ? safeOutput($roomCardData['room_basement_card_image_url'], '') 
-    : '';
+// Extract room card content: non-empty from room_cards_settings, otherwise from merged $content (after merge - preserve from content_settings).
+$rc = is_array($roomCardData) ? $roomCardData : [];
+$roomBasementCardTitle = safeOutputHTML(btb_room_card_field_prefer_non_empty($rc, $content, 'room_basement_card_title'), btb_default_text('room_cards_settings.room_basement_card_title', 'Loki Suite'));
+$roomBasementCardDescription = safeOutputWithBreaks(btb_room_card_field_prefer_non_empty($rc, $content, 'room_basement_card_description'), 'Cozy room next to the home cinema and sauna. Perfect for two.');
+$roomBasementCardPrice = btb_room_price_line_html_stored_only($content, 'basement');
+$roomBasementCardImageUrl = trim(btb_room_card_field_prefer_non_empty($rc, $content, 'room_basement_card_image_url'));
+$roomBasementCardImageUrl = $roomBasementCardImageUrl !== '' ? safeOutput($roomBasementCardImageUrl, '') : '';
 
-$roomGroundQueenCardTitle = safeOutputHTML($roomCardData['room_ground_queen_card_title'] ?? '', 'The Nouk');
-$roomGroundQueenCardDescription = safeOutputWithBreaks($roomCardData['room_ground_queen_card_description'] ?? '', 'Compact, bright room with access to the fireplace lounge.');
+$roomGroundQueenCardTitle = safeOutputHTML(btb_room_card_field_prefer_non_empty($rc, $content, 'room_ground_queen_card_title'), btb_default_text('room_cards_settings.room_ground_queen_card_title', 'The Nouk'));
+$roomGroundQueenCardDescription = safeOutputWithBreaks(btb_room_card_field_prefer_non_empty($rc, $content, 'room_ground_queen_card_description'), 'Compact, bright room with access to the fireplace lounge.');
 $roomGroundQueenCardPrice = btb_room_price_line_html($content, 'ground_queen', btb_room_price_default_line_html('ground_queen'));
-$roomGroundQueenCardImageUrl = isset($roomCardData['room_ground_queen_card_image_url']) && !empty(trim($roomCardData['room_ground_queen_card_image_url'])) 
-    ? safeOutput($roomCardData['room_ground_queen_card_image_url'], '') 
-    : '';
+$roomGroundQueenCardImageUrl = trim(btb_room_card_field_prefer_non_empty($rc, $content, 'room_ground_queen_card_image_url'));
+$roomGroundQueenCardImageUrl = $roomGroundQueenCardImageUrl !== '' ? safeOutput($roomGroundQueenCardImageUrl, '') : '';
 
-$roomGroundTwinCardTitle = safeOutputHTML($roomCardData['room_ground_twin_card_title'] ?? '', 'Vrienden');
-$roomGroundTwinCardDescription = safeOutputWithBreaks($roomCardData['room_ground_twin_card_description'] ?? '', 'Great for friends or colleagues. Close to the kitchen and massage hall.');
-$roomGroundTwinCardPrice = btb_room_price_line_html($content, 'ground_twin', btb_room_price_default_line_html('ground_twin'));
-$roomGroundTwinCardImageUrl = isset($roomCardData['room_ground_twin_card_image_url']) && !empty(trim($roomCardData['room_ground_twin_card_image_url'])) 
-    ? safeOutput($roomCardData['room_ground_twin_card_image_url'], '') 
-    : '';
+$roomGroundTwinCardTitle = safeOutputHTML(btb_room_card_field_prefer_non_empty($rc, $content, 'room_ground_twin_card_title'), btb_default_text('room_cards_settings.room_ground_twin_card_title', 'Vrienden'));
+$roomGroundTwinCardDescription = safeOutputWithBreaks(btb_room_card_field_prefer_non_empty($rc, $content, 'room_ground_twin_card_description'), 'Great for friends or colleagues. Close to the kitchen and massage hall.');
+$roomGroundTwinCardPrice = btb_room_price_line_html_stored_only($content, 'ground_twin');
+$roomGroundTwinCardImageUrl = trim(btb_room_card_field_prefer_non_empty($rc, $content, 'room_ground_twin_card_image_url'));
+$roomGroundTwinCardImageUrl = $roomGroundTwinCardImageUrl !== '' ? safeOutput($roomGroundTwinCardImageUrl, '') : '';
 
-$roomSecondCardTitle = safeOutputHTML($roomCardData['room_second_card_title'] ?? '', 'Kelder');
-$roomSecondCardDescription = safeOutputWithBreaks($roomCardData['room_second_card_description'] ?? '', 'Separate kitchen and shower, study, and a balcony with lake view.');
-$roomSecondCardPrice = btb_room_price_line_html($content, 'second', btb_room_price_default_line_html('second'));
-$roomSecondCardImageUrl = isset($roomCardData['room_second_card_image_url']) && !empty(trim($roomCardData['room_second_card_image_url'])) 
-    ? safeOutput($roomCardData['room_second_card_image_url'], '') 
-    : '';
+$roomSecondCardTitle = safeOutputHTML(btb_room_card_field_prefer_non_empty($rc, $content, 'room_second_card_title'), btb_default_text('room_cards_settings.room_second_card_title', 'Kelder'));
+$roomSecondCardDescription = safeOutputWithBreaks(btb_room_card_field_prefer_non_empty($rc, $content, 'room_second_card_description'), 'Separate kitchen and shower, study, and a balcony with lake view.');
+$roomSecondCardPrice = btb_room_price_line_html_stored_only($content, 'second');
+$roomSecondCardImageUrl = trim(btb_room_card_field_prefer_non_empty($rc, $content, 'room_second_card_image_url'));
+$roomSecondCardImageUrl = $roomSecondCardImageUrl !== '' ? safeOutput($roomSecondCardImageUrl, '') : '';
+
+$homepageBookAStayBtn = trim((string)($rc['homepage_book_a_stay_button_label'] ?? $content['homepage_book_a_stay_button_label'] ?? ''));
+if ($homepageBookAStayBtn === '') {
+    $homepageBookAStayBtn = 'Book a stay';
+}
+$homepageBookAStayBtn = htmlspecialchars($homepageBookAStayBtn, ENT_QUOTES, 'UTF-8');
 
 $heroImageUrl = isset($content['hero_image_url']) && !empty(trim($content['hero_image_url'])) 
     ? safeOutput($content['hero_image_url'], '') 
@@ -128,30 +148,6 @@ if (!function_exists('btb_guest_review_stars')) {
     }
 }
 
-if (!function_exists('btb_default_guest_reviews_payload')) {
-    function btb_default_guest_reviews_payload(): array
-    {
-        return [
-            'section_title' => 'Guest reviews',
-            'section_subtitle' => 'What recent guests have shared on Vrbo and Airbnb.',
-            'vrbo' => [
-                ['name' => 'Emily R.', 'rating' => 5, 'text' => 'A wonderful stay. The home is even better than the photos, surrounded by trees and so peaceful. We would happily return.'],
-                ['name' => 'James K.', 'rating' => 5, 'text' => 'Spotless, spacious, and thoughtfully equipped. The hosts were warm and the location is perfect for exploring Nelson.'],
-                ['name' => 'Olivia T.', 'rating' => 5, 'text' => 'Loved the quiet setting and the comfortable beds. Mornings on the deck with coffee were a highlight.'],
-                ['name' => 'Michael P.', 'rating' => 4, 'text' => 'Great for a group retreat. Kitchen and common areas are ideal for cooking together. Minor wish: faster Wi‑Fi, but that is a small point in such a restful place.'],
-                ['name' => 'Anna L.', 'rating' => 5, 'text' => 'Truly a place to slow down. Every detail made us feel welcome from check‑in to departure.'],
-            ],
-            'airbnb' => [
-                ['name' => 'Sofia M.', 'rating' => 5, 'text' => 'The house felt like a private lodge — cozy, light‑filled, and every room had character. We did not want to leave.'],
-                ['name' => 'David C.', 'rating' => 5, 'text' => 'Immaculate, relaxed vibe, and easy communication. Perfect base for ski days and evenings by the fire.'],
-                ['name' => 'Rachel B.', 'rating' => 5, 'text' => 'A gem in the Kootenays. Forest walks nearby and a comfortable, stylish interior.'],
-                ['name' => 'Tom W.', 'rating' => 5, 'text' => 'We booked the whole place for a long weekend. Everyone had their own space and the shared areas brought us together.'],
-                ['name' => 'Nina F.', 'rating' => 5, 'text' => 'Hospitality was top‑tier, and the setting is magical. Already recommending to friends.'],
-            ],
-        ];
-    }
-}
-
 if (!function_exists('btb_normalize_guest_reviews_list')) {
     /**
      * @return array<int, array{name: string, text: string, rating: int}>
@@ -178,29 +174,26 @@ if (!function_exists('btb_normalize_guest_reviews_list')) {
     }
 }
 
-$grDef = btb_default_guest_reviews_payload();
+$grDef = btb_guest_reviews_default_payload();
 $guestReviewsTitle = $grDef['section_title'];
 $guestReviewsSubtitle = $grDef['section_subtitle'];
 $vrboGuestReviews = $grDef['vrbo'];
 $airbnbGuestReviews = $grDef['airbnb'];
-$grTable = $conn->query("SHOW TABLES LIKE 'guest_reviews_settings'");
-if ($grTable && $grTable->num_rows > 0) {
-    $grRow = fetchOne($conn, "SELECT * FROM guest_reviews_settings WHERE id = 1");
-    if (is_array($grRow) && $grRow !== []) {
-        if (trim((string)($grRow['section_title'] ?? '')) !== '') {
-            $guestReviewsTitle = (string) $grRow['section_title'];
-        }
-        if (array_key_exists('section_subtitle', $grRow) && $grRow['section_subtitle'] !== null) {
-            $guestReviewsSubtitle = (string) $grRow['section_subtitle'];
-        }
-        $vJson = json_decode((string)($grRow['vrbo_reviews_json'] ?? '[]'), true);
-        if (is_array($vJson)) {
-            $vrboGuestReviews = btb_normalize_guest_reviews_list($vJson);
-        }
-        $aJson = json_decode((string)($grRow['airbnb_reviews_json'] ?? '[]'), true);
-        if (is_array($aJson)) {
-            $airbnbGuestReviews = btb_normalize_guest_reviews_list($aJson);
-        }
+if (function_exists('btb_db_table_exists') && btb_db_table_exists($conn, 'guest_reviews_settings')) {
+    $d = $content;
+    if (trim((string) ($d['section_title'] ?? '')) !== '') {
+        $guestReviewsTitle = (string) $d['section_title'];
+    }
+    if (array_key_exists('section_subtitle', $d) && $d['section_subtitle'] !== null) {
+        $guestReviewsSubtitle = (string) $d['section_subtitle'];
+    }
+    $vJson = json_decode((string) ($d['vrbo_reviews_json'] ?? '[]'), true);
+    if (is_array($vJson)) {
+        $vrboGuestReviews = btb_normalize_guest_reviews_list($vJson);
+    }
+    $aJson = json_decode((string) ($d['airbnb_reviews_json'] ?? '[]'), true);
+    if (is_array($aJson)) {
+        $airbnbGuestReviews = btb_normalize_guest_reviews_list($aJson);
     }
 }
 if (count($vrboGuestReviews) === 0) {
@@ -212,10 +205,10 @@ if (count($airbnbGuestReviews) === 0) {
 $guestReviewsTitle = safeOutput($guestReviewsTitle, 'Guest reviews');
 $guestReviewsSubtitle = safeOutputWithBreaks($guestReviewsSubtitle, $grDef['section_subtitle']);
 
-// Load Floor Plan content from database
-$floorplan = fetchOne($conn, "SELECT * FROM floorplan_settings WHERE id = 1");
-if (!$floorplan) {
-    $floorplan = []; // Ensure $floorplan is always an array
+// Floor plan: same canonical row as phase1 merge (floorplan_settings), sliced for this template
+$floorplan = function_exists('btb_floorplan_slice_from_content_row') ? btb_floorplan_slice_from_content_row($content) : [];
+if ($floorplan === [] && function_exists('btb_db_table_exists') && btb_db_table_exists($conn, 'floorplan_settings')) {
+    $floorplan = fetchOne($conn, "SELECT * FROM floorplan_settings WHERE id = 1") ?: [];
 }
 
 // Common areas (floor plan) section title and subtitle
@@ -295,9 +288,12 @@ if (!function_exists('floorplan_gallery_overlay_hook')) {
     }
 }
 
-$basementFloorGalleryHook = floorplan_gallery_overlay_hook('basement', $basementFloorLabelPlain);
-$groundFloorGalleryHook = floorplan_gallery_overlay_hook('ground', $groundFloorLabelPlain);
-$loftFloorGalleryHook = floorplan_gallery_overlay_hook('loft', $loftFloorLabelPlain);
+$ovB = trim((string)($floorplan['basement_gallery_overlay_text'] ?? ''));
+$ovG = trim((string)($floorplan['ground_gallery_overlay_text'] ?? ''));
+$ovL = trim((string)($floorplan['loft_gallery_overlay_text'] ?? ''));
+$basementFloorGalleryHook = $ovB !== '' ? str_replace('{L}', $basementFloorLabelPlain, $ovB) : floorplan_gallery_overlay_hook('basement', $basementFloorLabelPlain);
+$groundFloorGalleryHook = $ovG !== '' ? str_replace('{L}', $groundFloorLabelPlain, $ovG) : floorplan_gallery_overlay_hook('ground', $groundFloorLabelPlain);
+$loftFloorGalleryHook = $ovL !== '' ? str_replace('{L}', $loftFloorLabelPlain, $ovL) : floorplan_gallery_overlay_hook('loft', $loftFloorLabelPlain);
 
 // Load galleries for each floor
 $basementGallery = [];
@@ -345,7 +341,17 @@ $cacheBuster = '?v=' . time();
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>Back to Base — Boutique Retreat in British Columbia</title>
-  <meta name="description" content="Back to Base — boutique forest retreat in British Columbia, Canada. Rooms for rent, wellness services, yoga, and nature immersion.">
+  <?php
+  $__seo_title = 'Back to Base — Boutique Retreat in British Columbia';
+  $__seo_desc = 'Back to Base — boutique forest retreat in British Columbia, Canada. Rooms for rent, wellness services, yoga, and nature immersion.';
+  ?>
+  <meta name="description" content="<?php echo htmlspecialchars($__seo_desc, ENT_QUOTES, 'UTF-8'); ?>">
+  <?php
+  btb_seo_emit_link_and_meta('/', $__seo_title, $__seo_desc, [
+      'og_image' => '/assets/about_procter.jpg',
+      'json_ld' => btb_seo_default_lodging_json_ld($__seo_desc),
+  ]);
+  ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -634,7 +640,7 @@ $cacheBuster = '?v=' . time();
       <div class="container trust-badges-inner">
         <div class="trust-badge vrbo" aria-label="Vacation rental rating 10 out of 10">
           <div class="trust-badge-brand">
-            <span class="trust-badge-brand-text trust-badge-brand-text--vrbo" style="color:#1f4ae5;">Vrbo</span>
+            <span class="trust-badge-brand-text trust-badge-brand-text--vrbo">Vrbo</span>
           </div>
           <div class="trust-badge-scoreline" aria-hidden="true">
             <span class="trust-badge-score">10.0</span>
@@ -644,7 +650,7 @@ $cacheBuster = '?v=' . time();
         </div>
         <div class="trust-badge airbnb" aria-label="Home-stay rating 5 out of 5">
           <div class="trust-badge-brand">
-            <span class="trust-badge-brand-text trust-badge-brand-text--airbnb" style="color:#ff385c;">Airbnb</span>
+            <span class="trust-badge-brand-text trust-badge-brand-text--airbnb">Airbnb</span>
           </div>
           <div class="trust-badge-scoreline" aria-hidden="true">
             <span class="trust-badge-score">5.0</span>
@@ -677,7 +683,7 @@ $cacheBuster = '?v=' . time();
               <h3><?php echo $roomBasementCardTitle; ?></h3>
               <div class="room-card-desc"><?php echo $roomBasementCardDescription; ?></div>
               <p class="notice"><?php echo $roomBasementCardPrice; ?></p>
-              <a class="btn primary" href="room-basement.php">Book a stay</a>
+              <a class="btn primary" href="room-basement.php"><?php echo $homepageBookAStayBtn; ?></a>
             </div>
           </article>
 
@@ -693,7 +699,7 @@ $cacheBuster = '?v=' . time();
               <h3><?php echo $roomGroundQueenCardTitle; ?></h3>
               <div class="room-card-desc"><?php echo $roomGroundQueenCardDescription; ?></div>
               <p class="notice"><?php echo $roomGroundQueenCardPrice; ?></p>
-              <a class="btn primary" href="room-first-double.php">Book a stay</a>
+              <a class="btn primary" href="room-first-double.php"><?php echo $homepageBookAStayBtn; ?></a>
             </div>
           </article>
 
@@ -710,7 +716,7 @@ $cacheBuster = '?v=' . time();
               <h3><?php echo $roomGroundTwinCardTitle; ?></h3>
               <div class="room-card-desc"><?php echo $roomGroundTwinCardDescription; ?></div>
               <p class="notice"><?php echo $roomGroundTwinCardPrice; ?></p>
-              <a class="btn primary" href="room-first-twin.php">Book a stay</a>
+              <a class="btn primary" href="room-first-twin.php"><?php echo $homepageBookAStayBtn; ?></a>
             </div>
           </article>
 
@@ -726,7 +732,7 @@ $cacheBuster = '?v=' . time();
               <h3><?php echo $roomSecondCardTitle; ?></h3>
               <div class="room-card-desc"><?php echo $roomSecondCardDescription; ?></div>
               <p class="notice"><?php echo $roomSecondCardPrice; ?></p>
-              <a class="btn primary" href="room-second-suite.php">Book a stay</a>
+              <a class="btn primary" href="room-second-suite.php"><?php echo $homepageBookAStayBtn; ?></a>
             </div>
           </article>
         </div>
@@ -753,7 +759,7 @@ $cacheBuster = '?v=' . time();
                 <img class="floor-photo" src="<?php echo htmlspecialchars($basementImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($basementFloorLabelPlain, ''); ?>" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
               </picture>
               <div class="gallery-overlay">
-                <div class="gallery-overlay-text"><?php echo safeOutput($basementFloorGalleryHook, 'Open gallery'); ?></div>
+                <div class="gallery-overlay-text"><?php echo safeOutputWithBreaks($basementFloorGalleryHook, 'Open gallery'); ?></div>
               </div>
             </div>
           </article>
@@ -766,7 +772,7 @@ $cacheBuster = '?v=' . time();
                 <img class="floor-photo" src="<?php echo htmlspecialchars($groundImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($groundFloorLabelPlain, ''); ?>" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
               </picture>
               <div class="gallery-overlay">
-                <div class="gallery-overlay-text"><?php echo safeOutput($groundFloorGalleryHook, 'Open gallery'); ?></div>
+                <div class="gallery-overlay-text"><?php echo safeOutputWithBreaks($groundFloorGalleryHook, 'Open gallery'); ?></div>
               </div>
             </div>
           </article>
@@ -779,7 +785,7 @@ $cacheBuster = '?v=' . time();
                 <img class="floor-photo" src="<?php echo htmlspecialchars($loftImageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($loftFloorLabelPlain, ''); ?>" loading="lazy" data-ssr-loaded="true" data-no-resolve="true" />
               </picture>
               <div class="gallery-overlay">
-                <div class="gallery-overlay-text"><?php echo safeOutput($loftFloorGalleryHook, 'Open gallery'); ?></div>
+                <div class="gallery-overlay-text"><?php echo safeOutputWithBreaks($loftFloorGalleryHook, 'Open gallery'); ?></div>
               </div>
             </div>
           </article>
@@ -914,8 +920,10 @@ $cacheBuster = '?v=' . time();
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>

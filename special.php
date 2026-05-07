@@ -2,91 +2,139 @@
 // Server-Side Rendering for Special page
 require_once 'common.php';
 
+if (function_exists('btb_public_cms_cache_headers')) {
+    btb_public_cms_cache_headers(120);
+}
+
 // Load content from database
 // List of all special page fields
 $specialFields = [
     'special_hero_title', 'special_hero_subtitle', 'special_hero_image_url',
     'special_pools_title', 'special_pools_description_1', 'special_pools_description_2', 'special_pools_image_url',
-    'special_dining_title', 'special_dining_description_1', 'special_dining_description_2', 'special_dining_image_url',
+    'special_dining_title', 'special_dining_description_1', 'special_dining_image_url',
     'special_extra_title', 'special_extra_description_1', 'special_extra_description_2', 'special_extra_image_url',
-    'special_offer_title', 'special_offer_main_text', 'special_offer_description'
+    'special_offer_title', 'special_offer_main_text', 'special_offer_rooms_cta_label',
 ];
+if (function_exists('btb_ensure_special_block2_columns')) {
+    btb_ensure_special_block2_columns($conn);
+}
+if (function_exists('btb_ensure_special_addon_panels_json_column')) {
+    btb_ensure_special_addon_panels_json_column($conn);
+}
+if (function_exists('btb_special_addon_panels_json_column_name')) {
+    $specialFields[] = btb_special_addon_panels_json_column_name();
+}
+if (function_exists('btb_special_block2_column_sql_definitions')) {
+    $specialFields = array_merge($specialFields, array_keys(btb_special_block2_column_sql_definitions()));
+}
 
 $content = [];
-
-// First, try to get data from special_settings table if it exists
-$specialTableCheck = $conn->query("SHOW TABLES LIKE 'special_settings'");
-if ($specialTableCheck && $specialTableCheck->num_rows > 0) {
-    // Use special_settings table with explicit field selection
-    $sql = "SELECT " . implode(', ', $specialFields) . " FROM special_settings WHERE id = 1";
-    $specialResult = $conn->query($sql);
-    if ($specialResult && $specialResult->num_rows > 0) {
-        $content = $specialResult->fetch_assoc();
-        error_log("special.php: Using special_settings table");
+try {
+    $sql = 'SELECT ' . implode(', ', $specialFields) . ' FROM content_settings WHERE id = 1';
+    $result = $conn->query($sql);
+    if ($result && $result->num_rows > 0) {
+        $content = $result->fetch_assoc();
+        error_log('special.php: Loaded special_* from content_settings (explicit columns)');
     }
+} catch (Exception $e) {
+    error_log('special.php: Exception loading content_settings: ' . $e->getMessage());
+    $content = [];
 }
 
-// If special_settings doesn't exist or is empty, fall back to content_settings
-if (empty($content) || !isset($content['special_hero_title'])) {
-    // Try explicit field selection from content_settings (avoids "Row size too large" error)
-    try {
-        $sql = "SELECT " . implode(', ', $specialFields) . " FROM content_settings WHERE id = 1";
-        $result = $conn->query($sql);
-        if ($result && $result->num_rows > 0) {
-            $content = $result->fetch_assoc();
-            error_log("special.php: Using content_settings table with explicit SELECT");
-        } else {
-            error_log("special.php: Explicit SELECT from content_settings returned no rows");
-            $content = [];
-        }
-    } catch (Exception $e) {
-        error_log("special.php: Exception with explicit SELECT: " . $e->getMessage());
-        $content = [];
-    }
-    
-    // If explicit SELECT failed, try loading each field individually
-    if (empty($content) || !isset($content['special_hero_title'])) {
-        error_log("special.php: Falling back to individual field loading");
-        foreach ($specialFields as $field) {
-            try {
-                $columnCheck = $conn->query("SHOW COLUMNS FROM content_settings LIKE '$field'");
-                if ($columnCheck && $columnCheck->num_rows > 0) {
-                    $singleResult = $conn->query("SELECT $field FROM content_settings WHERE id = 1");
-                    if ($singleResult && $singleResult->num_rows > 0) {
-                        $row = $singleResult->fetch_assoc();
-                        $content[$field] = $row[$field] ?? '';
-                    }
-                }
-            } catch (Exception $e2) {
-                error_log("special.php: Error loading field '$field': " . $e2->getMessage());
-            }
-        }
-    }
+if (function_exists('btb_merge_phase1_canonical_into_content_row')) {
+    btb_merge_phase1_canonical_into_content_row($conn, $content);
 }
+
+$specialKeyIndex = array_flip($specialFields);
+$content = array_intersect_key($content, $specialKeyIndex);
 
 // Extract content with fallback values
-$heroTitle = safeOutputWithBreaks($content['special_hero_title'] ?? '', 'Soak & Savor at Ainsworth Hot Springs');
-$heroSubtitle = safeOutputWithBreaks($content['special_hero_subtitle'] ?? '', 'Back to Base offers its guests a unique relaxation experience. See the details below.');
+$heroTitle = safeOutputWithBreaks(
+    btb_field_or_default($content, 'special_hero_title', 'special_settings.special_hero_title', btb_default_text('content_settings.special_hero_title', 'Soak & Savor at Ainsworth Hot Springs')),
+    ''
+);
+$heroSubtitle = safeOutputWithBreaks(
+    btb_field_or_default($content, 'special_hero_subtitle', 'special_settings.special_hero_subtitle', btb_default_text('content_settings.special_hero_subtitle', 'Back to Base offers its guests a unique relaxation experience. See the details below.')),
+    ''
+);
 $heroImageUrl = isset($content['special_hero_image_url']) && !empty(trim($content['special_hero_image_url'])) ? safeOutput($content['special_hero_image_url'], '') : '';
 
-$poolsTitle = safeOutput($content['special_pools_title'] ?? '', 'Mineral-Rich Pools & Limestone Cave');
-$poolsDesc1 = safeOutputWithBreaks($content['special_pools_description_1'] ?? '', 'The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge.');
-$poolsDesc2 = safeOutputWithBreaks($content['special_pools_description_2'] ?? '', 'Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.');
+$poolsTitle = safeOutput(
+    btb_field_or_default($content, 'special_pools_title', 'special_settings.special_pools_title', btb_default_text('content_settings.special_pools_title', 'Mineral-Rich Pools & Limestone Cave')),
+    ''
+);
+[$poolsRaw1, $poolsRaw2] = btb_special_twin_description_fields_from_row(
+    $content,
+    'special_pools_description_1',
+    'special_settings.special_pools_description_1',
+    btb_default_text('content_settings.special_pools_description_1', 'The Ainsworth Hot Springs are located just a thirty-minute scenic drive from the Back to Base lodge.'),
+    'special_pools_description_2',
+    'special_settings.special_pools_description_2',
+    btb_default_text('content_settings.special_pools_description_2', 'Relax in the mineral-rich waters of the pools and explore the unique limestone cave, where warm geothermal water flows along the grotto walls, creating a truly one-of-a-kind atmosphere for deep relaxation.')
+);
+[$poolsRaw1, $poolsRaw2] = btb_special_dedupe_description_pair($poolsRaw1, $poolsRaw2);
+$poolsDesc1 = safeOutputWithBreaks($poolsRaw1, '');
+$poolsDesc2 = safeOutputWithBreaks($poolsRaw2, '');
 $poolsImageUrl = isset($content['special_pools_image_url']) && !empty(trim($content['special_pools_image_url'])) ? safeOutput($content['special_pools_image_url'], '') : 'https://images.unsplash.com/photo-1519824145371-296894a0daa9?q=80&w=1600&auto=format&fit=crop';
 
-$diningTitle = safeOutput($content['special_dining_title'] ?? '', 'Dining & Spa Experience');
-$diningDesc1 = safeOutputWithBreaks($content['special_dining_description_1'] ?? '', 'After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight.');
-$diningDesc2 = safeOutputWithBreaks($content['special_dining_description_2'] ?? '', 'Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.');
+$diningTitle = safeOutput(
+    btb_field_or_default($content, 'special_dining_title', 'special_settings.special_dining_title', btb_default_text('content_settings.special_dining_title', 'Dining & Spa Experience')),
+    ''
+);
+// Single body field for Dining / Spa card (no second DB column or paragraph).
+$diningBodyDefault = btb_default_text(
+    'content_settings.special_dining_description_1',
+    'After your soak, enjoy a meal at the Ktunaxa Grill restaurant located on site. The menu features fresh regional ingredients and creative preparation, making every dish a real delight. Consider visiting the Spirit Water Spa, where experienced therapists offer a full range of treatments.'
+);
+$diningRaw1 = btb_field_or_default($content, 'special_dining_description_1', 'special_settings.special_dining_description_1', $diningBodyDefault);
+$diningDesc1 = safeOutputWithBreaks($diningRaw1, '');
 $diningImageUrl = isset($content['special_dining_image_url']) && !empty(trim($content['special_dining_image_url'])) ? safeOutput($content['special_dining_image_url'], '') : 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?q=80&w=1600&auto=format&fit=crop';
 
-$extraTitle = safeOutput($content['special_extra_title'] ?? '', 'Discover Nelson & the Kootenays');
-$extraDesc1 = safeOutputWithBreaks($content['special_extra_description_1'] ?? '', 'Beyond the hot springs, the lively town of Nelson offers galleries, cafés, and lakefront strolls — an ideal complement to your retreat.');
-$extraDesc2 = safeOutputWithBreaks($content['special_extra_description_2'] ?? '', 'Ask us for tips on hikes, paddling on Kootenay Lake, or seasonal events during your stay.');
+$extraTitle = safeOutput(
+    btb_field_or_default($content, 'special_extra_title', 'special_settings.special_extra_title', btb_default_text('content_settings.special_extra_title', 'Discover Nelson & the Kootenays')),
+    ''
+);
+[$extraRaw1, $extraRaw2] = btb_special_twin_description_fields_from_row(
+    $content,
+    'special_extra_description_1',
+    'special_settings.special_extra_description_1',
+    btb_default_text('content_settings.special_extra_description_1', 'Beyond the hot springs, the lively town of Nelson offers galleries, cafés, and lakefront strolls — an ideal complement to your retreat.'),
+    'special_extra_description_2',
+    'special_settings.special_extra_description_2',
+    btb_default_text('content_settings.special_extra_description_2', 'Ask us for tips on hikes, paddling on Kootenay Lake, or seasonal events during your stay.')
+);
+[$extraRaw1, $extraRaw2] = btb_special_dedupe_description_pair($extraRaw1, $extraRaw2);
+$extraDesc1 = safeOutputWithBreaks($extraRaw1, '');
+$extraDesc2 = safeOutputWithBreaks($extraRaw2, '');
 $extraImageUrl = isset($content['special_extra_image_url']) && !empty(trim($content['special_extra_image_url'])) ? safeOutput($content['special_extra_image_url'], '') : 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?q=80&w=1600&auto=format&fit=crop';
 
-$offerTitle = safeOutput($content['special_offer_title'] ?? '', 'Free Hot Springs Access');
-$offerMainText = safeOutputWithBreaks($content['special_offer_main_text'] ?? '', 'Book a minimum 5-night stay at Kelder and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!');
-$offerDescription = safeOutputWithBreaks($content['special_offer_description'] ?? '', 'This exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience.');
+$offerTitle = safeOutput(
+    btb_field_or_default($content, 'special_offer_title', 'special_settings.special_offer_title', btb_default_text('content_settings.special_offer_title', 'Free Hot Springs Access')),
+    ''
+);
+// Single body block for the offer card (legacy second column merged via migrate_special_offer_merge_description.php).
+$offerBodyDefault = btb_default_text(
+    'content_settings.special_offer_main_text',
+    "Book a minimum 5-night stay at Kelder and receive one free visit per person to Ainsworth Hot Springs pools, courtesy of us!\n\nThis exclusive offer includes access to the mineral-rich pools and the natural limestone cave. A perfect way to enhance your stay at Back to Base with a truly restorative experience."
+);
+$offerBody = safeOutputWithBreaks(
+    btb_field_or_default($content, 'special_offer_main_text', 'special_settings.special_offer_main_text', $offerBodyDefault),
+    ''
+);
+$offerRoomsCtaLabelRaw = trim((string) btb_field_or_default(
+    $content,
+    'special_offer_rooms_cta_label',
+    'special_settings.special_offer_rooms_cta_label',
+    btb_default_text('content_settings.special_offer_rooms_cta_label', 'Choose your room')
+));
+if ($offerRoomsCtaLabelRaw === '') {
+    $offerRoomsCtaLabelRaw = 'Choose your room';
+}
+
+// --- Extra panels (0..10): JSON in DB, legacy special_b2_* when JSON unset ---
+$addonPanels = function_exists('btb_special_addon_panels_decode_from_content')
+    ? btb_special_addon_panels_decode_from_content($content)
+    : [];
 
 // Build hero background image style
 $heroBackgroundStyle = '';
@@ -105,6 +153,16 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light dark">
   <title>Specials — Back to Base</title>
+  <?php
+  $__seo_title = 'Specials — Back to Base';
+  $__seo_desc = 'Hot springs, dining, and extra experiences near Back to Base — specials and trip ideas in Nelson, BC.';
+  ?>
+  <meta name="description" content="<?php echo htmlspecialchars($__seo_desc, ENT_QUOTES, 'UTF-8'); ?>">
+  <?php
+  btb_seo_emit_link_and_meta('/special.php', $__seo_title, $__seo_desc, [
+      'og_image' => '/assets/ainsworth-hot-springs.jpg',
+  ]);
+  ?>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
@@ -177,43 +235,74 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       background: var(--bg-alt);
     }
 
-    .exclusive-offer-card {
+    /* One rounded panel: offer + pools / dining / extra (no full-width alt strip under offer) */
+    .special-hot-springs-unified.special-section {
+      padding: clamp(1.5rem, 4vw, 2.75rem) 0 clamp(2.5rem, 5vw, 3.5rem);
+      background: transparent;
+    }
+    .special-hot-springs-unified .explore-content-band {
+      background: transparent;
+      padding: 0;
+    }
+    .special-hot-springs-unified .explore-section-panel {
       background: var(--card);
-      border: 1px solid rgba(255,255,255,.06);
-      border-radius: 20px;
-      padding: 40px;
-      color: var(--text);
-      text-align: center;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-      margin: 10px 0 40px 0;
-      position: relative;
-      overflow: hidden;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+      border-radius: 14px;
+      padding: clamp(1.25rem, 3vw, 2rem) clamp(1.1rem, 2.5vw, 2rem) clamp(1.35rem, 3.2vw, 2.35rem);
+      box-sizing: border-box;
+      text-align: left;
     }
-    .exclusive-offer-card-content {
-      position: relative;
-      z-index: 2;
+    [data-theme="light"] .special-hot-springs-unified .explore-section-panel {
+      border-color: rgba(0, 0, 0, 0.08);
     }
-    .exclusive-offer-card h2 {
-      font-size: clamp(2rem, 4vw, 3rem);
-      margin-bottom: 20px;
-      color: var(--text);
+    .special-hot-springs-unified .explore-section-h2 {
+      font-size: 2.5rem;
+      margin: 0 0 0.5rem;
+      color: var(--text, #1e293b);
+      text-align: left;
     }
-    .exclusive-offer-card p {
-      font-size: clamp(1.1rem, 2vw, 1.4rem);
-      line-height: 1.8;
-      margin-bottom: 30px;
+    .special-hot-springs-unified .section-lead {
+      text-align: left;
+      margin-top: 0;
+      margin-bottom: clamp(0.85rem, 2vw, 1.25rem);
       color: var(--text-muted);
+      font-size: 1.05rem;
+      line-height: 1.8;
     }
-    .exclusive-offer-badge {
-      display: inline-block;
-      background: var(--bg-alt);
-      padding: 12px 24px;
-      border-radius: 50px;
+    .special-hot-springs-unified .section-lead:last-of-type {
+      margin-bottom: clamp(1rem, 2.5vw, 1.5rem);
+    }
+    .special-hot-springs-unified .section-lead strong {
+      color: inherit;
       font-weight: 600;
-      font-size: 0.9rem;
-      margin-bottom: 20px;
-      border: 1px solid var(--border);
-      color: var(--text);
+    }
+    .special-hot-springs-unified .special-offer-cta-wrap {
+      margin-top: 0.25rem;
+      text-align: left;
+    }
+    .special-hot-springs-unified .special-offer-cta-wrap .btn {
+      display: inline-block;
+      text-decoration: none;
+    }
+    .special-hot-springs-unified .special-unified-cards {
+      margin-top: clamp(1.25rem, 3vw, 2rem);
+      padding-top: clamp(1.1rem, 2.8vw, 1.75rem);
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+    }
+    [data-theme="light"] .special-hot-springs-unified .special-unified-cards {
+      border-top-color: rgba(0, 0, 0, 0.08);
+    }
+    .special-hot-springs-unified .hot-springs-card {
+      margin-bottom: clamp(2rem, 4vw, 2.75rem);
+    }
+    .special-hot-springs-unified .hot-springs-card:last-child {
+      margin-bottom: 0;
+    }
+    .special-hot-springs-unified .hot-springs-card.reverse {
+      margin-bottom: clamp(2rem, 4vw, 2.75rem);
+    }
+    .special-hot-springs-unified .hot-springs-image {
+      box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
     }
 
 
@@ -297,8 +386,8 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       .hot-springs-card.reverse > * {
         direction: ltr;
       }
-      .exclusive-offer-card {
-        padding: 30px 20px;
+      .special-hot-springs-unified .explore-section-h2 {
+        font-size: 1.85rem;
       }
     }
   </style>
@@ -361,55 +450,160 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   </div>
 
   <main>
-    <section class="special-section">
-      <div class="container">
-        <div class="hot-springs-card">
-          <div class="hot-springs-content">
-            <h3 id="special-pools-title"><?php echo $poolsTitle; ?></h3>
-            <p id="special-pools-description-1"><?php echo $poolsDesc1; ?></p>
-            <p id="special-pools-description-2"><?php echo $poolsDesc2; ?></p>
-          </div>
-          <div>
-            <img class="hot-springs-image" src="<?php echo $poolsImageUrl; ?>" alt="Ainsworth Hot Springs pools" />
-          </div>
-        </div>
+    <section class="special-section special-hot-springs-unified" aria-labelledby="special-offer-title">
+      <div class="explore-content-band">
+        <div class="container">
+          <div class="explore-section-panel">
+            <h2 id="special-offer-title" class="reveal explore-section-h2"><?php echo $offerTitle; ?></h2>
+            <p class="section-lead reveal" id="special-offer-body"><?php echo $offerBody; ?></p>
+            <div class="special-offer-cta-wrap">
+              <a class="btn primary" id="special-offer-rooms-cta" href="index.php#rooms"><?php echo htmlspecialchars($offerRoomsCtaLabelRaw, ENT_QUOTES, 'UTF-8'); ?></a>
+            </div>
 
-        <div class="hot-springs-card reverse">
-          <div class="hot-springs-content">
-            <h3 id="special-dining-title"><?php echo $diningTitle; ?></h3>
-            <p id="special-dining-description-1"><?php echo $diningDesc1; ?></p>
-            <p id="special-dining-description-2"><?php echo $diningDesc2; ?></p>
-          </div>
-          <div>
-            <img class="hot-springs-image" src="<?php echo $diningImageUrl; ?>" alt="Ktunaxa Grill restaurant and spa" />
-          </div>
-        </div>
+            <div class="special-unified-cards">
+              <div class="hot-springs-card">
+                <div class="hot-springs-content">
+                  <h3 id="special-pools-title"><?php echo $poolsTitle; ?></h3>
+                  <p id="special-pools-description-1"><?php echo $poolsDesc1; ?></p>
+                  <?php if (trim($poolsRaw2) !== '') { ?>
+                  <p id="special-pools-description-2"><?php echo $poolsDesc2; ?></p>
+                  <?php } ?>
+                </div>
+                <div>
+                  <img class="hot-springs-image" src="<?php echo $poolsImageUrl; ?>" alt="Ainsworth Hot Springs pools" />
+                </div>
+              </div>
 
-        <div class="hot-springs-card">
-          <div class="hot-springs-content">
-            <h3 id="special-extra-title"><?php echo $extraTitle; ?></h3>
-            <p id="special-extra-description-1"><?php echo $extraDesc1; ?></p>
-            <p id="special-extra-description-2"><?php echo $extraDesc2; ?></p>
-          </div>
-          <div>
-            <img class="hot-springs-image" src="<?php echo $extraImageUrl; ?>" alt="" />
+              <div class="hot-springs-card reverse">
+                <div class="hot-springs-content">
+                  <h3 id="special-dining-title"><?php echo $diningTitle; ?></h3>
+                  <p id="special-dining-description-1"><?php echo $diningDesc1; ?></p>
+                </div>
+                <div>
+                  <img class="hot-springs-image" src="<?php echo $diningImageUrl; ?>" alt="Ktunaxa Grill restaurant and spa" />
+                </div>
+              </div>
+
+              <div class="hot-springs-card">
+                <div class="hot-springs-content">
+                  <h3 id="special-extra-title"><?php echo $extraTitle; ?></h3>
+                  <p id="special-extra-description-1"><?php echo $extraDesc1; ?></p>
+                  <?php if (trim($extraRaw2) !== '') { ?>
+                  <p id="special-extra-description-2"><?php echo $extraDesc2; ?></p>
+                  <?php } ?>
+                </div>
+                <div>
+                  <img class="hot-springs-image" src="<?php echo $extraImageUrl; ?>" alt="" />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
 
+    <?php foreach ($addonPanels as $panel) {
+        if (!is_array($panel)) {
+            continue;
+        }
+        $pidRaw = isset($panel['id']) ? (string) $panel['id'] : 'panel';
+        $pidAttr = htmlspecialchars(preg_replace('/[^a-zA-Z0-9_-]/', '_', $pidRaw), ENT_QUOTES, 'UTF-8');
+        $adOfferTitle = safeOutput(trim((string) ($panel['offerTitle'] ?? '')), '');
+        $adOfferBodyRaw = trim((string) ($panel['offerMainText'] ?? ''));
+        $adOfferBody = $adOfferBodyRaw !== '' ? safeOutputWithBreaks($adOfferBodyRaw, '') : '';
+        $adRoomsCtaRaw = trim((string) ($panel['offerRoomsCtaLabel'] ?? ''));
+        if ($adRoomsCtaRaw === '') {
+            $adRoomsCtaRaw = 'Choose your room';
+        }
+        $adPoolsTitle = safeOutput(trim((string) ($panel['poolsTitle'] ?? '')), '');
+        $adPoolsRaw1 = trim((string) ($panel['poolsDescription1'] ?? ''));
+        $adPoolsRaw2 = trim((string) ($panel['poolsDescription2'] ?? ''));
+        [$adPoolsRaw1, $adPoolsRaw2] = btb_special_dedupe_description_pair($adPoolsRaw1, $adPoolsRaw2);
+        $adPoolsDesc1 = safeOutputWithBreaks($adPoolsRaw1, '');
+        $adPoolsDesc2 = safeOutputWithBreaks($adPoolsRaw2, '');
+        $adPoolsImageUrl = isset($panel['poolsImageUrl']) && trim((string) $panel['poolsImageUrl']) !== ''
+            ? safeOutput($panel['poolsImageUrl'], '') : '';
+        $adDiningTitle = safeOutput(trim((string) ($panel['diningTitle'] ?? '')), '');
+        $adDiningRaw1 = trim((string) ($panel['diningDescription1'] ?? ''));
+        $adDiningDesc1 = $adDiningRaw1 !== '' ? safeOutputWithBreaks($adDiningRaw1, '') : '';
+        $adDiningImageUrl = isset($panel['diningImageUrl']) && trim((string) $panel['diningImageUrl']) !== ''
+            ? safeOutput($panel['diningImageUrl'], '') : '';
+        $adExtraTitle = safeOutput(trim((string) ($panel['extraTitle'] ?? '')), '');
+        $adExtraRaw1 = trim((string) ($panel['extraDescription1'] ?? ''));
+        $adExtraRaw2 = trim((string) ($panel['extraDescription2'] ?? ''));
+        [$adExtraRaw1, $adExtraRaw2] = btb_special_dedupe_description_pair($adExtraRaw1, $adExtraRaw2);
+        $adExtraDesc1 = safeOutputWithBreaks($adExtraRaw1, '');
+        $adExtraDesc2 = safeOutputWithBreaks($adExtraRaw2, '');
+        $adExtraImageUrl = isset($panel['extraImageUrl']) && trim((string) $panel['extraImageUrl']) !== ''
+            ? safeOutput($panel['extraImageUrl'], '') : '';
+        $adOfferHeadingId = 'special-addon-' . $pidAttr . '-offer-title';
+        ?>
+    <section class="special-section special-hot-springs-unified" aria-labelledby="<?php echo $adOfferHeadingId; ?>">
+      <div class="explore-content-band">
+        <div class="container">
+          <div class="explore-section-panel">
+            <h2 id="<?php echo $adOfferHeadingId; ?>" class="reveal explore-section-h2"><?php echo $adOfferTitle; ?></h2>
+            <?php if ($adOfferBody !== '') { ?>
+            <p class="section-lead reveal" id="special-addon-<?php echo $pidAttr; ?>-offer-body"><?php echo $adOfferBody; ?></p>
+            <?php } ?>
+            <div class="special-offer-cta-wrap">
+              <a class="btn primary" id="special-addon-<?php echo $pidAttr; ?>-offer-rooms-cta" href="index.php#rooms"><?php echo htmlspecialchars($adRoomsCtaRaw, ENT_QUOTES, 'UTF-8'); ?></a>
+            </div>
 
-    <section class="special-section">
-      <div class="container">
-        <div class="exclusive-offer-card">
-          <div class="exclusive-offer-card-content">
-            <h2 id="special-offer-title"><?php echo $offerTitle; ?></h2>
-            <p><strong id="special-offer-main-text"><?php echo $offerMainText; ?></strong></p>
-            <p id="special-offer-description"><?php echo $offerDescription; ?></p>
+            <div class="special-unified-cards">
+              <div class="hot-springs-card">
+                <div class="hot-springs-content">
+                  <h3 id="special-addon-<?php echo $pidAttr; ?>-pools-title"><?php echo $adPoolsTitle; ?></h3>
+                  <?php if (trim($adPoolsRaw1) !== '') { ?>
+                  <p id="special-addon-<?php echo $pidAttr; ?>-pools-description-1"><?php echo $adPoolsDesc1; ?></p>
+                  <?php } ?>
+                  <?php if (trim($adPoolsRaw2) !== '') { ?>
+                  <p id="special-addon-<?php echo $pidAttr; ?>-pools-description-2"><?php echo $adPoolsDesc2; ?></p>
+                  <?php } ?>
+                </div>
+                <div>
+                  <?php if ($adPoolsImageUrl !== '') { ?>
+                  <img class="hot-springs-image" src="<?php echo $adPoolsImageUrl; ?>" alt="" />
+                  <?php } ?>
+                </div>
+              </div>
+
+              <div class="hot-springs-card reverse">
+                <div class="hot-springs-content">
+                  <h3 id="special-addon-<?php echo $pidAttr; ?>-dining-title"><?php echo $adDiningTitle; ?></h3>
+                  <?php if ($adDiningDesc1 !== '') { ?>
+                  <p id="special-addon-<?php echo $pidAttr; ?>-dining-description-1"><?php echo $adDiningDesc1; ?></p>
+                  <?php } ?>
+                </div>
+                <div>
+                  <?php if ($adDiningImageUrl !== '') { ?>
+                  <img class="hot-springs-image" src="<?php echo $adDiningImageUrl; ?>" alt="" />
+                  <?php } ?>
+                </div>
+              </div>
+
+              <div class="hot-springs-card">
+                <div class="hot-springs-content">
+                  <h3 id="special-addon-<?php echo $pidAttr; ?>-extra-title"><?php echo $adExtraTitle; ?></h3>
+                  <?php if (trim($adExtraRaw1) !== '') { ?>
+                  <p id="special-addon-<?php echo $pidAttr; ?>-extra-description-1"><?php echo $adExtraDesc1; ?></p>
+                  <?php } ?>
+                  <?php if (trim($adExtraRaw2) !== '') { ?>
+                  <p id="special-addon-<?php echo $pidAttr; ?>-extra-description-2"><?php echo $adExtraDesc2; ?></p>
+                  <?php } ?>
+                </div>
+                <div>
+                  <?php if ($adExtraImageUrl !== '') { ?>
+                  <img class="hot-springs-image" src="<?php echo $adExtraImageUrl; ?>" alt="" />
+                  <?php } ?>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </section>
+    <?php } ?>
 
   </main>
 
@@ -435,8 +629,10 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       <div>
         <h4>Quiet hours</h4>
         <p>22:00 — 07:00</p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="privacy.php">Privacy &amp; Cookies</a></p>
-        <p style="margin-top:1rem;font-size:0.9rem;"><a href="#" id="btb-open-cookie-settings">Cookie settings</a></p>
+        <ul class="footer-nav footer-nav--legal">
+          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
+          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
+        </ul>
       </div>
     </div>
     <div class="container copyright">© <span id="year"></span> Back to Base</div>

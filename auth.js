@@ -1,4 +1,97 @@
 // Authentication system for Back to Base
+/**
+ * Absolute URL to api.php (same folder as the current page, or parent path via URL resolution).
+ */
+if (typeof window.btbApiPhp !== 'function') {
+  window.btbApiPhp = function btbApiPhp() {
+    try {
+      return new URL('api.php', window.location.href).href;
+    } catch (e) {
+      return 'api.php';
+    }
+  };
+}
+
+/**
+ * Guest session: JWT in HttpOnly cookie (set by api on login/register).
+ * Legacy Bearer in localStorage is removed after a successful verify.
+ */
+(function () {
+  if (typeof window.btbVerifyGuestSession === 'function') {
+    return;
+  }
+  function mapUser(u) {
+    if (!u || typeof u !== 'object') {
+      return null;
+    }
+    return {
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      phone: u.phone,
+      phone2: u.phone2,
+      isVerified: u.is_verified,
+      createdAt: u.created_at,
+      lastSession: u.last_session,
+    };
+  }
+
+  async function verifyGuestSession() {
+    let verifyUrl = 'api.php?action=verify';
+    try {
+      const u = new URL(window.btbApiPhp());
+      u.searchParams.set('action', 'verify');
+      verifyUrl = u.href;
+    } catch (_) {}
+    const baseHeaders = { 'Content-Type': 'application/json' };
+    const opts = { method: 'GET', credentials: 'same-origin', headers: baseHeaders };
+    let r = await fetch(verifyUrl, opts);
+    let j = await r.json().catch(() => ({}));
+    if (j.success && j.data && j.data.user) {
+      try {
+        localStorage.removeItem('btb_auth_token');
+      } catch (_) {}
+      return { ok: true, user: j.data.user };
+    }
+    let legacy = null;
+    try {
+      legacy = localStorage.getItem('btb_auth_token');
+    } catch (_) {}
+    if (legacy) {
+      r = await fetch(verifyUrl, {
+        method: 'GET',
+        credentials: 'same-origin',
+        headers: { ...baseHeaders, Authorization: 'Bearer ' + legacy },
+      });
+      j = await r.json().catch(() => ({}));
+      if (j.success && j.data && j.data.user) {
+        try {
+          localStorage.removeItem('btb_auth_token');
+        } catch (_) {}
+        return { ok: true, user: j.data.user };
+      }
+    }
+    return { ok: false, user: null };
+  }
+
+  function guestFetchInit(extra) {
+    const o = extra && typeof extra === 'object' ? extra : {};
+    const headers = { ...(o.headers || {}) };
+    let legacy = null;
+    try {
+      legacy = localStorage.getItem('btb_auth_token');
+    } catch (_) {}
+    if (legacy && !headers.Authorization) {
+      headers.Authorization = 'Bearer ' + legacy;
+    }
+    return { ...o, credentials: 'same-origin', headers };
+  }
+
+  window.btbMapVerifyUser = mapUser;
+  window.btbVerifyGuestSession = verifyGuestSession;
+  window.btbGuestFetchInit = guestFetchInit;
+})();
+
 class AuthSystem {
   constructor() {
     this.currentUser = null;
@@ -6,55 +99,50 @@ class AuthSystem {
     this.init();
   }
 
-  init() {
-    this.checkAuthStatus();
+  async init() {
+    await this.checkAuthStatus();
     this.setupEventListeners();
     this.updateHeaderButtons();
   }
 
-  // Проверка статуса аутентификации
+  // Checking authentication status (JWT in HttpOnly cookie; see auth_session.js)
   async checkAuthStatus() {
-    const token = localStorage.getItem('btb_auth_token');
-    
-    if (token) {
-      try {
-        // Проверяем токен на сервере
-        const response = await fetch('api.php?action=verify', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        });
-        
-        const result = await response.json();
-        
-        if (result.success && result.data && result.data.user) {
-          this.currentUser = result.data.user;
-          this.isAuthenticated = true;
-          // Сохраняем токен и данные пользователя в localStorage для быстрого доступа
-          localStorage.setItem('btb_auth_token', token);
-          localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
-        } else {
-          this.logout();
-        }
-      } catch (error) {
-        console.error('Auth check error:', error);
-        this.logout();
+    if (typeof window.btbVerifyGuestSession !== 'function') {
+      return;
+    }
+    try {
+      const { ok, user } = await window.btbVerifyGuestSession();
+      if (ok && user) {
+        const mapped = window.btbMapVerifyUser ? window.btbMapVerifyUser(user) : user;
+        this.currentUser = mapped;
+        this.isAuthenticated = true;
+        try {
+          localStorage.setItem('btb_user_data', JSON.stringify(mapped));
+        } catch (_) {}
+      } else {
+        this.currentUser = null;
+        this.isAuthenticated = false;
+        try {
+          localStorage.removeItem('btb_user_data');
+        } catch (_) {}
       }
+    } catch (error) {
+      console.error('Auth check error:', error);
+      this.currentUser = null;
+      this.isAuthenticated = false;
     }
   }
 
-  // Настройка обработчиков событий
+  // Setting up event handlers
   setupEventListeners() {
-    // Переключение между вкладками
+    // Switch between tabs
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
         this.switchTab(e.target.dataset.tab);
       });
     });
 
-    // Форма входа
+    // Login form
     const loginForm = document.getElementById('login-form');
     if (loginForm) {
       loginForm.addEventListener('submit', (e) => {
@@ -63,7 +151,7 @@ class AuthSystem {
       });
     }
 
-    // Форма регистрации
+    // Registration form
     const regForm = document.getElementById('registration-form');
     if (regForm) {
       regForm.addEventListener('submit', (e) => {
@@ -72,7 +160,7 @@ class AuthSystem {
       });
     }
 
-    // Форма восстановления пароля
+    // Password recovery form
     const forgotForm = document.getElementById('forgot-password-form');
     if (forgotForm) {
       forgotForm.addEventListener('submit', (e) => {
@@ -81,7 +169,7 @@ class AuthSystem {
       });
     }
 
-    // Ссылки для переключения форм
+    // Links to switch forms
     const forgotLink = document.getElementById('forgot-password-link');
     if (forgotLink) {
       forgotLink.addEventListener('click', (e) => {
@@ -99,23 +187,23 @@ class AuthSystem {
     }
   }
 
-  // Переключение между вкладками
+  // Switch between tabs
   switchTab(tabName) {
-    // Обновляем активную вкладку
+    // Refresh the active tab
     document.querySelectorAll('.tab-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === tabName);
     });
 
-    // Показываем соответствующую форму
+    // Show the corresponding form
     document.querySelectorAll('.auth-form').forEach(form => {
       form.classList.toggle('active', form.id === `${tabName}-form`);
     });
 
-    // Очищаем сообщения
+    // Clearing messages
     this.clearMessages();
   }
 
-  // Обработка входа
+  // Login Processing
   async handleLogin() {
     const email = document.getElementById('login-email').value;
     const password = document.getElementById('login-password').value;
@@ -126,11 +214,11 @@ class AuthSystem {
     }
 
     try {
-      // Вход через API
+      // Login via API
       await this.loginUser({ email, password });
       this.showMessage('Successfully signed in!', 'success');
       
-      // Перенаправляем на главную страницу личного кабинета
+      // Redirect to the main page of your personal account
       setTimeout(() => {
         window.location.href = 'dashboard.html';
       }, 1000);
@@ -140,7 +228,7 @@ class AuthSystem {
     }
   }
 
-  // Обработка регистрации
+  // Processing registration
   async handleRegistration() {
     const name = document.getElementById('reg-name').value;
     const email = document.getElementById('reg-email').value;
@@ -148,7 +236,7 @@ class AuthSystem {
     const password = document.getElementById('reg-password').value;
     const confirmPassword = document.getElementById('reg-confirm-password').value;
 
-    // Валидация
+    // Validation
     if (!name || !email || !phone || !password || !confirmPassword) {
       this.showMessage('Please fill in all fields', 'error');
       return;
@@ -165,7 +253,7 @@ class AuthSystem {
     }
 
     try {
-      // Проверяем, не существует ли уже пользователь с таким email
+      // Checking to see if a user with the same email already exists
       const existingUser = await this.findUserByEmail(email);
       
       if (existingUser) {
@@ -175,15 +263,15 @@ class AuthSystem {
         return;
       }
 
-      // Создаем нового пользователя через API
+      // Create a new user via API
       const newUser = await this.createUser({ name, email, phone, password });
       
-      // Автоматически логиним пользователя после регистрации
+      // Automatically login the user after registration
       await this.loginUser({ email, password });
       
       this.showMessage('Account created successfully!', 'success');
       
-      // Переключаемся на форму входа
+      // Switch to the login form
       setTimeout(() => {
         this.switchTab('signin');
         document.getElementById('login-email').value = email;
@@ -195,7 +283,7 @@ class AuthSystem {
     }
   }
 
-  // Обработка восстановления пароля
+  // Password recovery processing
   async handlePasswordReset() {
     const email = document.getElementById('reset-email').value;
 
@@ -205,7 +293,7 @@ class AuthSystem {
     }
 
     try {
-      // Проверяем, существует ли пользователь
+      // Checking if the user exists
       const user = await this.findUserByEmail(email);
       
       if (!user) {
@@ -213,12 +301,12 @@ class AuthSystem {
         return;
       }
 
-      // Отправляем ссылку для сброса пароля
+      // We send a link to reset your password
       await this.sendPasswordResetEmail(email);
       
       this.showMessage('Password reset link sent to your email. Please check your inbox.', 'success');
       
-      // Возвращаемся к форме входа
+      // Returning to the login form
       setTimeout(() => {
         this.showLoginForm();
       }, 2000);
@@ -228,14 +316,22 @@ class AuthSystem {
     }
   }
 
-  // Поиск пользователя по email
+  // Search for a user by email
   async findUserByEmail(email) {
     try {
-      const response = await fetch(`api.php?action=find_by_email&email=${encodeURIComponent(email)}`, {
+      let findUrl = `api.php?action=find_by_email&email=${encodeURIComponent(email)}`;
+      try {
+        const u = new URL(window.btbApiPhp());
+        u.searchParams.set('action', 'find_by_email');
+        u.searchParams.set('email', email);
+        findUrl = u.href;
+      } catch (_) {}
+      const response = await fetch(findUrl, {
         method: 'GET',
+        credentials: 'same-origin',
         headers: {
-          'Content-Type': 'application/json'
-        }
+          'Content-Type': 'application/json',
+        },
       });
       
       const result = await response.json();
@@ -251,7 +347,7 @@ class AuthSystem {
     }
   }
 
-  // Создание нового пользователя
+  // Creating a new user
   async createUser(userData) {
     try {
       const formData = new FormData();
@@ -261,13 +357,16 @@ class AuthSystem {
       formData.append('phone', userData.phone || '');
       formData.append('password', userData.password);
       
-      const response = await fetch('api.php', {
-        method: 'POST',
-        body: formData
-      });
-      
+      const apiHref = typeof window.btbApiPhp === 'function' ? window.btbApiPhp() : 'api.php';
+      const response = await fetch(
+        apiHref,
+        typeof window.btbGuestFetchInit === 'function'
+          ? window.btbGuestFetchInit({ method: 'POST', body: formData })
+          : { method: 'POST', body: formData, credentials: 'same-origin' },
+      );
+
       const result = await response.json();
-      
+
       if (result.success && result.data && result.data.user) {
         return result.data.user;
       } else {
@@ -279,7 +378,7 @@ class AuthSystem {
     }
   }
 
-  // Вход пользователя
+  // User Login
   async loginUser(user) {
     try {
       const formData = new FormData();
@@ -287,23 +386,29 @@ class AuthSystem {
       formData.append('email', user.email);
       formData.append('password', user.password);
       
-      const response = await fetch('api.php', {
-        method: 'POST',
-        body: formData
-      });
-      
+      const apiHref = typeof window.btbApiPhp === 'function' ? window.btbApiPhp() : 'api.php';
+      const response = await fetch(
+        apiHref,
+        typeof window.btbGuestFetchInit === 'function'
+          ? window.btbGuestFetchInit({ method: 'POST', body: formData })
+          : { method: 'POST', body: formData, credentials: 'same-origin' },
+      );
+
       const result = await response.json();
-      
+
       if (result.success && result.data && result.data.user) {
-        this.currentUser = result.data.user;
+        const mapped = window.btbMapVerifyUser
+          ? window.btbMapVerifyUser(result.data.user)
+          : result.data.user;
+        this.currentUser = mapped;
         this.isAuthenticated = true;
-        
-        // Сохраняем токен и данные пользователя
-        const token = result.data.token;
-        localStorage.setItem('btb_auth_token', token);
+
+        try {
+          localStorage.removeItem('btb_auth_token');
+        } catch (_) {}
         localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
         
-        // Обновляем заголовок
+        // Update the title
         this.updateHeaderButtons();
       } else {
         throw new Error(result.error || 'Login failed');
@@ -314,119 +419,130 @@ class AuthSystem {
     }
   }
 
-  // Выход пользователя
-  logout() {
+  // User logout
+  async logout() {
+    try {
+      const fd = new FormData();
+      fd.append('action', 'logout');
+      const apiHref = typeof window.btbApiPhp === 'function' ? window.btbApiPhp() : 'api.php';
+      await fetch(
+        apiHref,
+        typeof window.btbGuestFetchInit === 'function'
+          ? window.btbGuestFetchInit({ method: 'POST', body: fd })
+          : { method: 'POST', body: fd, credentials: 'same-origin' },
+      );
+    } catch (_) {}
+
     this.currentUser = null;
     this.isAuthenticated = false;
-    
-    // Очищаем localStorage
-    localStorage.removeItem('btb_auth_token');
-    localStorage.removeItem('btb_user_data');
-    
-    // Обновляем заголовок
+
+    try {
+      localStorage.removeItem('btb_auth_token');
+      localStorage.removeItem('btb_user_data');
+    } catch (_) {}
+
     this.updateHeaderButtons();
     
-    // Если мы на странице заказов, перенаправляем на главную
+    // If we are on the orders page, we redirect to the main page
     if (window.location.pathname.includes('order.html')) {
       window.location.href = 'index.html';
     }
   }
 
-  // Валидация токена
+  // Token Validation
   async validateToken() {
-    const token = localStorage.getItem('btb_auth_token');
-    if (!token) {
-      this.logout();
+    if (typeof window.btbVerifyGuestSession !== 'function') {
+      await this.logout();
       return false;
     }
-    
     try {
-      const response = await fetch('api.php?action=verify', {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        }
-      });
-      
-      const result = await response.json();
-      
-      if (result.success && result.data && result.data.user) {
-        this.currentUser = result.data.user;
+      const { ok, user } = await window.btbVerifyGuestSession();
+      if (ok && user) {
+        const mapped = window.btbMapVerifyUser ? window.btbMapVerifyUser(user) : user;
+        this.currentUser = mapped;
         this.isAuthenticated = true;
-        localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
+        localStorage.setItem('btb_user_data', JSON.stringify(mapped));
         return true;
-      } else {
-        this.logout();
-        return false;
       }
+      await this.logout();
+      return false;
     } catch (error) {
       console.error('Token validation error:', error);
-      this.logout();
+      await this.logout();
       return false;
     }
   }
 
-  // Отправка подтверждающего письма
+  // Sending a confirmation letter
   async sendConfirmationEmail(email, name) {
-    // В реальном приложении здесь был бы API для отправки email
+    // In a real application there would be an API for sending email
     console.log(`Confirmation email sent to ${email} for user ${name}`);
     
-    // Для демонстрации показываем сообщение
+    // To demonstrate, we show the message
     this.showMessage(`Confirmation email sent to ${email}`, 'success');
   }
 
-  // Отправка письма для сброса пароля
+  // Sending an email to reset your password
   async sendPasswordResetEmail(email) {
-    // В реальном приложении здесь был бы API для отправки email
+    // In a real application there would be an API for sending email
     console.log(`Password reset email sent to ${email}`);
     
-    // Для демонстрации показываем сообщение
+    // To demonstrate, we show the message
     this.showMessage(`Password reset email sent to ${email}`, 'success');
   }
 
-  // Показ формы восстановления пароля
+  // Show password recovery form
   showForgotPasswordForm() {
     document.getElementById('login-form').style.display = 'none';
     document.getElementById('forgot-password-form').style.display = 'block';
     
-    // Заполняем email в форме восстановления
+    // Fill in the email in the recovery form
     const loginEmail = document.getElementById('login-email').value;
     document.getElementById('reset-email').value = loginEmail;
   }
 
-  // Показ формы входа
+  // Show login form
   showLoginForm() {
     document.getElementById('forgot-password-form').style.display = 'none';
     document.getElementById('login-form').style.display = 'block';
   }
 
-  // Обновление кнопок в заголовке
+  // Updating buttons in the header and mobile menu
   updateHeaderButtons() {
     const signinBtn = document.getElementById('header-signin');
+    const mobileSignin = document.getElementById('mobile-nav-signin');
+
+    const apply = (el) => {
+      if (!el) return;
+      if (this.isAuthenticated) {
+        el.textContent = 'My Account';
+        el.href = 'dashboard.html';
+        el.classList.add('authenticated');
+      } else {
+        el.textContent = 'Guest login';
+        el.href = 'login.html';
+        el.classList.remove('authenticated');
+      }
+    };
+
+    apply(signinBtn);
+    apply(mobileSignin);
+
     if (!signinBtn) {
-      // Если кнопка еще не загружена, попробуем еще раз через небольшую задержку
       setTimeout(() => {
         const retryBtn = document.getElementById('header-signin');
         if (retryBtn) {
           this.updateHeaderButtons();
         }
       }, 100);
-      return;
     }
 
-    if (this.isAuthenticated) {
-      signinBtn.innerHTML = 'My Account';
-      signinBtn.href = 'dashboard.html';
-      signinBtn.classList.add('authenticated');
-    } else {
-      signinBtn.innerHTML = 'Guest login';
-      signinBtn.href = 'login.html';
-      signinBtn.classList.remove('authenticated');
-    }
+    try {
+      window.dispatchEvent(new CustomEvent('btb:auth:updated'));
+    } catch (_) {}
   }
 
-  // Показ сообщений
+  // Show messages
   showMessage(message, type = 'info') {
     const messagesContainer = document.getElementById('auth-messages');
     if (!messagesContainer) return;
@@ -437,7 +553,7 @@ class AuthSystem {
 
     messagesContainer.appendChild(messageEl);
 
-    // Автоматически убираем сообщение через 5 секунд
+    // Automatically remove the message after 5 seconds
     setTimeout(() => {
       if (messageEl.parentNode) {
         messageEl.parentNode.removeChild(messageEl);
@@ -445,7 +561,7 @@ class AuthSystem {
     }, 5000);
   }
 
-  // Очистка сообщений
+  // Clearing messages
   clearMessages() {
     const messagesContainer = document.getElementById('auth-messages');
     if (messagesContainer) {
@@ -453,36 +569,34 @@ class AuthSystem {
     }
   }
 
-  // Обновление пользователя в базе
+  // Updating a user in the database
   async updateUserInDatabase() {
     if (!this.currentUser) {
       return;
     }
     
     try {
-      const token = localStorage.getItem('btb_auth_token');
-      if (!token) {
-        return;
-      }
-      
       const formData = new FormData();
       formData.append('action', 'update_profile');
       formData.append('name', this.currentUser.name || '');
       formData.append('phone', this.currentUser.phone || '');
       formData.append('phone2', this.currentUser.phone2 || '');
-      
-      const response = await fetch('api.php', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        },
-        body: formData
-      });
-      
+
+      const apiHref = typeof window.btbApiPhp === 'function' ? window.btbApiPhp() : 'api.php';
+      const response = await fetch(
+        apiHref,
+        typeof window.btbGuestFetchInit === 'function'
+          ? window.btbGuestFetchInit({ method: 'POST', body: formData })
+          : { method: 'POST', body: formData, credentials: 'same-origin' },
+      );
+
       const result = await response.json();
-      
+
       if (result.success && result.data && result.data.user) {
-        this.currentUser = result.data.user;
+        const mapped = window.btbMapVerifyUser
+          ? window.btbMapVerifyUser(result.data.user)
+          : result.data.user;
+        this.currentUser = mapped;
         localStorage.setItem('btb_user_data', JSON.stringify(this.currentUser));
       }
     } catch (error) {
@@ -491,16 +605,16 @@ class AuthSystem {
   }
 }
 
-// Инициализация системы аутентификации
+// Initializing the authentication system
 document.addEventListener('DOMContentLoaded', () => {
-  // Создаем экземпляр только если его еще нет (избегаем дублирования)
+  // We create an instance only if it does not exist yet (avoid duplication)
   if (!window.authSystem) {
     window.authSystem = new AuthSystem();
   } else {
-    // Если экземпляр уже существует, просто обновляем кнопки
+    // If an instance already exists, simply update the buttons
     window.authSystem.updateHeaderButtons();
   }
 });
 
-// Экспорт для использования в других файлах
+// Export for use in other files
 window.AuthSystem = AuthSystem;
