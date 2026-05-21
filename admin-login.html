@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PZP7FK6V');</script>
+  <!-- End Google Tag Manager -->
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="any">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <link rel="canonical" href="https://backtobase.ca/admin-login.html">
@@ -9,10 +17,17 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <script>
+    document.documentElement.setAttribute('data-theme', 'light');
+  </script>
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="admin.css">
+  <link rel="stylesheet" href="admin.css?v=11">
 </head>
 <body class="admin-body">
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PZP7FK6V"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
   <div class="admin-login-container">
     <div class="admin-login-card">
       <div class="admin-login-header">
@@ -167,7 +182,12 @@
             console.log('Admin auth flag set to true');
             // Redirect to admin panel
             console.log('Redirecting to admin.html...');
-            window.location.href = 'admin.html';
+            let postHash = '';
+            try {
+              postHash = sessionStorage.getItem('btb_admin_post_login_hash') || '';
+              sessionStorage.removeItem('btb_admin_post_login_hash');
+            } catch (_) { /* ignore */ }
+            window.location.href = 'admin.html' + postHash;
           } else {
             console.error('Login failed:', result);
             errorDiv.textContent = result.error || 'Invalid username or password';

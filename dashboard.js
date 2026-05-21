@@ -11,6 +11,55 @@ class Dashboard {
     }
     this.setupEventListeners();
     this.loadUserData();
+    void this.refreshDashboardNotifications();
+    document.addEventListener('btb:orders:changed', () => {
+      void this.refreshDashboardNotifications();
+    });
+    document.addEventListener('btb:messages:updated', () => {
+      void this.refreshDashboardNotifications();
+    });
+  }
+
+  /** Blink My Bookings / Chat tiles when something new appeared since last My Bookings visit or from host chat. */
+  async refreshDashboardNotifications() {
+    const bookingsBtn = document.getElementById('btn-my-bookings');
+    const chatBtn = document.getElementById('btn-messages');
+    if (bookingsBtn) bookingsBtn.classList.remove('dashboard-btn--pulse-bookings');
+    if (chatBtn) chatBtn.classList.remove('dashboard-btn--pulse-chat');
+
+    let raw = '[]';
+    try {
+      raw = localStorage.getItem('btb_orders') || '[]';
+    } catch (_) {}
+    let arr = [];
+    try {
+      arr = JSON.parse(raw);
+    } catch (_) {}
+    if (!Array.isArray(arr)) arr = [];
+
+    let digestStored = '';
+    try {
+      digestStored = localStorage.getItem('btb_my_bookings_view_digest') || '';
+    } catch (_) {}
+
+    if (
+      typeof window.btbFetchGuestBookingPayStatusMap === 'function' &&
+      typeof window.btbMyBookingsDigestFromState === 'function'
+    ) {
+      const { map } = await window.btbFetchGuestBookingPayStatusMap(arr);
+      const digestNow = window.btbMyBookingsDigestFromState(arr, map || {});
+      const listed = arr.filter((o) => o && (o.kind === 'room' || o.kind === 'massage'));
+      if (listed.length > 0 && digestNow !== digestStored && bookingsBtn) {
+        bookingsBtn.classList.add('dashboard-btn--pulse-bookings');
+      }
+    }
+
+    if (typeof window.btbFetchGuestChatUnread === 'function') {
+      const { ok, unread } = await window.btbFetchGuestChatUnread();
+      if (ok && unread > 0 && chatBtn) {
+        chatBtn.classList.add('dashboard-btn--pulse-chat');
+      }
+    }
   }
 
   /** @returns {Promise<boolean>} */

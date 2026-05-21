@@ -1,4 +1,4 @@
-// Messages with the host — server-backed chat (host_chat_api.php)
+// Chat with Rob — server-backed chat (host_chat_api.php)
 class MessagesSystem {
   constructor() {
     this.currentUser = null;

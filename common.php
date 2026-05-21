@@ -32,6 +32,41 @@ function sendError($error, $data = null, $httpCode = null) {
 }
 
 /**
+ * All host/staff notification inboxes (primary + optional override). Lowercase, deduplicated.
+ *
+ * @return list<string>
+ */
+function btb_host_notification_emails(): array
+{
+    $out = [];
+    $seen = [];
+    $add = static function (string $raw) use (&$out, &$seen): void {
+        $e = strtolower(trim($raw));
+        if ($e === '' || !filter_var($e, FILTER_VALIDATE_EMAIL) || isset($seen[$e])) {
+            return;
+        }
+        $seen[$e] = true;
+        $out[] = $e;
+    };
+    if (defined('MAILGUN_HOST_EMAIL')) {
+        $add((string) MAILGUN_HOST_EMAIL);
+    }
+    if (defined('BTB_HOST_EMAIL_OVERRIDE')) {
+        $add((string) BTB_HOST_EMAIL_OVERRIDE);
+    }
+
+    return $out;
+}
+
+/** Primary host inbox (first in {@see btb_host_notification_emails()}). */
+function btb_host_notification_email(): string
+{
+    $list = btb_host_notification_emails();
+
+    return $list[0] ?? '';
+}
+
+/**
  * Fixed-window rate limit (file + flock). Fails open if temp dir is not writable.
  *
  * @param string $bucket Stable key, e.g. "guest_chat_send:42"
@@ -85,6 +120,275 @@ function btb_rate_limit_enforce(string $bucket, int $maxEvents, int $windowSecon
 /** Remove NULs and trim for chat / text fields */
 function btb_sanitize_chat_body(string $body): string {
     return str_replace("\0", '', $body);
+}
+
+/** Shared label for optional guest → host message on booking forms (rooms + wellness). */
+function btb_guest_message_field_label(): string
+{
+    return 'Message to host (optional)';
+}
+
+/**
+ * Optional guest message from booking forms: trim, sanitize, cap length; empty string if blank.
+ */
+function btb_normalize_guest_message($raw): string
+{
+    $s = trim((string) $raw);
+    if ($s === '') {
+        return '';
+    }
+    if (function_exists('sanitizeInput')) {
+        $s = sanitizeInput($s);
+    }
+    $s = btb_sanitize_chat_body($s);
+    $s = trim($s);
+    if ($s === '') {
+        return '';
+    }
+    if (mb_strlen($s) > 2000) {
+        $s = mb_substr($s, 0, 2000);
+    }
+
+    return $s;
+}
+
+/**
+ * Extend host_chat_threads for guests without accounts (guest_email + nullable user_id).
+ */
+function btb_host_chat_ensure_guest_email_schema(mysqli $conn): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    if (function_exists('btb_host_chat_ensure_tables')) {
+        btb_host_chat_ensure_tables($conn);
+    }
+
+    $chk = @$conn->query("SHOW COLUMNS FROM `host_chat_threads` LIKE 'guest_email'");
+    if ($chk && $chk->num_rows > 0) {
+        return;
+    }
+
+    @$conn->query(
+        'ALTER TABLE `host_chat_threads`
+         ADD COLUMN `guest_email` VARCHAR(255) NULL DEFAULT NULL AFTER `user_id`,
+         ADD KEY `idx_guest_email` (`guest_email`)'
+    );
+}
+
+/**
+ * Ensure massage_bookings.guest_message exists (separate from legacy notes / with_room).
+ */
+function btb_massage_bookings_ensure_guest_message_column(mysqli $conn): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+
+    $chk = @$conn->query("SHOW TABLES LIKE 'massage_bookings'");
+    if (!$chk || $chk->num_rows === 0) {
+        return;
+    }
+    $col = @$conn->query("SHOW COLUMNS FROM `massage_bookings` LIKE 'guest_message'");
+    if ($col && $col->num_rows > 0) {
+        return;
+    }
+    @$conn->query(
+        'ALTER TABLE `massage_bookings`
+         ADD COLUMN `guest_message` TEXT NULL COMMENT \'Optional message to host at booking time\' AFTER `notes`'
+    );
+}
+
+/**
+ * Attach email-only chat threads when a guest registers or logs in.
+ */
+function btb_host_chat_link_threads_to_user(mysqli $conn, int $userId, string $email): void
+{
+    if ($userId < 1) {
+        return;
+    }
+    if (!function_exists('btb_guest_email_normalize')) {
+        return;
+    }
+    btb_host_chat_ensure_guest_email_schema($conn);
+    $norm = btb_guest_email_normalize($email);
+    if ($norm === '') {
+        return;
+    }
+    executeQuery(
+        $conn,
+        'UPDATE `host_chat_threads` SET `user_id` = ? WHERE `user_id` = 0 AND LOWER(TRIM(`guest_email`)) = ?',
+        [$userId, $norm]
+    );
+}
+
+/**
+ * Save guest booking message into host chat (no separate chat notification email).
+ *
+ * @return int|null thread id
+ */
+function btb_host_chat_save_booking_guest_message(
+    mysqli $conn,
+    string $email,
+    string $guestName,
+    string $body,
+    string $subject = ''
+): ?int {
+    $body = btb_normalize_guest_message($body);
+    if ($body === '') {
+        return null;
+    }
+
+    btb_host_chat_ensure_guest_email_schema($conn);
+
+    $emailNorm = function_exists('btb_guest_email_normalize')
+        ? btb_guest_email_normalize($email)
+        : strtolower(trim($email));
+    if ($emailNorm === '') {
+        return null;
+    }
+
+    $userRow = fetchOne($conn, 'SELECT id, name, email FROM users WHERE LOWER(TRIM(email)) = ? LIMIT 1', [$emailNorm]);
+    $userId = $userRow ? (int) $userRow['id'] : 0;
+
+    $thread = null;
+    if ($userId > 0) {
+        $thread = fetchOne(
+            $conn,
+            'SELECT id FROM host_chat_threads WHERE user_id = ? ORDER BY last_message_at DESC, id DESC LIMIT 1',
+            [$userId]
+        );
+    }
+    if (!$thread) {
+        $thread = fetchOne(
+            $conn,
+            'SELECT id FROM host_chat_threads WHERE user_id = 0 AND LOWER(TRIM(guest_email)) = ? ORDER BY last_message_at DESC, id DESC LIMIT 1',
+            [$emailNorm]
+        );
+    }
+
+    $now = date('Y-m-d H:i:s');
+
+    if ($thread) {
+        $tid = (int) $thread['id'];
+        $mid = insertRecord($conn, 'host_chat_messages', [
+            'thread_id' => $tid,
+            'sender' => 'guest',
+            'body' => $body,
+        ]);
+        if (!$mid) {
+            return null;
+        }
+        updateRecord($conn, 'host_chat_threads', [
+            'last_message_at' => $now,
+            'staff_unread' => 1,
+            'guest_unread' => 0,
+        ], 'id = ?', [$tid]);
+
+        return $tid;
+    }
+
+    $subject = trim($subject);
+    if ($subject === '') {
+        $oneLine = preg_replace('/\s+/u', ' ', str_replace(["\r", "\n", "\t"], ' ', $body));
+        $oneLine = trim((string) $oneLine);
+        $subject = $oneLine !== '' ? mb_substr($oneLine, 0, 120) : 'Booking message';
+    }
+    if (mb_strlen($subject) > 500) {
+        $subject = mb_substr($subject, 0, 500);
+    }
+
+    $tid = insertRecord($conn, 'host_chat_threads', [
+        'user_id' => $userId > 0 ? $userId : 0,
+        'guest_email' => $emailNorm,
+        'subject' => $subject,
+        'last_message_at' => $now,
+        'staff_unread' => 1,
+        'guest_unread' => 0,
+    ]);
+    if (!$tid) {
+        return null;
+    }
+
+    $mid = insertRecord($conn, 'host_chat_messages', [
+        'thread_id' => (int) $tid,
+        'sender' => 'guest',
+        'body' => $body,
+    ]);
+    if (!$mid) {
+        return null;
+    }
+
+    return (int) $tid;
+}
+
+/**
+ * Best-effort client IP: first valid entry in X-Forwarded-For, else REMOTE_ADDR.
+ */
+function btb_client_ip_best_effort(): string {
+    $xff = isset($_SERVER['HTTP_X_FORWARDED_FOR']) ? trim((string) $_SERVER['HTTP_X_FORWARDED_FOR']) : '';
+    if ($xff !== '') {
+        foreach (array_map('trim', explode(',', $xff)) as $part) {
+            if ($part !== '' && filter_var($part, FILTER_VALIDATE_IP)) {
+                return $part;
+            }
+        }
+    }
+    $ra = trim((string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+
+    return filter_var($ra, FILTER_VALIDATE_IP) ? $ra : '';
+}
+
+/**
+ * City (and region when useful) from a public IP via ip-api.com HTTP API (free tier ~45 req/min).
+ * Set BTB_DISABLE_IP_GEO to true in config to skip outbound lookups. Empty on failure or private IPs.
+ */
+function btb_geo_city_from_ip(string $ip): string {
+    if (defined('BTB_DISABLE_IP_GEO') && BTB_DISABLE_IP_GEO) {
+        return '';
+    }
+    $ip = trim($ip);
+    if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+        return '';
+    }
+    if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+        return '';
+    }
+    $url = 'http://ip-api.com/json/' . rawurlencode($ip) . '?fields=status,message,city,regionName,countryCode';
+    $ctx = stream_context_create([
+        'http' => [
+            'timeout' => 2.5,
+            'ignore_errors' => true,
+        ],
+    ]);
+    $raw = @file_get_contents($url, false, $ctx);
+    if ($raw === false || $raw === '') {
+        return '';
+    }
+    $data = json_decode($raw, true);
+    if (!is_array($data) || ($data['status'] ?? '') !== 'success') {
+        return '';
+    }
+    $city = trim((string) ($data['city'] ?? ''));
+    $region = trim((string) ($data['regionName'] ?? ''));
+    $cc = trim((string) ($data['countryCode'] ?? ''));
+    if ($city !== '') {
+        if ($region !== '' && strcasecmp($region, $city) !== 0) {
+            return $city . ', ' . $region;
+        }
+
+        return $city;
+    }
+    if ($region !== '') {
+        return $cc !== '' ? ($region . ', ' . $cc) : $region;
+    }
+
+    return '';
 }
 
 // Database utilities
@@ -1600,6 +1904,201 @@ function btb_save_booking_success_banner_from_post($conn, array $post): array {
 }
 
 /**
+ * Check-in conditions modal on room booking pages (link under the form).
+ *
+ * @return array{heading: string, trigger_label: string, paragraph_1: string, paragraph_2: string, about_link_label: string, about_link_url: string}
+ */
+function btb_checkin_conditions_defaults(): array
+{
+    return [
+        'heading' => 'Check-in conditions',
+        'trigger_label' => 'Check-in conditions',
+        'paragraph_1' => 'Check-in from 3:00 PM, Check-out until 11:00 AM.',
+        'paragraph_2' => '',
+        'about_link_label' => '',
+        'about_link_url' => '',
+    ];
+}
+
+function btb_checkin_conditions_sanitize_url(string $url): string
+{
+    $u = trim($url);
+    $def = (string) (btb_checkin_conditions_defaults()['about_link_url'] ?? 'about.php');
+    if ($u === '') {
+        return $def;
+    }
+    if (preg_match('/^\s*javascript:/i', $u) || preg_match('/^\s*data:/i', $u)) {
+        return $def;
+    }
+    if (preg_match('#^https?://#i', $u)) {
+        return $u;
+    }
+    if ($u[0] === '/' || $u[0] === '.' || preg_match('/^[A-Za-z0-9._\-]+\.php/i', $u) || preg_match('/^[A-Za-z0-9._\-]+\.html/i', $u)) {
+        return $u;
+    }
+
+    return $def;
+}
+
+function btb_ensure_checkin_conditions_settings_table($conn): bool
+{
+    if (!$conn) {
+        return false;
+    }
+    $sql = "CREATE TABLE IF NOT EXISTS `checkin_conditions_settings` (
+      `id` TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+      `heading` VARCHAR(500) NOT NULL DEFAULT 'Check-in conditions',
+      `trigger_label` VARCHAR(255) NOT NULL DEFAULT 'Check-in conditions',
+      `paragraph_1` TEXT NULL,
+      `paragraph_2` TEXT NULL,
+      `about_link_label` VARCHAR(255) NOT NULL DEFAULT 'About Us page',
+      `about_link_url` VARCHAR(1024) NOT NULL DEFAULT 'about.php',
+      `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci";
+    if (!$conn->query($sql)) {
+        error_log('btb_ensure_checkin_conditions_settings_table: ' . $conn->error);
+
+        return false;
+    }
+    $d = btb_checkin_conditions_defaults();
+    $stmt = $conn->prepare(
+        'INSERT IGNORE INTO `checkin_conditions_settings` (`id`, `heading`, `trigger_label`, `paragraph_1`, `paragraph_2`, `about_link_label`, `about_link_url`)
+         VALUES (1, ?, ?, ?, ?, ?, ?)'
+    );
+    if ($stmt) {
+        $h = (string) $d['heading'];
+        $t = (string) $d['trigger_label'];
+        $p1 = (string) $d['paragraph_1'];
+        $p2 = (string) $d['paragraph_2'];
+        $ll = (string) $d['about_link_label'];
+        $lu = (string) $d['about_link_url'];
+        $stmt->bind_param('ssssss', $h, $t, $p1, $p2, $ll, $lu);
+        @$stmt->execute();
+        $stmt->close();
+    }
+
+    return true;
+}
+
+/**
+ * @return array{heading: string, trigger_label: string, paragraph_1: string, paragraph_2: string, about_link_label: string, about_link_url: string}
+ */
+function btb_checkin_conditions_api_data($conn): array
+{
+    $def = btb_checkin_conditions_defaults();
+    if (!$conn || !btb_ensure_checkin_conditions_settings_table($conn)) {
+        return $def;
+    }
+    $res = @$conn->query(
+        'SELECT `heading`, `trigger_label`, `paragraph_1`, `paragraph_2`, `about_link_label`, `about_link_url`
+         FROM `checkin_conditions_settings` WHERE `id` = 1 LIMIT 1'
+    );
+    if (!$res || $res->num_rows === 0) {
+        return $def;
+    }
+    $row = $res->fetch_assoc();
+    if (!is_array($row)) {
+        return $def;
+    }
+    $trim = static function ($v, $fallback) {
+        $t = trim((string) ($v ?? ''));
+
+        return $t !== '' ? $t : (string) $fallback;
+    };
+
+    return [
+        'heading' => $trim($row['heading'] ?? '', $def['heading']),
+        'trigger_label' => $trim($row['trigger_label'] ?? '', $def['trigger_label']),
+        'paragraph_1' => (string) ($row['paragraph_1'] ?? $def['paragraph_1']),
+        'paragraph_2' => (string) ($row['paragraph_2'] ?? $def['paragraph_2']),
+        'about_link_label' => $trim($row['about_link_label'] ?? '', $def['about_link_label']),
+        'about_link_url' => btb_checkin_conditions_sanitize_url((string) ($row['about_link_url'] ?? '')),
+    ];
+}
+
+/**
+ * Modal body HTML (escaped text + optional About link).
+ */
+function btb_checkin_conditions_body_html(array $data): string
+{
+    $p1 = trim((string) ($data['paragraph_1'] ?? ''));
+    if ($p1 === '') {
+        return '';
+    }
+
+    return '<p>' . nl2br(htmlspecialchars($p1, ENT_QUOTES, 'UTF-8')) . '</p>';
+}
+
+/**
+ * @param array<string,mixed> $post
+ *
+ * @return array{success: bool, error?: string}
+ */
+function btb_save_checkin_conditions_from_post($conn, array $post): array
+{
+    if (!$conn) {
+        return ['success' => false, 'error' => 'No database connection'];
+    }
+    if (!btb_ensure_checkin_conditions_settings_table($conn)) {
+        return ['success' => false, 'error' => 'Could not ensure checkin_conditions_settings'];
+    }
+    $def = btb_checkin_conditions_defaults();
+    $trim500 = static function ($s, $fallback) {
+        $t = trim((string) $s);
+        if ($t === '') {
+            return (string) $fallback;
+        }
+        if (function_exists('mb_substr')) {
+            return mb_substr($t, 0, 500, 'UTF-8');
+        }
+
+        return substr($t, 0, 500);
+    };
+    $trim255 = static function ($s, $fallback) {
+        $t = trim((string) $s);
+        if ($t === '') {
+            return (string) $fallback;
+        }
+        if (function_exists('mb_substr')) {
+            return mb_substr($t, 0, 255, 'UTF-8');
+        }
+
+        return substr($t, 0, 255);
+    };
+
+    $heading = $trim500($post['heading'] ?? '', $def['heading']);
+    $trigger = $trim255($post['trigger_label'] ?? '', $def['trigger_label']);
+    $p1 = trim((string) ($post['paragraph_1'] ?? $def['paragraph_1']));
+    $p2 = '';
+    $linkLabel = '';
+    $linkUrl = '';
+
+    $sql = 'INSERT INTO `checkin_conditions_settings` (`id`, `heading`, `trigger_label`, `paragraph_1`, `paragraph_2`, `about_link_label`, `about_link_url`)
+            VALUES (1, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                `heading` = VALUES(`heading`),
+                `trigger_label` = VALUES(`trigger_label`),
+                `paragraph_1` = VALUES(`paragraph_1`),
+                `paragraph_2` = VALUES(`paragraph_2`),
+                `about_link_label` = VALUES(`about_link_label`),
+                `about_link_url` = VALUES(`about_link_url`)';
+    $stmt = $conn->prepare($sql);
+    if (!$stmt) {
+        return ['success' => false, 'error' => $conn->error];
+    }
+    $stmt->bind_param('ssssss', $heading, $trigger, $p1, $p2, $linkLabel, $linkUrl);
+    if (!$stmt->execute()) {
+        $err = $stmt->error ?: 'Save failed';
+        $stmt->close();
+
+        return ['success' => false, 'error' => $err];
+    }
+    $stmt->close();
+
+    return ['success' => true];
+}
+
+/**
  * Default internal scenario descriptions for the admin UI only (not emailed to guests).
  *
  * @return array<string, string>
@@ -1609,20 +2108,23 @@ function btb_email_template_scenario_notes_defaults(): array
     return [
         'booking_confirmation_guest' => 'Room flow — step 1 (guest): sent immediately after someone submits a room booking request on the website. Confirms you received their request, that you are reviewing it, and that you will email them again once it is approved or declined. Includes their reference code and requested stay details.',
         'booking_request_host' => 'Room flow — step 1 (host): sent to your notification inbox when a guest submits a room booking request so staff can check availability and approve or decline it in admin.',
-        'booking_confirmed_guest' => 'Room flow — step 2 (guest): sent when staff approve the request because the room is available for those dates. The reservation is not fully confirmed yet — the guest still needs to pay; after payment succeeds, they receive the "payment received — stay confirmed" email.',
-        'booking_cancelled_guest' => 'Room flow: sent when a room booking request is cancelled or declined (for example from admin). The reason placeholder is filled when the cancellation flow provides one.',
+        'guest_bookings_digest_guest' => 'Guest summary: one email after every room + wellness request for that email is no longer pending (approved, declined/cancelled, or removed). Lists approved and not-approved lines, estimated combined total with taxes like My Bookings, and a single link to My Bookings to pay online when Stripe is configured.',
+        'guest_payment_succeeded_guest' => 'Guest: after Stripe payment (room or wellness). No How to Find Us / View booking footer row; blue My Bookings CTA + footer photo.',
+        'booking_confirmed_host' => 'Room flow — step 2 (host): sent to your notification inbox when staff approve a room booking (guest receives guest_bookings_digest_guest when nothing is left pending for their email).',
+        'booking_cancelled_host' => 'Room flow (host): sent when a room booking is cancelled or declined in admin so your inbox matches the guest notification.',
         'massage_booking_guest' => 'Wellness flow — step 1 (guest): sent when a guest submits a wellness booking request (massage, sauna, etc.). Acknowledges receipt while staff review and confirm the appointment.',
         'massage_booking_host' => 'Wellness flow — step 1 (host): sent to your notification inbox when a guest submits a wellness request, with contact details and preferred date/time.',
         'room_booking_updated_guest' => 'Room flow: sent to the guest after they edit an existing room booking request from My Bookings (dates, room, guest count, or pets).',
         'room_booking_updated_host' => 'Room flow: sent to your notification inbox when a guest saves changes to their room booking request from the website.',
         'massage_booking_updated_guest' => 'Wellness flow: sent to the guest after they edit an existing wellness booking request from My Bookings (service, date, or time).',
         'massage_booking_updated_host' => 'Wellness flow: sent to your notification inbox when a guest saves changes to a wellness booking request from the website.',
-        'massage_booking_confirmed_guest' => 'Wellness flow — staff confirmation: sent when staff confirm the appointment in admin (the slot is accepted).',
-        'massage_booking_cancelled_guest' => 'Wellness flow: sent when staff cancel a wellness booking request or confirmed appointment in admin.',
+        'massage_booking_confirmed_host' => 'Wellness flow — staff confirmation (host): sent when staff confirm a wellness booking (guest receives guest_bookings_digest_guest when nothing is left pending for their email).',
+        'massage_booking_cancelled_host' => 'Wellness flow (host): sent when staff cancel a wellness booking so your inbox reflects the cancellation.',
+        'massage_payment_succeeded_host' => 'Wellness flow — payment (host): sent after wellness-only Stripe checkout, or combined checkout with wellness rows only (one email listing all paid lines). If the combined charge includes any room stay, the room host payment template is used instead.',
         'user_register_welcome' => 'Account: sent right after a guest successfully creates an account.',
-        'user_login_notification' => 'Account: sent after a successful sign-in so the account holder knows someone logged in.',
-        'booking_payment_succeeded_guest' => 'Room flow — step 3 (guest): sent after Stripe successfully charges the guest (payment_intent.succeeded). This is when the stay becomes fully confirmed.',
-        'booking_payment_succeeded_host' => "Room flow — step 3 (host): sent after the guest's payment succeeds so you know the reservation is fully confirmed.",
+        'booking_payment_succeeded_host' => "Room flow — payment (host): sent after room-only Stripe checkout, or after combined checkout that includes at least one room (one email listing every paid line for that charge, including wellness).",
+        'host_chat_guest_message_host' => 'My Account chat (host): guest sent a message. No thread subject — short heading, body, and admin CTA. Placeholder {{chat.heading_line}}.',
+        'guest_chat_staff_reply_guest' => 'My Account chat (guest): staff reply from admin. “From …” text: BTB_CHAT_STAFF_FROM_LABEL or {{chat.staff_from}}. CTA button: {{cta_label}} → {{cta_url}} (placeholder {{messages_url}}).',
     ];
 }
 
@@ -1641,9 +2143,10 @@ function btb_email_template_defaults(): array
             'audience' => 'guest',
             'subject' => 'Booking Confirmation - Back to Base Hotel',
             'heading' => 'Booking Confirmation',
-            'body' => "Dear {{booking.guest_name}},\n\nThank you for your booking! Your reservation has been received.\n\nConfirmation code: {{booking.confirmation_code}}.\nRoom: {{booking.room_name}}.\nCheck-in: {{booking.checkin_date}}.\nCheck-out: {{booking.checkout_date}}.\n\nPlease save this confirmation code for your records.",
-            'cta_label' => 'View booking',
-            'cta_url' => '{{booking_url}}',
+            'body' => "Dear {{booking.guest_name}},\n\nThank you for your booking! Your reservation has been received.\n\nWe are reviewing your request and will email you again once it is approved or declined.",
+            'body_after' => "We will review availability and send you a confirmation email shortly.",
+            'cta_label' => 'View Request',
+            'cta_url' => '{{dashboard_url}}',
             'image_url' => '',
         ],
         [
@@ -1652,31 +2155,58 @@ function btb_email_template_defaults(): array
             'audience' => 'host',
             'subject' => 'New Booking Request - Back to Base Hotel',
             'heading' => 'New Booking Request',
-            'body' => "A new booking request was submitted.\n\nGuest: {{booking.guest_name}}.\nEmail: {{booking.email}}.\nPhone: {{booking.phone}}.\nRoom: {{booking.room_name}}.\nCheck-in: {{booking.checkin_date}}.\nCheck-out: {{booking.checkout_date}}.\nGuests: {{booking.guests_count}}.",
-            'cta_label' => 'Open admin bookings',
+            'body' => "A new room booking request was submitted through the website.",
+            'body_after' => "Review the guest and stay details below, then open admin to approve or decline the request.",
+            'cta_label' => 'Open admin panel',
             'cta_url' => '{{admin_url}}',
             'image_url' => '',
         ],
         [
-            'template_key' => 'booking_confirmed_guest',
-            'display_name' => 'Room — Guest: dates approved — payment required',
+            'template_key' => 'guest_bookings_digest_guest',
+            'display_name' => 'Guest: summary when all requests are resolved (room + wellness)',
             'audience' => 'guest',
-            'subject' => 'Your Booking Has Been Confirmed - Back to Base Hotel',
-            'heading' => 'Booking Confirmed!',
-            'body' => "Dear {{booking.guest_name}},\n\nYour booking has been confirmed by our team.\n\nConfirmation code: {{booking.confirmation_code}}.\nRoom: {{booking.room_name}}.\nCheck-in: {{booking.checkin_date}}.\nCheck-out: {{booking.checkout_date}}.\n\nWe look forward to welcoming you!",
-            'cta_label' => 'Open booking',
-            'cta_url' => '{{booking_url}}',
+            'subject' => 'Your booking requests — summary — Back to Base Hotel',
+            'heading' => 'Your booking requests — summary',
+            'body' => "Here is a summary of your requests now that our team has reviewed everything on file for your email address.",
+            'body_after' => '',
+            'cta_label' => '',
+            'cta_url' => '',
             'image_url' => '',
         ],
         [
-            'template_key' => 'booking_cancelled_guest',
-            'display_name' => 'Room — Guest: booking request cancelled',
+            'template_key' => 'guest_payment_succeeded_guest',
+            'display_name' => 'Guest: payment received (room or wellness)',
             'audience' => 'guest',
-            'subject' => 'Booking Cancellation - Back to Base Hotel',
-            'heading' => 'Booking Cancellation',
-            'body' => "Dear {{booking.guest_name}},\n\nWe are sorry to inform you that your booking has been cancelled.\n\nRoom: {{booking.room_name}}.\nCheck-in: {{booking.checkin_date}}.\nCheck-out: {{booking.checkout_date}}.\nReason: {{reason}}.",
-            'cta_label' => '',
-            'cta_url' => '',
+            'subject' => 'Payment received — Back to Base',
+            'heading' => 'Payment received',
+            'body' => "Dear {{booking.guest_name}},\n\nThank you — your payment was received successfully.",
+            'body_after' => "Details for the paid booking are shown below. We look forward to welcoming you.",
+            'cta_label' => 'My Bookings',
+            'cta_url' => '{{dashboard_url}}',
+            'image_url' => '',
+        ],
+        [
+            'template_key' => 'booking_confirmed_host',
+            'display_name' => 'Room — Host: booking approved in admin',
+            'audience' => 'host',
+            'subject' => 'Room booking approved (guest notified) — Back to Base',
+            'heading' => 'Room booking approved',
+            'body' => "You approved a room booking in admin. The guest receives guest_bookings_digest_guest when no requests remain pending for their email.",
+            'body_after' => "The summary below matches what the guest sees. Open admin if you need to follow up.",
+            'cta_label' => 'Open admin panel',
+            'cta_url' => '{{admin_url}}',
+            'image_url' => '',
+        ],
+        [
+            'template_key' => 'booking_cancelled_host',
+            'display_name' => 'Room — Host: booking cancelled in admin',
+            'audience' => 'host',
+            'subject' => 'Room booking cancelled — Back to Base',
+            'heading' => 'Room booking cancelled',
+            'body' => "A room booking was cancelled or declined in admin. The guest receives guest_bookings_digest_guest when no requests remain pending for their email.",
+            'body_after' => "",
+            'cta_label' => 'Open admin panel',
+            'cta_url' => '{{admin_url}}',
             'image_url' => '',
         ],
         [
@@ -1685,9 +2215,10 @@ function btb_email_template_defaults(): array
             'audience' => 'guest',
             'subject' => 'We received your wellness booking request — Back to Base',
             'heading' => 'Wellness booking request received',
-            'body' => "Dear {{booking.guest_name}},\n\nThank you — we have received your wellness booking request.\n\nReference: {{booking.confirmation_code}}.\nService: {{booking.massage_type}} ({{booking.duration}} min).\nPreferred date: {{booking.massage_date}}.\nPreferred time: {{booking.massage_time}}.",
-            'cta_label' => '',
-            'cta_url' => '',
+            'body' => "Dear {{booking.guest_name}},\n\nThank you — we have received your wellness booking request and will confirm your appointment as soon as possible.",
+            'body_after' => "We will review availability and send you a confirmation email shortly.",
+            'cta_label' => 'View booking',
+            'cta_url' => '{{dashboard_url}}',
             'image_url' => '',
         ],
         [
@@ -1696,8 +2227,9 @@ function btb_email_template_defaults(): array
             'audience' => 'host',
             'subject' => 'New wellness booking (massage / sauna) — Back to Base',
             'heading' => 'New wellness booking request',
-            'body' => "Booking ID: {{booking.id}}.\nConfirmation code: {{booking.confirmation_code}}.\nGuest: {{booking.guest_name}}.\nEmail: {{booking.email}}.\nPhone: {{booking.phone}}.\nService: {{booking.massage_type}} ({{booking.duration}} min).\nDate: {{booking.massage_date}}.\nTime: {{booking.massage_time}}.",
-            'cta_label' => 'Open admin bookings',
+            'body' => "A new wellness booking request was submitted through the website.",
+            'body_after' => "Contact the guest if you need more information before confirming.",
+            'cta_label' => 'Open admin panel',
             'cta_url' => '{{admin_url}}',
             'image_url' => '',
         ],
@@ -1707,9 +2239,10 @@ function btb_email_template_defaults(): array
             'audience' => 'guest',
             'subject' => 'Your booking was updated — Back to Base',
             'heading' => 'Booking was updated',
-            'body' => "Your room booking was updated from My Bookings.\n\nNew room: {{after.room_name}}.\nNew check-in: {{after.checkin_date}}.\nNew check-out: {{after.checkout_date}}.\nGuests: {{after.guests_count}}.\nDogs: {{after.pets}}.",
-            'cta_label' => 'Open booking',
-            'cta_url' => '{{booking_url}}',
+            'body' => "Your room booking was updated from My Bookings. The new details are shown below.",
+            'body_after' => "If anything looks wrong, open your booking or contact us.",
+            'cta_label' => 'View Request',
+            'cta_url' => '{{dashboard_url}}',
             'image_url' => '',
         ],
         [
@@ -1718,8 +2251,9 @@ function btb_email_template_defaults(): array
             'audience' => 'host',
             'subject' => 'Guest updated a room booking — Back to Base',
             'heading' => 'Guest updated a room booking',
-            'body' => "A guest saved room booking changes from the website.\n\nBooking ID: {{after.id}}.\nReference: {{after.confirmation_code}}.\nGuest: {{after.guest_name}}.\nRoom: {{after.room_name}}.\nCheck-in: {{after.checkin_date}}.\nCheck-out: {{after.checkout_date}}.",
-            'cta_label' => 'Open admin bookings',
+            'body' => "A guest saved room booking changes from the website (My Bookings).",
+            'body_after' => "",
+            'cta_label' => 'Open admin panel',
             'cta_url' => '{{admin_url}}',
             'image_url' => '',
         ],
@@ -1729,9 +2263,10 @@ function btb_email_template_defaults(): array
             'audience' => 'guest',
             'subject' => 'Your wellness booking was updated — Back to Base',
             'heading' => 'Wellness booking updated',
-            'body' => "Your wellness booking was updated from My Bookings.\n\nService: {{after.massage_type}} ({{after.duration}} min).\nDate: {{after.massage_date}}.\nTime: {{after.massage_time}}.\nReference: {{after.confirmation_code}}.",
-            'cta_label' => '',
-            'cta_url' => '',
+            'body' => "Your wellness booking was updated from My Bookings. The new details are below.",
+            'body_after' => "Reply to this email if you need help choosing another time.",
+            'cta_label' => 'View Request',
+            'cta_url' => '{{dashboard_url}}',
             'image_url' => '',
         ],
         [
@@ -1740,31 +2275,34 @@ function btb_email_template_defaults(): array
             'audience' => 'host',
             'subject' => 'Guest updated a wellness booking — Back to Base',
             'heading' => 'Guest updated a wellness booking',
-            'body' => "A guest saved wellness booking changes from the website.\n\nBooking ID: {{after.id}}.\nReference: {{after.confirmation_code}}.\nGuest: {{after.guest_name}}.\nService: {{after.massage_type}} ({{after.duration}} min).\nDate: {{after.massage_date}}.\nTime: {{after.massage_time}}.",
-            'cta_label' => 'Open admin bookings',
+            'body' => "A guest saved wellness booking changes from the website (My Bookings).",
+            'body_after' => "",
+            'cta_label' => 'Open admin panel',
             'cta_url' => '{{admin_url}}',
             'image_url' => '',
         ],
         [
-            'template_key' => 'massage_booking_confirmed_guest',
-            'display_name' => 'Wellness — Guest: appointment confirmed',
-            'audience' => 'guest',
-            'subject' => 'Your wellness booking is confirmed — Back to Base',
+            'template_key' => 'massage_booking_confirmed_host',
+            'display_name' => 'Wellness — Host: appointment confirmed in admin',
+            'audience' => 'host',
+            'subject' => 'Wellness booking confirmed (guest notified) — Back to Base',
             'heading' => 'Wellness booking confirmed',
-            'body' => "Great news — your wellness booking has been confirmed.\n\nService: {{booking.massage_type}} ({{booking.duration}} min).\nDate: {{booking.massage_date}}.\nTime: {{booking.massage_time}}.\nReference: {{booking.confirmation_code}}.",
-            'cta_label' => '',
-            'cta_url' => '',
+            'body' => "A wellness booking was confirmed in admin. The guest receives guest_bookings_digest_guest when no requests remain pending for their email.",
+            'body_after' => "",
+            'cta_label' => 'Open admin panel',
+            'cta_url' => '{{admin_url}}',
             'image_url' => '',
         ],
         [
-            'template_key' => 'massage_booking_cancelled_guest',
-            'display_name' => 'Wellness — Guest: booking request cancelled',
-            'audience' => 'guest',
-            'subject' => 'Your wellness booking was cancelled — Back to Base',
+            'template_key' => 'massage_booking_cancelled_host',
+            'display_name' => 'Wellness — Host: booking cancelled in admin',
+            'audience' => 'host',
+            'subject' => 'Wellness booking cancelled (guest notified) — Back to Base',
             'heading' => 'Wellness booking cancelled',
-            'body' => "Your wellness booking was cancelled.\n\nService: {{booking.massage_type}}.\nDate: {{booking.massage_date}}.\nTime: {{booking.massage_time}}.\nReference: {{booking.confirmation_code}}.\nReason: {{reason}}.",
-            'cta_label' => '',
-            'cta_url' => '',
+            'body' => "A wellness booking was cancelled in admin. The guest receives guest_bookings_digest_guest when no requests remain pending for their email.",
+            'body_after' => "",
+            'cta_label' => 'Open admin panel',
+            'cta_url' => '{{admin_url}}',
             'image_url' => '',
         ],
         [
@@ -1773,31 +2311,10 @@ function btb_email_template_defaults(): array
             'audience' => 'guest',
             'subject' => 'Welcome to Back to Base',
             'heading' => 'Welcome to Back to Base',
-            'body' => "Your account was created successfully.\n\nName: {{user.name}}.\nEmail: {{user.email}}.\n\nYou can now manage bookings and messages in your account.",
+            'body' => "Your account was created successfully.\n\nYou can now manage bookings and messages in your account.",
+            'body_after' => "If you did not create this account, contact us right away.",
             'cta_label' => 'Open account',
-            'cta_url' => '{{site_url}}/login.html',
-            'image_url' => '',
-        ],
-        [
-            'template_key' => 'user_login_notification',
-            'display_name' => 'Account — Guest: login notification',
-            'audience' => 'guest',
-            'subject' => 'Login detected in your Back to Base account',
-            'heading' => 'Login detected',
-            'body' => "A sign-in to your account was detected.\n\nTime: {{login_meta.time}}.\nIP: {{login_meta.ip}}.\nDevice: {{login_meta.user_agent}}.\n\nIf this was not you, please change your password.",
-            'cta_label' => 'Open account',
-            'cta_url' => '{{site_url}}/login.html',
-            'image_url' => '',
-        ],
-        [
-            'template_key' => 'booking_payment_succeeded_guest',
-            'display_name' => 'Room — Guest: payment received — stay confirmed',
-            'audience' => 'guest',
-            'subject' => 'Payment received for your booking — Back to Base',
-            'heading' => 'Payment received',
-            'body' => "Your payment was received successfully.\n\nBooking ID: {{booking.id}}.\nRoom: {{booking.room_name}}.\nCheck-in: {{booking.checkin_date}}.\nCheck-out: {{booking.checkout_date}}.\nTotal: {{booking.total_amount}} {{booking.currency}}.\nPayment reference: {{payment_intent_id}}.",
-            'cta_label' => 'Open booking',
-            'cta_url' => '{{booking_url}}',
+            'cta_url' => '{{dashboard_url}}',
             'image_url' => '',
         ],
         [
@@ -1806,9 +2323,46 @@ function btb_email_template_defaults(): array
             'audience' => 'host',
             'subject' => 'Booking payment received — Back to Base',
             'heading' => 'Booking payment received',
-            'body' => "Payment was received for a booking.\n\nBooking ID: {{booking.id}}.\nGuest: {{booking.guest_name}}.\nRoom: {{booking.room_name}}.\nTotal: {{booking.total_amount}} {{booking.currency}}.\nPayment reference: {{payment_intent_id}}.",
-            'cta_label' => 'Open admin bookings',
+            'body' => "Payment was received for a room booking. The reservation is now fully confirmed on the guest side.",
+            'body_after' => "",
+            'cta_label' => 'Open admin panel',
             'cta_url' => '{{admin_url}}',
+            'image_url' => '',
+        ],
+        [
+            'template_key' => 'massage_payment_succeeded_host',
+            'display_name' => 'Wellness — Host: guest paid online',
+            'audience' => 'host',
+            'subject' => 'Wellness booking payment received — Back to Base',
+            'heading' => 'Wellness payment received',
+            'body' => "Payment was received for a wellness booking.",
+            'body_after' => "",
+            'cta_label' => 'Open admin panel',
+            'cta_url' => '{{admin_url}}',
+            'image_url' => '',
+        ],
+        [
+            'template_key' => 'host_chat_guest_message_host',
+            'display_name' => 'Chat — Host: new message from guest',
+            'audience' => 'host',
+            'subject' => 'New chat message',
+            'heading' => '{{chat.heading_line}}',
+            'body' => '',
+            'body_after' => '',
+            'cta_label' => 'Open admin panel',
+            'cta_url' => '{{admin_url}}',
+            'image_url' => '',
+        ],
+        [
+            'template_key' => 'guest_chat_staff_reply_guest',
+            'display_name' => 'Chat — Guest: reply from Back to Base',
+            'audience' => 'guest',
+            'subject' => 'New message — Back to Base',
+            'heading' => '{{chat.heading_line}}',
+            'body' => '',
+            'body_after' => '',
+            'cta_label' => 'Chat with Rob',
+            'cta_url' => '{{messages_url}}',
             'image_url' => '',
         ],
     ];
@@ -1835,6 +2389,36 @@ function btb_ensure_email_template_scenario_notes_column($conn): void
     }
 }
 
+/** Second body block (sign-off) shown after the structured summary in outbound mail. */
+function btb_ensure_email_template_body_after_column($conn): void
+{
+    if (!$conn || !function_exists('btb_db_table_exists') || !btb_db_table_exists($conn, 'email_template_settings')) {
+        return;
+    }
+    $chk = @$conn->query("SHOW COLUMNS FROM `email_template_settings` LIKE 'body_after'");
+    if ($chk && $chk->num_rows > 0) {
+        return;
+    }
+    if (!@$conn->query("ALTER TABLE `email_template_settings` ADD COLUMN `body_after` MEDIUMTEXT NULL AFTER `body`")) {
+        error_log('btb_ensure_email_template_body_after_column: ' . $conn->error);
+    }
+}
+
+/** Third body block (contact info), right-aligned, after body_after in outbound mail. */
+function btb_ensure_email_template_body_contact_column($conn): void
+{
+    if (!$conn || !function_exists('btb_db_table_exists') || !btb_db_table_exists($conn, 'email_template_settings')) {
+        return;
+    }
+    $chk = @$conn->query("SHOW COLUMNS FROM `email_template_settings` LIKE 'body_contact'");
+    if ($chk && $chk->num_rows > 0) {
+        return;
+    }
+    if (!@$conn->query("ALTER TABLE `email_template_settings` ADD COLUMN `body_contact` MEDIUMTEXT NULL AFTER `body_after`")) {
+        error_log('btb_ensure_email_template_body_contact_column: ' . $conn->error);
+    }
+}
+
 function btb_ensure_email_templates_settings_table($conn): bool
 {
     if (!$conn) {
@@ -1848,6 +2432,8 @@ function btb_ensure_email_templates_settings_table($conn): bool
       `subject` VARCHAR(255) NOT NULL DEFAULT '',
       `heading` VARCHAR(500) NOT NULL DEFAULT '',
       `body` MEDIUMTEXT NULL,
+      `body_after` MEDIUMTEXT NULL,
+      `body_contact` MEDIUMTEXT NULL,
       `cta_label` VARCHAR(255) NOT NULL DEFAULT '',
       `cta_url` VARCHAR(1024) NOT NULL DEFAULT '',
       `image_url` VARCHAR(1024) NOT NULL DEFAULT '',
@@ -1858,11 +2444,13 @@ function btb_ensure_email_templates_settings_table($conn): bool
         return false;
     }
     btb_ensure_email_template_scenario_notes_column($conn);
+    btb_ensure_email_template_body_after_column($conn);
+    btb_ensure_email_template_body_contact_column($conn);
     $defaults = btb_email_template_defaults();
     $stmt = $conn->prepare(
         'INSERT IGNORE INTO `email_template_settings`
-        (`template_key`, `display_name`, `scenario_notes`, `audience`, `subject`, `heading`, `body`, `cta_label`, `cta_url`, `image_url`)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        (`template_key`, `display_name`, `scenario_notes`, `audience`, `subject`, `heading`, `body`, `body_after`, `body_contact`, `cta_label`, `cta_url`, `image_url`)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     if (!$stmt) {
         error_log('btb_ensure_email_templates_settings_table prepare: ' . $conn->error);
@@ -1876,10 +2464,12 @@ function btb_ensure_email_templates_settings_table($conn): bool
         $he = (string) ($row['heading'] ?? '');
         $sn = (string) ($row['scenario_notes'] ?? '');
         $bo = (string) ($row['body'] ?? '');
+        $ba = (string) ($row['body_after'] ?? '');
+        $bc = (string) ($row['body_contact'] ?? '');
         $cl = (string) ($row['cta_label'] ?? '');
         $cu = (string) ($row['cta_url'] ?? '');
         $iu = (string) ($row['image_url'] ?? '');
-        $stmt->bind_param('ssssssssss', $k, $dn, $sn, $au, $su, $he, $bo, $cl, $cu, $iu);
+        $stmt->bind_param('ssssssssssss', $k, $dn, $sn, $au, $su, $he, $bo, $ba, $bc, $cl, $cu, $iu);
         if (!$stmt->execute()) {
             error_log('btb_ensure_email_templates_settings_table insert: ' . $stmt->error);
         }
@@ -1887,6 +2477,12 @@ function btb_ensure_email_templates_settings_table($conn): bool
     $stmt->close();
     if (function_exists('btb_email_template_fill_empty_admin_meta_from_defaults')) {
         btb_email_template_fill_empty_admin_meta_from_defaults($conn);
+    }
+    if (function_exists('btb_email_template_delete_duplicate_db_rows')) {
+        btb_email_template_delete_duplicate_db_rows($conn);
+    }
+    if (function_exists('btb_email_template_normalize_trim_duplicate_keys')) {
+        btb_email_template_normalize_trim_duplicate_keys($conn);
     }
     return true;
 }
@@ -1932,7 +2528,7 @@ function btb_email_branding_defaults(): array
     return [
         'footer_image_url' => '',
         'footer_image_alt' => 'Back to Base',
-        'outer_background' => '#f4f4f5',
+        'outer_background' => '#ffffff',
         'card_background' => '#ffffff',
     ];
 }
@@ -1999,7 +2595,7 @@ function btb_ensure_email_branding_settings_table($conn): bool
         `id` TINYINT UNSIGNED NOT NULL PRIMARY KEY,
         `footer_image_url` VARCHAR(1024) NOT NULL DEFAULT \'\',
         `footer_image_alt` VARCHAR(255) NOT NULL DEFAULT \'Back to Base\',
-        `outer_background` VARCHAR(32) NOT NULL DEFAULT \'#f4f4f5\',
+        `outer_background` VARCHAR(32) NOT NULL DEFAULT \'#ffffff\',
         `card_background` VARCHAR(32) NOT NULL DEFAULT \'#ffffff\',
         `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
@@ -2024,6 +2620,9 @@ function btb_ensure_email_branding_settings_table($conn): bool
         }
         $stmt->close();
     }
+
+    // One-time alignment: legacy grey outer background showed a seam vs white footer art.
+    @$conn->query("UPDATE `email_branding_settings` SET `outer_background` = '#ffffff' WHERE `id` = 1 AND LOWER(TRIM(`outer_background`)) = '#f4f4f5'");
 
     return true;
 }
@@ -2114,19 +2713,74 @@ function btb_email_ensure_viewport_and_charset(string $html): string
 }
 
 /**
+ * Property contacts as HTML for the footer hero overlay (white text on dark gradient).
+ */
+function btb_email_property_contact_footer_overlay_html(): string
+{
+    $addrRaw = defined('BTB_EMAIL_PROPERTY_ADDRESS') ? trim((string) BTB_EMAIL_PROPERTY_ADDRESS) : '';
+    $phoneRaw = defined('BTB_EMAIL_PROPERTY_PHONE') ? trim((string) BTB_EMAIL_PROPERTY_PHONE) : '+1 (250)-691-1118';
+    $emailRaw = defined('BTB_EMAIL_PROPERTY_EMAIL') ? trim((string) BTB_EMAIL_PROPERTY_EMAIL) : 'backtobasewellness@gmail.com';
+
+    $addr = htmlspecialchars($addrRaw, ENT_QUOTES, 'UTF-8');
+    $phoneEsc = htmlspecialchars($phoneRaw, ENT_QUOTES, 'UTF-8');
+    $emailEsc = htmlspecialchars($emailRaw, ENT_QUOTES, 'UTF-8');
+    $telDial = preg_replace('/[^0-9+]/', '', $phoneRaw);
+    $telHref = $telDial !== '' ? htmlspecialchars('tel:' . $telDial, ENT_QUOTES, 'UTF-8') : '';
+    $mailto = htmlspecialchars('mailto:' . $emailRaw, ENT_QUOTES, 'UTF-8');
+
+    $aStyle = 'color:#ffffff !important;text-decoration:none;-webkit-text-fill-color:#ffffff !important;';
+    $phoneInner = $telHref !== ''
+        ? '<a href="' . $telHref . '" style="' . $aStyle . '">' . $phoneEsc . '</a>'
+        : '<span style="color:#ffffff !important;-webkit-text-fill-color:#ffffff !important;">' . $phoneEsc . '</span>';
+    $emailInner = '<a href="' . $mailto . '" style="' . $aStyle . '">' . $emailEsc . '</a>';
+
+    $inner = '<div class="btb-email-footer-hero-contacts" style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.32;color:#ffffff !important;text-align:left;text-shadow:0 1px 3px rgba(0,0,0,0.45);-webkit-text-fill-color:#ffffff !important;">';
+    if ($addrRaw !== '') {
+        $inner .= '<div style="margin:0 0 5px;font-weight:500;color:#ffffff !important;-webkit-text-fill-color:#ffffff !important;">' . $addr . '</div>';
+    }
+    $inner .= '<div style="margin:0 0 3px;font-weight:500;color:#ffffff !important;-webkit-text-fill-color:#ffffff !important;">Phone: ' . $phoneInner . '</div>'
+        . '<div style="margin:0;font-weight:500;color:#ffffff !important;-webkit-text-fill-color:#ffffff !important;">Email: ' . $emailInner . '</div>'
+        . '</div>';
+
+    return $inner;
+}
+
+/**
+ * Footer hero photo only (no contact overlay on the image).
+ *
+ * @param string $safeImageUrl Absolute https URL from {@see btb_email_safe_public_url()}
+ */
+function btb_email_footer_hero_overlay_block_html(string $safeImageUrl, string $altPlain): string
+{
+    $url = trim($safeImageUrl);
+    if ($url === '') {
+        return '';
+    }
+    $srcAttr = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
+    $alt = htmlspecialchars(trim($altPlain) !== '' ? trim($altPlain) : 'Back to Base', ENT_QUOTES, 'UTF-8');
+
+    return '<table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" style="width:100%;max-width:640px;border-collapse:collapse;">'
+        . '<tr><td align="center" style="padding:0;line-height:0;font-size:0;">'
+        . '<img src="' . $srcAttr . '" alt="' . $alt . '" width="640" style="display:block;max-width:100%;width:100%;height:auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;" />'
+        . '</td></tr></table>';
+}
+
+/**
  * Standalone footer block for legacy/simple HTML (injected before </body>).
  *
  * @param array $br Row from btb_email_branding_api_data()
  */
 function btb_email_build_footer_table_html(array $br): string
 {
-    $url = btb_email_safe_public_url((string) ($br['footer_image_url'] ?? ''));
+    $urlDb = trim((string) ($br['footer_image_url'] ?? ''));
+    $fallback = defined('BTB_EMAIL_DEFAULT_FOOTER_IMAGE_URL') ? trim((string) BTB_EMAIL_DEFAULT_FOOTER_IMAGE_URL) : '';
+    $url = btb_email_safe_public_url($urlDb !== '' ? $urlDb : $fallback);
     if ($url === '') {
         return '';
     }
-    $alt = htmlspecialchars(trim((string) ($br['footer_image_alt'] ?? '')), ENT_QUOTES, 'UTF-8');
-    $src = htmlspecialchars($url, ENT_QUOTES, 'UTF-8');
-    $outerHex = btb_email_sanitize_hex_color($br['outer_background'] ?? '', '#f4f4f5');
+    $altPlain = trim((string) ($br['footer_image_alt'] ?? ''));
+    $heroInner = btb_email_footer_hero_overlay_block_html($url, $altPlain !== '' ? $altPlain : 'Back to Base');
+    $outerHex = btb_email_sanitize_hex_color($br['outer_background'] ?? '', '#ffffff');
     $cardHex = btb_email_sanitize_hex_color($br['card_background'] ?? '', '#ffffff');
     $outer = htmlspecialchars($outerHex, ENT_QUOTES, 'UTF-8');
     $card = htmlspecialchars($cardHex, ENT_QUOTES, 'UTF-8');
@@ -2136,7 +2790,7 @@ function btb_email_build_footer_table_html(array $br): string
         . '<tr><td align="center" style="padding:8px 12px 24px 12px;">'
         . '<table role="presentation" width="640" cellspacing="0" cellpadding="0" border="0" bgcolor="' . htmlspecialchars($cardHex, ENT_QUOTES, 'UTF-8') . '" style="border-collapse:collapse;max-width:640px;width:100%;background:' . $card . ';border-radius:0 0 12px 12px;overflow:hidden;border:1px solid #e5e7eb;border-top:0;">'
         . '<tr><td align="center" width="100%" bgcolor="' . htmlspecialchars($cardHex, ENT_QUOTES, 'UTF-8') . '" style="padding:0;line-height:0;font-size:0;background:' . $card . ';text-align:center;">'
-        . '<img src="' . $src . '" alt="' . $alt . '" width="640" style="display:block;margin:0 auto;width:100%;max-width:640px;height:auto;border:0;outline:none;text-decoration:none;-ms-interpolation-mode:bicubic;" />'
+        . $heroInner
         . '</td></tr></table>'
         . '</td></tr></table>'
         . '<!--btb-email-footer-end-->';
@@ -2144,7 +2798,7 @@ function btb_email_build_footer_table_html(array $br): string
 
 function btb_email_wrap_fragment_with_footer(string $fragment, array $br, string $footerBlock): string
 {
-    $outerHex = btb_email_sanitize_hex_color($br['outer_background'] ?? '', '#f4f4f5');
+    $outerHex = btb_email_sanitize_hex_color($br['outer_background'] ?? '', '#ffffff');
     $cardHex = btb_email_sanitize_hex_color($br['card_background'] ?? '', '#ffffff');
     $outer = htmlspecialchars($outerHex, ENT_QUOTES, 'UTF-8');
     $card = htmlspecialchars($cardHex, ENT_QUOTES, 'UTF-8');
@@ -2163,13 +2817,19 @@ function btb_email_wrap_fragment_with_footer(string $fragment, array $br, string
 
 /**
  * Viewport + optional global footer image for emails without the v2 admin shell.
+ *
+ * @param string|null $templateKey When key ends with `_host`, skip appending the global photo footer (host mail uses v2 layout or plain fallback without banner).
  */
-function btb_email_finalize_outbound_html(string $html, $conn): string
+function btb_email_finalize_outbound_html(string $html, $conn, ?string $templateKey = null): string
 {
     $marker = '<!--btb-email-shell-v2-->';
     $html2 = btb_email_ensure_viewport_and_charset($html);
     $br = btb_email_branding_api_data($conn);
     $html2 = preg_replace('/<!--btb-email-footer-start-->[\s\S]*?<!--btb-email-footer-end-->/', '', $html2);
+    $tk = trim((string) ($templateKey ?? ''));
+    if ($tk !== '' && substr($tk, -5) === '_host') {
+        return $html2;
+    }
     $footerBlock = btb_email_build_footer_table_html($br);
     if (stripos($html2, $marker) !== false) {
         return $html2;
@@ -2184,46 +2844,312 @@ function btb_email_finalize_outbound_html(string $html, $conn): string
     return btb_email_wrap_fragment_with_footer($html2, $br, $footerBlock);
 }
 
+/**
+ * Template keys accepted by Admin → Emails save API (must match outbound keys you can edit).
+ *
+ * @return array<string, true>
+ */
+function btb_email_template_known_keys_map(): array
+{
+    $out = [];
+    foreach (btb_email_template_defaults() as $row) {
+        $k = trim((string) ($row['template_key'] ?? ''));
+        if ($k !== '') {
+            $out[$k] = true;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Canonical identity for template_key: trim + strip zero-width / BOM / NBSP (legacy duplicates differ only by these).
+ */
+function btb_email_template_normalize_identity_key(string $key): string
+{
+    $key = trim($key);
+    if ($key === '') {
+        return '';
+    }
+    $stripped = preg_replace('/[\x{200B}-\x{200D}\x{200E}\x{200F}\x{FEFF}\x{00A0}]/u', '', $key);
+
+    return trim((string) $stripped);
+}
+
+/**
+ * When the DB still has legacy duplicate rows (same template_key) or orphan keys, keep the richest row per key.
+ *
+ * @param array<int, array<string, mixed>> $rows
+ * @return array<int, array<string, mixed>>
+ */
+function btb_email_template_dedupe_rows_by_template_key(array $rows): array
+{
+    $best = [];
+    $score = static function (array $r): int {
+        return strlen((string) ($r['subject'] ?? ''))
+            + strlen((string) ($r['body'] ?? ''))
+            + strlen((string) ($r['body_after'] ?? ''))
+            + strlen((string) ($r['body_contact'] ?? ''))
+            + strlen((string) ($r['heading'] ?? ''));
+    };
+    foreach ($rows as $r) {
+        if (!is_array($r)) {
+            continue;
+        }
+        $k = btb_email_template_normalize_identity_key((string) ($r['template_key'] ?? ''));
+        if ($k === '') {
+            continue;
+        }
+        $r['template_key'] = $k;
+        if (!isset($best[$k]) || $score($r) > $score($best[$k])) {
+            $best[$k] = $r;
+        }
+    }
+
+    return array_values($best);
+}
+
+/**
+ * Remove duplicate rows per template_key when the table has an `id` column (legacy schema).
+ */
+function btb_email_template_delete_duplicate_db_rows($conn): void
+{
+    if (!$conn || !function_exists('btb_db_table_exists') || !btb_db_table_exists($conn, 'email_template_settings')) {
+        return;
+    }
+    $idCol = @$conn->query("SHOW COLUMNS FROM `email_template_settings` LIKE 'id'");
+    if (!$idCol || $idCol->num_rows === 0) {
+        return;
+    }
+    $dup = @$conn->query('SELECT `template_key`, COUNT(*) AS `c` FROM `email_template_settings` GROUP BY `template_key` HAVING `c` > 1');
+    if (!$dup) {
+        return;
+    }
+    while ($row = $dup->fetch_assoc()) {
+        $k = trim((string) ($row['template_key'] ?? ''));
+        if ($k === '') {
+            continue;
+        }
+        $stmt = $conn->prepare(
+            'SELECT `id` FROM `email_template_settings` WHERE `template_key` = ? ORDER BY `updated_at` DESC, `id` ASC'
+        );
+        if (!$stmt) {
+            continue;
+        }
+        $stmt->bind_param('s', $k);
+        if (!$stmt->execute()) {
+            $stmt->close();
+            continue;
+        }
+        $resIds = $stmt->get_result();
+        $ids = [];
+        if ($resIds) {
+            while ($idr = $resIds->fetch_assoc()) {
+                if (isset($idr['id'])) {
+                    $ids[] = (int) $idr['id'];
+                }
+            }
+        }
+        $stmt->close();
+        if (count($ids) <= 1) {
+            continue;
+        }
+        $keep = array_shift($ids);
+        $delStmt = $conn->prepare('DELETE FROM `email_template_settings` WHERE `id` = ?');
+        if (!$delStmt) {
+            continue;
+        }
+        foreach ($ids as $delId) {
+            $idToDel = (int) $delId;
+            $delStmt->bind_param('i', $idToDel);
+            @$delStmt->execute();
+        }
+        $delStmt->close();
+    }
+}
+
+/**
+ * Collapse rows whose `template_key` differs only by leading/trailing whitespace (breaks dedupe + shows duplicate labels).
+ */
+function btb_email_template_normalize_trim_duplicate_keys($conn): void
+{
+    if (!$conn || !function_exists('btb_db_table_exists') || !btb_db_table_exists($conn, 'email_template_settings')) {
+        return;
+    }
+    $res = @$conn->query('SELECT `template_key` FROM `email_template_settings`');
+    if (!$res) {
+        return;
+    }
+    $rawKeys = [];
+    while ($row = $res->fetch_assoc()) {
+        $raw = (string) ($row['template_key'] ?? '');
+        if ($raw !== '') {
+            $rawKeys[$raw] = true;
+        }
+    }
+    foreach (array_keys($rawKeys) as $raw) {
+        $canon = btb_email_template_normalize_identity_key($raw);
+        if ($canon === '' || $canon === $raw) {
+            continue;
+        }
+        $exists = fetchOne($conn, 'SELECT `template_key` FROM `email_template_settings` WHERE `template_key` = ? LIMIT 1', [$canon]);
+        if (is_array($exists) && !empty($exists)) {
+            $del = $conn->prepare('DELETE FROM `email_template_settings` WHERE `template_key` = ? LIMIT 1');
+            if ($del) {
+                $del->bind_param('s', $raw);
+                @$del->execute();
+                $del->close();
+            }
+            continue;
+        }
+        $upd = $conn->prepare('UPDATE `email_template_settings` SET `template_key` = ? WHERE `template_key` = ?');
+        if ($upd) {
+            $upd->bind_param('ss', $canon, $raw);
+            @$upd->execute();
+            $upd->close();
+        }
+    }
+}
+
 function btb_email_templates_api_data($conn): array
 {
     $defaults = btb_email_template_defaults();
-    $branding = btb_email_branding_api_data($conn);
+    $defaultsForAdmin = $defaults;
     if (!$conn || !btb_ensure_email_templates_settings_table($conn)) {
-        return ['templates' => $defaults, 'branding' => $branding];
+        return ['templates' => $defaultsForAdmin];
     }
     $res = @$conn->query(
-        'SELECT `template_key`, `display_name`, `scenario_notes`, `audience`, `subject`, `heading`, `body`, `cta_label`, `cta_url`, `image_url`
+        'SELECT `template_key`, `display_name`, `scenario_notes`, `audience`, `subject`, `heading`, `body`, `body_after`, `body_contact`, `cta_label`, `cta_url`, `image_url`
          FROM `email_template_settings`
          ORDER BY `template_key` ASC'
     );
     if (!$res) {
-        return ['templates' => $defaults, 'branding' => $branding];
+        return ['templates' => $defaults];
     }
-    $rows = [];
+    $score = static function (array $r): int {
+        return strlen((string) ($r['subject'] ?? ''))
+            + strlen((string) ($r['body'] ?? ''))
+            + strlen((string) ($r['body_after'] ?? ''))
+            + strlen((string) ($r['body_contact'] ?? ''))
+            + strlen((string) ($r['heading'] ?? ''));
+    };
+    /** @var array<string, array<string, mixed>> $dbBest */
+    $dbBest = [];
     while ($row = $res->fetch_assoc()) {
         if (!is_array($row)) {
             continue;
         }
-        $tk = (string) ($row['template_key'] ?? '');
-        $scenarioNotes = (string) ($row['scenario_notes'] ?? '');
-        $rows[] = [
-            'template_key' => $tk,
+        $canon = btb_email_template_normalize_identity_key((string) ($row['template_key'] ?? ''));
+        if ($canon === '') {
+            continue;
+        }
+        $patch = [
+            'template_key' => $canon,
             'display_name' => (string) ($row['display_name'] ?? ''),
-            'scenario_notes' => $scenarioNotes,
+            'scenario_notes' => (string) ($row['scenario_notes'] ?? ''),
             'audience' => (string) ($row['audience'] ?? 'guest'),
             'subject' => (string) ($row['subject'] ?? ''),
             'heading' => (string) ($row['heading'] ?? ''),
             'body' => (string) ($row['body'] ?? ''),
+            'body_after' => (string) ($row['body_after'] ?? ''),
+            'body_contact' => (string) ($row['body_contact'] ?? ''),
             'cta_label' => (string) ($row['cta_label'] ?? ''),
             'cta_url' => (string) ($row['cta_url'] ?? ''),
             'image_url' => (string) ($row['image_url'] ?? ''),
         ];
+        if (!isset($dbBest[$canon]) || $score($patch) > $score($dbBest[$canon])) {
+            $dbBest[$canon] = $patch;
+        }
     }
-    if (count($rows) === 0) {
-        $rows = $defaults;
+    $patchCols = [
+        'display_name',
+        'scenario_notes',
+        'audience',
+        'subject',
+        'heading',
+        'body',
+        'body_after',
+        'body_contact',
+        'cta_label',
+        'cta_url',
+        'image_url',
+    ];
+    $merged = [];
+    foreach ($defaultsForAdmin as $def) {
+        if (!is_array($def)) {
+            continue;
+        }
+        $k = (string) ($def['template_key'] ?? '');
+        if ($k === '') {
+            continue;
+        }
+        $dbRow = $dbBest[$k] ?? null;
+        if (!is_array($dbRow)) {
+            $merged[] = $def;
+            continue;
+        }
+        $overlay = [];
+        foreach ($patchCols as $col) {
+            if (array_key_exists($col, $dbRow)) {
+                $overlay[$col] = $dbRow[$col];
+            }
+        }
+        $merged[] = array_merge($def, $overlay, ['template_key' => $k]);
     }
 
-    return ['templates' => $rows, 'branding' => $branding];
+    $uniq = [];
+    $seenKeys = [];
+    foreach ($merged as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $tk = btb_email_template_normalize_identity_key((string) ($row['template_key'] ?? ''));
+        if ($tk === '' || isset($seenKeys[$tk])) {
+            continue;
+        }
+        $seenKeys[$tk] = true;
+        $row['template_key'] = $tk;
+        $uniq[] = $row;
+    }
+
+    /** Labels shown in admin dropdown: fall back to code defaults when DB reused the same title on many rows (broken editing UX). */
+    $defaultLabels = [];
+    foreach ($defaultsForAdmin as $dr) {
+        if (!is_array($dr)) {
+            continue;
+        }
+        $dk = (string) ($dr['template_key'] ?? '');
+        if ($dk !== '') {
+            $defaultLabels[$dk] = trim((string) ($dr['display_name'] ?? ''));
+        }
+    }
+    $labelCounts = [];
+    foreach ($uniq as $row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $lbl = trim((string) ($row['display_name'] ?? ''));
+        if ($lbl !== '') {
+            $labelCounts[$lbl] = ($labelCounts[$lbl] ?? 0) + 1;
+        }
+    }
+    foreach ($uniq as &$row) {
+        if (!is_array($row)) {
+            continue;
+        }
+        $tk = btb_email_template_normalize_identity_key((string) ($row['template_key'] ?? ''));
+        $dbLbl = trim((string) ($row['display_name'] ?? ''));
+        $fallback = ($defaultLabels[$tk] ?? '') !== '' ? $defaultLabels[$tk] : $tk;
+        $ambiguous = ($dbLbl === '' || ($labelCounts[$dbLbl] ?? 0) > 1);
+        /** Wrong legacy DB labels (e.g. room-request copy pasted onto chat rows) made chat templates invisible in the picker. */
+        $isChatTpl = ($tk === 'host_chat_guest_message_host' || $tk === 'guest_chat_staff_reply_guest');
+        $chatLblLooksWrong = $isChatTpl && $dbLbl !== '' && stripos($dbLbl, 'chat') === false;
+        $row['dropdown_label'] = ($ambiguous || $chatLblLooksWrong) ? $fallback : $dbLbl;
+        $row['display_name_is_ambiguous'] = $ambiguous || $chatLblLooksWrong;
+    }
+    unset($row);
+
+    return ['templates' => $uniq];
 }
 
 function btb_save_email_template_from_post($conn, array $post): array
@@ -2234,9 +3160,13 @@ function btb_save_email_template_from_post($conn, array $post): array
     if (!btb_ensure_email_templates_settings_table($conn)) {
         return ['success' => false, 'error' => 'Could not ensure email_template_settings'];
     }
-    $key = trim((string) ($post['template_key'] ?? ''));
+    $key = btb_email_template_normalize_identity_key(trim((string) ($post['template_key'] ?? '')));
     if ($key === '') {
         return ['success' => false, 'error' => 'template_key is required'];
+    }
+    $knownTpl = btb_email_template_known_keys_map();
+    if (!isset($knownTpl[$key])) {
+        return ['success' => false, 'error' => 'Unknown template_key'];
     }
     $display = trim((string) ($post['display_name'] ?? ''));
     $scenarioNotes = (string) ($post['scenario_notes'] ?? '');
@@ -2247,6 +3177,8 @@ function btb_save_email_template_from_post($conn, array $post): array
     $subject = trim((string) ($post['subject'] ?? ''));
     $heading = trim((string) ($post['heading'] ?? ''));
     $body = (string) ($post['body'] ?? '');
+    $bodyAfter = (string) ($post['body_after'] ?? '');
+    $bodyContact = (string) ($post['body_contact'] ?? '');
     $ctaLabel = trim((string) ($post['cta_label'] ?? ''));
     $ctaUrl = trim((string) ($post['cta_url'] ?? ''));
     $imageUrl = trim((string) ($post['image_url'] ?? ''));
@@ -2262,6 +3194,8 @@ function btb_save_email_template_from_post($conn, array $post): array
         $scenarioNotes = mb_substr($scenarioNotes, 0, 60000, 'UTF-8');
         $subject = mb_substr($subject, 0, 255, 'UTF-8');
         $heading = mb_substr($heading, 0, 500, 'UTF-8');
+        $bodyAfter = mb_substr($bodyAfter, 0, 60000, 'UTF-8');
+        $bodyContact = mb_substr($bodyContact, 0, 60000, 'UTF-8');
         $ctaLabel = mb_substr($ctaLabel, 0, 255, 'UTF-8');
         $ctaUrl = mb_substr($ctaUrl, 0, 1024, 'UTF-8');
         $imageUrl = mb_substr($imageUrl, 0, 1024, 'UTF-8');
@@ -2271,13 +3205,15 @@ function btb_save_email_template_from_post($conn, array $post): array
         $scenarioNotes = substr($scenarioNotes, 0, 60000);
         $subject = substr($subject, 0, 255);
         $heading = substr($heading, 0, 500);
+        $bodyAfter = substr($bodyAfter, 0, 60000);
+        $bodyContact = substr($bodyContact, 0, 60000);
         $ctaLabel = substr($ctaLabel, 0, 255);
         $ctaUrl = substr($ctaUrl, 0, 1024);
         $imageUrl = substr($imageUrl, 0, 1024);
     }
     $sql = 'INSERT INTO `email_template_settings`
-        (`template_key`, `display_name`, `scenario_notes`, `audience`, `subject`, `heading`, `body`, `cta_label`, `cta_url`, `image_url`)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (`template_key`, `display_name`, `scenario_notes`, `audience`, `subject`, `heading`, `body`, `body_after`, `body_contact`, `cta_label`, `cta_url`, `image_url`)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON DUPLICATE KEY UPDATE
           `display_name` = VALUES(`display_name`),
           `scenario_notes` = VALUES(`scenario_notes`),
@@ -2285,6 +3221,8 @@ function btb_save_email_template_from_post($conn, array $post): array
           `subject` = VALUES(`subject`),
           `heading` = VALUES(`heading`),
           `body` = VALUES(`body`),
+          `body_after` = VALUES(`body_after`),
+          `body_contact` = VALUES(`body_contact`),
           `cta_label` = VALUES(`cta_label`),
           `cta_url` = VALUES(`cta_url`),
           `image_url` = VALUES(`image_url`)';
@@ -2292,7 +3230,7 @@ function btb_save_email_template_from_post($conn, array $post): array
     if (!$stmt) {
         return ['success' => false, 'error' => $conn->error];
     }
-    $stmt->bind_param('ssssssssss', $key, $display, $scenarioNotes, $aud, $subject, $heading, $body, $ctaLabel, $ctaUrl, $imageUrl);
+    $stmt->bind_param('ssssssssssss', $key, $display, $scenarioNotes, $aud, $subject, $heading, $body, $bodyAfter, $bodyContact, $ctaLabel, $ctaUrl, $imageUrl);
     if (!$stmt->execute()) {
         $err = $stmt->error ?: 'Save failed';
         $stmt->close();
@@ -2304,17 +3242,94 @@ function btb_save_email_template_from_post($conn, array $post): array
 
 function btb_email_template_get_one($conn, string $templateKey): ?array
 {
-    $all = btb_email_templates_api_data($conn);
-    $rows = isset($all['templates']) && is_array($all['templates']) ? $all['templates'] : [];
-    foreach ($rows as $row) {
-        if (!is_array($row)) {
-            continue;
-        }
-        if ((string) ($row['template_key'] ?? '') === $templateKey) {
-            return $row;
-        }
+    $templateKey = btb_email_template_normalize_identity_key(trim($templateKey));
+    if ($templateKey === '' || !$conn) {
+        return null;
     }
-    return null;
+    if (!btb_ensure_email_templates_settings_table($conn)) {
+        return null;
+    }
+    $stmt = $conn->prepare(
+        'SELECT `template_key`, `display_name`, `scenario_notes`, `audience`, `subject`, `heading`, `body`, `body_after`, `body_contact`, `cta_label`, `cta_url`, `image_url`
+         FROM `email_template_settings`
+         WHERE `template_key` = ?
+         ORDER BY `updated_at` DESC
+         LIMIT 1'
+    );
+    if (!$stmt) {
+        return null;
+    }
+    $stmt->bind_param('s', $templateKey);
+    if (!$stmt->execute()) {
+        $stmt->close();
+        return null;
+    }
+    $res = $stmt->get_result();
+    $row = $res ? $res->fetch_assoc() : null;
+    $stmt->close();
+    if (!is_array($row)) {
+        return null;
+    }
+    $scenarioNotes = (string) ($row['scenario_notes'] ?? '');
+
+    return [
+        'template_key' => $templateKey,
+        'display_name' => (string) ($row['display_name'] ?? ''),
+        'scenario_notes' => $scenarioNotes,
+        'audience' => (string) ($row['audience'] ?? 'guest'),
+        'subject' => (string) ($row['subject'] ?? ''),
+        'heading' => (string) ($row['heading'] ?? ''),
+        'body' => (string) ($row['body'] ?? ''),
+        'body_after' => (string) ($row['body_after'] ?? ''),
+        'body_contact' => (string) ($row['body_contact'] ?? ''),
+        'cta_label' => (string) ($row['cta_label'] ?? ''),
+        'cta_url' => (string) ($row['cta_url'] ?? ''),
+        'image_url' => (string) ($row['image_url'] ?? ''),
+    ];
+}
+
+/**
+ * Public “My Bookings” page URL (guest pays from here after confirmation).
+ */
+function btb_guest_orders_url(): string
+{
+    $site = defined('SITE_URL') ? rtrim((string) SITE_URL, '/') : '';
+
+    return $site !== '' ? ($site . '/order.html') : '/order.html';
+}
+
+/**
+ * Deep link: open My Bookings with room payment flow (guest must match booking email or pass confirmation code).
+ *
+ * @param array<string,mixed> $booking bookings row with id + confirmation_code
+ */
+function btb_guest_room_pay_url(array $booking): string
+{
+    $base = btb_guest_orders_url();
+    $bid = (int) ($booking['id'] ?? 0);
+    $code = trim((string) ($booking['confirmation_code'] ?? ''));
+    if ($bid <= 0 || $code === '') {
+        return $base;
+    }
+
+    return $base . '?pay=room&booking_id=' . $bid . '&confirmation_code=' . rawurlencode($code);
+}
+
+/**
+ * Deep link for wellness booking payment after staff confirmation.
+ *
+ * @param array<string,mixed> $mb massage_bookings row
+ */
+function btb_guest_massage_pay_url(array $mb): string
+{
+    $base = btb_guest_orders_url();
+    $bid = (int) ($mb['id'] ?? 0);
+    $code = trim((string) ($mb['confirmation_code'] ?? ''));
+    if ($bid <= 0 || $code === '') {
+        return $base;
+    }
+
+    return $base . '?pay=massage&booking_id=' . $bid . '&confirmation_code=' . rawurlencode($code);
 }
 
 /**
@@ -2327,6 +3342,9 @@ function btb_my_bookings_pricing_defaults(): array
     return [
         'cleaning_label' => 'Cleaning fee',
         'cleaning_amount_cad' => 60.0,
+        'cleaning_loki_suite_amount_cad' => 60.0,
+        'cleaning_the_nouk_amount_cad' => 60.0,
+        'cleaning_vrienden_amount_cad' => 60.0,
         'cleaning_kelder_amount_cad' => 100.0,
         'pets_label' => 'Dogs',
         'pets_max_qty' => 2,
@@ -2335,7 +3353,89 @@ function btb_my_bookings_pricing_defaults(): array
         'tax1_percent' => 0.0,
         'tax2_label' => 'PST',
         'tax2_percent' => 0.0,
+        'tax3_label' => 'Tax 3',
+        'tax3_percent' => 0.0,
     ];
+}
+
+/**
+ * Add per-room cleaning fee columns (migrate from legacy standard + Kelder tiers).
+ */
+function btb_my_bookings_pricing_ensure_per_room_cleaning_columns($conn): void
+{
+    if (!$conn) {
+        return;
+    }
+    $add = static function (string $col, string $def) use ($conn): bool {
+        $esc = $conn->real_escape_string($col);
+        $res = @$conn->query("SHOW COLUMNS FROM `my_bookings_pricing_settings` LIKE '{$esc}'");
+        if ($res && $res->num_rows > 0) {
+            return false;
+        }
+        $ok = @$conn->query(
+            "ALTER TABLE `my_bookings_pricing_settings` ADD COLUMN `{$col}` {$def}"
+        );
+        if (!$ok) {
+            error_log('btb_my_bookings_pricing_ensure_per_room_cleaning_columns: ' . $conn->error);
+        }
+
+        return (bool) $ok;
+    };
+
+    $added = false;
+    if ($add('cleaning_loki_suite_amount_cad', 'DECIMAL(10,2) NOT NULL DEFAULT 60.00')) {
+        $added = true;
+    }
+    if ($add('cleaning_the_nouk_amount_cad', 'DECIMAL(10,2) NOT NULL DEFAULT 60.00')) {
+        $added = true;
+    }
+    if ($add('cleaning_vrienden_amount_cad', 'DECIMAL(10,2) NOT NULL DEFAULT 60.00')) {
+        $added = true;
+    }
+
+    if ($added) {
+        @$conn->query(
+            'UPDATE `my_bookings_pricing_settings` SET
+                `cleaning_loki_suite_amount_cad` = `cleaning_amount_cad`,
+                `cleaning_the_nouk_amount_cad` = `cleaning_amount_cad`,
+                `cleaning_vrienden_amount_cad` = `cleaning_amount_cad`
+             WHERE `id` = 1'
+        );
+    }
+}
+
+/** @return array<string, string> room display name (lower) => pricing settings key */
+function btb_room_cleaning_fee_setting_keys(): array
+{
+    return [
+        'loki suite' => 'cleaning_loki_suite_amount_cad',
+        'the nouk' => 'cleaning_the_nouk_amount_cad',
+        'vrienden' => 'cleaning_vrienden_amount_cad',
+        'kelder' => 'cleaning_kelder_amount_cad',
+    ];
+}
+
+/**
+ * Add optional tax columns to existing pricing settings rows.
+ */
+function btb_my_bookings_pricing_ensure_tax_columns($conn): void
+{
+    if (!$conn) {
+        return;
+    }
+    $add = static function (string $col, string $def) use ($conn): void {
+        $esc = $conn->real_escape_string($col);
+        $res = @$conn->query("SHOW COLUMNS FROM `my_bookings_pricing_settings` LIKE '{$esc}'");
+        if ($res && $res->num_rows > 0) {
+            return;
+        }
+        if (!@$conn->query("ALTER TABLE `my_bookings_pricing_settings` ADD COLUMN `{$col}` {$def}")) {
+            error_log('btb_my_bookings_pricing_ensure_tax_columns: ' . $conn->error);
+        }
+    };
+
+    $add('tax3_label', 'VARCHAR(191) NOT NULL DEFAULT \'Tax 3\' AFTER `tax2_percent`');
+    $add('tax3_percent', 'DECIMAL(7,3) NOT NULL DEFAULT 0.000 AFTER `tax3_label`');
 }
 
 /**
@@ -2358,6 +3458,8 @@ function btb_ensure_my_bookings_pricing_settings_table($conn): bool
         `tax1_percent` DECIMAL(7,3) NOT NULL DEFAULT 0.000,
         `tax2_label` VARCHAR(191) NOT NULL DEFAULT \'PST\',
         `tax2_percent` DECIMAL(7,3) NOT NULL DEFAULT 0.000,
+        `tax3_label` VARCHAR(191) NOT NULL DEFAULT \'Tax 3\',
+        `tax3_percent` DECIMAL(7,3) NOT NULL DEFAULT 0.000,
         `updated_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci';
     if (!@$conn->query($sql)) {
@@ -2365,10 +3467,12 @@ function btb_ensure_my_bookings_pricing_settings_table($conn): bool
 
         return false;
     }
+    btb_my_bookings_pricing_ensure_per_room_cleaning_columns($conn);
+    btb_my_bookings_pricing_ensure_tax_columns($conn);
     $d = btb_my_bookings_pricing_defaults();
     $stmt = @$conn->prepare(
-        'INSERT IGNORE INTO `my_bookings_pricing_settings` (`id`, `cleaning_label`, `cleaning_amount_cad`, `cleaning_kelder_amount_cad`, `pets_label`, `pets_max_qty`, `pets_amount_per_dog_cad`, `tax1_label`, `tax1_percent`, `tax2_label`, `tax2_percent`)
-         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
+        'INSERT IGNORE INTO `my_bookings_pricing_settings` (`id`, `cleaning_label`, `cleaning_amount_cad`, `cleaning_kelder_amount_cad`, `pets_label`, `pets_max_qty`, `pets_amount_per_dog_cad`, `tax1_label`, `tax1_percent`, `tax2_label`, `tax2_percent`, `tax3_label`, `tax3_percent`)
+         VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)'
     );
     if ($stmt) {
         $cl = (string) $d['cleaning_label'];
@@ -2381,8 +3485,10 @@ function btb_ensure_my_bookings_pricing_settings_table($conn): bool
         $t1p = (float) $d['tax1_percent'];
         $t2l = (string) $d['tax2_label'];
         $t2p = (float) $d['tax2_percent'];
+        $t3l = (string) $d['tax3_label'];
+        $t3p = (float) $d['tax3_percent'];
         $stmt->bind_param(
-            'sddsidsdsd',
+            'sddsidsdsdsd',
             $cl,
             $ca,
             $ck,
@@ -2392,7 +3498,9 @@ function btb_ensure_my_bookings_pricing_settings_table($conn): bool
             $t1l,
             $t1p,
             $t2l,
-            $t2p
+            $t2p,
+            $t3l,
+            $t3p
         );
         @$stmt->execute();
         $stmt->close();
@@ -2411,7 +3519,7 @@ function btb_my_bookings_pricing_api_data($conn): array
         return $def;
     }
     $res = @$conn->query(
-        'SELECT `cleaning_label`, `cleaning_amount_cad`, `cleaning_kelder_amount_cad`, `pets_label`, `pets_max_qty`, `pets_amount_per_dog_cad`, `tax1_label`, `tax1_percent`, `tax2_label`, `tax2_percent`
+        'SELECT `cleaning_label`, `cleaning_amount_cad`, `cleaning_loki_suite_amount_cad`, `cleaning_the_nouk_amount_cad`, `cleaning_vrienden_amount_cad`, `cleaning_kelder_amount_cad`, `pets_label`, `pets_max_qty`, `pets_amount_per_dog_cad`, `tax1_label`, `tax1_percent`, `tax2_label`, `tax2_percent`, `tax3_label`, `tax3_percent`
         FROM `my_bookings_pricing_settings` WHERE `id` = 1 LIMIT 1'
     );
     if (!$res || $res->num_rows === 0) {
@@ -2441,11 +3549,25 @@ function btb_my_bookings_pricing_api_data($conn): array
         return round($n, 2);
     };
 
+    $legacyStandard = $clampMoney($row['cleaning_amount_cad'] ?? $def['cleaning_amount_cad']);
+    $loki = isset($row['cleaning_loki_suite_amount_cad'])
+        ? $clampMoney($row['cleaning_loki_suite_amount_cad'])
+        : $legacyStandard;
+    $nouk = isset($row['cleaning_the_nouk_amount_cad'])
+        ? $clampMoney($row['cleaning_the_nouk_amount_cad'])
+        : $legacyStandard;
+    $vrienden = isset($row['cleaning_vrienden_amount_cad'])
+        ? $clampMoney($row['cleaning_vrienden_amount_cad'])
+        : $legacyStandard;
+
     return [
         'cleaning_label' => trim((string) ($row['cleaning_label'] ?? '')) !== ''
             ? trim((string) $row['cleaning_label'])
             : $def['cleaning_label'],
-        'cleaning_amount_cad' => $clampMoney($row['cleaning_amount_cad'] ?? $def['cleaning_amount_cad']),
+        'cleaning_amount_cad' => $legacyStandard,
+        'cleaning_loki_suite_amount_cad' => $loki,
+        'cleaning_the_nouk_amount_cad' => $nouk,
+        'cleaning_vrienden_amount_cad' => $vrienden,
         'cleaning_kelder_amount_cad' => $clampMoney($row['cleaning_kelder_amount_cad'] ?? $def['cleaning_kelder_amount_cad']),
         'pets_label' => trim((string) ($row['pets_label'] ?? '')) !== ''
             ? trim((string) $row['pets_label'])
@@ -2460,6 +3582,10 @@ function btb_my_bookings_pricing_api_data($conn): array
             ? trim((string) $row['tax2_label'])
             : $def['tax2_label'],
         'tax2_percent' => $clampPct($row['tax2_percent'] ?? $def['tax2_percent']),
+        'tax3_label' => trim((string) ($row['tax3_label'] ?? '')) !== ''
+            ? trim((string) $row['tax3_label'])
+            : $def['tax3_label'],
+        'tax3_percent' => $clampPct($row['tax3_percent'] ?? $def['tax3_percent']),
     ];
 }
 
@@ -2524,20 +3650,40 @@ function btb_save_my_bookings_pricing_from_post($conn, array $post): array
     if ($tax2_label === '') {
         $tax2_label = (string) $def['tax2_label'];
     }
+    $tax3_label = $trim191($post['tax3_label'] ?? $def['tax3_label']);
+    if ($tax3_label === '') {
+        $tax3_label = (string) $def['tax3_label'];
+    }
 
-    $cleaning_amount_cad = $clampMoney($post['cleaning_amount_cad'] ?? $def['cleaning_amount_cad']);
+    $cleaning_loki_suite_amount_cad = $clampMoney(
+        $post['cleaning_loki_suite_amount_cad'] ?? $post['cleaning_amount_cad'] ?? $def['cleaning_loki_suite_amount_cad']
+    );
+    $cleaning_the_nouk_amount_cad = $clampMoney(
+        $post['cleaning_the_nouk_amount_cad'] ?? $post['cleaning_amount_cad'] ?? $def['cleaning_the_nouk_amount_cad']
+    );
+    $cleaning_vrienden_amount_cad = $clampMoney(
+        $post['cleaning_vrienden_amount_cad'] ?? $post['cleaning_amount_cad'] ?? $def['cleaning_vrienden_amount_cad']
+    );
     $cleaning_kelder_amount_cad = $clampMoney($post['cleaning_kelder_amount_cad'] ?? $def['cleaning_kelder_amount_cad']);
+    $cleaning_amount_cad = $cleaning_loki_suite_amount_cad;
     $pets_max_qty = max(1, min(9, (int) ($post['pets_max_qty'] ?? $def['pets_max_qty'])));
     $pets_amount_per_dog_cad = $clampMoney($post['pets_amount_per_dog_cad'] ?? $def['pets_amount_per_dog_cad']);
     $tax1_percent = $clampPct($post['tax1_percent'] ?? $def['tax1_percent']);
     $tax2_percent = $clampPct($post['tax2_percent'] ?? $def['tax2_percent']);
+    $tax3_percent = $clampPct($post['tax3_percent'] ?? $def['tax3_percent']);
+
+    btb_my_bookings_pricing_ensure_per_room_cleaning_columns($conn);
+    btb_my_bookings_pricing_ensure_tax_columns($conn);
 
     $sql = 'INSERT INTO `my_bookings_pricing_settings` (
-        `id`, `cleaning_label`, `cleaning_amount_cad`, `cleaning_kelder_amount_cad`, `pets_label`, `pets_max_qty`, `pets_amount_per_dog_cad`, `tax1_label`, `tax1_percent`, `tax2_label`, `tax2_percent`
-    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `id`, `cleaning_label`, `cleaning_amount_cad`, `cleaning_loki_suite_amount_cad`, `cleaning_the_nouk_amount_cad`, `cleaning_vrienden_amount_cad`, `cleaning_kelder_amount_cad`, `pets_label`, `pets_max_qty`, `pets_amount_per_dog_cad`, `tax1_label`, `tax1_percent`, `tax2_label`, `tax2_percent`, `tax3_label`, `tax3_percent`
+    ) VALUES (1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON DUPLICATE KEY UPDATE
         `cleaning_label` = VALUES(`cleaning_label`),
         `cleaning_amount_cad` = VALUES(`cleaning_amount_cad`),
+        `cleaning_loki_suite_amount_cad` = VALUES(`cleaning_loki_suite_amount_cad`),
+        `cleaning_the_nouk_amount_cad` = VALUES(`cleaning_the_nouk_amount_cad`),
+        `cleaning_vrienden_amount_cad` = VALUES(`cleaning_vrienden_amount_cad`),
         `cleaning_kelder_amount_cad` = VALUES(`cleaning_kelder_amount_cad`),
         `pets_label` = VALUES(`pets_label`),
         `pets_max_qty` = VALUES(`pets_max_qty`),
@@ -2545,17 +3691,21 @@ function btb_save_my_bookings_pricing_from_post($conn, array $post): array
         `tax1_label` = VALUES(`tax1_label`),
         `tax1_percent` = VALUES(`tax1_percent`),
         `tax2_label` = VALUES(`tax2_label`),
-        `tax2_percent` = VALUES(`tax2_percent`)';
+        `tax2_percent` = VALUES(`tax2_percent`),
+        `tax3_label` = VALUES(`tax3_label`),
+        `tax3_percent` = VALUES(`tax3_percent`)';
 
     $stmt = $conn->prepare($sql);
     if (!$stmt) {
         return ['success' => false, 'error' => $conn->error];
     }
-    // Types must match placeholders: s d d s i d s d s d (amount per dog is d; tax labels are s).
     $stmt->bind_param(
-        'sddsidsdsd',
+        'sdddddsidsdsdsd',
         $cleaning_label,
         $cleaning_amount_cad,
+        $cleaning_loki_suite_amount_cad,
+        $cleaning_the_nouk_amount_cad,
+        $cleaning_vrienden_amount_cad,
         $cleaning_kelder_amount_cad,
         $pets_label,
         $pets_max_qty,
@@ -2563,7 +3713,9 @@ function btb_save_my_bookings_pricing_from_post($conn, array $post): array
         $tax1_label,
         $tax1_percent,
         $tax2_label,
-        $tax2_percent
+        $tax2_percent,
+        $tax3_label,
+        $tax3_percent
     );
     if (!$stmt->execute()) {
         $err = $stmt->error ?: 'Save failed';
@@ -2574,6 +3726,258 @@ function btb_save_my_bookings_pricing_from_post($conn, array $post): array
     $stmt->close();
 
     return ['success' => true];
+}
+
+/** Room names that use Kelder cleaning fee tier. */
+function btb_room_booking_is_kelder(string $roomName): bool
+{
+    return strcasecmp(trim($roomName), 'Kelder') === 0;
+}
+
+function btb_room_booking_cleaning_fee_cad($conn, string $roomName): float
+{
+    $pricing = btb_my_bookings_pricing_api_data($conn);
+    $key = btb_room_cleaning_fee_setting_keys()[strtolower(trim($roomName))] ?? null;
+    if ($key !== null && isset($pricing[$key])) {
+        return round((float) $pricing[$key], 2);
+    }
+    if (btb_room_booking_is_kelder($roomName)) {
+        return round((float) ($pricing['cleaning_kelder_amount_cad'] ?? 100), 2);
+    }
+
+    return round((float) ($pricing['cleaning_amount_cad'] ?? 60), 2);
+}
+
+/**
+ * Dog fee: one flat amount per room booking when pets &gt; 0 (1 or 2 dogs — same charge).
+ */
+function btb_room_booking_pets_fee_cad($conn, int $pets): float
+{
+    $pets = max(0, min(2, $pets));
+    if ($pets <= 0) {
+        return 0.0;
+    }
+    $pricing = btb_my_bookings_pricing_api_data($conn);
+
+    return round((float) ($pricing['pets_amount_per_dog_cad'] ?? 75), 2);
+}
+
+function btb_room_booking_nights(string $checkin, string $checkout): int
+{
+    $ci = DateTime::createFromFormat('Y-m-d', $checkin);
+    $co = DateTime::createFromFormat('Y-m-d', $checkout);
+    if (!$ci || !$co || $ci->format('Y-m-d') !== $checkin || $co->format('Y-m-d') !== $checkout) {
+        return 0;
+    }
+    $n = (int) $ci->diff($co)->days;
+
+    return max(0, $n);
+}
+
+/**
+ * Public room booking form: nightly rate + fee labels for client-side estimate (pre-tax).
+ *
+ * @return array{nightly: ?float, cleaning: float, pets_fee: float, cleaning_label: string, pets_label: string, data_attrs: string}
+ */
+function btb_room_booking_public_pricing_context($conn, array $content, string $priceSlug, string $roomName): array
+{
+    $nightly = btb_room_price_nightly_amount($content, $priceSlug);
+    $pricing = btb_my_bookings_pricing_api_data($conn);
+    $cleaning = btb_room_booking_cleaning_fee_cad($conn, $roomName);
+    $petsFee = btb_room_booking_pets_fee_cad($conn, 1);
+    $cleaningLabel = trim((string) ($pricing['cleaning_label'] ?? ''));
+    if ($cleaningLabel === '') {
+        $cleaningLabel = 'Cleaning fee';
+    }
+    $petsLabel = trim((string) ($pricing['pets_label'] ?? ''));
+    if ($petsLabel === '') {
+        $petsLabel = 'Dogs';
+    }
+
+    $pairs = [
+        'data-btb-nightly-rate' => $nightly !== null && $nightly > 0 ? (string) $nightly : '',
+        'data-btb-cleaning-fee' => (string) $cleaning,
+        'data-btb-pets-fee' => (string) $petsFee,
+        'data-btb-cleaning-label' => $cleaningLabel,
+        'data-btb-pets-label' => $petsLabel,
+    ];
+    $dataAttrs = '';
+    foreach ($pairs as $key => $val) {
+        $dataAttrs .= ' ' . $key . '="' . htmlspecialchars($val, ENT_QUOTES, 'UTF-8') . '"';
+    }
+
+    return [
+        'nightly' => $nightly,
+        'cleaning' => $cleaning,
+        'pets_fee' => $petsFee,
+        'cleaning_label' => $cleaningLabel,
+        'pets_label' => $petsLabel,
+        'data_attrs' => $dataAttrs,
+    ];
+}
+
+/**
+ * @return array{tax1: float, tax2: float, tax3: float, grand: float, tax1_label: string, tax2_label: string, tax3_label: string, tax1_percent: float, tax2_percent: float, tax3_percent: float}
+ */
+function btb_taxes_on_taxable_subtotal($conn, float $taxable): array
+{
+    $taxable = round(max(0, $taxable), 2);
+    $pricing = btb_my_bookings_pricing_api_data($conn);
+    $t1p = (float) ($pricing['tax1_percent'] ?? 0);
+    $t2p = (float) ($pricing['tax2_percent'] ?? 0);
+    $t3p = (float) ($pricing['tax3_percent'] ?? 0);
+    $tax1 = ($t1p > 0) ? round($taxable * ($t1p / 100), 2) : 0.0;
+    $tax2 = ($t2p > 0) ? round($taxable * ($t2p / 100), 2) : 0.0;
+    $tax3 = ($t3p > 0) ? round($taxable * ($t3p / 100), 2) : 0.0;
+    $grand = round($taxable + $tax1 + $tax2 + $tax3, 2);
+
+    return [
+        'tax1' => $tax1,
+        'tax2' => $tax2,
+        'tax3' => $tax3,
+        'grand' => $grand,
+        'tax1_label' => (string) ($pricing['tax1_label'] ?? 'GST'),
+        'tax2_label' => (string) ($pricing['tax2_label'] ?? 'PST'),
+        'tax3_label' => (string) ($pricing['tax3_label'] ?? 'Tax 3'),
+        'tax1_percent' => $t1p,
+        'tax2_percent' => $t2p,
+        'tax3_percent' => $t3p,
+    ];
+}
+
+/**
+ * Pricing shape for non-taxed lines (currently wellness/massage bookings).
+ *
+ * @return array{tax1: float, tax2: float, tax3: float, grand: float, tax1_label: string, tax2_label: string, tax3_label: string, tax1_percent: float, tax2_percent: float, tax3_percent: float}
+ */
+function btb_no_taxes_on_taxable_subtotal($conn, float $taxable): array
+{
+    $taxable = round(max(0, $taxable), 2);
+    $pricing = btb_my_bookings_pricing_api_data($conn);
+
+    return [
+        'tax1' => 0.0,
+        'tax2' => 0.0,
+        'tax3' => 0.0,
+        'grand' => $taxable,
+        'tax1_label' => (string) ($pricing['tax1_label'] ?? 'GST'),
+        'tax2_label' => (string) ($pricing['tax2_label'] ?? 'PST'),
+        'tax3_label' => (string) ($pricing['tax3_label'] ?? 'Tax 3'),
+        'tax1_percent' => 0.0,
+        'tax2_percent' => 0.0,
+        'tax3_percent' => 0.0,
+    ];
+}
+
+/**
+ * Stripe / guest charge amount (taxable subtotal + taxes).
+ */
+function btb_grand_total_with_taxes($conn, float $taxable): float
+{
+    $t = btb_taxes_on_taxable_subtotal($conn, $taxable);
+
+    return $t['grand'];
+}
+
+/**
+ * Build room booking taxable subtotal (stay + cleaning + pets) for storage in bookings.total_amount.
+ *
+ * @param array<string,mixed> $opts room_name, checkin_date, checkout_date, pets, host_stay_subtotal|null, total_amount_manual bool
+ *
+ * @return array{stay_subtotal: float, cleaning_fee: float, pets_fee: float, taxable_subtotal: float, nights: int, nightly_rate: ?float}
+ */
+function btb_room_booking_compute_line_pricing($conn, array $opts): array
+{
+    $roomName = trim((string) ($opts['room_name'] ?? ''));
+    $checkin = trim((string) ($opts['checkin_date'] ?? ''));
+    $checkout = trim((string) ($opts['checkout_date'] ?? ''));
+    $pets = max(0, min(2, (int) ($opts['pets'] ?? 0)));
+    $manual = !empty($opts['total_amount_manual']);
+    $hostStay = isset($opts['host_stay_subtotal']) && $opts['host_stay_subtotal'] !== null && $opts['host_stay_subtotal'] !== ''
+        ? round((float) $opts['host_stay_subtotal'], 2)
+        : null;
+
+    $nights = btb_room_booking_nights($checkin, $checkout);
+    $nightly = null;
+    $stay = 0.0;
+
+    if ($manual && $hostStay !== null && $hostStay >= 0) {
+        $stay = $hostStay;
+        if ($nights > 0) {
+            $nightly = round($stay / $nights, 2);
+        }
+    } elseif (isset($opts['stay_subtotal']) && $opts['stay_subtotal'] !== '' && $opts['stay_subtotal'] !== null) {
+        $stay = round((float) $opts['stay_subtotal'], 2);
+    } elseif (isset($opts['nightly_rate']) && $opts['nightly_rate'] !== null && $opts['nightly_rate'] !== '') {
+        $nightly = (float) $opts['nightly_rate'];
+        if ($nightly <= 0) {
+            throw new InvalidArgumentException('This room has no nightly rate configured in the admin.');
+        }
+        $stay = round($nightly * $nights, 2);
+    } else {
+        throw new InvalidArgumentException('nightly_rate or stay_subtotal is required to compute room pricing.');
+    }
+
+    $cleaning = btb_room_booking_cleaning_fee_cad($conn, $roomName);
+    $petsFee = btb_room_booking_pets_fee_cad($conn, $pets);
+    $taxable = round($stay + $cleaning + $petsFee, 2);
+
+    return [
+        'stay_subtotal' => $stay,
+        'cleaning_fee' => $cleaning,
+        'pets_fee' => $petsFee,
+        'taxable_subtotal' => $taxable,
+        'nights' => $nights,
+        'nightly_rate' => $nightly,
+    ];
+}
+
+/**
+ * Idempotent columns for host-edited booking pricing.
+ */
+function btb_bookings_ensure_admin_price_columns(mysqli $conn): void
+{
+    static $done = false;
+    if ($done) {
+        return;
+    }
+    $done = true;
+    $defs = [
+        'bookings' => [
+            ['total_amount_manual', 'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['host_stay_subtotal', 'DECIMAL(10,2) NULL DEFAULT NULL'],
+        ],
+        'massage_bookings' => [
+            ['total_amount_manual', 'TINYINT(1) NOT NULL DEFAULT 0'],
+            ['host_service_subtotal', 'DECIMAL(10,2) NULL DEFAULT NULL'],
+        ],
+    ];
+    foreach ($defs as $table => $cols) {
+        $chk = @$conn->query("SHOW TABLES LIKE '" . $conn->real_escape_string($table) . "'");
+        if (!$chk || $chk->num_rows === 0) {
+            continue;
+        }
+        foreach ($cols as [$name, $definition]) {
+            $esc = $conn->real_escape_string($name);
+            $c = @$conn->query("SHOW COLUMNS FROM `{$table}` LIKE '{$esc}'");
+            if ($c && $c->num_rows > 0) {
+                continue;
+            }
+            @$conn->query("ALTER TABLE `{$table}` ADD COLUMN `{$name}` {$definition}");
+        }
+    }
+}
+
+function btb_admin_may_edit_booking(): bool
+{
+    if (function_exists('btbJwtIsAdmin') && btbJwtIsAdmin()) {
+        return true;
+    }
+    if (function_exists('isAdminAuthenticated') && isAdminAuthenticated()) {
+        return true;
+    }
+
+    return false;
 }
 
 /**
@@ -4088,6 +5492,52 @@ function btb_room_gallery_urls_from_cms_json($galleryJson): array {
     }
 
     return [];
+}
+
+/** Max thumbnails in room/common gallery grid (desktop). */
+function btb_room_gallery_desktop_preview_limit(): int {
+    return 5;
+}
+
+/** Max thumbnails in room/common gallery grid (mobile). */
+function btb_room_gallery_mobile_preview_limit(): int {
+    return 3;
+}
+
+/**
+ * URLs shown in the public gallery grid (up to 5; extra tiles hidden on mobile via CSS).
+ *
+ * @param list<string> $urls
+ * @return list<string>
+ */
+function btb_room_gallery_grid_preview_urls(array $urls): array {
+    $total = count($urls);
+    if ($total === 0) {
+        return [];
+    }
+    $limit = min(btb_room_gallery_desktop_preview_limit(), $total);
+
+    return array_slice($urls, 0, $limit);
+}
+
+/** CSS class for preview thumb: hide 4th–5th image on mobile (desktop shows up to 5). */
+function btb_room_gallery_thumb_class(int $index): string {
+    return $index >= btb_room_gallery_mobile_preview_limit() ? 'gallery-tile--desktop-only' : '';
+}
+
+/** Whether to show the "View all N photos" tile in the grid. */
+function btb_room_gallery_show_view_all(int $total): bool {
+    return $total > btb_room_gallery_mobile_preview_limit();
+}
+
+/** CSS classes for view-all tile (mobile-only when 4–5 photos; both when >5). */
+function btb_room_gallery_view_all_tile_class(int $total): string {
+    $classes = 'gallery-view-all-tile';
+    if ($total > btb_room_gallery_mobile_preview_limit() && $total <= btb_room_gallery_desktop_preview_limit()) {
+        $classes .= ' gallery-tile--mobile-only';
+    }
+
+    return $classes;
 }
 
 /**

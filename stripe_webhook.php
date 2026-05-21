@@ -134,43 +134,30 @@ function verifyWebhookSignature($payload, $sig_header, $secret) {
  */
 function handlePaymentIntentSucceeded($paymentIntent) {
     global $conn;
-    
+
     try {
         $paymentIntentId = $paymentIntent['id'] ?? '';
-        $bookingId = $paymentIntent['metadata']['booking_id'] ?? null;
-        
-        if (!$bookingId) {
-            throw new Exception("Booking ID not found in payment intent metadata");
-        }
-        
-        // Processing the payment
+
         $result = processSuccessfulPayment($paymentIntentId);
-        
+
         if (!$result['success']) {
             throw new Exception($result['error'] ?? 'Failed to process payment');
         }
-        
-        // We receive a reservation
-        $booking = fetchOne($conn, "SELECT * FROM bookings WHERE id = ?", [$bookingId]);
-        
-        if (!$booking) {
-            throw new Exception("Booking not found: {$bookingId}");
+
+        if (function_exists('btb_dispatch_payment_success_emails')) {
+            btb_dispatch_payment_success_emails($result, $paymentIntentId, is_array($paymentIntent) ? $paymentIntent : []);
         }
-        
-        // Send payment-success emails to guest and host (if email service is configured)
-        if (!empty(MAILGUN_API_KEY) && function_exists('sendRoomPaymentSucceededToGuestAndHost')) {
-            try {
-                sendRoomPaymentSucceededToGuestAndHost($booking, $paymentIntentId);
-            } catch (Exception $e) {
-                // Log the email error, but do not interrupt processing
-                error_log("Failed to send payment success emails: " . $e->getMessage());
-            }
+
+        if (($result['kind'] ?? '') === 'combined') {
+            $logRef = 'combined rooms=' . count($result['room_bookings'] ?? []) . ' wellness=' . count($result['massage_bookings'] ?? []);
+        } else {
+            $logRef = ($result['kind'] ?? '') === 'massage'
+                ? ('Wellness ' . ($result['massage_booking_id'] ?? ''))
+                : ('Booking ' . ($result['booking_id'] ?? ''));
         }
-        
-        logActivity("Payment intent succeeded processed: Payment Intent {$paymentIntentId}, Booking {$bookingId}");
-        
+        logActivity("Payment intent succeeded processed: Payment Intent {$paymentIntentId}, {$logRef}");
     } catch (Exception $e) {
-        error_log("Error handling payment_intent.succeeded: " . $e->getMessage());
+        error_log('Error handling payment_intent.succeeded: ' . $e->getMessage());
         throw $e;
     }
 }
@@ -180,25 +167,71 @@ function handlePaymentIntentSucceeded($paymentIntent) {
  */
 function handlePaymentIntentFailed($paymentIntent) {
     global $conn;
-    
+
     try {
         $paymentIntentId = $paymentIntent['id'] ?? '';
-        $bookingId = $paymentIntent['metadata']['booking_id'] ?? null;
-        
-        if (!$bookingId) {
-            return; // Not critical, just logging
+        $meta = $paymentIntent['metadata'] ?? [];
+        $kind = isset($meta['booking_kind']) ? (string) $meta['booking_kind'] : 'room';
+
+        if ($kind === 'combined') {
+            $roomsRaw = isset($meta['combined_rooms']) ? trim((string) $meta['combined_rooms']) : '';
+            $massRaw = isset($meta['combined_massages']) ? trim((string) $meta['combined_massages']) : '';
+            foreach ($roomsRaw !== '' ? explode(',', $roomsRaw) : [] as $p) {
+                $bid = intval(trim($p));
+                if ($bid <= 0) {
+                    continue;
+                }
+                updateRecord($conn, 'bookings', [
+                    'payment_status' => 'failed',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ], 'id = ?', [$bid]);
+            }
+            foreach ($massRaw !== '' ? explode(',', $massRaw) : [] as $p) {
+                $mid = intval(trim($p));
+                if ($mid <= 0) {
+                    continue;
+                }
+                if (function_exists('btb_massage_bookings_column_exists') && btb_massage_bookings_column_exists($conn, 'payment_status')) {
+                    $u = ['payment_status' => 'failed'];
+                    if (btb_massage_bookings_column_exists($conn, 'updated_at')) {
+                        $u['updated_at'] = date('Y-m-d H:i:s');
+                    }
+                    updateRecord($conn, 'massage_bookings', $u, 'id = ?', [$mid]);
+                }
+            }
+            logActivity("Payment intent failed (combined): Payment Intent {$paymentIntentId}");
+            return;
         }
-        
-        // Update the payment status to failed
+
+        if ($kind === 'massage') {
+            $mid = isset($meta['massage_booking_id']) ? (int) $meta['massage_booking_id'] : 0;
+            if ($mid <= 0) {
+                return;
+            }
+            if (function_exists('btb_massage_bookings_column_exists') && btb_massage_bookings_column_exists($conn, 'payment_status')) {
+                $u = ['payment_status' => 'failed'];
+                if (btb_massage_bookings_column_exists($conn, 'updated_at')) {
+                    $u['updated_at'] = date('Y-m-d H:i:s');
+                }
+                updateRecord($conn, 'massage_bookings', $u, 'id = ?', [$mid]);
+            }
+            logActivity("Payment intent failed (wellness): Payment Intent {$paymentIntentId}, Massage booking {$mid}");
+            return;
+        }
+
+        $bookingId = $meta['booking_id'] ?? null;
+        if (!$bookingId) {
+            return;
+        }
+
         updateRecord($conn, 'bookings', [
             'payment_status' => 'failed',
-            'updated_at' => date('Y-m-d H:i:s')
+            'updated_at' => date('Y-m-d H:i:s'),
         ], 'id = ?', [$bookingId]);
-        
+
         logActivity("Payment intent failed: Payment Intent {$paymentIntentId}, Booking {$bookingId}");
-        
     } catch (Exception $e) {
-        error_log("Error handling payment_intent.payment_failed: " . $e->getMessage());
+        error_log('Error handling payment_intent.payment_failed: ' . $e->getMessage());
     }
 }
 
@@ -207,25 +240,71 @@ function handlePaymentIntentFailed($paymentIntent) {
  */
 function handlePaymentIntentCanceled($paymentIntent) {
     global $conn;
-    
+
     try {
         $paymentIntentId = $paymentIntent['id'] ?? '';
-        $bookingId = $paymentIntent['metadata']['booking_id'] ?? null;
-        
-        if (!$bookingId) {
-            return; // Not critical, just logging
+        $meta = $paymentIntent['metadata'] ?? [];
+        $kind = isset($meta['booking_kind']) ? (string) $meta['booking_kind'] : 'room';
+
+        if ($kind === 'combined') {
+            $roomsRaw = isset($meta['combined_rooms']) ? trim((string) $meta['combined_rooms']) : '';
+            $massRaw = isset($meta['combined_massages']) ? trim((string) $meta['combined_massages']) : '';
+            foreach ($roomsRaw !== '' ? explode(',', $roomsRaw) : [] as $p) {
+                $bid = intval(trim($p));
+                if ($bid <= 0) {
+                    continue;
+                }
+                updateRecord($conn, 'bookings', [
+                    'payment_status' => 'pending',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ], 'id = ?', [$bid]);
+            }
+            foreach ($massRaw !== '' ? explode(',', $massRaw) : [] as $p) {
+                $mid = intval(trim($p));
+                if ($mid <= 0) {
+                    continue;
+                }
+                if (function_exists('btb_massage_bookings_column_exists') && btb_massage_bookings_column_exists($conn, 'payment_status')) {
+                    $u = ['payment_status' => 'pending'];
+                    if (btb_massage_bookings_column_exists($conn, 'updated_at')) {
+                        $u['updated_at'] = date('Y-m-d H:i:s');
+                    }
+                    updateRecord($conn, 'massage_bookings', $u, 'id = ?', [$mid]);
+                }
+            }
+            logActivity("Payment intent canceled (combined): Payment Intent {$paymentIntentId}");
+            return;
         }
-        
-        // Update payment status
+
+        if ($kind === 'massage') {
+            $mid = isset($meta['massage_booking_id']) ? (int) $meta['massage_booking_id'] : 0;
+            if ($mid <= 0) {
+                return;
+            }
+            if (function_exists('btb_massage_bookings_column_exists') && btb_massage_bookings_column_exists($conn, 'payment_status')) {
+                $u = ['payment_status' => 'pending'];
+                if (btb_massage_bookings_column_exists($conn, 'updated_at')) {
+                    $u['updated_at'] = date('Y-m-d H:i:s');
+                }
+                updateRecord($conn, 'massage_bookings', $u, 'id = ?', [$mid]);
+            }
+            logActivity("Payment intent canceled (wellness): Payment Intent {$paymentIntentId}, Massage booking {$mid}");
+            return;
+        }
+
+        $bookingId = $meta['booking_id'] ?? null;
+        if (!$bookingId) {
+            return;
+        }
+
         updateRecord($conn, 'bookings', [
             'payment_status' => 'pending',
-            'updated_at' => date('Y-m-d H:i:s')
+            'updated_at' => date('Y-m-d H:i:s'),
         ], 'id = ?', [$bookingId]);
-        
+
         logActivity("Payment intent canceled: Payment Intent {$paymentIntentId}, Booking {$bookingId}");
-        
     } catch (Exception $e) {
-        error_log("Error handling payment_intent.canceled: " . $e->getMessage());
+        error_log('Error handling payment_intent.canceled: ' . $e->getMessage());
     }
 }
 

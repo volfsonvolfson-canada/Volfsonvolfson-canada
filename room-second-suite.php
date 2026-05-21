@@ -93,10 +93,10 @@ if ($commonGalleryAltPlain === '') {
 
 $roomGalleryUrls = btb_room_gallery_urls_from_cms_json($galleryJson);
 $roomGalleryTotal = count($roomGalleryUrls);
-$roomGalleryPreview = $roomGalleryTotal > 5 ? array_slice($roomGalleryUrls, 0, 5) : $roomGalleryUrls;
+$roomGalleryPreview = btb_room_gallery_grid_preview_urls($roomGalleryUrls);
 $commonGalleryUrls = btb_room_gallery_urls_from_cms_json($commonGalleryJson);
 $commonGalleryTotal = count($commonGalleryUrls);
-$commonGalleryPreview = $commonGalleryTotal > 5 ? array_slice($commonGalleryUrls, 0, 5) : $commonGalleryUrls;
+$commonGalleryPreview = btb_room_gallery_grid_preview_urls($commonGalleryUrls);
 
 // Cache buster for images
 $cacheBuster = '?v=' . time();
@@ -155,9 +155,10 @@ $cacheBuster = '?v=' . time();
       }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=47">
 </head>
 <body>
+<?php require_once __DIR__ . '/gtm-body-noscript.php'; ?>
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="index.php">
@@ -255,10 +256,11 @@ $cacheBuster = '?v=' . time();
               $thumbHints = ['Inside', 'Next', 'Also', 'Details', 'Another angle'];
               $thumbLine = $roomGalleryTitlePlain . ' · ' . $thumbHints[$index % count($thumbHints)] . ' (' . ($index + 1) . ')';
               ?>
-              <img src="<?php echo htmlspecialchars($imageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($thumbLine, ''); ?>" loading="lazy" decoding="async" onclick="openGalleryModal('room', <?php echo (int) $index; ?>)" />
+              <?php $thumbClass = btb_room_gallery_thumb_class((int) $index); ?>
+              <img<?php echo $thumbClass !== '' ? ' class="' . htmlspecialchars($thumbClass, ENT_QUOTES, 'UTF-8') . '"' : ''; ?> src="<?php echo htmlspecialchars($imageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($thumbLine, ''); ?>" loading="lazy" decoding="async" onclick="openGalleryModal('room', <?php echo (int) $index; ?>)" />
             <?php endforeach; ?>
-            <?php if ($roomGalleryTotal > 5): ?>
-              <button type="button" class="gallery-view-all-tile" onclick="openGalleryModal('room', 0)" aria-label="<?php echo htmlspecialchars('Open gallery, ' . $roomGalleryTotal . ' photos', ENT_QUOTES, 'UTF-8'); ?>">
+            <?php if (btb_room_gallery_show_view_all($roomGalleryTotal)): ?>
+              <button type="button" class="<?php echo htmlspecialchars(btb_room_gallery_view_all_tile_class($roomGalleryTotal), ENT_QUOTES, 'UTF-8'); ?>" onclick="openGalleryModal('room', 0)" aria-label="<?php echo htmlspecialchars('Open gallery, ' . $roomGalleryTotal . ' photos', ENT_QUOTES, 'UTF-8'); ?>">
                 View all <?php echo (int) $roomGalleryTotal; ?> photos
               </button>
             <?php endif; ?>
@@ -272,23 +274,24 @@ $cacheBuster = '?v=' . time();
               $commonHints = ['Shared space', 'Hall', 'Kitchen', 'Living area', 'Another view'];
               $commonThumb = $commonGalleryAltPlain . ' · ' . $commonHints[$index % count($commonHints)] . ' (' . ($index + 1) . ')';
               ?>
-              <img src="<?php echo htmlspecialchars($imageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($commonThumb, ''); ?>" loading="lazy" decoding="async" onclick="openGalleryModal('common', <?php echo (int) $index; ?>)" />
+              <?php $thumbClass = btb_room_gallery_thumb_class((int) $index); ?>
+              <img<?php echo $thumbClass !== '' ? ' class="' . htmlspecialchars($thumbClass, ENT_QUOTES, 'UTF-8') . '"' : ''; ?> src="<?php echo htmlspecialchars($imageUrl . $cacheBuster, ENT_QUOTES, 'UTF-8'); ?>" alt="<?php echo safeOutput($commonThumb, ''); ?>" loading="lazy" decoding="async" onclick="openGalleryModal('common', <?php echo (int) $index; ?>)" />
             <?php endforeach; ?>
-            <?php if ($commonGalleryTotal > 5): ?>
-              <button type="button" class="gallery-view-all-tile" onclick="openGalleryModal('common', 0)" aria-label="<?php echo htmlspecialchars('Open gallery, ' . $commonGalleryTotal . ' photos', ENT_QUOTES, 'UTF-8'); ?>">
+            <?php if (btb_room_gallery_show_view_all($commonGalleryTotal)): ?>
+              <button type="button" class="<?php echo htmlspecialchars(btb_room_gallery_view_all_tile_class($commonGalleryTotal), ENT_QUOTES, 'UTF-8'); ?>" onclick="openGalleryModal('common', 0)" aria-label="<?php echo htmlspecialchars('Open gallery, ' . $commonGalleryTotal . ' photos', ENT_QUOTES, 'UTF-8'); ?>">
                 View all <?php echo (int) $commonGalleryTotal; ?> photos
               </button>
             <?php endif; ?>
           <?php endif; ?>
         </div>
       </section>
-      <aside class="card">
-        <h2>Book this floor</h2>
-        <p><?php echo $price; ?></p>
-        <p><?php echo $capacity; ?></p>
-        <div style="margin-top: 32px;"><?php echo $description; ?></div>
-        <p style="margin-top: 16px;"><?php echo $note; ?></p>
-        <form class="booking-form" data-room="Kelder" data-custom-handler novalidate style="margin-top: 40px;">
+      <aside class="card room-booking-card" id="booking">
+        <h2>Book this room</h2>
+        <p class="room-booking-price"><?php echo $price; ?></p>
+        <p class="room-booking-capacity"><?php echo $capacity; ?></p>
+        <?php require __DIR__ . '/room_booking_description_mobile.php'; ?>
+        <?php $btbRoomPricing = btb_room_booking_public_pricing_context($conn, $content, 'second', 'Kelder'); ?>
+        <form class="booking-form" data-room="Kelder" data-custom-handler novalidate style="margin-top: 24px;"<?php echo $btbRoomPricing['data_attrs']; ?>>
           <div class="form-row">
             <div>
               <label for="checkin">Check‑in</label>
@@ -299,12 +302,11 @@ $cacheBuster = '?v=' . time();
               <input id="checkout" name="checkout" type="date" required />
             </div>
           </div>
-          <div class="form-row">
+          <?php require __DIR__ . '/room_booking_min_stay_hint.php'; ?>
+          <div class="form-row form-row--full">
             <div>
               <label for="name">Name</label>
               <input id="name" name="name" type="text" placeholder="Full name" required />
-            </div>
-            <div>
             </div>
           </div>
           <div class="form-row">
@@ -321,7 +323,7 @@ $cacheBuster = '?v=' . time();
             <div>
               <label for="guests">Guests</label>
               <select id="guests" name="guests" required>
-                <option value="" disabled selected hidden>—</option>
+                <option value="" disabled selected hidden>Select guests</option>
                 <option value="1">1</option>
                 <option value="2">2</option>
               </select>
@@ -329,7 +331,7 @@ $cacheBuster = '?v=' . time();
             <div>
               <label for="pets">Dogs</label>
               <select id="pets" name="pets" required>
-                <option value="" disabled selected hidden>—</option>
+                <option value="" disabled selected hidden>Any dogs?</option>
                 <option value="0">No dogs</option>
                 <option value="1">1 dog</option>
                 <option value="2">2 dogs</option>
@@ -337,9 +339,13 @@ $cacheBuster = '?v=' . time();
             </div>
           </div>
 
+          <?php require __DIR__ . '/booking_guest_message_field.php'; ?>
+
+          <?php require __DIR__ . '/room_booking_estimate.php'; ?>
+
           <button class="btn primary" type="submit"><?php echo $roomBookNowButtonLabel; ?></button>
           <p class="notice" style="margin-bottom: 0;">Prices are approximate. Confirmation will be sent by email.</p>
-          <p class="notice" style="margin-top: 0;"><a href="#" id="checkin-conditions-link" style="color: var(--brand); text-decoration: underline; cursor: pointer;">Check-in conditions</a></p>
+          <?php require __DIR__ . '/checkin_conditions_link.php'; ?>
         </form>
       </aside>
     </div>
@@ -350,6 +356,8 @@ $cacheBuster = '?v=' . time();
       <h2 id="wellness-title">Wellness Experiences</h2>
       <p class="section-lead" id="wellness-description">Enhance your stay with optional massage: relaxing or deep tissue sessions with an experienced therapist — an easy way to make your time in the mountains feel even more restorative.</p>
 
+      <button type="button" class="btb-text-read-more wellness-section__read-more" aria-expanded="false" hidden>Read more</button>
+      <div class="wellness-section__more">
       <section class="card card-massage">
         <div class="card-img">
           <img id="wellness-massage-img" class="floor-photo media-43" src="assets/massage.jpg" alt="Wellness at Back to Base" />
@@ -362,50 +370,15 @@ $cacheBuster = '?v=' . time();
           </div>
         </div>
       </section>
+      </div>
     </div>
   </section>
 
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div>
-        <h4>Contact</h4>
-        <p id="footer-contact-address">British Columbia, Canada</p>
-        <p id="footer-contact-phone">Phone: +1 (555) 123‑4567</p>
-        <p id="footer-contact-email">Email: hello@backtobase.example</p>
-      </div>
-      <div>
-        <h4>Navigation</h4>
-        <ul class="footer-nav">
-          <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.php">Wellness</a></li>
-          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
-          <li><a href="explore.php">Explore</a></li>
-          <li><a href="special.php">Specials</a></li>
-          <li><a href="about.php">About us</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Quiet hours</h4>
-        <p>22:00 — 07:00</p>
-        <ul class="footer-nav footer-nav--legal">
-          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
-          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="container copyright">© <span id="year"></span> Back to Base</div>
-  </footer>
+  <?php require __DIR__ . '/room_booking_sticky_bar.php'; ?>
 
-  <!-- Check-in Conditions Modal -->
-  <div id="checkin-conditions-modal" class="checkin-modal">
-    <div class="checkin-modal-overlay"></div>
-    <div class="checkin-modal-content">
-      <button class="checkin-modal-close" id="checkin-close">&times;</button>
-      <h3>Check-in conditions</h3>
-      <p>Check-in from 3:00 PM, Check-out until 11:00 AM.</p>
-      <p>Detailed information on how to find our house and what is located nearby can be found on the About Us page</p>
-    </div>
-  </div>
+<?php require __DIR__ . '/site_footer.php'; ?>
+
+  <?php require __DIR__ . '/checkin_conditions_modal.php'; ?>
 
   <!-- Gallery Modal -->
   <div id="gallery-modal" class="gallery-modal">
@@ -462,41 +435,9 @@ $cacheBuster = '?v=' . time();
       }
     })();
   </script>
-  <script src="script.js?v=26"></script>
-  <script>
-    // Check-in conditions modal
-    (function() {
-      const modal = document.getElementById('checkin-conditions-modal');
-      const link = document.getElementById('checkin-conditions-link');
-      const closeBtn = document.getElementById('checkin-close');
-      const overlay = modal.querySelector('.checkin-modal-overlay');
-      
-      if (!modal || !link) return;
-      
-      // Open modal
-      link.addEventListener('click', (e) => {
-        e.preventDefault();
-        modal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-      });
-      
-      // Close modal
-      function closeModal() {
-        modal.classList.remove('active');
-        document.body.style.overflow = '';
-      }
-      
-      closeBtn.addEventListener('click', closeModal);
-      overlay.addEventListener('click', closeModal);
-      
-      // Close on Escape key
-      document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && modal.classList.contains('active')) {
-          closeModal();
-        }
-      });
-    })();
-  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" onerror="this.onerror=null; this.href='';">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js" onerror="console.warn('Flatpickr failed to load, date inputs will use native browser picker');"></script>
+  <script src="script.js?v=45"></script>
   <script src="auth.js?v=26"></script>
   <script>
     // Gallery: Kelder + common areas
@@ -609,9 +550,6 @@ $cacheBuster = '?v=' . time();
       });
     });
   </script>
-  <!-- Flatpickr for visually blocking busy dates in your calendar -->
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" onerror="this.onerror=null; this.href='';">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js" onerror="console.warn('Flatpickr failed to load, date inputs will use native browser picker');"></script>
   <script src="auth-menu.js"></script>
   <script src="booking.js"></script>
   <script>

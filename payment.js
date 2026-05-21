@@ -7,6 +7,9 @@
 // For testing you can use: pk_test_...
 let STRIPE_PUBLISHABLE_KEY = '';
 
+/** Force English labels in Payment Element (Card, Link, Klarna, Affirm, etc.) */
+const STRIPE_LOCALE = 'en';
+
 // Initializing Stripe
 let stripe = null;
 let elements = null;
@@ -30,6 +33,15 @@ async function initStripe(publishableKey, clientSecret) {
       return false;
     }
 
+    if (paymentElement) {
+      try {
+        paymentElement.unmount();
+      } catch (_) {}
+      paymentElement = null;
+    }
+    elements = null;
+    stripe = null;
+
     STRIPE_PUBLISHABLE_KEY = publishableKey;
 
     // Loading Stripe.js
@@ -44,12 +56,13 @@ async function initStripe(publishableKey, clientSecret) {
       });
     }
 
-    // Initializing Stripe
-    stripe = window.Stripe(publishableKey);
+    // Initializing Stripe (locale: en — avoid Russian UI when browser language is ru)
+    stripe = window.Stripe(publishableKey, { locale: STRIPE_LOCALE });
 
     // Creating payment elements
     elements = stripe.elements({
       clientSecret: clientSecret,
+      locale: STRIPE_LOCALE,
       appearance: {
         theme: 'stripe',
         variables: {
@@ -69,6 +82,52 @@ async function initStripe(publishableKey, clientSecret) {
     console.error('Stripe initialization error:', error);
     return false;
   }
+}
+
+/**
+ * Wait until the Payment Element is mounted and Stripe has emitted `ready`
+ * (calling submit/confirm before that triggers "could not retrieve data from the specified Element").
+ * @param {unknown} el Stripe Payment Element instance
+ * @param {number} timeoutMs
+ * @returns {Promise<void>}
+ */
+function waitForPaymentElementReady(el, timeoutMs = 60000) {
+  if (!el || typeof el.on !== 'function') {
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const finish = (fn) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      fn();
+    };
+    const timer = setTimeout(() => {
+      finish(() =>
+        reject(
+          new Error(
+            'Payment form timed out. Check that https://js.stripe.com is not blocked (ad blocker, privacy extension, or CSP).'
+          )
+        )
+      );
+    }, timeoutMs);
+
+    try {
+      el.on('ready', () => {
+        finish(() => resolve());
+      });
+      el.on('loaderror', (event) => {
+        const msg =
+          event && event.error && event.error.message
+            ? event.error.message
+            : 'Payment form failed to load';
+        finish(() => reject(new Error(msg)));
+      });
+    } catch (err) {
+      finish(() => reject(err));
+    }
+  });
 }
 
 /**
@@ -114,21 +173,37 @@ async function createPaymentElement(containerSelector) {
  * @param {Function} onError Callback on error
  * @returns {Promise<boolean>} Processing success
  */
-async function handlePayment(clientSecret, onSuccess, onError) {
+async function handlePayment(clientSecret, onSuccess, onError, options) {
   try {
-    if (!stripe || !paymentElement) {
+    if (!stripe || !elements || !paymentElement) {
       throw new Error('Stripe not initialized');
     }
 
-    // Showing the loading indicator
+    const opts = typeof options === 'object' && options !== null ? options : {};
+    const returnUrl =
+      typeof opts.returnUrl === 'string' && opts.returnUrl
+        ? opts.returnUrl
+        : window.location.origin + '/booking-confirmation.html';
+
+    // Stripe.js (Payment Element): submit must run on pay click before confirmPayment — see deferred-intent docs.
+    if (typeof elements.submit === 'function') {
+      const submitResult = await elements.submit();
+      if (submitResult.error) {
+        showPaymentError(submitResult.error.message);
+        if (onError) {
+          onError(submitResult.error);
+        }
+        return false;
+      }
+    }
+
     showPaymentLoading();
 
-    // We confirm the payment
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements: elements,
       clientSecret: clientSecret,
       confirmParams: {
-        return_url: window.location.origin + '/booking-confirmation.html'
+        return_url: returnUrl
       },
       redirect: 'if_required'
     });
@@ -235,7 +310,7 @@ function showPaymentLoading() {
       display: flex;
       align-items: center;
       justify-content: center;
-      z-index: 10000;
+      z-index: 100070;
     `;
     overlay.innerHTML = `
       <div style="background: white; padding: 30px; border-radius: 8px; text-align: center;">
@@ -258,6 +333,7 @@ function showPaymentLoading() {
       document.head.appendChild(style);
     }
   }
+  overlay.style.zIndex = '100070';
   overlay.style.display = 'flex';
 }
 
@@ -278,54 +354,113 @@ function hidePaymentLoading() {
 }
 
 /**
+ * Clear overlay from a previous attempt and disable Pay until Stripe is ready (avoids native form submit while the API loads).
+ */
+function resetPaymentSubmitForPrepare() {
+  const overlay = document.getElementById('payment-loading-overlay');
+  if (overlay) {
+    overlay.style.display = 'none';
+  }
+  const submitButton = document.getElementById('payment-submit') || document.querySelector('#payment-form button[type="submit"]');
+  if (submitButton) {
+    submitButton.disabled = true;
+    submitButton.textContent = 'Preparing payment...';
+  }
+}
+
+/**
  * Initializing the payment form on the page
  * @param {string} publishableKey Stripe Publishable Key
  * @param {string} clientSecret Client Secret from Payment Intent
+ * @param {{ returnUrl?: string, onPaid?: (pi: unknown) => void }|undefined} options Optional return URL for redirects and success callback
  */
-async function initPaymentForm(publishableKey, clientSecret) {
+async function initPaymentForm(publishableKey, clientSecret, options) {
   try {
-    // Initializing Stripe
+    const opts = typeof options === 'object' && options !== null ? options : {};
+    const onPaidSuccess =
+      typeof opts.onPaid === 'function'
+        ? opts.onPaid
+        : () => {
+            const confirmationCode = sessionStorage.getItem('last_confirmation_code') || '';
+            window.location.href =
+              'booking-confirmation.html' +
+              (confirmationCode ? `?code=${encodeURIComponent(confirmationCode)}&paid=true` : '');
+          };
+
+    const paymentForm = document.getElementById('payment-form');
+    if (!paymentForm) {
+      showPaymentError('Payment form not found');
+      return;
+    }
+
+    // Clone/replace the form *before* mounting Stripe. Replacing the form after mount
+    // detaches the Payment Element from the live DOM (empty modal + "Element not ready" errors).
+    const freshForm = paymentForm.cloneNode(true);
+    paymentForm.parentNode.replaceChild(freshForm, paymentForm);
+
     const initialized = await initStripe(publishableKey, clientSecret);
     if (!initialized) {
       showPaymentError('Failed to initialize payment system');
+      const b = freshForm.querySelector('#payment-submit');
+      if (b) {
+        b.disabled = true;
+        b.textContent = 'Pay now';
+      }
       return;
     }
 
-    // Create a Payment Element
     const elementCreated = await createPaymentElement('#payment-element');
     if (!elementCreated) {
       showPaymentError('Failed to create payment form');
+      const b = freshForm.querySelector('#payment-submit');
+      if (b) {
+        b.disabled = true;
+        b.textContent = 'Pay now';
+      }
       return;
     }
 
-    // Bind the payment form handler
-    const paymentForm = document.getElementById('payment-form');
-    if (paymentForm) {
-      paymentForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    try {
+      await waitForPaymentElementReady(paymentElement);
+    } catch (waitErr) {
+      console.error('Payment Element ready:', waitErr);
+      showPaymentError(waitErr.message || 'Payment form failed to load');
+      const b = freshForm.querySelector('#payment-submit');
+      if (b) {
+        b.disabled = true;
+        b.textContent = 'Pay now';
+      }
+      return;
+    }
 
-        // Processing the payment
-        await handlePayment(
-          clientSecret,
-          (paymentIntent) => {
-            // Successful payment
-            console.log('Payment succeeded:', paymentIntent);
-            
-            // Redirect to confirmation page with updated data
-            const confirmationCode = sessionStorage.getItem('last_confirmation_code') || '';
-            window.location.href = 'booking-confirmation.html' + 
-              (confirmationCode ? `?code=${encodeURIComponent(confirmationCode)}&paid=true` : '');
-          },
-          (error) => {
-            // Payment error
-            console.error('Payment error:', error);
-          }
-        );
-      });
+    freshForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      await handlePayment(
+        clientSecret,
+        (paymentIntent) => {
+          console.log('Payment succeeded:', paymentIntent);
+          onPaidSuccess(paymentIntent);
+        },
+        (error) => {
+          console.error('Payment error:', error);
+        },
+        opts
+      );
+    });
+    const payBtn = freshForm.querySelector('#payment-submit');
+    if (payBtn) {
+      payBtn.disabled = false;
+      payBtn.textContent = 'Pay now';
     }
   } catch (error) {
     console.error('Init payment form error:', error);
     showPaymentError(error.message || 'Failed to initialize payment form');
+    const b = document.getElementById('payment-submit') || document.querySelector('#payment-form button[type="submit"]');
+    if (b) {
+      b.disabled = true;
+      b.textContent = 'Pay now';
+    }
   }
 }
 
@@ -336,7 +471,9 @@ window.PaymentAPI = {
   handlePayment,
   initPaymentForm,
   showPaymentError,
-  hidePaymentError
+  hidePaymentError,
+  hidePaymentLoading,
+  resetPaymentSubmitForPrepare
 };
 
 

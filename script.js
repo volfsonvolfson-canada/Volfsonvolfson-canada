@@ -1164,6 +1164,537 @@ function showDateErrorNotification(input, message, isFirstMessage = false) {
   });
 }
 
+const BTB_BOOKING_DATE_PLACEHOLDER = 'Select date';
+
+/** iPhone / iPad — Flatpickr altInput often does not open; use native type="date" instead. */
+function btbIsIosDevice() {
+  if (typeof navigator === 'undefined') {
+    return false;
+  }
+  const ua = navigator.userAgent || '';
+  if (/iPad|iPhone|iPod/i.test(ua)) {
+    return true;
+  }
+  return navigator.platform === 'MacIntel' && (navigator.maxTouchPoints || 0) > 1;
+}
+
+function btbResetDateInputForNative(input) {
+  if (!input) {
+    return;
+  }
+  if (input._flatpickr) {
+    try {
+      input._flatpickr.destroy();
+    } catch (_) {}
+    delete input._flatpickr;
+  }
+  const wrap = input.closest('.btb-native-date-field');
+  if (wrap) {
+    const host = wrap.parentElement;
+    if (host) {
+      host.insertBefore(input, wrap);
+      wrap.remove();
+    }
+  } else {
+    const prev = input.previousElementSibling;
+    if (
+      prev &&
+      prev.tagName === 'INPUT' &&
+      (prev.readOnly ||
+        prev.classList.contains('flatpickr-input') ||
+        prev.dataset.btbDateDisplay === '1')
+    ) {
+      prev.remove();
+    }
+  }
+  if (input.parentElement) {
+    input.parentElement.classList.remove('btb-native-date-field');
+  }
+  delete input.dataset.btbDateDisplayWrapped;
+  [
+    'position',
+    'opacity',
+    'pointerEvents',
+    'width',
+    'height',
+    'margin',
+    'padding',
+    'border',
+    'left',
+    'top',
+    'visibility',
+    'clip',
+    'zIndex',
+    'cursor',
+    'color',
+    'minHeight',
+  ].forEach((prop) => {
+    input.style[prop] = '';
+  });
+  input.removeAttribute('readonly');
+  input.type = 'date';
+  input.dataset.flatpickrInitialized = 'native';
+  btbWrapNativeDateEnglishDisplay(input);
+}
+
+/** iOS / native type="date": visible English label + transparent date input overlay (picker must receive taps). */
+function btbWrapNativeDateEnglishDisplay(real) {
+  if (!real || real.dataset.btbDateDisplayWrapped === '1') {
+    return;
+  }
+  const monthNames = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  const formatIso = (iso) => {
+    if (!iso) return '';
+    const d = parseLocalDate(iso);
+    if (!d || Number.isNaN(d.getTime())) return '';
+    return `${monthNames[d.getMonth()]} ${String(d.getDate()).padStart(2, '0')}, ${d.getFullYear()}`;
+  };
+  real.dataset.btbDateDisplayWrapped = '1';
+  const host = real.parentElement;
+  if (!host) {
+    return;
+  }
+  host.classList.remove('btb-native-date-field');
+
+  const fieldWrap = document.createElement('div');
+  fieldWrap.className = 'btb-native-date-field';
+  host.insertBefore(fieldWrap, real);
+  fieldWrap.appendChild(real);
+
+  const display = document.createElement('input');
+  display.type = 'text';
+  display.dataset.btbDateDisplay = '1';
+  display.readOnly = true;
+  display.tabIndex = -1;
+  display.setAttribute('aria-hidden', 'true');
+  display.placeholder = BTB_BOOKING_DATE_PLACEHOLDER;
+  display.value = formatIso(real.value);
+  fieldWrap.insertBefore(display, real);
+
+  real.type = 'date';
+  real.removeAttribute('readonly');
+  const dateLabel =
+    real.id === 'checkout' ? 'Check-out date' : real.id === 'date' ? 'Date' : 'Check-in date';
+  real.setAttribute('aria-label', dateLabel);
+
+  const openPicker = () => {
+    try {
+      if (typeof real.showPicker === 'function') {
+        real.showPicker();
+      } else {
+        real.focus();
+        real.click();
+      }
+    } catch (_) {
+      real.focus();
+    }
+  };
+  fieldWrap.addEventListener('click', (e) => {
+    if (e.target === real) {
+      return;
+    }
+    openPicker();
+  });
+
+  const sync = () => {
+    display.value = formatIso(real.value);
+  };
+  real.addEventListener('change', sync);
+  real.addEventListener('input', sync);
+  sync();
+}
+
+function btbNativeDateValidateAgainstBlocked(form, input, dateStr) {
+  const blocked = form._btbBlockedDatesArr || form._btbMassageBlockedDatesArr || [];
+  if (dateStr && blocked.includes(dateStr)) {
+    if (window.showDateFieldError) {
+      window.showDateFieldError(input, 'This date is unavailable. Please select another date.');
+    }
+    if (window.flashDateField) {
+      window.flashDateField(input);
+    }
+    return false;
+  }
+  if (window.clearDateFieldError) {
+    window.clearDateFieldError(input);
+  }
+  return true;
+}
+
+function btbBindNativeRoomDateHandlers(form, checkinInput, checkoutInput) {
+  if (!form || !checkinInput || !checkoutInput) {
+    return;
+  }
+  if (checkinInput.dataset.btbNativeDateBound === '1') {
+    return;
+  }
+  checkinInput.dataset.btbNativeDateBound = '1';
+  checkoutInput.dataset.btbNativeDateBound = '1';
+
+  const onCheckinChange = () => {
+    const val = checkinInput.value;
+    if (val) {
+      if (!btbNativeDateValidateAgainstBlocked(form, checkinInput, val)) {
+        checkinInput.value = '';
+        return;
+      }
+      const checkinDate = parseLocalDate(val);
+      if (checkinDate) {
+        const minOut = new Date(checkinDate);
+        minOut.setDate(minOut.getDate() + 2);
+        checkoutInput.min = formatDateString(minOut);
+      }
+      if (checkoutInput.value) {
+        const disabled = getRoomCheckoutDisabledDates(form, checkinInput);
+        if (disabled.includes(checkoutInput.value)) {
+          if (window.showDateFieldError) {
+            window.showDateFieldError(
+              checkoutInput,
+              'Check-out date must be at least 2 days after check-in date.'
+            );
+          }
+          checkoutInput.value = '';
+        }
+      }
+    } else {
+      checkoutInput.min = '';
+    }
+  };
+
+  const onCheckoutChange = () => {
+    const val = checkoutInput.value;
+    if (!val) {
+      return;
+    }
+    const disabled = getRoomCheckoutDisabledDates(form, checkinInput);
+    if (disabled.includes(val)) {
+      let errorMessage = 'This date is unavailable. Please select another date.';
+      if (checkinInput.value) {
+        const checkinDate = parseLocalDate(checkinInput.value);
+        const selectedDate = parseLocalDate(val);
+        if (checkinDate && selectedDate) {
+          const checkinPlusOne = new Date(checkinDate);
+          checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
+          if (selectedDate <= checkinPlusOne) {
+            errorMessage = 'Check-out date must be at least 2 days after check-in date.';
+          }
+        }
+      }
+      if (window.showDateFieldError) {
+        window.showDateFieldError(checkoutInput, errorMessage);
+      }
+      checkoutInput.value = '';
+      if (window.flashDateField) {
+        window.flashDateField(checkoutInput);
+      }
+      return;
+    }
+    if (window.clearDateFieldError) {
+      window.clearDateFieldError(checkoutInput);
+    }
+  };
+
+  checkinInput.addEventListener('change', onCheckinChange);
+  checkoutInput.addEventListener('change', onCheckoutChange);
+}
+
+function btbBindNativeMassageDateHandler(form, dateInput) {
+  if (!form || !dateInput || dateInput.dataset.btbNativeDateBound === '1') {
+    return;
+  }
+  dateInput.dataset.btbNativeDateBound = '1';
+  dateInput.addEventListener('change', () => {
+    const val = dateInput.value;
+    if (val && !btbNativeDateValidateAgainstBlocked(form, dateInput, val)) {
+      dateInput.value = '';
+    }
+  });
+}
+
+function btbFlatpickrEnLocale() {
+  return {
+    firstDayOfWeek: 1,
+    weekdays: {
+      shorthand: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      longhand: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+    },
+    months: {
+      shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+      longhand: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    }
+  };
+}
+
+function btbFlatpickrOnReady(instance) {
+  const parent = instance.input?.parentElement;
+  if (parent && window.getComputedStyle(parent).position === 'static') {
+    parent.style.position = 'relative';
+  }
+  if (instance.input) {
+    instance.input.style.position = 'absolute';
+    instance.input.style.opacity = '0';
+    instance.input.style.width = '0';
+    instance.input.style.height = '0';
+    instance.input.style.padding = '0';
+    instance.input.style.margin = '0';
+    instance.input.style.border = 'none';
+    instance.input.style.pointerEvents = 'none';
+    instance.input.style.left = '-9999px';
+    instance.input.style.top = '-9999px';
+    instance.input.style.visibility = 'visible';
+  }
+  if (instance.altInput) {
+    instance.altInput.style.width = '100%';
+    instance.altInput.style.cursor = 'pointer';
+    instance.altInput.style.minHeight = '44px';
+    if (!instance.altInput.value) {
+      instance.altInput.placeholder = BTB_BOOKING_DATE_PLACEHOLDER;
+    }
+    const openCal = (e) => {
+      try {
+        if (e && e.type === 'touchstart') {
+          e.preventDefault();
+        }
+        if (!instance.isOpen) {
+          instance.open();
+        }
+      } catch (_) {}
+    };
+    instance.altInput.addEventListener('touchstart', openCal, { passive: false });
+    instance.altInput.addEventListener('click', openCal);
+  }
+}
+
+function btbBlockedDatesToIsoArray(blockedDates) {
+  return blockedDates.map(date => {
+    const d = parseLocalDate(date);
+    return d ? d.toISOString().split('T')[0] : null;
+  }).filter(Boolean);
+}
+
+function getRoomCheckoutDisabledDates(form, checkinInput) {
+  const blockedDatesArray = form._btbBlockedDatesArr || [];
+  const disabledDates = [...blockedDatesArray];
+  if (!checkinInput?.value) return disabledDates;
+  const checkinDate = parseLocalDate(checkinInput.value);
+  if (!checkinDate) return disabledDates;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  let currentDate = new Date(today);
+  while (currentDate <= checkinDate) {
+    const dateStr = formatDateString(currentDate);
+    if (!disabledDates.includes(dateStr)) disabledDates.push(dateStr);
+    currentDate.setDate(currentDate.getDate() + 1);
+  }
+  const checkinPlusOne = new Date(checkinDate);
+  checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
+  const checkinPlusOneStr = formatDateString(checkinPlusOne);
+  if (!disabledDates.includes(checkinPlusOneStr)) disabledDates.push(checkinPlusOneStr);
+  return disabledDates;
+}
+
+function updateRoomBookingFlatpickrBlockedDates(form, checkinInput, checkoutInput, blockedDates) {
+  form._btbBlockedDatesArr = btbBlockedDatesToIsoArray(blockedDates);
+  const fpCheckin = checkinInput?._flatpickr;
+  const fpCheckout = checkoutInput?._flatpickr;
+  if (fpCheckin) fpCheckin.set('disable', form._btbBlockedDatesArr);
+  if (fpCheckout) fpCheckout.set('disable', getRoomCheckoutDisabledDates(form, checkinInput));
+}
+
+function ensureRoomBookingFlatpickr(form, checkinInput, checkoutInput) {
+  if (!checkinInput || !checkoutInput) return;
+
+  form._btbBlockedDatesArr = form._btbBlockedDatesArr || [];
+  checkinInput.dataset.enhancedDate = '1';
+  checkoutInput.dataset.enhancedDate = '1';
+
+  if (btbIsIosDevice()) {
+    if (checkinInput.dataset.flatpickrInitialized !== 'native') {
+      btbResetDateInputForNative(checkinInput);
+      btbResetDateInputForNative(checkoutInput);
+    } else {
+      if (!checkinInput.dataset.btbDateDisplayWrapped) {
+        btbResetDateInputForNative(checkinInput);
+      }
+      if (!checkoutInput.dataset.btbDateDisplayWrapped) {
+        btbResetDateInputForNative(checkoutInput);
+      }
+    }
+    btbBindNativeRoomDateHandlers(form, checkinInput, checkoutInput);
+    form._btbNativeDates = true;
+    return;
+  }
+
+  if (typeof flatpickr === 'undefined') return;
+  if (checkinInput.dataset.flatpickrInitialized === '1') return;
+
+  checkinInput.dataset.flatpickrInitialized = '1';
+  checkoutInput.dataset.flatpickrInitialized = '1';
+
+  const checkinDisplay = checkinInput.previousElementSibling && checkinInput.previousElementSibling.tagName === 'INPUT' && checkinInput.previousElementSibling.readOnly ? checkinInput.previousElementSibling : null;
+  const checkoutDisplay = checkoutInput.previousElementSibling && checkoutInput.previousElementSibling.tagName === 'INPUT' && checkoutInput.previousElementSibling.readOnly ? checkoutInput.previousElementSibling : null;
+  if (checkinDisplay) checkinDisplay.remove();
+  if (checkoutDisplay) checkoutDisplay.remove();
+
+  ['position', 'opacity', 'pointerEvents', 'width', 'height', 'margin', 'visibility', 'clip'].forEach(prop => {
+    checkinInput.style[prop] = '';
+    checkoutInput.style[prop] = '';
+  });
+  checkinInput.removeAttribute('readonly');
+  checkoutInput.removeAttribute('readonly');
+
+  checkinInput.type = 'date';
+  checkoutInput.type = 'date';
+
+  const fpCheckin = flatpickr(checkinInput, {
+    dateFormat: 'Y-m-d',
+    disable: form._btbBlockedDatesArr,
+    minDate: 'today',
+    allowInput: false,
+    clickOpens: true,
+    disableMobile: true,
+    altInput: true,
+    altFormat: 'F j, Y',
+    placeholder: BTB_BOOKING_DATE_PLACEHOLDER,
+    locale: btbFlatpickrEnLocale(),
+    onReady(selectedDates, dateStr, instance) {
+      btbFlatpickrOnReady(instance);
+    },
+    onChange(selectedDates, dateStr, instance) {
+      const blockedDatesArray = form._btbBlockedDatesArr || [];
+      if (dateStr && blockedDatesArray.includes(dateStr)) {
+        instance.clear();
+        checkinInput.value = '';
+        if (instance.altInput) {
+          instance.altInput.placeholder = BTB_BOOKING_DATE_PLACEHOLDER;
+          instance.altInput.value = '';
+        }
+        checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
+        if (window.showDateFieldError) {
+          window.showDateFieldError(checkinInput, 'This date is unavailable. Please select another date.');
+        }
+        flashDateField(checkinInput);
+        return;
+      }
+      if (dateStr) {
+        checkinInput.value = dateStr;
+        checkinInput.type = 'date';
+        if (window.clearDateFieldError) window.clearDateFieldError(checkinInput);
+        checkinInput.dispatchEvent(new Event('input', { bubbles: true }));
+        checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
+        const fpCheckout = checkoutInput._flatpickr;
+        if (fpCheckout) fpCheckout.set('disable', getRoomCheckoutDisabledDates(form, checkinInput));
+        if (checkoutInput.value) {
+          const checkoutDate = parseLocalDate(checkoutInput.value);
+          const checkinDate = parseLocalDate(dateStr);
+          if (checkinDate && checkoutDate) {
+            if (checkinDate >= checkoutDate) {
+              if (window.showDateFieldError) {
+                window.showDateFieldError(checkinInput, 'Check-out cannot be earlier than Check-in.\nPlease select a later date.');
+              }
+              if (window.flashDateField) {
+                window.flashDateField(checkinInput);
+                window.flashDateField(checkoutInput);
+              } else {
+                flashDateField(checkinInput);
+              }
+            } else {
+              const checkinPlusOne = new Date(checkinDate);
+              checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
+              if (checkoutDate <= checkinPlusOne) {
+                if (window.showDateFieldError) {
+                  window.showDateFieldError(checkoutInput, 'Check-out date must be at least 2 days after check-in date.');
+                }
+                if (window.flashDateField) {
+                  window.flashDateField(checkinInput);
+                  window.flashDateField(checkoutInput);
+                } else {
+                  flashDateField(checkoutInput);
+                }
+              }
+            }
+          }
+        }
+      } else {
+        checkinInput.value = '';
+        if (instance.altInput) {
+          instance.altInput.placeholder = BTB_BOOKING_DATE_PLACEHOLDER;
+          instance.altInput.value = '';
+        }
+        checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
+        const fpCheckout = checkoutInput._flatpickr;
+        if (fpCheckout) fpCheckout.set('disable', form._btbBlockedDatesArr || []);
+      }
+    }
+  });
+
+  const fpCheckout = flatpickr(checkoutInput, {
+    dateFormat: 'Y-m-d',
+    disable: getRoomCheckoutDisabledDates(form, checkinInput),
+    minDate: 'today',
+    allowInput: false,
+    clickOpens: true,
+    disableMobile: true,
+    altInput: true,
+    altFormat: 'F j, Y',
+    placeholder: BTB_BOOKING_DATE_PLACEHOLDER,
+    locale: btbFlatpickrEnLocale(),
+    onReady(selectedDates, dateStr, instance) {
+      btbFlatpickrOnReady(instance);
+    },
+    onOpen(selectedDates, dateStr, instance) {
+      instance.set('disable', getRoomCheckoutDisabledDates(form, checkinInput));
+    },
+    onChange(selectedDates, dateStr, instance) {
+      const disabledDates = getRoomCheckoutDisabledDates(form, checkinInput);
+      if (dateStr && disabledDates.includes(dateStr)) {
+        instance.clear();
+        checkoutInput.value = '';
+        if (instance.altInput) {
+          instance.altInput.placeholder = BTB_BOOKING_DATE_PLACEHOLDER;
+          instance.altInput.value = '';
+        }
+        checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
+        let errorMessage = 'This date is unavailable. Please select another date.';
+        if (checkinInput.value) {
+          const checkinDate = parseLocalDate(checkinInput.value);
+          const selectedDate = parseLocalDate(dateStr);
+          if (checkinDate && selectedDate) {
+            const checkinPlusOne = new Date(checkinDate);
+            checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
+            if (selectedDate <= checkinPlusOne) {
+              errorMessage = 'Check-out date must be at least 2 days after check-in date.';
+            }
+          }
+        }
+        if (window.showDateFieldError) window.showDateFieldError(checkoutInput, errorMessage);
+        flashDateField(checkoutInput);
+        return;
+      }
+      if (dateStr) {
+        checkoutInput.value = dateStr;
+        checkoutInput.type = 'date';
+        if (window.clearDateFieldError) window.clearDateFieldError(checkoutInput);
+        checkoutInput.dispatchEvent(new Event('input', { bubbles: true }));
+        checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
+      } else {
+        checkoutInput.value = '';
+        if (instance.altInput) {
+          instance.altInput.placeholder = BTB_BOOKING_DATE_PLACEHOLDER;
+          instance.altInput.value = '';
+        }
+        checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
+      }
+    }
+  });
+
+  form._btbFpCheckin = fpCheckin;
+  form._btbFpCheckout = fpCheckout;
+}
+
 // Blocking busy dates in date picker
 async function initBlockedDatesForRoom(form, roomName) {
   // We immediately mark the inputs so that enhanceDateInputs does not process them
@@ -1176,6 +1707,8 @@ async function initBlockedDatesForRoom(form, roomName) {
     // We mark inputs BEFORE loading data so that enhanceDateInputs does not process them
     checkinInput.dataset.enhancedDate = '1';
     checkoutInput.dataset.enhancedDate = '1';
+    // Flatpickr before API fetch — avoids native RU date hint flash (дд.мм.гггг)
+    ensureRoomBookingFlatpickr(form, checkinInput, checkoutInput);
   }
   
   try {
@@ -1298,434 +1831,9 @@ async function initBlockedDatesForRoom(form, roomName) {
     const checkoutInput = form.querySelector('#checkout');
     
     if (checkinInput && checkoutInput) {
-      // Checking if Flatpickr is available
-      const hasFlatpickr = typeof flatpickr !== 'undefined';
-      
-      if (hasFlatpickr) {
-        // Using Flatpickr to visually block dates
-        // blockedDates already contains all dates from the periods
-        const blockedDatesArray = blockedDates.map(date => {
-          const d = parseLocalDate(date);
-          return d ? d.toISOString().split('T')[0] : null;
-        }).filter(Boolean);
-        
-        // Disable enhanceDateInputs for these fields (Flatpickr will replace the native picker)
-        checkinInput.dataset.enhancedDate = '1';
-        checkoutInput.dataset.enhancedDate = '1';
-        
-        // Remove display proxy inputs from enhanceDateInputs if they exist (to avoid duplication)
-        const checkinDisplay = checkinInput.previousElementSibling && checkinInput.previousElementSibling.tagName === 'INPUT' && checkinInput.previousElementSibling.readOnly ? checkinInput.previousElementSibling : null;
-        const checkoutDisplay = checkoutInput.previousElementSibling && checkoutInput.previousElementSibling.tagName === 'INPUT' && checkoutInput.previousElementSibling.readOnly ? checkoutInput.previousElementSibling : null;
-        
-        // Removing display proxy to avoid duplication with Flatpickr
-        if (checkinDisplay) {
-          checkinDisplay.remove();
-        }
-        if (checkoutDisplay) {
-          checkoutDisplay.remove();
-        }
-        
-        // Restoring the normal state of inputs for Flatpickr
-        // Flatpickr styles the inputs itself, so they need to be left visible
-        checkinInput.style.position = '';
-        checkinInput.style.opacity = '';
-        checkinInput.style.pointerEvents = '';
-        checkinInput.style.width = '';
-        checkinInput.style.height = '';
-        checkinInput.style.margin = '';
-        checkinInput.style.visibility = '';
-        checkinInput.style.clip = '';
-        checkinInput.removeAttribute('readonly');
-        
-        checkoutInput.style.position = '';
-        checkoutInput.style.opacity = '';
-        checkoutInput.style.pointerEvents = '';
-        checkoutInput.style.width = '';
-        checkoutInput.style.height = '';
-        checkoutInput.style.margin = '';
-        checkoutInput.style.visibility = '';
-        checkoutInput.style.clip = '';
-        checkoutInput.removeAttribute('readonly');
-        
-        // Declaring variables for Flatpickr instances in the function scope
-        let fpCheckin = null;
-        let fpCheckout = null;
-        
-        // Function for getting dates that need to be blocked for checkout (before checkin + 1 day)
-        const getDisabledDatesForCheckout = () => {
-          const disabledDates = [...blockedDatesArray];
-          
-          // If checkin date is selected, we block all dates before checkin + 1 day
-          if (checkinInput.value) {
-            const checkinDate = parseLocalDate(checkinInput.value);
-            if (checkinDate) {
-              // We block all dates up to and including checkin
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              let currentDate = new Date(today);
-              
-              // We block all dates until checkin
-              while (currentDate <= checkinDate) {
-                const dateStr = formatDateString(currentDate);
-                if (!disabledDates.includes(dateStr)) {
-                  disabledDates.push(dateStr);
-                }
-                currentDate.setDate(currentDate.getDate() + 1);
-              }
-              
-              // We block checkin + 1 day
-              const checkinPlusOne = new Date(checkinDate);
-              checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
-              const checkinPlusOneStr = formatDateString(checkinPlusOne);
-              if (!disabledDates.includes(checkinPlusOneStr)) {
-                disabledDates.push(checkinPlusOneStr);
-              }
-            }
-          }
-          
-          return disabledDates;
-        };
-        
-        // Initializing Flatpickr for check-in
-        if (!checkinInput.dataset.flatpickrInitialized) {
-          // Making sure the input type remains "date" for HTML5 validation
-          checkinInput.type = 'date';
-          
-          fpCheckin = flatpickr(checkinInput, {
-            dateFormat: 'Y-m-d',
-            disable: blockedDatesArray,
-            minDate: 'today',
-            allowInput: false, // Disable direct input to input
-            clickOpens: true, // Open the calendar when clicked
-            altInput: true, // Using an alternative input to display with placeholder
-            altFormat: 'F j, Y', // Date display format (for example: "November 7, 2025")
-            placeholder: 'dd.mm.yyyy', // Placeholder for altInput (corresponds to browser format)
-            locale: {
-              firstDayOfWeek: 1,
-              weekdays: {
-                shorthand: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                longhand: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-              },
-              months: {
-                shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                longhand: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-              }
-            },
-            onReady: function(selectedDates, dateStr, instance) {
-              // Make sure the parent container has position: relative
-              const parent = instance.input.parentElement;
-              if (parent && window.getComputedStyle(parent).position === 'static') {
-                parent.style.position = 'relative';
-              }
-              
-              // We hide the original input because we use altInput for display
-              // We move it far to the side so that it does not intercept clicks
-              if (instance.input) {
-                instance.input.style.position = 'absolute';
-                instance.input.style.opacity = '0';
-                instance.input.style.width = '0';
-                instance.input.style.height = '0';
-                instance.input.style.padding = '0';
-                instance.input.style.margin = '0';
-                instance.input.style.border = 'none';
-                instance.input.style.pointerEvents = 'none';
-                instance.input.style.left = '-9999px';
-                instance.input.style.top = '-9999px';
-                instance.input.style.visibility = 'visible'; // Visible to the browser, but invisible to the user
-              }
-              
-              // Making sure altInput has the correct size and clickable area
-              if (instance.altInput) {
-                instance.altInput.style.width = '100%';
-                instance.altInput.style.cursor = 'pointer';
-                // Installing placeholder after full initialization
-                if (!instance.altInput.value) {
-                  instance.altInput.placeholder = 'dd.mm.yyyy';
-                }
-              }
-            },
-            onChange: function(selectedDates, dateStr, instance) {
-              // Checking if the selected date is blocked
-              if (dateStr && blockedDatesArray.includes(dateStr)) {
-                instance.clear();
-                checkinInput.value = '';
-                // Restoring the placeholder after cleaning
-                if (instance.altInput) {
-                  instance.altInput.placeholder = 'dd.mm.yyyy';
-                  instance.altInput.value = '';
-                }
-                checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
-                // Show the error in the .field-error style (as for regular fields)
-                if (window.showDateFieldError) {
-                  window.showDateFieldError(checkinInput, 'This date is unavailable. Please select another date.');
-                }
-                flashDateField(checkinInput);
-                return;
-              }
-              // Make sure that the value of the real input is updated
-              if (dateStr) {
-                checkinInput.value = dateStr;
-                // Make sure the type remains "date"
-                checkinInput.type = 'date';
-                // Clear the error if the date is selected correctly
-                if (window.clearDateFieldError) {
-                  window.clearDateFieldError(checkinInput);
-                }
-                // Calling events to validate the form
-                checkinInput.dispatchEvent(new Event('input', { bubbles: true }));
-                checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                
-                // Update blocked dates for checkout when checkin changes
-                if (fpCheckout) {
-                  const updatedDisabledDates = getDisabledDatesForCheckout();
-                  fpCheckout.set('disable', updatedDisabledDates);
-                  
-                  // If checkout is already selected and it has become invalid, we show a notification, but do not clear it
-                  // The user will correct the departure date himself
-                  if (checkoutInput.value) {
-                    const checkoutDate = parseLocalDate(checkoutInput.value);
-                    const checkinDate = parseLocalDate(dateStr);
-                    if (checkinDate && checkoutDate) {
-                      // Check if checkin is selected later than checkout
-                      if (checkinDate >= checkoutDate) {
-                        // We don’t clear checkout - let the user fix it himself
-                        // Show the error in the .field-error style (as for regular fields)
-                        if (window.showDateFieldError) {
-                          window.showDateFieldError(checkinInput, 'Check-out cannot be earlier than Check-in.\nPlease select a later date.');
-                        }
-                        // Both fields flash red
-                        if (window.flashDateField) {
-                          window.flashDateField(checkinInput);
-                          window.flashDateField(checkoutInput);
-                        } else {
-                          flashDateField(checkinInput);
-                        }
-                      } else {
-                        const checkinPlusOne = new Date(checkinDate);
-                        checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
-                        if (checkoutDate <= checkinPlusOne) {
-                          // We don’t clear checkout - let the user fix it himself
-                          // Show the error in the .field-error style (as for regular fields)
-                          if (window.showDateFieldError) {
-                            window.showDateFieldError(checkoutInput, 'Check-out date must be at least 2 days after check-in date.');
-                          }
-                          // Both fields flash red
-                          if (window.flashDateField) {
-                            window.flashDateField(checkinInput);
-                            window.flashDateField(checkoutInput);
-                          } else {
-                            flashDateField(checkoutInput);
-                          }
-                        }
-                      }
-                    }
-                  }
-                }
-              } else {
-                checkinInput.value = '';
-                // Restore placeholder if the value is empty
-                if (instance.altInput) {
-                  instance.altInput.placeholder = 'dd.mm.yyyy';
-                  instance.altInput.value = '';
-                }
-                checkinInput.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                // Update blocked dates for checkout when clearing checkin
-                if (fpCheckout) {
-                  fpCheckout.set('disable', blockedDatesArray);
-                }
-              }
-            }
-          });
-          checkinInput.dataset.flatpickrInitialized = '1';
-          
-          // Hiding the original input immediately after initialization
-          setTimeout(() => {
-            if (fpCheckin.input && fpCheckin.altInput) {
-              // Make sure the parent container has position: relative
-              const parent = fpCheckin.input.parentElement;
-              if (parent && window.getComputedStyle(parent).position === 'static') {
-                parent.style.position = 'relative';
-              }
-              
-              // We move the hidden input far to the side so that it does not intercept clicks
-              fpCheckin.input.style.position = 'absolute';
-              fpCheckin.input.style.opacity = '0';
-              fpCheckin.input.style.width = '0';
-              fpCheckin.input.style.height = '0';
-              fpCheckin.input.style.padding = '0';
-              fpCheckin.input.style.margin = '0';
-              fpCheckin.input.style.border = 'none';
-              fpCheckin.input.style.pointerEvents = 'none';
-              fpCheckin.input.style.left = '-9999px';
-              fpCheckin.input.style.top = '-9999px';
-              fpCheckin.input.style.visibility = 'visible';
-              
-              // Making sure altInput has the correct size and clickable area
-              fpCheckin.altInput.style.width = '100%';
-              fpCheckin.altInput.style.cursor = 'pointer';
-              
-              // Make sure placeholder is set to altInput after initialization
-              if (!fpCheckin.altInput.value) {
-                fpCheckin.altInput.placeholder = 'dd.mm.yyyy';
-              }
-            }
-          }, 50);
-        }
-        
-        // Initializing Flatpickr for check-out
-        if (!checkoutInput.dataset.flatpickrInitialized) {
-          // Making sure the input type remains "date" for HTML5 validation
-          checkoutInput.type = 'date';
-          
-          fpCheckout = flatpickr(checkoutInput, {
-            dateFormat: 'Y-m-d',
-            disable: getDisabledDatesForCheckout(),
-            minDate: 'today',
-            allowInput: false, // Disable direct input to input
-            clickOpens: true, // Open the calendar when clicked
-            altInput: true, // Using an alternative input to display with placeholder
-            altFormat: 'F j, Y', // Date display format (for example: "November 7, 2025")
-            placeholder: 'dd.mm.yyyy', // Placeholder for altInput (corresponds to browser format)
-            locale: {
-              firstDayOfWeek: 1,
-              weekdays: {
-                shorthand: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-                longhand: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-              },
-              months: {
-                shorthand: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-                longhand: ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
-              }
-            },
-            onReady: function(selectedDates, dateStr, instance) {
-              // Make sure the parent container has position: relative
-              const parent = instance.input.parentElement;
-              if (parent && window.getComputedStyle(parent).position === 'static') {
-                parent.style.position = 'relative';
-              }
-              
-              // We hide the original input because we use altInput for display
-              // We move it far to the side so that it does not intercept clicks
-              if (instance.input) {
-                instance.input.style.position = 'absolute';
-                instance.input.style.opacity = '0';
-                instance.input.style.width = '0';
-                instance.input.style.height = '0';
-                instance.input.style.padding = '0';
-                instance.input.style.margin = '0';
-                instance.input.style.border = 'none';
-                instance.input.style.pointerEvents = 'none';
-                instance.input.style.left = '-9999px';
-                instance.input.style.top = '-9999px';
-                instance.input.style.visibility = 'visible'; // Visible to the browser, but invisible to the user
-              }
-              
-              // Making sure altInput has the correct size and clickable area
-              if (instance.altInput) {
-                instance.altInput.style.width = '100%';
-                instance.altInput.style.cursor = 'pointer';
-                // Installing placeholder after full initialization
-                if (!instance.altInput.value) {
-                  instance.altInput.placeholder = 'dd.mm.yyyy';
-                }
-              }
-            },
-            onOpen: function(selectedDates, dateStr, instance) {
-              // Update blocked dates when opening the calendar
-              const updatedDisabledDates = getDisabledDatesForCheckout();
-              instance.set('disable', updatedDisabledDates);
-            },
-            onChange: function(selectedDates, dateStr, instance) {
-              // We get a list of blocked dates (including dates before checkin + 1)
-              const disabledDates = getDisabledDatesForCheckout();
-              
-              // Checking if the selected date is blocked
-              if (dateStr && disabledDates.includes(dateStr)) {
-                instance.clear();
-                checkoutInput.value = '';
-                // Restoring the placeholder after cleaning
-                if (instance.altInput) {
-                  instance.altInput.placeholder = 'dd.mm.yyyy';
-                  instance.altInput.value = '';
-                }
-                checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
-                
-                // We determine the reason for blocking and display the corresponding notification
-                let errorMessage = 'This date is unavailable. Please select another date.';
-                if (checkinInput.value) {
-                  const checkinDate = parseLocalDate(checkinInput.value);
-                  const selectedDate = parseLocalDate(dateStr);
-                  if (checkinDate && selectedDate) {
-                    const checkinPlusOne = new Date(checkinDate);
-                    checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
-                    if (selectedDate <= checkinPlusOne) {
-                      errorMessage = 'Check-out date must be at least 2 days after check-in date.';
-                    }
-                  }
-                }
-                
-                // Show the error in the .field-error style (as for regular fields)
-                if (window.showDateFieldError) {
-                  window.showDateFieldError(checkoutInput, errorMessage);
-                }
-                flashDateField(checkoutInput);
-                return;
-              }
-              // Make sure that the value of the real input is updated
-              if (dateStr) {
-                checkoutInput.value = dateStr;
-                // Make sure the type remains "date"
-                checkoutInput.type = 'date';
-                // Clear the error if the date is selected correctly
-                if (window.clearDateFieldError) {
-                  window.clearDateFieldError(checkoutInput);
-                }
-                // Calling events to validate the form
-                checkoutInput.dispatchEvent(new Event('input', { bubbles: true }));
-                checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
-              } else {
-                checkoutInput.value = '';
-                // Restore placeholder if the value is empty
-                if (instance.altInput) {
-                  instance.altInput.placeholder = 'dd.mm.yyyy';
-                  instance.altInput.value = '';
-                }
-                checkoutInput.dispatchEvent(new Event('change', { bubbles: true }));
-              }
-            }
-          });
-          checkoutInput.dataset.flatpickrInitialized = '1';
-          
-          // Hiding the original input immediately after initialization
-          setTimeout(() => {
-            if (fpCheckout.input && fpCheckout.altInput) {
-              // Make sure the parent container has position: relative
-              const parent = fpCheckout.input.parentElement;
-              if (parent && window.getComputedStyle(parent).position === 'static') {
-                parent.style.position = 'relative';
-              }
-              
-              // We move the hidden input far to the side so that it does not intercept clicks
-              fpCheckout.input.style.position = 'absolute';
-              fpCheckout.input.style.opacity = '0';
-              fpCheckout.input.style.width = '0';
-              fpCheckout.input.style.height = '0';
-              fpCheckout.input.style.padding = '0';
-              fpCheckout.input.style.margin = '0';
-              fpCheckout.input.style.border = 'none';
-              fpCheckout.input.style.pointerEvents = 'none';
-              fpCheckout.input.style.left = '-9999px';
-              fpCheckout.input.style.top = '-9999px';
-              fpCheckout.input.style.visibility = 'visible';
-              
-              // Making sure altInput has the correct size and clickable area
-              fpCheckout.altInput.style.width = '100%';
-              fpCheckout.altInput.style.cursor = 'pointer';
-            }
-          }, 50);
-        }
+      if (btbIsIosDevice() || typeof flatpickr !== 'undefined') {
+        ensureRoomBookingFlatpickr(form, checkinInput, checkoutInput);
+        updateRoomBookingFlatpickrBlockedDates(form, checkinInput, checkoutInput, blockedDates);
       } else {
         // Fallback: using standard validation with improved notification
         const validateDateSelection = (input, dateValue) => {
@@ -1834,111 +1942,49 @@ function initMassageTimeRestrictions() {
     
     // Initialize Flatpickr for date input in massage form (same approach as room pages)
     const dateInput = massageForm.querySelector('input[type="date"]#date');
-    if (dateInput && typeof flatpickr !== 'undefined' && !dateInput.dataset.flatpickrInitialized) {
-      // Mark as enhanced BEFORE Flatpickr initialization to prevent enhanceDateInputs from processing it
+    if (dateInput && !dateInput.dataset.flatpickrInitialized) {
       dateInput.dataset.enhancedDate = '1';
-      // Making sure the input type remains "date" for HTML5 validation
       dateInput.type = 'date';
-      
-      const fpDate = flatpickr(dateInput, {
-        dateFormat: 'Y-m-d',
-        minDate: 'today',
-        allowInput: false, // Disable direct input to input
-        clickOpens: true, // Open the calendar when clicked
-        altInput: true, // Using an alternative input to display with placeholder
-        altFormat: 'F j, Y', // Date display format (for example: "November 7, 2025")
-        placeholder: 'dd.mm.yyyy', // Placeholder for altInput (corresponds to browser format)
-        onReady: function(selectedDates, dateStr, instance) {
-          // Make sure the parent container has position: relative
-          const parent = instance.input.parentElement;
-          if (parent && window.getComputedStyle(parent).position === 'static') {
-            parent.style.position = 'relative';
-          }
-          
-          // We hide the original input because we use altInput for display
-          // We move it far to the side so that it does not intercept clicks
-          if (instance.input) {
-            instance.input.style.position = 'absolute';
-            instance.input.style.opacity = '0';
-            instance.input.style.width = '0';
-            instance.input.style.height = '0';
-            instance.input.style.padding = '0';
-            instance.input.style.margin = '0';
-            instance.input.style.border = 'none';
-            instance.input.style.pointerEvents = 'none';
-            instance.input.style.left = '-9999px';
-            instance.input.style.top = '-9999px';
-            instance.input.style.visibility = 'visible'; // Visible to the browser, but invisible to the user
-          }
-          
-          // Making sure altInput has the correct size and clickable area
-          if (instance.altInput) {
-            instance.altInput.style.width = '100%';
-            instance.altInput.style.cursor = 'pointer';
-            // Installing placeholder after full initialization
-            if (!instance.altInput.value) {
-              instance.altInput.placeholder = 'dd.mm.yyyy';
+
+      if (btbIsIosDevice()) {
+        btbResetDateInputForNative(dateInput);
+        btbBindNativeMassageDateHandler(massageForm, dateInput);
+        initBlockedDatesForMassage(massageForm, dateInput);
+      } else if (typeof flatpickr !== 'undefined') {
+        dateInput.dataset.flatpickrInitialized = '1';
+
+        const fpDate = flatpickr(dateInput, {
+          dateFormat: 'Y-m-d',
+          minDate: 'today',
+          allowInput: false,
+          clickOpens: true,
+          disableMobile: true,
+          altInput: true,
+          altFormat: 'F j, Y',
+          placeholder: BTB_BOOKING_DATE_PLACEHOLDER,
+          locale: btbFlatpickrEnLocale(),
+          onReady(selectedDates, dateStr, instance) {
+            btbFlatpickrOnReady(instance);
+          },
+          onChange(selectedDates, dateStr, instance) {
+            if (dateStr) {
+              dateInput.value = dateStr;
+              dateInput.type = 'date';
+              dateInput.dispatchEvent(new Event('input', { bubbles: true }));
+              dateInput.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+              dateInput.value = '';
+              if (instance.altInput) {
+                instance.altInput.placeholder = BTB_BOOKING_DATE_PLACEHOLDER;
+                instance.altInput.value = '';
+              }
+              dateInput.dispatchEvent(new Event('change', { bubbles: true }));
             }
           }
-        },
-        onChange: function(selectedDates, dateStr, instance) {
-          // Make sure that the value of the real input is updated
-          if (dateStr) {
-            dateInput.value = dateStr;
-            // Make sure the type remains "date"
-            dateInput.type = 'date';
-            // Calling events to validate the form
-            dateInput.dispatchEvent(new Event('input', { bubbles: true }));
-            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
-          } else {
-            dateInput.value = '';
-            // Restore placeholder if the value is empty
-            if (instance.altInput) {
-              instance.altInput.placeholder = 'dd.mm.yyyy';
-              instance.altInput.value = '';
-            }
-            dateInput.dispatchEvent(new Event('change', { bubbles: true }));
-          }
-        }
-      });
-      
-      dateInput.dataset.flatpickrInitialized = '1';
-      
-      // Hiding the original input immediately after initialization
-      setTimeout(() => {
-        if (fpDate.input && fpDate.altInput) {
-          // Make sure the parent container has position: relative
-          const parent = fpDate.input.parentElement;
-          if (parent && window.getComputedStyle(parent).position === 'static') {
-            parent.style.position = 'relative';
-          }
-          
-          // We move the hidden input far to the side so that it does not intercept clicks
-          fpDate.input.style.position = 'absolute';
-          fpDate.input.style.opacity = '0';
-          fpDate.input.style.width = '0';
-          fpDate.input.style.height = '0';
-          fpDate.input.style.padding = '0';
-          fpDate.input.style.margin = '0';
-          fpDate.input.style.border = 'none';
-          fpDate.input.style.pointerEvents = 'none';
-          fpDate.input.style.left = '-9999px';
-          fpDate.input.style.top = '-9999px';
-          fpDate.input.style.visibility = 'visible';
-          
-          // Making sure altInput has the correct size and clickable area
-          fpDate.altInput.style.width = '100%';
-          fpDate.altInput.style.cursor = 'pointer';
-          
-          // Make sure placeholder is set to altInput after initialization
-          if (!fpDate.altInput.value) {
-            fpDate.altInput.placeholder = 'dd.mm.yyyy';
-          }
-        }
-      }, 50);
-      
-      // Loading blocked dates for massage
-      initBlockedDatesForMassage(massageForm, fpDate);
+        });
+
+        initBlockedDatesForMassage(massageForm, fpDate);
+      }
     }
   }
 }
@@ -2017,26 +2063,18 @@ async function initBlockedDatesForMassage(form, fpInstance) {
     // Removing duplicates
     blockedDates = [...new Set(blockedDates)];
     
-    // Blocking dates in Flatpicr
+    const blockedDatesArray = btbBlockedDatesToIsoArray(blockedDates);
+    form._btbMassageBlockedDatesArr = blockedDatesArray;
+
+    // Blocking dates in Flatpickr or native validation (iOS)
     if (blockedDates.length > 0) {
-      // Convert dates to Flatpickr format (YYYY-MM-DD)
-      const blockedDatesArray = blockedDates.map(date => {
-        const d = parseLocalDate(date);
-        return d ? d.toISOString().split('T')[0] : null;
-      }).filter(Boolean);
-      
-      // Update the disable option in Flatpickr
-      if (fpInstance && fpInstance.config) {
-        // Getting the current blocked dates
+      if (fpInstance && fpInstance.config && typeof fpInstance.set === 'function') {
         const currentDisabled = fpInstance.config.disable || [];
-        
-        // Combine with new blocked dates
         const allDisabled = [...new Set([...currentDisabled, ...blockedDatesArray])];
-        
-        // Updating the Flatpickr configuration
         fpInstance.set('disable', allDisabled);
-        
         console.log(`Blocked dates initialized for Massage: ${blockedDates.length} dates`);
+      } else if (fpInstance && fpInstance.tagName === 'INPUT') {
+        console.log(`Blocked dates initialized for Massage (native): ${blockedDates.length} dates`);
       }
     } else {
       console.log('Blocked dates initialized for Massage: 0 dates');
@@ -2080,7 +2118,7 @@ function showMassageBookingToast(message) {
     msg.setAttribute('aria-live', 'polite');
     const btn = document.createElement('button');
     btn.type = 'button';
-    btn.className = 'btn outline btb-massage-booking-toast__action';
+    btn.className = 'btn primary btb-massage-booking-toast__action';
     btn.textContent = 'Go to booking';
     btn.setAttribute('aria-describedby', 'btb-massage-booking-toast-msg');
     el.appendChild(msg);
@@ -2113,6 +2151,10 @@ function showMassageBookingToast(message) {
   const msgEl = el.querySelector('.btb-massage-booking-toast__msg');
   if (msgEl) {
     msgEl.textContent = text;
+  }
+  const actionBtn = el.querySelector('.btb-massage-booking-toast__action');
+  if (actionBtn) {
+    actionBtn.className = 'btn primary btb-massage-booking-toast__action';
   }
   el.classList.add('btb-massage-booking-toast--visible');
   if (el._hideToastTimer) {
@@ -2213,11 +2255,15 @@ function enhanceDateInputs(root) {
   };
   const dateInputs = Array.from(root.querySelectorAll('input[type="date"]')).filter(i => !i.dataset.enhancedDate && !i._flatpickr);
   dateInputs.forEach(real => {
+    if (btbIsIosDevice()) {
+      return;
+    }
     real.dataset.enhancedDate = '1';
     const display = document.createElement('input');
     display.type = 'text';
+    display.dataset.btbDateDisplay = '1';
     display.value = formatIso(real.value);
-    display.placeholder = 'dd.mm.yyyy';
+    display.placeholder = BTB_BOOKING_DATE_PLACEHOLDER;
     display.readOnly = true;
     
     // Make sure the parent container has position: relative for proper positioning
@@ -2566,6 +2612,174 @@ const resolveImages = () => {
 
 const resolveGalleryImages = resolveImages;
 
+function initCheckinConditionsModal() {
+  const modal = document.getElementById('checkin-conditions-modal');
+  const link = document.getElementById('checkin-conditions-link');
+  if (!modal || !link) {
+    return;
+  }
+  const closeBtn = document.getElementById('checkin-close');
+  const overlay = modal.querySelector('.checkin-modal-overlay');
+
+  function closeModal() {
+    modal.classList.remove('active');
+    document.body.style.overflow = '';
+  }
+
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+  });
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', closeModal);
+  }
+  if (overlay) {
+    overlay.addEventListener('click', closeModal);
+  }
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('active')) {
+      closeModal();
+    }
+  });
+}
+
+/** Format amount for room booking estimate lines. */
+function btbFormatCadAmount(amount) {
+  const n = Number(amount);
+  if (!Number.isFinite(n)) {
+    return '';
+  }
+  const rounded = Math.round(n * 100) / 100;
+  const text = Number.isInteger(rounded) ? String(Math.round(rounded)) : rounded.toFixed(2);
+  return `${text} CAD`;
+}
+
+/** Same minimum-stay rule as room booking submit (checkout after check-in + 1 day). */
+function btbRoomBookingDatesMeetMinimumStay(checkinVal, checkoutVal) {
+  if (!checkinVal || !checkoutVal || typeof parseLocalDate !== 'function') {
+    return { ok: false, nights: 0 };
+  }
+  const checkinDate = parseLocalDate(checkinVal);
+  const checkoutDate = parseLocalDate(checkoutVal);
+  if (!checkinDate || !checkoutDate) {
+    return { ok: false, nights: 0 };
+  }
+  const nights = Math.round((checkoutDate - checkinDate) / 86400000);
+  if (nights <= 0) {
+    return { ok: false, nights: 0 };
+  }
+  const checkinPlusOne = new Date(checkinDate);
+  checkinPlusOne.setDate(checkinPlusOne.getDate() + 1);
+  if (checkoutDate <= checkinPlusOne) {
+    return { ok: false, nights };
+  }
+  return { ok: true, nights };
+}
+
+function initRoomBookingPriceEstimate() {
+  document.querySelectorAll('form.booking-form[data-room][data-btb-nightly-rate]').forEach((form) => {
+    const nightly = parseFloat(form.dataset.btbNightlyRate || '', 10);
+    const cleaning = parseFloat(form.dataset.btbCleaningFee || '', 10);
+    const petsFee = parseFloat(form.dataset.btbPetsFee || '', 10);
+    const cleaningLabel = form.dataset.btbCleaningLabel || 'Cleaning fee';
+    const petsLabel = form.dataset.btbPetsLabel || 'Dogs';
+    if (!Number.isFinite(nightly) || nightly <= 0) {
+      return;
+    }
+
+    const estimate = form.querySelector('[data-room-booking-estimate]');
+    const linesEl = form.querySelector('[data-room-booking-estimate-lines]');
+    const totalEl = form.querySelector('[data-room-booking-estimate-total]');
+    const checkin = form.querySelector('#checkin') || form.querySelector('[name="checkin"]');
+    const checkout = form.querySelector('#checkout') || form.querySelector('[name="checkout"]');
+    const pets = form.querySelector('#pets') || form.querySelector('[name="pets"]');
+    if (!estimate || !linesEl || !checkin || !checkout) {
+      return;
+    }
+
+    const sync = () => {
+      const stayCheck = btbRoomBookingDatesMeetMinimumStay(checkin.value, checkout.value);
+      if (!stayCheck.ok) {
+        estimate.hidden = true;
+        linesEl.textContent = '';
+        if (totalEl) {
+          totalEl.hidden = true;
+          totalEl.textContent = '';
+        }
+        return;
+      }
+
+      const nights = stayCheck.nights;
+      const staySubtotal = Math.round(nightly * nights * 100) / 100;
+      const cleaningAmt = Number.isFinite(cleaning) ? cleaning : 0;
+      const petsCount = pets && pets.value !== '' ? parseInt(pets.value, 10) : 0;
+      const petsAmt = petsCount > 0 && Number.isFinite(petsFee) ? petsFee : 0;
+      const nightWord = nights === 1 ? 'night' : 'nights';
+
+      const lines = [
+        `${nights} ${nightWord} × ${btbFormatCadAmount(nightly)} = ${btbFormatCadAmount(staySubtotal)}`,
+        `${cleaningLabel}: ${btbFormatCadAmount(cleaningAmt)}`,
+      ];
+      if (petsAmt > 0) {
+        lines.push(`${petsLabel}: ${btbFormatCadAmount(petsAmt)}`);
+      }
+
+      linesEl.innerHTML = lines
+        .map((line) => `<p class="room-booking-estimate__line">${line}</p>`)
+        .join('');
+      const total = Math.round((staySubtotal + cleaningAmt + petsAmt) * 100) / 100;
+      if (totalEl) {
+        totalEl.textContent = `Total: ${btbFormatCadAmount(total)}`;
+        totalEl.hidden = false;
+      }
+      estimate.hidden = false;
+    };
+
+    ['change', 'input'].forEach((evt) => {
+      checkin.addEventListener(evt, sync);
+      checkout.addEventListener(evt, sync);
+    });
+    if (pets) {
+      pets.addEventListener('change', sync);
+    }
+    form.addEventListener('reset', () => {
+      requestAnimationFrame(() => {
+        estimate.hidden = true;
+        linesEl.textContent = '';
+        if (totalEl) {
+          totalEl.hidden = true;
+          totalEl.textContent = '';
+        }
+      });
+    });
+    sync();
+  });
+}
+
+/** Muted placeholder styling for guests/pets selects (required is stripped on DOMContentLoaded). */
+function initBookingSelectPlaceholderStyle() {
+  const syncSelect = (sel) => {
+    const hasValue = String(sel.value || '').trim() !== '';
+    sel.classList.toggle('btb-select-has-value', hasValue);
+  };
+
+  document.querySelectorAll('.booking-form select[data-required]').forEach((sel) => {
+    syncSelect(sel);
+    sel.addEventListener('change', () => syncSelect(sel));
+  });
+
+  document.querySelectorAll('.booking-form').forEach((form) => {
+    form.addEventListener('reset', () => {
+      requestAnimationFrame(() => {
+        form.querySelectorAll('select[data-required]').forEach(syncSelect);
+      });
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   // Globally disable HTML5 validation for all forms on the site
   // This prevents browser gray prompts from appearing
@@ -2598,9 +2812,13 @@ document.addEventListener('DOMContentLoaded', () => {
       input.removeAttribute('required');
     }
   });
+
+  initBookingSelectPlaceholderStyle();
+  initRoomBookingPriceEstimate();
   
   revealElements();
   setYear();
+  initCheckinConditionsModal();
   initBookingForms();
   initMassageForm();
   setMinDates();
@@ -2621,6 +2839,8 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Check and show wellness section if user has seen it before
   checkAndShowWellnessSection();
+  initRoomMobileBookingUx();
+  initFooterMobileCollapse();
   
   // Initialize authentication system if auth.js is loaded
   if (typeof AuthSystem !== 'undefined') {
@@ -2735,6 +2955,269 @@ function migrateSingleOrderToArray() {
     setOrders(arr);
     localStorage.removeItem('btb_order');
   } catch (_) {}
+}
+
+/** Room pages on mobile: description clamp, wellness expand, sticky book bar. */
+function initRoomMobileBookingUx() {
+  const booking = document.getElementById('booking');
+  const bar = document.getElementById('room-booking-sticky-bar');
+  if (!booking) {
+    return;
+  }
+
+  const mq = window.matchMedia('(max-width: 900px)');
+  const priceEl = booking.querySelector('.room-booking-price');
+  const priceSlot = bar?.querySelector('[data-sticky-price]');
+  const cta = bar?.querySelector('.room-booking-sticky-bar__cta');
+
+  const setBarHidden = (hidden) => {
+    if (bar) {
+      bar.classList.toggle('is-hidden', !!hidden);
+    }
+  };
+
+  const scrollToBooking = () => {
+    booking.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setBarHidden(true);
+  };
+
+  if (priceEl && priceSlot) {
+    priceSlot.textContent = priceEl.innerText.replace(/\s+/g, ' ').trim();
+  }
+  cta?.addEventListener('click', scrollToBooking);
+
+  const descBlock = booking.querySelector('.room-booking-description-block');
+  const descToggle = booking.querySelector('.room-booking-description__toggle');
+  let syncDescToggle = () => {};
+
+  if (descBlock && descToggle) {
+    syncDescToggle = () => {
+      if (!mq.matches || descBlock.classList.contains('is-expanded')) {
+        descToggle.hidden = true;
+        return;
+      }
+      const text = descBlock.querySelector('.room-booking-description__text');
+      const note = descBlock.querySelector('.room-booking-description__note');
+      if (!text) {
+        descToggle.hidden = true;
+        return;
+      }
+      const noteText = (note?.textContent || '').replace(/\s+/g, ' ').trim();
+      const textOverflows = text.scrollHeight > text.clientHeight + 2;
+      descToggle.hidden = !textOverflows && noteText === '';
+    };
+    descToggle.addEventListener('click', () => {
+      descBlock.classList.add('is-expanded');
+      descToggle.setAttribute('aria-expanded', 'true');
+      descToggle.hidden = true;
+    });
+    syncDescToggle();
+    window.addEventListener('resize', syncDescToggle);
+  }
+
+  const wellness = document.getElementById('wellness-section');
+  const wellnessToggle = wellness?.querySelector('.wellness-section__read-more');
+  let syncWellnessToggle = () => {};
+
+  if (wellness && wellnessToggle) {
+    syncWellnessToggle = () => {
+      if (!mq.matches || wellness.style.display === 'none') {
+        wellnessToggle.hidden = true;
+        return;
+      }
+      if (wellness.classList.contains('is-wellness-expanded')) {
+        wellnessToggle.hidden = true;
+        return;
+      }
+      wellnessToggle.hidden = false;
+    };
+    wellnessToggle.addEventListener('click', () => {
+      wellness.classList.add('is-wellness-expanded');
+      wellnessToggle.setAttribute('aria-expanded', 'true');
+      syncWellnessToggle();
+    });
+    syncWellnessToggle();
+    const wellnessObs = new MutationObserver(syncWellnessToggle);
+    wellnessObs.observe(wellness, { attributes: true, attributeFilter: ['style'] });
+  }
+
+  let bookingObserver;
+
+  const bindBookingObserver = () => {
+    if (bookingObserver) {
+      bookingObserver.disconnect();
+      bookingObserver = null;
+    }
+    if (!mq.matches || !bar) {
+      return;
+    }
+    bookingObserver = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (!entry || !mq.matches) {
+          return;
+        }
+        if (entry.isIntersecting) {
+          setBarHidden(true);
+        } else {
+          setBarHidden(false);
+        }
+      },
+      { root: null, rootMargin: '0px 0px -12% 0px', threshold: 0.12 }
+    );
+    bookingObserver.observe(booking);
+  };
+
+  const applyStickyMode = () => {
+    const mobile = mq.matches;
+    document.body.classList.toggle('has-room-booking-sticky', mobile && !!bar);
+    if (bar) {
+      bar.hidden = !mobile;
+    }
+    if (!mobile) {
+      setBarHidden(true);
+      return;
+    }
+    setBarHidden(false);
+    bindBookingObserver();
+    syncDescToggle();
+    syncWellnessToggle();
+  };
+
+  mq.addEventListener('change', applyStickyMode);
+  applyStickyMode();
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      syncDescToggle();
+      syncWellnessToggle();
+    });
+  });
+}
+
+/** Footer Contact / Navigation collapsible panels (mobile). */
+function initFooterMobileCollapse() {
+  const mq = window.matchMedia('(max-width: 900px)');
+  const footer = document.querySelector('.site-footer');
+  if (!footer) {
+    return;
+  }
+
+  if (!footer.classList.contains('site-footer--collapsible')) {
+    transformLegacyFooterForMobileCollapse(footer);
+  }
+
+  footer.classList.add('site-footer--collapsible');
+
+  const wireToggles = () => {
+    footer.querySelectorAll('.footer-col__toggle').forEach((btn) => {
+      if (btn.dataset.footerToggleWired === '1') {
+        return;
+      }
+      btn.dataset.footerToggleWired = '1';
+      btn.addEventListener('click', () => {
+        const col = btn.closest('.footer-col');
+        if (!col) {
+          return;
+        }
+        const panelId = btn.getAttribute('aria-controls');
+        const panel = panelId ? document.getElementById(panelId) : col.querySelector('.footer-col__panel');
+        const open = !col.classList.contains('is-expanded');
+        col.classList.toggle('is-expanded', open);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        if (panel) {
+          panel.hidden = !open;
+        }
+      });
+    });
+  };
+
+  const applyMode = () => {
+    const mobile = mq.matches;
+    footer.classList.toggle('footer--mobile-collapse', mobile);
+    footer.querySelectorAll('.footer-col').forEach((col) => {
+      const panel = col.querySelector('.footer-col__panel');
+      const btn = col.querySelector('.footer-col__toggle');
+      if (!panel) {
+        return;
+      }
+      if (!mobile) {
+        col.classList.remove('is-expanded');
+        panel.hidden = false;
+        if (btn) {
+          btn.setAttribute('aria-expanded', 'true');
+        }
+        return;
+      }
+      const open = col.classList.contains('is-expanded');
+      panel.hidden = !open;
+      if (btn) {
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      }
+    });
+  };
+
+  wireToggles();
+  applyMode();
+  mq.addEventListener('change', () => {
+    wireToggles();
+    applyMode();
+  });
+}
+
+function transformLegacyFooterForMobileCollapse(footer) {
+  if (footer.dataset.legacyFooterPrepared === '1') {
+    return;
+  }
+  const grid = footer.querySelector('.footer-grid');
+  if (!grid || grid.querySelector('.footer-col__toggle')) {
+    return;
+  }
+  const cols = [...grid.children].filter((el) => el.tagName === 'DIV');
+  if (cols.length < 2) {
+    return;
+  }
+  footer.dataset.legacyFooterPrepared = '1';
+
+  const setupCol = (col, controlsId) => {
+    col.classList.add('footer-col');
+    const h4 = col.querySelector(':scope > h4');
+    if (!h4) {
+      return null;
+    }
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'footer-col__toggle btb-text-read-more';
+    btn.textContent = h4.textContent.trim();
+    btn.setAttribute('aria-expanded', 'false');
+    btn.setAttribute('aria-controls', controlsId);
+    const panel = document.createElement('div');
+    panel.className = 'footer-col__panel';
+    panel.id = controlsId;
+    panel.hidden = true;
+    let node = h4.nextElementSibling;
+    while (node) {
+      const next = node.nextElementSibling;
+      panel.appendChild(node);
+      node = next;
+    }
+    h4.remove();
+    col.insertBefore(btn, col.firstChild);
+    col.appendChild(panel);
+    return panel;
+  };
+
+  setupCol(cols[0], 'footer-contact-panel-legacy');
+  const navPanel = setupCol(cols[1], 'footer-nav-panel-legacy');
+  const hoursCol = cols[2];
+  if (hoursCol && navPanel) {
+    hoursCol.classList.add('footer-col--hours-legacy');
+    const extra = document.createElement('div');
+    extra.className = 'footer-col__mobile-extra';
+    while (hoursCol.firstChild) {
+      extra.appendChild(hoursCol.firstChild);
+    }
+    navPanel.appendChild(extra);
+  }
 }
 
 // Check if wellness section should be shown based on localStorage
@@ -2982,6 +3465,9 @@ document.addEventListener('DOMContentLoaded', () => {
   
   // Check wellness section visibility
   checkAndShowWellnessSection();
+
+  initMobileSwipeHints();
+  initGuestMessageTextareas();
   
   // Migrate legacy order format if needed
   migrateSingleOrderToArray();
@@ -3541,9 +4027,9 @@ if (document.readyState === 'loading') {
   initMobileMenu();
 }
 
-// Pending booking hint (shared module; one place to load for all pages using script.js)
+// Pending booking + chat hints need account-notifications.js for unread API helper.
 (function btbLoadPendingBookingHint() {
-  function inject() {
+  function injectHint() {
     if (document.getElementById('btb-pending-booking-hint-loader')) return;
     var s = document.createElement('script');
     s.id = 'btb-pending-booking-hint-loader';
@@ -3551,9 +4037,272 @@ if (document.readyState === 'loading') {
     s.async = true;
     document.head.appendChild(s);
   }
+
+  function injectDeps() {
+    if (typeof window.btbFetchGuestChatUnread === 'function') {
+      injectHint();
+      return;
+    }
+    if (document.getElementById('btb-account-notifications-loader')) {
+      injectHint();
+      return;
+    }
+    var s = document.createElement('script');
+    s.id = 'btb-account-notifications-loader';
+    s.src = 'account-notifications.js';
+    s.async = true;
+    s.onload = injectHint;
+    s.onerror = injectHint;
+    document.head.appendChild(s);
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inject);
+    document.addEventListener('DOMContentLoaded', injectDeps);
   } else {
-    inject();
+    injectDeps();
   }
 })();
+
+/**
+ * Mobile horizontal card galleries: hint text at end + rubber-band on last card when swiping past the end.
+ * Markup: [data-btb-swipe-hint] + data-btb-swipe-scroller + data-swipe-more / data-swipe-end.
+ */
+/** Auto-grow optional guest message fields on booking forms. */
+function initGuestMessageTextareas() {
+  const fields = document.querySelectorAll('textarea.btb-guest-message-input');
+  if (!fields.length) {
+    return;
+  }
+  const resize = (el) => {
+    el.style.height = 'auto';
+    const min = parseFloat(getComputedStyle(el).minHeight) || 0;
+    el.style.height = `${Math.max(el.scrollHeight, min)}px`;
+  };
+  fields.forEach((el) => {
+    resize(el);
+    el.addEventListener('input', () => resize(el));
+  });
+}
+
+function btbCarouselMaxScrollLeft(scroller) {
+  return Math.max(0, scroller.scrollWidth - scroller.clientWidth);
+}
+
+function btbCarouselScrollerAtEnd(scroller) {
+  return scroller.scrollLeft >= btbCarouselMaxScrollLeft(scroller) - 6;
+}
+
+function btbCarouselLastCard(scroller) {
+  const n = scroller.children.length;
+  return n ? scroller.children[n - 1] : null;
+}
+
+/** Rubber-band the whole gallery row when swiping past the last card (mobile only). */
+function initMobileCarouselEdgeBounce(scroller, mobileMq) {
+  const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduceMotion) {
+    return;
+  }
+
+  const MAX_PULL_PX = 22;
+  const RESISTANCE = 0.2;
+  const PULL_START_PX = 6;
+  const BACK_SWIPE_PX = 20;
+  /** @type {{ startX: number, lockedMax: number, allowBack: boolean, pulling: boolean } | null} */
+  let edgeSession = null;
+  let postTouchPinMax = null;
+  let postTouchPinUntil = 0;
+
+  const lockScroller = () => {
+    scroller.classList.add('btb-carousel-scroller--edge-locked');
+  };
+
+  const unlockScroller = () => {
+    scroller.classList.remove('btb-carousel-scroller--edge-locked');
+  };
+
+  const snapToEnd = () => {
+    const max = btbCarouselMaxScrollLeft(scroller);
+    const last = btbCarouselLastCard(scroller);
+    let target = max;
+    if (last) {
+      target = Math.min(Math.max(0, last.offsetLeft), max);
+    }
+    if (Math.abs(scroller.scrollLeft - target) > 1) {
+      scroller.scrollLeft = target;
+    }
+    if (edgeSession) {
+      edgeSession.lockedMax = target;
+    }
+  };
+
+  const clearPull = () => {
+    scroller.style.transition = '';
+    scroller.style.transform = '';
+    scroller.classList.remove('btb-carousel-scroller--edge-pull');
+  };
+
+  const setPull = (px) => {
+    scroller.classList.add('btb-carousel-scroller--edge-pull');
+    scroller.style.transition = 'none';
+    scroller.style.transform = px < 0 ? `translate3d(${px}px, 0, 0)` : '';
+  };
+
+  const releasePull = () => {
+    scroller.classList.add('btb-carousel-scroller--edge-pull');
+    scroller.style.transition = 'transform 0.28s cubic-bezier(0.33, 1.02, 0.52, 1)';
+    scroller.style.transform = '';
+    const onEnd = (ev) => {
+      if (ev.propertyName !== 'transform') {
+        return;
+      }
+      scroller.removeEventListener('transitionend', onEnd);
+      scroller.style.transition = '';
+      scroller.classList.remove('btb-carousel-scroller--edge-pull');
+    };
+    scroller.addEventListener('transitionend', onEnd);
+  };
+
+  const endEdgeSession = () => {
+    const pinMax = edgeSession && !edgeSession.allowBack ? edgeSession.lockedMax : null;
+    const wasPulling = !!(edgeSession && edgeSession.pulling);
+    if (edgeSession && !edgeSession.allowBack) {
+      snapToEnd();
+    }
+    if (wasPulling) {
+      releasePull();
+    }
+    unlockScroller();
+    if (pinMax != null) {
+      postTouchPinMax = pinMax;
+      postTouchPinUntil = Date.now() + 180;
+      scroller.scrollLeft = pinMax;
+    }
+    edgeSession = null;
+    clearPull();
+  };
+
+  const enforcePostTouchPin = () => {
+    if (postTouchPinMax == null || Date.now() > postTouchPinUntil) {
+      postTouchPinMax = null;
+      return;
+    }
+    if (scroller.scrollLeft < postTouchPinMax - 2) {
+      scroller.scrollLeft = postTouchPinMax;
+    }
+  };
+
+  scroller.addEventListener(
+    'touchstart',
+    (e) => {
+      if (!mobileMq.matches || !btbCarouselScrollerAtEnd(scroller)) {
+        edgeSession = null;
+        return;
+      }
+      snapToEnd();
+      lockScroller();
+      edgeSession = {
+        startX: e.touches[0].clientX,
+        lockedMax: scroller.scrollLeft,
+        allowBack: false,
+        pulling: false,
+      };
+    },
+    { passive: true },
+  );
+
+  scroller.addEventListener(
+    'touchmove',
+    (e) => {
+      if (!mobileMq.matches || !edgeSession) {
+        return;
+      }
+
+      const dx = e.touches[0].clientX - edgeSession.startX;
+
+      if (!edgeSession.allowBack) {
+        if (dx > BACK_SWIPE_PX) {
+          edgeSession.allowBack = true;
+          edgeSession.pulling = false;
+          unlockScroller();
+          clearPull();
+          return;
+        }
+
+        e.preventDefault();
+        if (scroller.scrollLeft < edgeSession.lockedMax - 1) {
+          scroller.scrollLeft = edgeSession.lockedMax;
+        }
+
+        if (dx < -PULL_START_PX) {
+          edgeSession.pulling = true;
+          const pull = Math.max(dx * RESISTANCE, -MAX_PULL_PX);
+          setPull(pull);
+        } else if (edgeSession.pulling) {
+          edgeSession.pulling = false;
+          clearPull();
+        }
+      }
+    },
+    { passive: false },
+  );
+
+  scroller.addEventListener('touchend', endEdgeSession, { passive: true });
+  scroller.addEventListener('touchcancel', endEdgeSession, { passive: true });
+
+  scroller.addEventListener(
+    'scroll',
+    () => {
+      if (edgeSession && !edgeSession.allowBack) {
+        if (scroller.scrollLeft < edgeSession.lockedMax - 2) {
+          scroller.scrollLeft = edgeSession.lockedMax;
+        }
+        return;
+      }
+      enforcePostTouchPin();
+    },
+    { passive: true },
+  );
+}
+
+function initMobileSwipeHints() {
+  const mobileMq = window.matchMedia('(max-width: 767px)');
+  document.querySelectorAll('[data-btb-swipe-hint]').forEach((hint) => {
+    const scrollerSel = hint.getAttribute('data-btb-swipe-scroller');
+    const scroller = scrollerSel ? document.querySelector(scrollerSel) : null;
+    if (!scroller) {
+      return;
+    }
+    initMobileCarouselEdgeBounce(scroller, mobileMq);
+
+    const more = hint.getAttribute('data-swipe-more') || 'Swipe to see more';
+    const end = hint.getAttribute('data-swipe-end') || more;
+
+    const apply = (atEnd) => {
+      hint.textContent = atEnd ? end : more;
+      hint.classList.toggle('plan-swipe-hint--end', atEnd);
+    };
+
+    const update = () => {
+      if (!mobileMq.matches) {
+        hint.textContent = more;
+        hint.classList.remove('plan-swipe-hint--end');
+        return;
+      }
+      if (scroller.children.length <= 1) {
+        apply(true);
+        return;
+      }
+      apply(btbCarouselScrollerAtEnd(scroller));
+    };
+
+    scroller.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    if (typeof mobileMq.addEventListener === 'function') {
+      mobileMq.addEventListener('change', update);
+    } else if (typeof mobileMq.addListener === 'function') {
+      mobileMq.addListener(update);
+    }
+    update();
+  });
+}

@@ -356,7 +356,7 @@ $cacheBuster = '?v=' . time();
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="common.css">
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=41">
   <script>
     // UNIVERSAL THEME INITIALIZATION - Works on ALL pages
     // This script runs synchronously in <head> before page render
@@ -524,6 +524,7 @@ $cacheBuster = '?v=' . time();
   </script>
 </head>
 <body class="home">
+<?php require_once __DIR__ . '/gtm-body-noscript.php'; ?>
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="index.php">
@@ -736,7 +737,15 @@ $cacheBuster = '?v=' . time();
             </div>
           </article>
         </div>
-        <p class="plan-swipe-hint">Swipe to see more</p>
+        <p
+          class="plan-swipe-hint"
+          id="rooms-swipe-hint"
+          data-btb-swipe-hint
+          data-btb-swipe-scroller="#rooms .rooms-grid"
+          data-swipe-more="Swipe to see more"
+          data-swipe-end="We only have 4 rooms :("
+          aria-live="polite"
+        >Swipe to see more</p>
       </div>
     </section>
 
@@ -790,7 +799,15 @@ $cacheBuster = '?v=' . time();
             </div>
           </article>
         </div>
-        <p class="plan-swipe-hint">Swipe to see more</p>
+        <p
+          class="plan-swipe-hint"
+          id="plan-swipe-hint"
+          data-btb-swipe-hint
+          data-btb-swipe-scroller="#plan .plan-grid"
+          data-swipe-more="Swipe to see more"
+          data-swipe-end="We only have 3 shared areas :("
+          aria-live="polite"
+        >Swipe to see more</p>
       </div>
     </section>
 
@@ -898,36 +915,11 @@ $cacheBuster = '?v=' . time();
     </section>
   </main>
 
-  <footer id="contacts" class="site-footer">
-    <div class="container footer-grid">
-      <div>
-        <h4>Contact</h4>
-        <p id="footer-contact-address">British Columbia, Canada</p>
-        <p id="footer-contact-phone">Phone: +1 (555) 123‑4567</p>
-        <p id="footer-contact-email">Email: hello@backtobase.example</p>
-      </div>
-      <div>
-        <h4>Navigation</h4>
-        <ul class="footer-nav">
-          <li><a href="#rooms">Rooms</a></li>
-          <li><a href="massage.php">Wellness</a></li>
-          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
-          <li><a href="explore.php">Explore</a></li>
-          <li><a href="special.php">Specials</a></li>
-          <li><a href="about.php">About us</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Quiet hours</h4>
-        <p>22:00 — 07:00</p>
-        <ul class="footer-nav footer-nav--legal">
-          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
-          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="container copyright">© <span id="year"></span> Back to Base</div>
-  </footer>
+<?php
+$footerAnchorId = 'contacts';
+$footerRoomsHref = '#rooms';
+require __DIR__ . '/site_footer.php';
+?>
 
   <style>
     /* Scroll offset for anchor links to account for fixed header */
@@ -940,7 +932,7 @@ $cacheBuster = '?v=' . time();
   </style>
 
   <script src="utils.js?v=26"></script>
-  <script src="script.js?v=26"></script>
+  <script src="script.js?v=38"></script>
   <script src="auth.js?v=26"></script>
   <script>
     // Prevent script.js from updating hero images that are already loaded via SSR

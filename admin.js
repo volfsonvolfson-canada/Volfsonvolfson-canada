@@ -1,7 +1,6 @@
 // Admin Panel JavaScript
 
 // Contact Information (declared early so syncPreviewToForm can set contactHasUnsavedChanges safely)
-let contactAutoSaveTimer = null;
 let contactHasUnsavedChanges = false;
 /** Deduplicate concurrent get_content for Contact (prefetch + opening tab) */
 let contactDataLoadInFlight = null;
@@ -16,6 +15,65 @@ function beginAdminLoadGen(key) {
   btbAdminLoadGen[key] = (btbAdminLoadGen[key] || 0) + 1;
   const token = btbAdminLoadGen[key];
   return () => btbAdminLoadGen[key] === token;
+}
+
+function btbAdminIsEditableBlurTarget(el) {
+  if (!el || el.nodeType !== 1) return false;
+  if (el.closest && el.closest('[data-btb-no-blur-save="1"]')) return false;
+  if (el.isContentEditable) return true;
+  const tag = (el.tagName || '').toUpperCase();
+  if (tag === 'TEXTAREA') return true;
+  if (tag === 'SELECT') return true;
+  if (tag === 'INPUT') {
+    const type = (el.type || '').toLowerCase();
+    if (['button', 'submit', 'reset', 'file', 'hidden', 'image'].includes(type)) return false;
+    return true;
+  }
+  return false;
+}
+
+/** Persist section when focus leaves an editable control (replaces debounced keystroke autosave). */
+function btbAdminBindSectionBlurSave(root, saveFn, attrName = 'data-btb-blur-save-bound') {
+  if (!root || typeof saveFn !== 'function') return;
+  if (root.getAttribute(attrName) === '1') return;
+  root.setAttribute(attrName, '1');
+  root.addEventListener(
+    'focusout',
+    (ev) => {
+      const t = ev.target;
+      if (!t || !root.contains(t)) return;
+      if (!btbAdminIsEditableBlurTarget(t)) return;
+      void Promise.resolve(saveFn()).catch(() => {});
+    },
+    true,
+  );
+}
+
+function initAdminBlurSavesGlobally() {
+  const bind = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) btbAdminBindSectionBlurSave(el, fn);
+  };
+  bind('homepage-section', () => saveHomepageContent());
+  bind('floorplan-section', () => saveFloorplanContent());
+  bind('special-section', () => saveSpecialContent());
+  bind('about-section', () => saveAboutContent());
+  bind('explore-section', () => saveExploreContent());
+  bind('contact-section', () => saveContactContent());
+  bind('retreat-workshop-section', () =>
+    typeof window.autoSaveRetreatContent === 'function' ? window.autoSaveRetreatContent() : Promise.resolve(),
+  );
+  bind('homepage-rooms-section', () => saveHomepageRoomsContent());
+  bind('massage-section', () => saveMassageContent());
+  bind('wellness-experiences-section', () => saveWellnessContent());
+  bind('room-basement-section', () => saveRoomBasementContent());
+  bind('room-ground-queen-section', () => saveRoomGroundQueenContent());
+  bind('room-ground-twin-section', () => saveRoomGroundTwinContent());
+  bind('room-second-section', () => saveRoomSecondContent());
+  bind('email-templates-section', () => saveCurrentEmailTemplateRow());
+  bind('my-bookings-pricing-section', () => saveMyBookingsPricingContent());
+  bind('booking-success-banner-section', () => saveBookingSuccessBannerContent());
+  bind('guest-reviews-section', () => saveGuestReviewsContent());
 }
 
 /** Use DB/API value as-is; do not treat empty string as "missing" and substitute long HTML defaults. */
@@ -616,6 +674,11 @@ const ADMIN_CREDENTIALS = {
 function checkAdminAuth() {
   const isAuthenticated = localStorage.getItem('btb_admin_auth') === 'true';
   if (!isAuthenticated && !window.location.pathname.includes('admin-login')) {
+    if (location.hash) {
+      try {
+        sessionStorage.setItem('btb_admin_post_login_hash', location.hash);
+      } catch (_) { /* ignore */ }
+    }
     window.location.href = 'admin-login.html';
   }
 }
@@ -634,7 +697,12 @@ function initAdminLogin() {
     
     if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
       localStorage.setItem('btb_admin_auth', 'true');
-      window.location.href = 'admin.html';
+      let postHash = '';
+      try {
+        postHash = sessionStorage.getItem('btb_admin_post_login_hash') || '';
+        sessionStorage.removeItem('btb_admin_post_login_hash');
+      } catch (_) { /* ignore */ }
+      window.location.href = 'admin.html' + postHash;
     } else {
       errorDiv.textContent = 'Invalid username or password';
       errorDiv.style.display = 'block';
@@ -699,8 +767,6 @@ function updateAdminChatDeleteButtonState() {
 function updateAdminChatPendingVisual(pending) {
   const els = [
     document.querySelector('.admin-nav-tab-primary[data-primary="chat"]'),
-    document.querySelector('.admin-nav-tabs-secondary[data-primary="chat"] .admin-nav-tab-secondary'),
-    document.getElementById('admin-chat-management-title'),
   ];
   els.forEach((el) => {
     if (!el) {
@@ -1205,9 +1271,91 @@ function applyFlatpickrArrowStyles(instance) {
 // Two-level navigation system
 let currentPrimary = 'bookings'; // Default primary section
 const contentEditorRegistry = {};
+let adminSectionPrimaryMap = null;
+let adminHashRoutingFromHash = false;
+
+const ADMIN_PRIMARY_DIRECT_SECTION = {
+  chat: 'chat-management',
+};
+
+function buildAdminSectionPrimaryMap() {
+  const map = Object.create(null);
+  document.querySelectorAll('.admin-nav-tabs-secondary[data-primary]').forEach((group) => {
+    const primary = group.getAttribute('data-primary');
+    group.querySelectorAll('.admin-nav-tab-secondary[data-section]').forEach((tab) => {
+      const section = tab.getAttribute('data-section');
+      if (section) map[section] = primary;
+    });
+  });
+  document.querySelectorAll('.admin-nav-tab-primary[data-section]').forEach((tab) => {
+    const section = tab.getAttribute('data-section');
+    const primary = tab.getAttribute('data-primary');
+    if (section && primary) map[section] = primary;
+  });
+  return map;
+}
+
+function getAdminSectionPrimaryMap() {
+  if (!adminSectionPrimaryMap) {
+    adminSectionPrimaryMap = buildAdminSectionPrimaryMap();
+  }
+  return adminSectionPrimaryMap;
+}
+
+/** Parse location.hash → section slug (e.g. #room-basement or #content/room-basement). */
+function getAdminHashSection() {
+  const raw = (location.hash || '').replace(/^#/, '').trim();
+  if (!raw) return null;
+  try {
+    const decoded = decodeURIComponent(raw);
+    const parts = decoded.split('/').filter(Boolean);
+    return parts[parts.length - 1] || null;
+  } catch {
+    return raw;
+  }
+}
+
+function isValidAdminSection(sectionName) {
+  return Boolean(sectionName && document.getElementById(`${sectionName}-section`));
+}
+
+function ensurePrimaryForSection(sectionName) {
+  const primary = getAdminSectionPrimaryMap()[sectionName];
+  if (primary && primary !== currentPrimary) {
+    switchPrimarySection(primary, { skipAutoSection: true });
+  }
+}
+
+function updateAdminSectionHash(sectionName) {
+  if (adminHashRoutingFromHash || !sectionName) return;
+  const nextHash = '#' + encodeURIComponent(sectionName);
+  if (location.hash === nextHash) return;
+  adminHashRoutingFromHash = true;
+  history.replaceState(null, '', location.pathname + location.search + nextHash);
+  adminHashRoutingFromHash = false;
+}
+
+function initAdminSectionHashRouting() {
+  getAdminSectionPrimaryMap();
+
+  const hashSection = getAdminHashSection();
+  if (hashSection && isValidAdminSection(hashSection)) {
+    const primary = getAdminSectionPrimaryMap()[hashSection] || 'bookings';
+    switchPrimarySection(primary, { skipAutoSection: true });
+    adminHashRoutingFromHash = true;
+    showSection(hashSection);
+    adminHashRoutingFromHash = false;
+    return;
+  }
+
+  if (hashSection && !isValidAdminSection(hashSection)) {
+    history.replaceState(null, '', location.pathname + location.search);
+  }
+  switchPrimarySection('bookings');
+}
 
 // Switch primary section (Bookings Management, Content Management, Account Management)
-function switchPrimarySection(primaryName) {
+function switchPrimarySection(primaryName, options = {}) {
   currentPrimary = primaryName;
   
   // Remove active class from all primary tabs
@@ -1216,24 +1364,36 @@ function switchPrimarySection(primaryName) {
   });
   
   // Add active class to clicked primary tab
-  const activePrimaryTab = document.querySelector(`[data-primary="${primaryName}"]`);
+  const activePrimaryTab = document.querySelector(`.admin-nav-tab-primary[data-primary="${primaryName}"]`);
   if (activePrimaryTab) {
     activePrimaryTab.classList.add('active');
   }
+
+  document.querySelectorAll('.admin-nav-group').forEach((group) => {
+    group.classList.toggle('admin-nav-group--active', group.getAttribute('data-primary') === primaryName);
+  });
   
   // Hide all secondary tab groups
   document.querySelectorAll('.admin-nav-tabs-secondary').forEach(group => {
     group.classList.add('hidden');
   });
   
+  const directSection = ADMIN_PRIMARY_DIRECT_SECTION[primaryName];
+  if (directSection) {
+    if (!options.skipAutoSection) {
+      showSection(directSection);
+    }
+    return;
+  }
+
   // Show secondary tabs for selected primary section
   const secondaryTabs = document.querySelector(`.admin-nav-tabs-secondary[data-primary="${primaryName}"]`);
   if (secondaryTabs) {
     secondaryTabs.classList.remove('hidden');
   }
   
-  // Activate first secondary tab (Dashboard) for the selected primary section
-  if (secondaryTabs) {
+  // Activate first secondary tab for the selected primary section
+  if (secondaryTabs && !options.skipAutoSection) {
     const firstSecondaryTab = secondaryTabs.querySelector('.admin-nav-tab-secondary');
     if (firstSecondaryTab) {
       const sectionName = firstSecondaryTab.getAttribute('data-section');
@@ -1251,16 +1411,11 @@ function showSection(sectionName) {
   // Only check if variables and functions are defined (retreat section was loaded)
   if (typeof retreatHasUnsavedChanges !== 'undefined' && 
       typeof retreatIsSaving !== 'undefined' && 
-      typeof retreatAutoSaveTimer !== 'undefined' &&
       typeof autoSaveRetreatContent === 'function' &&
       retreatHasUnsavedChanges && 
       !retreatIsSaving && 
       sectionName !== 'retreat-workshop') {
     // Force save before switching
-    if (retreatAutoSaveTimer) {
-      clearTimeout(retreatAutoSaveTimer);
-      retreatAutoSaveTimer = null;
-    }
     try {
       autoSaveRetreatContent().then(() => {
         // Continue switching after save completes
@@ -1280,22 +1435,14 @@ function showSection(sectionName) {
 }
 
 function performSectionSwitch(sectionName) {
-  // Reset retreat auto-save state when switching away
-  // Only reset if variables and functions are defined (retreat section was loaded)
-  if (typeof retreatHasUnsavedChanges !== 'undefined' && 
-      typeof updateRetreatSaveStatus === 'function' &&
-      typeof retreatAutoSaveTimer !== 'undefined' &&
-      sectionName !== 'retreat-workshop') {
+  ensurePrimaryForSection(sectionName);
+
+  // Clear retreat status bar when leaving (blur-save / showSection flush handles persistence)
+  if (typeof updateRetreatSaveStatus === 'function' && sectionName !== 'retreat-workshop') {
     try {
-      retreatHasUnsavedChanges = false;
       updateRetreatSaveStatus('', '');
-      if (retreatAutoSaveTimer) {
-        clearTimeout(retreatAutoSaveTimer);
-        retreatAutoSaveTimer = null;
-      }
     } catch (error) {
-      console.error('Error resetting retreat auto-save state:', error);
-      // Continue with section switch even if reset fails
+      console.error('Error resetting retreat save status:', error);
     }
   }
   
@@ -1314,6 +1461,9 @@ function performSectionSwitch(sectionName) {
   if (targetSection) {
     targetSection.style.display = 'block';
     console.log('Showing section:', sectionName, 'targetSection found:', targetSection.id);
+    if (sectionName === 'bookings' || sectionName === 'accounts') {
+      collapseAdminSectionFilters();
+    }
   } else {
     console.warn('Section not found:', `${sectionName}-section`);
     // Try alternative naming
@@ -1335,6 +1485,7 @@ function performSectionSwitch(sectionName) {
   // Load section data
   console.log('showSection: Loading data for section:', sectionName);
   loadSectionData(sectionName);
+  updateAdminSectionHash(sectionName);
 }
 
 // Load data for specific section
@@ -1609,24 +1760,10 @@ async function loadHomepageImagesData() {
   }
 }
 
-// Homepage auto-save functionality
-let homepageAutoSaveTimer = null;
+// Homepage: blur-save via initAdminBlurSavesGlobally (legacy hooks remain no-ops)
 let homepageHasUnsavedChanges = false;
 
-function scheduleHomepageAutoSave() {
-  if (homepageAutoSaveTimer) {
-    clearTimeout(homepageAutoSaveTimer);
-  }
-  
-  homepageAutoSaveTimer = setTimeout(() => {
-    if (homepageHasUnsavedChanges) {
-      saveHomepageContent();
-      homepageHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateHomepageSaveStatus('saving');
-}
+function scheduleHomepageAutoSave() {}
 
 // Make scheduleHomepageAutoSave globally accessible
 window.scheduleHomepageAutoSave = scheduleHomepageAutoSave;
@@ -1668,27 +1805,10 @@ function initHomepageAutoSave() {
   console.log('Homepage auto-save initialized');
 }
 
-// Floor Plan auto-save functionality
-let floorplanAutoSaveTimer = null;
+// Floor Plan: blur-save via initAdminBlurSavesGlobally
 let floorplanHasUnsavedChanges = false;
 
-function scheduleFloorplanAutoSave() {
-  console.log('scheduleFloorplanAutoSave called, floorplanHasUnsavedChanges:', floorplanHasUnsavedChanges);
-  if (floorplanAutoSaveTimer) {
-    clearTimeout(floorplanAutoSaveTimer);
-  }
-  
-  floorplanAutoSaveTimer = setTimeout(() => {
-    console.log('Floorplan auto-save timer fired, floorplanHasUnsavedChanges:', floorplanHasUnsavedChanges);
-    if (floorplanHasUnsavedChanges) {
-      console.log('Calling saveFloorplanContent');
-      saveFloorplanContent();
-      floorplanHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateFloorplanSaveStatus('saving');
-}
+function scheduleFloorplanAutoSave() {}
 
 // Make scheduleFloorplanAutoSave globally accessible
 window.scheduleFloorplanAutoSave = scheduleFloorplanAutoSave;
@@ -9013,24 +9133,10 @@ function initSpecialAddonPanelsAdminToolbar() {
   }
 }
 
-// Special auto-save functionality
-let specialAutoSaveTimer = null;
+// Special: blur-save via initAdminBlurSavesGlobally
 let specialHasUnsavedChanges = false;
 
-function scheduleSpecialAutoSave() {
-  if (specialAutoSaveTimer) {
-    clearTimeout(specialAutoSaveTimer);
-  }
-  
-  specialAutoSaveTimer = setTimeout(() => {
-    if (specialHasUnsavedChanges) {
-      saveSpecialContent();
-      specialHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateSpecialSaveStatus('saving');
-}
+function scheduleSpecialAutoSave() {}
 
 async function saveSpecialContent() {
   console.log('saveSpecialContent: Starting save...');
@@ -9249,6 +9355,11 @@ const BTB_SECTION_TEXT_FIELD_IDS = {
     'booking-success-auth-account-label',
     'booking-success-auth-account-url',
   ],
+  'checkin-conditions': [
+    'checkin-conditions-trigger-label',
+    'checkin-conditions-heading',
+    'checkin-conditions-paragraph-1',
+  ],
   'email-templates': [
     'email-template-key',
     'email-template-display-name',
@@ -9256,13 +9367,8 @@ const BTB_SECTION_TEXT_FIELD_IDS = {
     'email-template-subject',
     'email-template-heading',
     'email-template-body',
-    'email-template-cta-label',
-    'email-template-cta-url',
-    'email-template-image-url',
-    'email-branding-footer-url',
-    'email-branding-footer-alt',
-    'email-branding-outer-bg',
-    'email-branding-card-bg',
+    'email-template-body-after',
+    'email-template-body-contact',
   ],
   'guest-reviews': ['guest-reviews-title', 'guest-reviews-subtitle'],
   wellness: ['wellness-title', 'wellness-description', 'wellness-massage-title', 'wellness-massage-description'],
@@ -9302,14 +9408,16 @@ const BTB_FIELD_API_KEY_OVERRIDES = {
   'booking-success-auth-close-label': 'auth_login_close_label',
   'booking-success-auth-account-label': 'auth_login_account_label',
   'booking-success-auth-account-url': 'auth_login_account_url',
+  'checkin-conditions-trigger-label': 'trigger_label',
+  'checkin-conditions-heading': 'heading',
+  'checkin-conditions-paragraph-1': 'paragraph_1',
   'email-template-display-name': 'display_name',
   'email-template-scenario-notes': 'scenario_notes',
   'email-template-subject': 'subject',
   'email-template-heading': 'heading',
   'email-template-body': 'body',
-  'email-template-cta-label': 'cta_label',
-  'email-template-cta-url': 'cta_url',
-  'email-template-image-url': 'image_url',
+  'email-template-body-after': 'body_after',
+  'email-template-body-contact': 'body_contact',
 };
 
 function btbInferApiKeyCandidates(fieldId) {
@@ -12096,24 +12204,10 @@ function initRetreatLocationGalleries() {
   });
 }
 
-// About auto-save functionality
-let aboutAutoSaveTimer = null;
+// About: blur-save via initAdminBlurSavesGlobally
 let aboutHasUnsavedChanges = false;
 
-function scheduleAboutAutoSave() {
-  if (aboutAutoSaveTimer) {
-    clearTimeout(aboutAutoSaveTimer);
-  }
-  
-  aboutAutoSaveTimer = setTimeout(() => {
-    if (aboutHasUnsavedChanges) {
-      saveAboutContent();
-      aboutHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateAboutSaveStatus('saving');
-}
+function scheduleAboutAutoSave() {}
 
 async function saveAboutContent() {
   updateAboutSaveStatus('saving');
@@ -12172,24 +12266,10 @@ function initAboutAutoSave() {
   console.log('About auto-save initialized');
 }
 
-// Explore page auto-save
-let exploreAutoSaveTimer = null;
+// Explore: blur-save via initAdminBlurSavesGlobally
 let exploreHasUnsavedChanges = false;
 
-function scheduleExploreAutoSave() {
-  if (exploreAutoSaveTimer) {
-    clearTimeout(exploreAutoSaveTimer);
-  }
-
-  exploreAutoSaveTimer = setTimeout(() => {
-    if (exploreHasUnsavedChanges) {
-      saveExploreContent();
-      exploreHasUnsavedChanges = false;
-    }
-  }, 2000);
-
-  updateExploreSaveStatus('saving');
-}
+function scheduleExploreAutoSave() {}
 
 async function saveExploreContent() {
   updateExploreSaveStatus('saving');
@@ -12387,22 +12467,9 @@ async function loadContactData() {
   }
 }
 
-// Contact auto-save (contactAutoSaveTimer + contactHasUnsavedChanges defined at top of file)
+// Contact blur-save: initAdminBlurSavesGlobally (contactHasUnsavedChanges at top of file)
 
-window.scheduleContactAutoSave = function() {
-  if (contactAutoSaveTimer) {
-    clearTimeout(contactAutoSaveTimer);
-  }
-  
-  contactAutoSaveTimer = setTimeout(() => {
-    if (contactHasUnsavedChanges) {
-      saveContactContent();
-      contactHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateContactSaveStatus('saving');
-}
+window.scheduleContactAutoSave = function() {}
 
 async function saveContactContent() {
   updateContactSaveStatus('saving');
@@ -12431,24 +12498,10 @@ function initContactAutoSave() {
   console.log('Contact auto-save initialized');
 }
 
-// Room Second auto-save functionality
-let roomSecondAutoSaveTimer = null;
+// Room Second: blur-save via initAdminBlurSavesGlobally
 let roomSecondHasUnsavedChanges = false;
 
-window.scheduleRoomSecondAutoSave = function() {
-  if (roomSecondAutoSaveTimer) {
-    clearTimeout(roomSecondAutoSaveTimer);
-  }
-  
-  roomSecondAutoSaveTimer = setTimeout(() => {
-    if (roomSecondHasUnsavedChanges) {
-      saveRoomSecondContent();
-      roomSecondHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateRoomSecondSaveStatus('saving');
-}
+window.scheduleRoomSecondAutoSave = function() {}
 
 async function saveRoomSecondContent() {
   updateRoomSecondSaveStatus('saving');
@@ -12495,24 +12548,10 @@ function initRoomSecondAutoSave() {
   console.log('Room Second auto-save initialized');
 }
 
-// Room Ground Twin auto-save functionality
-let roomGroundTwinAutoSaveTimer = null;
+// Room Ground Twin: blur-save via initAdminBlurSavesGlobally
 let roomGroundTwinHasUnsavedChanges = false;
 
-window.scheduleRoomGroundTwinAutoSave = function() {
-  if (roomGroundTwinAutoSaveTimer) {
-    clearTimeout(roomGroundTwinAutoSaveTimer);
-  }
-  
-  roomGroundTwinAutoSaveTimer = setTimeout(() => {
-    if (roomGroundTwinHasUnsavedChanges) {
-      saveRoomGroundTwinContent();
-      roomGroundTwinHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateRoomGroundTwinSaveStatus('saving');
-}
+window.scheduleRoomGroundTwinAutoSave = function() {}
 
 async function saveRoomGroundTwinContent() {
   updateRoomGroundTwinSaveStatus('saving');
@@ -12559,24 +12598,10 @@ function initRoomGroundTwinAutoSave() {
   console.log('Room Ground Twin auto-save initialized');
 }
 
-// Room Ground Queen auto-save functionality
-let roomGroundQueenAutoSaveTimer = null;
+// Room Ground Queen: blur-save via initAdminBlurSavesGlobally
 let roomGroundQueenHasUnsavedChanges = false;
 
-window.scheduleRoomGroundQueenAutoSave = function() {
-  if (roomGroundQueenAutoSaveTimer) {
-    clearTimeout(roomGroundQueenAutoSaveTimer);
-  }
-  
-  roomGroundQueenAutoSaveTimer = setTimeout(() => {
-    if (roomGroundQueenHasUnsavedChanges) {
-      saveRoomGroundQueenContent();
-      roomGroundQueenHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateRoomGroundQueenSaveStatus('saving');
-}
+window.scheduleRoomGroundQueenAutoSave = function() {}
 
 async function saveRoomGroundQueenContent() {
   updateRoomGroundQueenSaveStatus('saving');
@@ -12623,24 +12648,10 @@ function initRoomGroundQueenAutoSave() {
   console.log('Room Ground Queen auto-save initialized');
 }
 
-// Room Basement auto-save functionality
-let roomBasementAutoSaveTimer = null;
+// Room Basement: blur-save via initAdminBlurSavesGlobally
 let roomBasementHasUnsavedChanges = false;
 
-window.scheduleRoomBasementAutoSave = function() {
-  if (roomBasementAutoSaveTimer) {
-    clearTimeout(roomBasementAutoSaveTimer);
-  }
-  
-  roomBasementAutoSaveTimer = setTimeout(() => {
-    if (roomBasementHasUnsavedChanges) {
-      saveRoomBasementContent();
-      roomBasementHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateRoomBasementSaveStatus('saving');
-}
+window.scheduleRoomBasementAutoSave = function() {}
 
 async function saveRoomBasementContent() {
   updateRoomBasementSaveStatus('saving');
@@ -12687,24 +12698,10 @@ function initRoomBasementAutoSave() {
   console.log('Room Basement auto-save initialized');
 }
 
-// Wellness Experiences auto-save functionality
-let wellnessAutoSaveTimer = null;
+// Wellness: blur-save via initAdminBlurSavesGlobally
 let wellnessHasUnsavedChanges = false;
 
-window.scheduleWellnessAutoSave = function() {
-  if (wellnessAutoSaveTimer) {
-    clearTimeout(wellnessAutoSaveTimer);
-  }
-  
-  wellnessAutoSaveTimer = setTimeout(() => {
-    if (wellnessHasUnsavedChanges) {
-      saveWellnessContent();
-      wellnessHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateWellnessSaveStatus('saving');
-}
+window.scheduleWellnessAutoSave = function() {}
 
 async function saveWellnessContent() {
   updateWellnessSaveStatus('saving');
@@ -12736,36 +12733,10 @@ function initWellnessAutoSave() {
   console.log('Wellness Experiences auto-save initialized');
 }
 
-// Massage auto-save functionality
-let massageAutoSaveTimer = null;
+// Massage: blur-save via initAdminBlurSavesGlobally
 let massageHasUnsavedChanges = false;
 
-window.scheduleMassageAutoSave = function() {
-  console.log('scheduleMassageAutoSave: Called, massageHasUnsavedChanges =', massageHasUnsavedChanges);
-  if (massageAutoSaveTimer) {
-    clearTimeout(massageAutoSaveTimer);
-  }
-  
-  massageAutoSaveTimer = setTimeout(() => {
-    console.log('scheduleMassageAutoSave: Timer fired, massageHasUnsavedChanges =', massageHasUnsavedChanges);
-    if (massageHasUnsavedChanges) {
-      saveMassageContent();
-      massageHasUnsavedChanges = false;
-    } else {
-      console.log('scheduleMassageAutoSave: No unsaved changes, skipping save');
-      hideAdminGlobalSaveBar();
-      const st = document.getElementById('massage-save-status-text');
-      const ic = document.getElementById('massage-save-status-icon');
-      if (st) {
-        st.textContent = '';
-        st.removeAttribute('title');
-      }
-      if (ic) ic.textContent = '';
-    }
-  }, 2000); // 2 second delay
-  
-  updateMassageSaveStatus('saving');
-}
+window.scheduleMassageAutoSave = function() {}
 
 async function saveMassageContent() {
   updateMassageSaveStatus('saving');
@@ -13595,48 +13566,20 @@ function initPageContentSaveHandlers() {
     });
   }
 
-// Auto-save for Retreats and Workshops
-let retreatAutoSaveTimer = null;
+// Retreats: blur-save via initAdminBlurSavesGlobally + pending indicator on edit
 let retreatHasUnsavedChanges = false;
 let retreatIsSaving = false;
 let retreatSaveRetryCount = 0;
-const RETREAT_AUTO_SAVE_DELAY = 2000; // 2 seconds
 const RETREAT_MAX_RETRIES = 3;
 
-// Make functions globally accessible
 function scheduleRetreatAutoSave() {
-  // Ensure flag is set before scheduling
   if (typeof retreatHasUnsavedChanges !== 'undefined') {
     retreatHasUnsavedChanges = true;
-    console.log('scheduleRetreatAutoSave: Setting retreatHasUnsavedChanges = true');
   }
-  
-  // Clear existing timer
-  if (retreatAutoSaveTimer) {
-    clearTimeout(retreatAutoSaveTimer);
-    console.log('scheduleRetreatAutoSave: Cleared existing timer');
-  }
-  
-  // Update status to show pending save
   const updateStatus = window.updateRetreatSaveStatus || updateRetreatSaveStatus;
   if (typeof updateStatus === 'function') {
     updateStatus('Unsaved changes', '⏳');
-  } else {
-    console.warn('updateRetreatSaveStatus is not defined');
   }
-  
-  // Schedule auto-save
-  console.log('Scheduling auto-save in', RETREAT_AUTO_SAVE_DELAY, 'ms, retreatHasUnsavedChanges:', retreatHasUnsavedChanges);
-  retreatAutoSaveTimer = setTimeout(() => {
-    console.log('Auto-save timer fired, calling autoSaveRetreatContent...');
-    console.log('At timer fire, retreatHasUnsavedChanges:', retreatHasUnsavedChanges);
-    const autoSave = window.autoSaveRetreatContent || autoSaveRetreatContent;
-    if (typeof autoSave === 'function') {
-      autoSave();
-    } else {
-      console.warn('autoSaveRetreatContent is not defined');
-    }
-  }, RETREAT_AUTO_SAVE_DELAY);
 }
 
 // Make it globally accessible
@@ -13714,25 +13657,13 @@ function initRetreatAutoSave() {
 
 async function autoSaveRetreatContent() {
   console.log('autoSaveRetreatContent called, retreatIsSaving:', retreatIsSaving, 'retreatHasUnsavedChanges:', retreatHasUnsavedChanges);
-  
+
   if (retreatIsSaving) {
-    // If already saving, reschedule
-    console.log('Already saving, rescheduling...');
-    const schedule = window.scheduleRetreatAutoSave || scheduleRetreatAutoSave;
-    if (typeof schedule === 'function') {
-      schedule();
-    }
+    retreatHasUnsavedChanges = true;
     return;
   }
-  
-  // Re-check flag after a small delay to see if it was reset
-  // Sometimes the flag gets reset between scheduling and execution
-  await new Promise(resolve => setTimeout(resolve, 50));
-  console.log('After 50ms delay, retreatHasUnsavedChanges:', retreatHasUnsavedChanges);
-  
+
   if (!retreatHasUnsavedChanges) {
-    console.log('No unsaved changes, skipping auto-save. Flag was reset somewhere.');
-    console.trace('Stack trace for debugging:');
     return;
   }
   
@@ -13974,24 +13905,10 @@ window.updateRetreatSaveStatus = updateRetreatSaveStatus;
   }
 }
 
-// Homepage rooms auto-save functionality
-let homepageRoomsAutoSaveTimer = null;
+// Homepage rooms: blur-save via initAdminBlurSavesGlobally
 let homepageRoomsHasUnsavedChanges = false;
 
-function scheduleHomepageRoomsAutoSave() {
-  if (homepageRoomsAutoSaveTimer) {
-    clearTimeout(homepageRoomsAutoSaveTimer);
-  }
-  
-  homepageRoomsAutoSaveTimer = setTimeout(() => {
-    if (homepageRoomsHasUnsavedChanges) {
-      saveHomepageRoomsContent();
-      homepageRoomsHasUnsavedChanges = false;
-    }
-  }, 2000); // 2 second delay
-  
-  updateHomepageRoomsSaveStatus('saving');
-}
+function scheduleHomepageRoomsAutoSave() {}
 
 // Make scheduleHomepageRoomsAutoSave globally accessible
 window.scheduleHomepageRoomsAutoSave = scheduleHomepageRoomsAutoSave;
@@ -14221,10 +14138,52 @@ async function loadBookingSuccessBannerData() {
     setVal('booking-success-auth-account-label', d.auth_login_account_label);
     setVal('booking-success-auth-account-url', d.auth_login_account_url);
     btbTextSourceApplyForSection('booking-success-banner', d);
+    await loadCheckinConditionsBannerFields(isCurrent);
   } catch (e) {
     updateAdminSectionSaveStatus('booking-success-banner', 'error', (e && e.message) || 'Error');
     btbOverlaySetSectionSummary('booking-success-banner', 'error');
   }
+}
+
+async function loadCheckinConditionsBannerFields(isCurrent) {
+  try {
+    const res = await fetch('api.php?action=get_checkin_conditions', { cache: 'no-store' });
+    if (typeof isCurrent === 'function' && !isCurrent()) {
+      return;
+    }
+    const json = await res.json();
+    if (typeof isCurrent === 'function' && !isCurrent()) {
+      return;
+    }
+    if (!json.success || !json.data) {
+      return;
+    }
+    const d = json.data;
+    const setVal = (id, v) => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = v != null ? String(v) : '';
+      }
+    };
+    setVal('checkin-conditions-trigger-label', d.trigger_label);
+    setVal('checkin-conditions-heading', d.heading);
+    setVal('checkin-conditions-paragraph-1', d.paragraph_1);
+    btbTextSourceApplyForSection('checkin-conditions', d);
+  } catch (_) {}
+}
+
+async function saveCheckinConditionsContent() {
+  const formData = new FormData();
+  formData.append('action', 'save_checkin_conditions');
+  formData.append('trigger_label', document.getElementById('checkin-conditions-trigger-label')?.value || '');
+  formData.append('heading', document.getElementById('checkin-conditions-heading')?.value || '');
+  formData.append('paragraph_1', document.getElementById('checkin-conditions-paragraph-1')?.value || '');
+  formData.append('paragraph_2', '');
+  formData.append('about_link_label', '');
+  formData.append('about_link_url', '');
+  const response = await fetch('api.php', { method: 'POST', body: formData });
+  const raw = await response.text();
+  return parseJsonFromText(raw);
 }
 
 async function saveBookingSuccessBannerContent() {
@@ -14243,27 +14202,28 @@ async function saveBookingSuccessBannerContent() {
     const response = await fetch('api.php', { method: 'POST', body: formData });
     const raw = await response.text();
     const result = parseJsonFromText(raw);
-    if (response.ok && result && result.success) {
+    const checkinResult = await saveCheckinConditionsContent();
+    const okBanner = response.ok && result && result.success;
+    const okCheckin = checkinResult && checkinResult.success;
+    if (okBanner && okCheckin) {
       updateAdminSectionSaveStatus('booking-success-banner', 'saved');
     } else {
-      updateAdminSectionSaveStatus(
-        'booking-success-banner',
-        'error',
-        (result && (result.error || result.message)) || 'Save failed',
-      );
+      const err =
+        (result && (result.error || result.message)) ||
+        (checkinResult && (checkinResult.error || checkinResult.message)) ||
+        'Save failed';
+      updateAdminSectionSaveStatus('booking-success-banner', 'error', err);
     }
   } catch (e) {
     updateAdminSectionSaveStatus('booking-success-banner', 'error', (e && e.message) || 'Error');
   }
 }
 
-let emailTemplatesSaveTimer = null;
-let emailBrandingSaveTimer = null;
+let emailTemplatePreviewTimer = null;
 let emailTemplatesState = {
   list: [],
   byKey: {},
   selectedKey: '',
-  branding: {},
 };
 
 function getEmailTemplateEditorRoot() {
@@ -14281,53 +14241,23 @@ function setEmailTemplateFieldValue(id, value) {
   }
 }
 
-function hydrateEmailBrandingFields(branding) {
-  const b = branding && typeof branding === 'object' ? branding : {};
-  setEmailTemplateFieldValue('email-branding-footer-url', b.footer_image_url || '');
-  setEmailTemplateFieldValue('email-branding-footer-alt', b.footer_image_alt || '');
-  setEmailTemplateFieldValue('email-branding-outer-bg', b.outer_background || '');
-  setEmailTemplateFieldValue('email-branding-card-bg', b.card_background || '');
+/** Same rules as PHP `btb_email_template_normalize_identity_key` — prevents duplicate <option>s for one template. */
+function normalizeEmailTemplateKey(k) {
+  return String(k || '')
+    .trim()
+    .replace(/[\u200B-\u200D\u200E\u200F\uFEFF\u00A0]/g, '')
+    .trim();
 }
 
-function scheduleEmailBrandingSave() {
-  if (emailBrandingSaveTimer) {
-    clearTimeout(emailBrandingSaveTimer);
-  }
-  emailBrandingSaveTimer = setTimeout(() => {
-    saveEmailBranding();
-  }, 1800);
-}
-
-async function saveEmailBranding() {
-  const formData = new FormData();
-  formData.append('action', 'save_email_branding');
-  formData.append('footer_image_url', getEmailTemplateFieldValue('email-branding-footer-url'));
-  formData.append('footer_image_alt', getEmailTemplateFieldValue('email-branding-footer-alt'));
-  formData.append('outer_background', getEmailTemplateFieldValue('email-branding-outer-bg'));
-  formData.append('card_background', getEmailTemplateFieldValue('email-branding-card-bg'));
-  updateAdminSectionSaveStatus('email-templates', 'saving');
-  try {
-    const response = await fetch('api.php', { method: 'POST', body: formData });
-    const raw = await response.text();
-    const result = parseJsonFromText(raw);
-    if (response.ok && result && result.success) {
-      emailTemplatesState.branding = {
-        footer_image_url: getEmailTemplateFieldValue('email-branding-footer-url'),
-        footer_image_alt: getEmailTemplateFieldValue('email-branding-footer-alt'),
-        outer_background: getEmailTemplateFieldValue('email-branding-outer-bg'),
-        card_background: getEmailTemplateFieldValue('email-branding-card-bg'),
-      };
-      updateAdminSectionSaveStatus('email-templates', 'saved');
-    } else {
-      updateAdminSectionSaveStatus(
-        'email-templates',
-        'error',
-        (result && (result.error || result.message)) || 'Save failed',
-      );
-    }
-  } catch (e) {
-    updateAdminSectionSaveStatus('email-templates', 'error', (e && e.message) || 'Error');
-  }
+function emailTemplateRowRichness(row) {
+  if (!row) return 0;
+  return (
+    String(row.subject || '').length +
+    String(row.body || '').length +
+    String(row.body_after || '').length +
+    String(row.body_contact || '').length +
+    String(row.heading || '').length
+  );
 }
 
 /**
@@ -14339,10 +14269,14 @@ const EMAIL_TEMPLATE_SEND_SCENARIOS = {
     'Room flow — step 1 (guest): sent immediately after someone submits a room booking request on the website. Confirms you received their request, that you are reviewing it, and that you will email them again once it is approved or declined. Includes their reference code and requested stay details.',
   booking_request_host:
     'Room flow — step 1 (host): sent to your notification inbox when a guest submits a room booking request so staff can check availability and approve or decline it in admin.',
-  booking_confirmed_guest:
-    'Room flow — step 2 (guest): sent when staff approve the request because the room is available for those dates. The reservation is not fully confirmed yet — the guest still needs to pay; after payment succeeds, they receive the “payment received — stay confirmed” email.',
-  booking_cancelled_guest:
-    'Room flow: sent when a room booking request is cancelled or declined (for example from admin). The reason placeholder is filled when the cancellation flow provides one.',
+  guest_bookings_digest_guest:
+    'Guest summary: one email when no room or wellness row for that email is still pending. Lists approved, declined/cancelled, and removed entries; estimated total with taxes (same basis as My Bookings combined checkout); one button/link to My Bookings to pay when Stripe is on.',
+  guest_payment_succeeded_guest:
+    'Guest: after Stripe charges (room or wellness). No How to Find Us / View booking row — blue My Bookings CTA from template fields + footer photo with contacts.',
+  booking_confirmed_host:
+    'Room flow — step 2 (host): sent to your notification inbox when staff approve a room booking (guest receives guest_bookings_digest_guest when nothing is left pending for their email).',
+  booking_cancelled_host:
+    'Room flow (host): sent when a room booking is cancelled or declined in admin so your inbox matches the guest notification.',
   massage_booking_guest:
     'Wellness flow — step 1 (guest): sent when a guest submits a wellness booking request (massage, sauna, etc.). Acknowledges receipt while staff review and confirm the appointment.',
   massage_booking_host:
@@ -14355,50 +14289,67 @@ const EMAIL_TEMPLATE_SEND_SCENARIOS = {
     'Wellness flow: sent to the guest after they edit an existing wellness booking request from My Bookings (service, date, or time).',
   massage_booking_updated_host:
     'Wellness flow: sent to your notification inbox when a guest saves changes to a wellness booking request from the website.',
-  massage_booking_confirmed_guest:
-    'Wellness flow — staff confirmation: sent when staff confirm the appointment in admin (the slot is accepted).',
-  massage_booking_cancelled_guest:
-    'Wellness flow: sent when staff cancel a wellness booking request or confirmed appointment in admin.',
+  massage_booking_confirmed_host:
+    'Wellness flow — staff confirmation (host): sent when staff confirm a wellness booking so your inbox has the same record as the guest.',
+  massage_booking_cancelled_host:
+    'Wellness flow (host): sent when staff cancel a wellness booking in admin.',
   user_register_welcome:
     'Account: sent right after a guest successfully creates an account.',
-  user_login_notification:
-    'Account: sent after a successful sign-in so the account holder knows someone logged in.',
-  booking_payment_succeeded_guest:
-    'Room flow — step 3 (guest): sent after Stripe successfully charges the guest (payment_intent.succeeded). This is when the stay becomes fully confirmed.',
   booking_payment_succeeded_host:
-    'Room flow — step 3 (host): sent after the guest’s payment succeeds so you know the reservation is fully confirmed.',
+    'Room flow — payment (host): room-only Stripe, or any combined checkout that includes a room (one email with every paid line, including wellness).',
+  massage_payment_succeeded_host:
+    'Wellness flow — payment (host): wellness-only Stripe, or combined checkout with wellness rows only (one merged email). Combined charges that include a room use the room host payment template.',
+  host_chat_guest_message_host:
+    'Chat: guest → host (MAILGUN_HOST_EMAIL). No thread subject. Heading from {{chat.heading_line}}; gray “Latest message” summary + guest preview. No footer photo or How to Find Us / View booking — blue Open admin panel button only.',
+  guest_chat_staff_reply_guest:
+    'Chat: staff → guest. Heading “You have a new message from {{chat.staff_from}}” (BTB_CHAT_STAFF_FROM_LABEL). Blue CTA defaults to Chat with Rob → {{messages_url}} (editable in admin).',
 };
 
-function collectEmailTemplateFormData() {
+/** @param {string} [explicitTemplateKey] When switching the template dropdown, pass the previous key so body fields match `emailTemplatesState`. */
+function collectEmailTemplateFormData(explicitTemplateKey) {
+  const domKey = normalizeEmailTemplateKey(getEmailTemplateFieldValue('email-template-key'));
+  const stateKey = normalizeEmailTemplateKey(emailTemplatesState.selectedKey);
+  /** After native <select> changes, DOM value updates before hydrate(); fields still belong to selectedKey until then. Autosave must not use domKey or it writes the previous template's body under the next template_key. */
+  const key =
+    explicitTemplateKey != null && String(explicitTemplateKey).trim() !== ''
+      ? normalizeEmailTemplateKey(explicitTemplateKey)
+      : stateKey || domKey;
+  const current = key ? emailTemplatesState.byKey[key] || {} : {};
   return {
-    template_key: getEmailTemplateFieldValue('email-template-key'),
+    template_key: key,
     display_name: getEmailTemplateFieldValue('email-template-display-name'),
     scenario_notes: getEmailTemplateFieldValue('email-template-scenario-notes'),
     subject: getEmailTemplateFieldValue('email-template-subject'),
     heading: getEmailTemplateFieldValue('email-template-heading'),
     body: getEmailTemplateFieldValue('email-template-body'),
-    cta_label: getEmailTemplateFieldValue('email-template-cta-label'),
-    cta_url: getEmailTemplateFieldValue('email-template-cta-url'),
-    image_url: getEmailTemplateFieldValue('email-template-image-url'),
+    body_after: getEmailTemplateFieldValue('email-template-body-after'),
+    body_contact: getEmailTemplateFieldValue('email-template-body-contact'),
+    cta_label: current.cta_label != null ? String(current.cta_label) : '',
+    cta_url: current.cta_url != null ? String(current.cta_url) : '',
+    image_url: current.image_url != null ? String(current.image_url) : '',
   };
 }
 
 function refreshEmailTemplateOptionLabel(templateKey) {
   const sel = document.getElementById('email-template-key');
-  const key = String(templateKey || '').trim();
+  const key = normalizeEmailTemplateKey(templateKey);
   if (!sel || !key) return;
   const row = emailTemplatesState.byKey[key];
-  const label = (row && String(row.display_name || '').trim()) || key;
+  const label =
+    (row &&
+      String(row.dropdown_label || row.display_name || '').trim()) ||
+    key;
   for (let i = 0; i < sel.options.length; i++) {
-    if (sel.options[i].value === key) {
+    if (normalizeEmailTemplateKey(sel.options[i].value) === key) {
       sel.options[i].textContent = label;
-      break;
     }
   }
 }
 
 function updateEmailTemplateMeta() {
-  const key = getEmailTemplateFieldValue('email-template-key');
+  const key = normalizeEmailTemplateKey(
+    emailTemplatesState.selectedKey || getEmailTemplateFieldValue('email-template-key'),
+  );
 
   const meta = document.getElementById('email-template-meta');
   if (!meta) return;
@@ -14412,27 +14363,32 @@ function updateEmailTemplateMeta() {
 }
 
 /**
- * Dropdown order: room guest funnel (request → edits → approval → payment → cancelled), then wellness guest, account emails, then host templates in the same logical order.
+ * Dropdown order: all guest templates first (account → room → wellness → edits → chat → confirmations → cancellation → payment), then all host templates in the same story order.
  * Unknown keys fall back to guest before host, then by template_key.
  */
 function sortEmailTemplatesForAdmin(rows) {
   const order = [
-    'booking_confirmation_guest',
-    'room_booking_updated_guest',
-    'booking_confirmed_guest',
-    'booking_payment_succeeded_guest',
-    'booking_cancelled_guest',
-    'massage_booking_guest',
-    'massage_booking_updated_guest',
-    'massage_booking_confirmed_guest',
-    'massage_booking_cancelled_guest',
+    // Guest
     'user_register_welcome',
-    'user_login_notification',
+    'booking_confirmation_guest',
+    'massage_booking_guest',
+    'room_booking_updated_guest',
+    'massage_booking_updated_guest',
+    'guest_chat_staff_reply_guest',
+    'guest_bookings_digest_guest',
+    'guest_payment_succeeded_guest',
+    // Host
     'booking_request_host',
-    'room_booking_updated_host',
-    'booking_payment_succeeded_host',
     'massage_booking_host',
+    'room_booking_updated_host',
     'massage_booking_updated_host',
+    'host_chat_guest_message_host',
+    'booking_confirmed_host',
+    'massage_booking_confirmed_host',
+    'booking_cancelled_host',
+    'massage_booking_cancelled_host',
+    'booking_payment_succeeded_host',
+    'massage_payment_succeeded_host',
   ];
   const rank = (k) => {
     const i = order.indexOf(k);
@@ -14440,8 +14396,8 @@ function sortEmailTemplatesForAdmin(rows) {
   };
   const audienceRank = (row) => (String(row.audience || '').trim() === 'host' ? 1 : 0);
   return (rows || []).slice().sort((a, b) => {
-    const ka = String(a.template_key || '').trim();
-    const kb = String(b.template_key || '').trim();
+    const ka = normalizeEmailTemplateKey(a.template_key);
+    const kb = normalizeEmailTemplateKey(b.template_key);
     const ra = rank(ka);
     const rb = rank(kb);
     if (ra !== null && rb !== null && ra !== rb) {
@@ -14466,38 +14422,65 @@ function renderEmailTemplateSelectorRows(rows) {
   const sel = document.getElementById('email-template-key');
   if (!sel) return;
   sel.innerHTML = '';
+  /** Duplicate option.value breaks native selects: the UI snaps to the first matching option on open/close. */
+  const seen = new Set();
   (rows || []).forEach((row) => {
+    const v = normalizeEmailTemplateKey(row.template_key);
+    if (!v || seen.has(v)) return;
+    seen.add(v);
     const opt = document.createElement('option');
-    opt.value = row.template_key || '';
-    opt.textContent = row.display_name || row.template_key || 'Template';
+    opt.value = v;
+    opt.textContent =
+      String(row.dropdown_label || row.display_name || '').trim() || v || 'Template';
     sel.appendChild(opt);
   });
 }
 
+/** After rebuild, force index so we never rely on duplicate-value resolution. */
+function syncEmailTemplateSelectToKey(templateKey) {
+  const sel = document.getElementById('email-template-key');
+  const nk = normalizeEmailTemplateKey(templateKey);
+  if (!sel || !nk) return;
+  const opts = sel.options;
+  for (let i = 0; i < opts.length; i++) {
+    if (normalizeEmailTemplateKey(opts[i].value) === nk) {
+      sel.selectedIndex = i;
+      return;
+    }
+  }
+  sel.value = nk;
+}
+
 function hydrateEmailTemplateEditorByKey(key) {
-  const row = emailTemplatesState.byKey[key];
+  const nk = normalizeEmailTemplateKey(key);
+  const row = emailTemplatesState.byKey[nk];
   if (!row) return;
-  setEmailTemplateFieldValue('email-template-key', row.template_key || '');
+  setEmailTemplateFieldValue('email-template-key', nk);
+  const ambiguous = row.display_name_is_ambiguous === true;
   const internal =
-    String(row.display_name || '').trim() || String(row.template_key || '').trim();
+    ambiguous
+      ? String(row.dropdown_label || row.display_name || '').trim() || nk
+      : String(row.display_name || '').trim() ||
+        String(row.dropdown_label || '').trim() ||
+        nk;
   setEmailTemplateFieldValue('email-template-display-name', internal);
   let scenario = String(row.scenario_notes || '').trim();
-  if (!scenario && row.template_key && EMAIL_TEMPLATE_SEND_SCENARIOS[row.template_key]) {
-    scenario = EMAIL_TEMPLATE_SEND_SCENARIOS[row.template_key];
+  if (!scenario && nk && EMAIL_TEMPLATE_SEND_SCENARIOS[nk]) {
+    scenario = EMAIL_TEMPLATE_SEND_SCENARIOS[nk];
   }
   setEmailTemplateFieldValue('email-template-scenario-notes', scenario);
   setEmailTemplateFieldValue('email-template-subject', row.subject || '');
   setEmailTemplateFieldValue('email-template-heading', row.heading || '');
   setEmailTemplateFieldValue('email-template-body', row.body || '');
-  setEmailTemplateFieldValue('email-template-cta-label', row.cta_label || '');
-  setEmailTemplateFieldValue('email-template-cta-url', row.cta_url || '');
-  setEmailTemplateFieldValue('email-template-image-url', row.image_url || '');
+  setEmailTemplateFieldValue('email-template-body-after', row.body_after || '');
+  setEmailTemplateFieldValue('email-template-body-contact', row.body_contact || '');
   updateEmailTemplateMeta();
 }
 
-async function saveCurrentEmailTemplateRow() {
-  const payload = collectEmailTemplateFormData();
-  const key = String(payload.template_key || '').trim();
+/** @param {string} [explicitSaveKey] When the template dropdown just changed, pass the previous key so we save that row (picker DOM already shows the next key). */
+async function saveCurrentEmailTemplateRow(explicitSaveKey) {
+  const payload = collectEmailTemplateFormData(explicitSaveKey);
+  const key = normalizeEmailTemplateKey(payload.template_key);
   if (!key) {
     return;
   }
@@ -14512,6 +14495,8 @@ async function saveCurrentEmailTemplateRow() {
   formData.append('subject', payload.subject || '');
   formData.append('heading', payload.heading || '');
   formData.append('body', payload.body || '');
+  formData.append('body_after', payload.body_after || '');
+  formData.append('body_contact', payload.body_contact || '');
   formData.append('cta_label', payload.cta_label || '');
   formData.append('cta_url', payload.cta_url || '');
   formData.append('image_url', payload.image_url || '');
@@ -14526,10 +14511,13 @@ async function saveCurrentEmailTemplateRow() {
         ...payload,
         template_key: key,
         display_name: dn || key,
+        dropdown_label: dn || key,
+        display_name_is_ambiguous: false,
         scenario_notes: payload.scenario_notes || '',
       };
       refreshEmailTemplateOptionLabel(key);
       updateAdminSectionSaveStatus('email-templates', 'saved');
+      scheduleEmailTemplatePreviewRefresh(0);
     } else {
       updateAdminSectionSaveStatus(
         'email-templates',
@@ -14542,109 +14530,158 @@ async function saveCurrentEmailTemplateRow() {
   }
 }
 
+function scheduleEmailTemplatePreviewRefresh(immediateDelayMs) {
+  const d = Number.isFinite(immediateDelayMs) ? immediateDelayMs : 500;
+  if (emailTemplatePreviewTimer) {
+    clearTimeout(emailTemplatePreviewTimer);
+  }
+  emailTemplatePreviewTimer = setTimeout(() => {
+    void refreshEmailTemplatePreviewIframe();
+  }, d);
+}
+
+function sizeEmailTemplatePreviewIframe() {
+  const iframe = document.getElementById('email-template-preview-iframe');
+  if (!iframe || !iframe.contentDocument || !iframe.contentDocument.body) {
+    return;
+  }
+  try {
+    const docEl = iframe.contentDocument.documentElement;
+    const body = iframe.contentDocument.body;
+    const h = Math.max(
+      body.scrollHeight || 0,
+      body.offsetHeight || 0,
+      docEl.scrollHeight || 0,
+      docEl.offsetHeight || 0,
+    );
+    const capped = Math.min(Math.ceil(h + 48), 32000);
+    iframe.style.height = `${capped}px`;
+  } catch (e) {
+    /* cross-origin or empty */
+  }
+}
+
+async function refreshEmailTemplatePreviewIframe() {
+  const iframe = document.getElementById('email-template-preview-iframe');
+  const stat = document.getElementById('email-template-preview-status');
+  if (!iframe) {
+    return;
+  }
+  const key = normalizeEmailTemplateKey(getEmailTemplateFieldValue('email-template-key'));
+  if (!key) {
+    if (stat) {
+      stat.textContent = '';
+    }
+    iframe.srcdoc = '';
+    iframe.style.height = '';
+    return;
+  }
+  if (stat) {
+    stat.textContent = 'Updating preview…';
+  }
+  const p = collectEmailTemplateFormData(key);
+  const fd = new FormData();
+  fd.append('action', 'preview_email_template');
+  fd.append('template_key', key);
+  fd.append('subject', p.subject || '');
+  fd.append('heading', p.heading || '');
+  fd.append('body', p.body || '');
+  fd.append('body_after', p.body_after || '');
+  fd.append('body_contact', p.body_contact || '');
+  fd.append('cta_label', p.cta_label || '');
+  fd.append('cta_url', p.cta_url || '');
+  fd.append('image_url', p.image_url || '');
+  try {
+    const res = await fetch('api.php', { method: 'POST', body: fd });
+    const raw = await res.text();
+    const json = parseJsonFromText(raw);
+    if (!res.ok || !json || !json.success || typeof json.html !== 'string') {
+      if (stat) {
+        stat.textContent = (json && (json.error || json.message)) || 'Preview failed';
+      }
+      return;
+    }
+    iframe.onload = () => {
+      try {
+        sizeEmailTemplatePreviewIframe();
+        requestAnimationFrame(() => {
+          sizeEmailTemplatePreviewIframe();
+          window.setTimeout(sizeEmailTemplatePreviewIframe, 400);
+        });
+      } catch (e) {
+        /* ignore */
+      }
+      if (stat) {
+        stat.textContent = 'Sample booking data — not sent to anyone.';
+      }
+    };
+    iframe.srcdoc = json.html;
+  } catch (e) {
+    if (stat) {
+      stat.textContent = (e && e.message) || 'Preview error';
+    }
+  }
+}
+
+function initEmailTemplateInternalDetailsPersist() {
+  const d = document.getElementById('email-template-internal-details');
+  if (!d || d.getAttribute('data-btb-email-internal-details-init') === '1') {
+    return;
+  }
+  d.setAttribute('data-btb-email-internal-details-init', '1');
+  const key = 'btb_admin_email_internal_details_open';
+  try {
+    if (localStorage.getItem(key) === '1') {
+      d.open = true;
+    }
+  } catch (e) {
+    /* ignore */
+  }
+  d.addEventListener('toggle', () => {
+    try {
+      localStorage.setItem(key, d.open ? '1' : '0');
+    } catch (err) {
+      /* ignore */
+    }
+  });
+}
+
 function initEmailTemplatesAutoSave() {
   const root = getEmailTemplateEditorRoot();
   if (!root || root.getAttribute('data-btb-email-templates-autosave') === '1') {
     return;
   }
   root.setAttribute('data-btb-email-templates-autosave', '1');
-  const brandingFieldIds = new Set([
-    'email-branding-footer-url',
-    'email-branding-footer-alt',
-    'email-branding-outer-bg',
-    'email-branding-card-bg',
-  ]);
-  const schedule = () => {
-    if (emailTemplatesSaveTimer) {
-      clearTimeout(emailTemplatesSaveTimer);
-    }
-    emailTemplatesSaveTimer = setTimeout(() => {
-      saveCurrentEmailTemplateRow();
-    }, 1800);
-  };
   root.addEventListener('input', (ev) => {
-    const tid = ev && ev.target ? ev.target.id : '';
-    if (tid && brandingFieldIds.has(tid)) {
-      scheduleEmailBrandingSave();
-      return;
-    }
     if (ev && ev.target && ev.target.id === 'email-template-key') {
       return;
     }
-    schedule();
+    scheduleEmailTemplatePreviewRefresh();
   }, true);
   root.addEventListener('change', (ev) => {
-    const tid = ev && ev.target ? ev.target.id : '';
-    if (tid && brandingFieldIds.has(tid)) {
-      scheduleEmailBrandingSave();
-      return;
-    }
     if (ev && ev.target && ev.target.id === 'email-template-key') {
       return;
     }
-    schedule();
+    scheduleEmailTemplatePreviewRefresh();
   }, true);
 
   const picker = document.getElementById('email-template-key');
   if (picker) {
     picker.addEventListener('change', async () => {
-      const prevKey = emailTemplatesState.selectedKey;
+      const prevKey = normalizeEmailTemplateKey(emailTemplatesState.selectedKey);
       if (prevKey) {
-        const currentPayload = collectEmailTemplateFormData();
-        if (String(currentPayload.template_key || '') === prevKey) {
-          emailTemplatesState.byKey[prevKey] = {
-            ...(emailTemplatesState.byKey[prevKey] || {}),
-            ...currentPayload,
-            template_key: prevKey,
-          };
-          await saveCurrentEmailTemplateRow();
-        }
+        const currentPayload = collectEmailTemplateFormData(prevKey);
+        emailTemplatesState.byKey[prevKey] = {
+          ...(emailTemplatesState.byKey[prevKey] || {}),
+          ...currentPayload,
+          template_key: prevKey,
+        };
+        await saveCurrentEmailTemplateRow(prevKey);
       }
-      const nextKey = picker.value || '';
+      const nextKey = normalizeEmailTemplateKey(picker.value || '');
       emailTemplatesState.selectedKey = nextKey;
       hydrateEmailTemplateEditorByKey(nextKey);
-    });
-  }
-
-  const uploadInput = document.getElementById('email-template-image-upload');
-  const uploadBtn = document.getElementById('email-template-image-upload-btn');
-  const imageUrlInput = document.getElementById('email-template-image-url');
-  if (uploadBtn && uploadInput) {
-    uploadBtn.addEventListener('click', () => uploadInput.click());
-  }
-  if (uploadInput && imageUrlInput) {
-    uploadInput.addEventListener('change', async () => {
-      const file = uploadInput.files && uploadInput.files[0] ? uploadInput.files[0] : null;
-      if (!file) return;
-      const up = await btbAdminFetchUploadImageOnce(file, 'special-addon-image', 'email-templates');
-      uploadInput.value = '';
-      if (!up || !up.ok || !up.imageUrl) return;
-      imageUrlInput.value = up.imageUrl;
-      if (emailTemplatesSaveTimer) {
-        clearTimeout(emailTemplatesSaveTimer);
-      }
-      emailTemplatesSaveTimer = setTimeout(() => saveCurrentEmailTemplateRow(), 200);
-    });
-  }
-
-  const brandUploadInput = document.getElementById('email-branding-footer-upload');
-  const brandUploadBtn = document.getElementById('email-branding-footer-upload-btn');
-  const brandUrlInput = document.getElementById('email-branding-footer-url');
-  if (brandUploadBtn && brandUploadInput) {
-    brandUploadBtn.addEventListener('click', () => brandUploadInput.click());
-  }
-  if (brandUploadInput && brandUrlInput) {
-    brandUploadInput.addEventListener('change', async () => {
-      const file = brandUploadInput.files && brandUploadInput.files[0] ? brandUploadInput.files[0] : null;
-      if (!file) return;
-      const up = await btbAdminFetchUploadImageOnce(file, 'special-addon-image', 'email-templates');
-      brandUploadInput.value = '';
-      if (!up || !up.ok || !up.imageUrl) return;
-      brandUrlInput.value = up.imageUrl;
-      if (emailBrandingSaveTimer) {
-        clearTimeout(emailBrandingSaveTimer);
-      }
-      emailBrandingSaveTimer = setTimeout(() => saveEmailBranding(), 200);
+      scheduleEmailTemplatePreviewRefresh(0);
     });
   }
 
@@ -14694,25 +14731,36 @@ async function loadEmailTemplatesData() {
       updateAdminSectionSaveStatus('email-templates', 'error', (json && json.error) || 'Load failed');
       return;
     }
-    const rows = sortEmailTemplatesForAdmin(json.data.templates.slice());
+    const sorted = sortEmailTemplatesForAdmin(json.data.templates.slice());
+    const bestByKey = new Map();
+    sorted.forEach((row) => {
+      const key = normalizeEmailTemplateKey(row && row.template_key != null ? row.template_key : '');
+      if (!key) return;
+      const merged = Object.assign({}, row, { template_key: key });
+      const prev = bestByKey.get(key);
+      if (!prev || emailTemplateRowRichness(merged) > emailTemplateRowRichness(prev)) {
+        bestByKey.set(key, merged);
+      }
+    });
+    const rows = sortEmailTemplatesForAdmin(Array.from(bestByKey.values()));
     const byKey = {};
     rows.forEach((row) => {
-      const key = String(row && row.template_key ? row.template_key : '').trim();
+      const key = normalizeEmailTemplateKey(row.template_key);
       if (!key) return;
       byKey[key] = row;
     });
     emailTemplatesState.list = rows;
     emailTemplatesState.byKey = byKey;
-    const branding =
-      json.data.branding && typeof json.data.branding === 'object' ? json.data.branding : {};
-    emailTemplatesState.branding = branding;
-    hydrateEmailBrandingFields(branding);
     renderEmailTemplateSelectorRows(rows);
-    const firstKey = emailTemplatesState.selectedKey && byKey[emailTemplatesState.selectedKey]
-      ? emailTemplatesState.selectedKey
-      : (rows[0] && rows[0].template_key ? String(rows[0].template_key) : '');
+    const selNorm = normalizeEmailTemplateKey(emailTemplatesState.selectedKey);
+    const firstKey =
+      selNorm && byKey[selNorm]
+        ? selNorm
+        : (rows[0] && rows[0].template_key ? normalizeEmailTemplateKey(rows[0].template_key) : '');
     emailTemplatesState.selectedKey = firstKey;
+    syncEmailTemplateSelectToKey(firstKey);
     hydrateEmailTemplateEditorByKey(firstKey);
+    scheduleEmailTemplatePreviewRefresh(0);
     await loadEmailDeliveryMonitoring();
     updateAdminSectionSaveStatus('email-templates', 'saved');
   } catch (e) {
@@ -14831,7 +14879,9 @@ async function loadMyBookingsPricingData() {
       }
     };
     setVal('my-bookings-cleaning-label', d.cleaning_label);
-    setVal('my-bookings-cleaning-amount', d.cleaning_amount_cad);
+    setVal('my-bookings-cleaning-loki', d.cleaning_loki_suite_amount_cad ?? d.cleaning_amount_cad);
+    setVal('my-bookings-cleaning-nouk', d.cleaning_the_nouk_amount_cad ?? d.cleaning_amount_cad);
+    setVal('my-bookings-cleaning-vrienden', d.cleaning_vrienden_amount_cad ?? d.cleaning_amount_cad);
     setVal('my-bookings-cleaning-kelder', d.cleaning_kelder_amount_cad);
     setVal('my-bookings-pets-label', d.pets_label);
     setVal('my-bookings-pets-max', d.pets_max_qty);
@@ -14840,6 +14890,8 @@ async function loadMyBookingsPricingData() {
     setVal('my-bookings-tax1-percent', d.tax1_percent);
     setVal('my-bookings-tax2-label', d.tax2_label);
     setVal('my-bookings-tax2-percent', d.tax2_percent);
+    setVal('my-bookings-tax3-label', d.tax3_label);
+    setVal('my-bookings-tax3-percent', d.tax3_percent);
   } catch (e) {
     updateAdminSectionSaveStatus('my-bookings-pricing', 'error', (e && e.message) || 'Error');
     btbOverlaySetSectionSummary('my-bookings-pricing', 'error');
@@ -14851,7 +14903,9 @@ async function saveMyBookingsPricingContent() {
   const formData = new FormData();
   formData.append('action', 'save_my_bookings_pricing');
   formData.append('cleaning_label', document.getElementById('my-bookings-cleaning-label')?.value || '');
-  formData.append('cleaning_amount_cad', document.getElementById('my-bookings-cleaning-amount')?.value || '');
+  formData.append('cleaning_loki_suite_amount_cad', document.getElementById('my-bookings-cleaning-loki')?.value || '');
+  formData.append('cleaning_the_nouk_amount_cad', document.getElementById('my-bookings-cleaning-nouk')?.value || '');
+  formData.append('cleaning_vrienden_amount_cad', document.getElementById('my-bookings-cleaning-vrienden')?.value || '');
   formData.append('cleaning_kelder_amount_cad', document.getElementById('my-bookings-cleaning-kelder')?.value || '');
   formData.append('pets_label', document.getElementById('my-bookings-pets-label')?.value || '');
   formData.append('pets_max_qty', document.getElementById('my-bookings-pets-max')?.value || '');
@@ -14860,6 +14914,8 @@ async function saveMyBookingsPricingContent() {
   formData.append('tax1_percent', document.getElementById('my-bookings-tax1-percent')?.value || '');
   formData.append('tax2_label', document.getElementById('my-bookings-tax2-label')?.value || '');
   formData.append('tax2_percent', document.getElementById('my-bookings-tax2-percent')?.value || '');
+  formData.append('tax3_label', document.getElementById('my-bookings-tax3-label')?.value || '');
+  formData.append('tax3_percent', document.getElementById('my-bookings-tax3-percent')?.value || '');
   try {
     const response = await fetch('api.php', { method: 'POST', body: formData });
     const raw = await response.text();
@@ -14884,16 +14940,6 @@ function initMyBookingsPricingAutoSave() {
     return;
   }
   root.setAttribute('data-btb-my-bookings-pricing-autosave', '1');
-  const schedule = () => {
-    if (myBookingsPricingSaveTimer) {
-      clearTimeout(myBookingsPricingSaveTimer);
-    }
-    myBookingsPricingSaveTimer = setTimeout(() => {
-      saveMyBookingsPricingContent();
-    }, 1800);
-  };
-  root.addEventListener('input', schedule, true);
-  root.addEventListener('change', schedule, true);
 }
 
 function initBookingSuccessBannerAutoSave() {
@@ -14902,16 +14948,6 @@ function initBookingSuccessBannerAutoSave() {
     return;
   }
   root.setAttribute('data-btb-booking-success-banner-autosave', '1');
-  const schedule = () => {
-    if (bookingSuccessBannerSaveTimer) {
-      clearTimeout(bookingSuccessBannerSaveTimer);
-    }
-    bookingSuccessBannerSaveTimer = setTimeout(() => {
-      saveBookingSuccessBannerContent();
-    }, 1800);
-  };
-  root.addEventListener('input', schedule, true);
-  root.addEventListener('change', schedule, true);
 }
 
 registerContentEditor('booking-success-banner', () => {
@@ -14926,6 +14962,7 @@ registerContentEditor('my-bookings-pricing', () => {
 
 registerContentEditor('email-templates', () => {
   loadEmailTemplatesData();
+  initEmailTemplateInternalDetailsPersist();
   initEmailTemplatesAutoSave();
 });
 
@@ -14959,10 +14996,6 @@ registerContentEditor('room-basement', () => {
   initRoomBasementImageUpload();
   initRoomBasementAutoSave();
 });
-
-let guestReviewsSaveTimer = null;
-let bookingSuccessBannerSaveTimer = null;
-let myBookingsPricingSaveTimer = null;
 
 const GUEST_REVIEWS_FIELDS_DOM_VER = '2';
 
@@ -15137,16 +15170,6 @@ function initGuestReviewsAutoSave() {
     return;
   }
   root.setAttribute('data-btb-guest-reviews-autosave', '1');
-  const schedule = () => {
-    if (guestReviewsSaveTimer) {
-      clearTimeout(guestReviewsSaveTimer);
-    }
-    guestReviewsSaveTimer = setTimeout(() => {
-      saveGuestReviewsContent();
-    }, 1800);
-  };
-  root.addEventListener('input', schedule, true);
-  root.addEventListener('change', schedule, true);
 }
 
 registerContentEditor('floorplan', () => {
@@ -15198,7 +15221,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Initialize login form
   initAdminLogin();
-  
+
+  initAdminBlurSavesGlobally();
+
   // Initialize two-level navigation
   // Primary level tabs (Bookings Management, Content Management, Account Management)
   document.querySelectorAll('.admin-nav-tab-primary').forEach(tab => {
@@ -15216,8 +15241,18 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
   
-  // Initialize default primary section (Bookings Management)
-  switchPrimarySection('bookings');
+  initAdminSectionHashRouting();
+  initAdminSectionCollapsibleFilters();
+  window.addEventListener('hashchange', () => {
+    if (adminHashRoutingFromHash) return;
+    const section = getAdminHashSection();
+    if (!section || !isValidAdminSection(section)) return;
+    adminHashRoutingFromHash = true;
+    const primary = getAdminSectionPrimaryMap()[section] || 'bookings';
+    switchPrimarySection(primary, { skipAutoSection: true });
+    showSection(section);
+    adminHashRoutingFromHash = false;
+  });
   
   // Initialize logout
   const logoutBtn = document.getElementById('admin-logout');
@@ -15364,6 +15399,59 @@ document.addEventListener('DOMContentLoaded', () => {
 // BOOKINGS MANAGEMENT
 // ==========================================
 
+function btbAdminTodayYmd() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/** Lifecycle active/inactive aligned with guest My Bookings tabs (admin list filter). */
+function btbAdminBookingIsActive(booking) {
+  const today = btbAdminTodayYmd();
+  const statusLower = String(booking.status || '').toLowerCase();
+  const paid = String(booking.payment_status || '').toLowerCase() === 'paid';
+
+  if (booking.booking_type === 'massage') {
+    const appt = String(booking.massage_date || '').trim().slice(0, 10);
+    if (statusLower === 'cancelled') {
+      if (!appt) return true;
+      return today < appt;
+    }
+    if (statusLower === 'pending') return true;
+    if (statusLower === 'confirmed') {
+      if (!paid) return true;
+      if (!appt) return true;
+      return appt >= today;
+    }
+    if (statusLower === 'completed') return false;
+    return true;
+  }
+
+  const ci = String(booking.checkin_date || '').trim().slice(0, 10);
+  const co = String(booking.checkout_date || '').trim().slice(0, 10);
+  if (statusLower === 'cancelled') {
+    if (!ci) return true;
+    return today < ci;
+  }
+  if (statusLower === 'pending') return true;
+  if (statusLower === 'confirmed') {
+    if (!paid) return true;
+    if (!co) return true;
+    return co >= today;
+  }
+  if (statusLower === 'checked_in') {
+    if (!co) return true;
+    return co >= today;
+  }
+  if (statusLower === 'completed') return false;
+  if (statusLower === 'paid') {
+    if (!co) return true;
+    return co >= today;
+  }
+  return true;
+}
+
+let filteredBookings = [];
+
 // Load bookings data
 async function loadBookingsData() {
   const loadingEl = document.getElementById('bookings-loading');
@@ -15375,8 +15463,10 @@ async function loadBookingsData() {
   if (emptyEl) emptyEl.style.display = 'none';
   
   try {
-    // Get filters
-    const status = document.getElementById('bookings-filter-status')?.value || '';
+    // Get filters (active/inactive are client-side lifecycle filters — omit from API status param)
+    const statusUi = document.getElementById('bookings-filter-status')?.value || '';
+    const lifecycleFilter = statusUi === 'active' || statusUi === 'inactive';
+    const status = lifecycleFilter ? '' : statusUi;
     const room = document.getElementById('bookings-filter-room')?.value || '';
     
     // Get date values from Flatpickr or native input
@@ -15432,7 +15522,7 @@ async function loadBookingsData() {
     // Load massage bookings if "All Rooms" or "Massage" is selected
     if (!room || room === 'Massage') {
       try {
-        console.log('Loading massage bookings...', { status, dateFrom, dateTo });
+        console.log('Loading massage bookings...', { status, statusUi, dateFrom, dateTo });
         const massageParams = new URLSearchParams({ action: 'get_massage_bookings' });
         if (status) massageParams.append('status', status);
         if (dateFrom) massageParams.append('date_from', dateFrom);
@@ -15474,7 +15564,12 @@ async function loadBookingsData() {
                   phone: booking.phone,
                   status: booking.status,
                   created_at: booking.created_at,
-                  confirmation_code: booking.confirmation_code || `MASS-${booking.id}`
+                  confirmation_code: booking.confirmation_code || `MASS-${booking.id}`,
+                  total_amount: booking.total_amount,
+                  currency: booking.currency,
+                  payment_status: booking.payment_status,
+                  total_amount_manual: booking.total_amount_manual,
+                  host_service_subtotal: booking.host_service_subtotal,
                 }));
                 
                 console.log('Converted massage bookings:', convertedMassageBookings);
@@ -15505,9 +15600,22 @@ async function loadBookingsData() {
       const dateB = new Date(b.created_at || 0);
       return dateB - dateA;
     });
+
+    if (lifecycleFilter) {
+      const wantActive = statusUi === 'active';
+      allBookings = allBookings.filter((b) => btbAdminBookingIsActive(b) === wantActive);
+    }
+
+    filteredBookings = allBookings;
     
     if (loadingEl) loadingEl.style.display = 'none';
     
+    window._btbAdminBookingsIndex = {};
+    allBookings.forEach((b) => {
+      const key = `${b.booking_type || 'room'}:${b.id}`;
+      window._btbAdminBookingsIndex[key] = b;
+    });
+
     if (allBookings.length > 0) {
       if (listEl) {
         listEl.style.display = 'block';
@@ -15518,9 +15626,52 @@ async function loadBookingsData() {
     }
   } catch (error) {
     console.error('Load bookings error:', error);
+    filteredBookings = [];
     if (loadingEl) loadingEl.style.display = 'none';
     if (emptyEl) emptyEl.style.display = 'block';
     showStatus('Failed to load bookings: ' + error.message, 'error');
+  }
+}
+
+async function copyBookingsAllEmails() {
+  const emails = filteredBookings
+    .map((booking) => (booking.email || '').trim())
+    .filter((email) => email)
+    .join('\n');
+
+  if (!emails) {
+    alert('No emails to copy');
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(emails);
+    const emailCount = emails.split('\n').length;
+    alert(`Copied ${emailCount} email(s) to clipboard`);
+  } catch (error) {
+    console.error('Failed to copy booking emails:', error);
+    alert('Failed to copy emails to clipboard');
+  }
+}
+
+async function copyBookingsAllPhones() {
+  const phones = filteredBookings
+    .map((booking) => (booking.phone || '').trim())
+    .filter((phone) => phone)
+    .join('\n');
+
+  if (!phones) {
+    alert('No phones to copy');
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(phones);
+    const phoneCount = phones.split('\n').length;
+    alert(`Copied ${phoneCount} phone number(s) to clipboard`);
+  } catch (error) {
+    console.error('Failed to copy booking phones:', error);
+    alert('Failed to copy phones to clipboard');
   }
 }
 
@@ -15542,10 +15693,10 @@ function renderBookingsList(bookings) {
     if (booking.booking_type === 'massage') {
       // Massage booking status logic
       if (booking.status === 'pending') {
-        statusText = 'Awaiting Confirmation';
+        statusText = 'Awaiting confirmation';
         statusClass = 'pending';
       } else if (booking.status === 'cancelled') {
-        statusText = 'Rejected';
+        statusText = 'Cancelled';
         statusClass = 'cancelled';
       } else if (booking.status === 'confirmed') {
         // Check if massage date has passed
@@ -15569,10 +15720,10 @@ function renderBookingsList(bookings) {
     } else {
       // Room booking status logic
       if (booking.status === 'pending') {
-        statusText = 'Awaiting Confirmation';
+        statusText = 'Awaiting confirmation';
         statusClass = 'pending';
       } else if (booking.status === 'cancelled') {
-        statusText = 'Rejected';
+        statusText = 'Cancelled';
         statusClass = 'cancelled';
       } else if (booking.status === 'confirmed') {
         if (booking.payment_status === 'paid') {
@@ -15582,7 +15733,7 @@ function renderBookingsList(bookings) {
           today.setHours(0, 0, 0, 0);
           
           if (checkinDate > today) {
-            statusText = 'Awaiting Check-in';
+            statusText = 'Awaiting check-in';
             statusClass = 'checked_in';
           } else {
             // Check if checkout date has passed
@@ -15591,12 +15742,12 @@ function renderBookingsList(bookings) {
               statusText = 'Completed';
               statusClass = 'completed';
             } else {
-              statusText = 'Awaiting Check-in';
+              statusText = 'In stay';
               statusClass = 'checked_in';
             }
           }
         } else {
-          statusText = 'Awaiting Payment';
+          statusText = 'Awaiting payment';
           statusClass = 'confirmed';
         }
       } else {
@@ -15643,6 +15794,10 @@ function renderBookingsList(bookings) {
             <div class="booking-detail-label">Duration</div>
             <div class="booking-detail-value">${booking.duration ? `${booking.duration} min` : '—'}</div>
           </div>
+          <div class="booking-detail-item">
+            <div class="booking-detail-label">Total Amount</div>
+            <div class="booking-detail-value">${booking.currency || 'CAD'} ${parseFloat(booking.total_amount || 0).toFixed(2)}</div>
+          </div>
         ` : `
           <div class="booking-detail-item">
             <div class="booking-detail-label">Room</div>
@@ -15688,6 +15843,9 @@ function renderBookingsList(bookings) {
       </div>
       
       <div class="booking-actions">
+        ${btbAdminCanEditBooking(booking) ? `
+          <button type="button" class="admin-btn admin-btn-secondary" onclick="window.openBookingEditModal('${booking.booking_type || 'room'}', ${booking.id})">Edit</button>
+        ` : ''}
         ${booking.booking_type === 'massage' ? `
           ${booking.status === 'pending' ? `
             <button class="admin-btn admin-btn-primary" onclick="window.confirmMassageBooking(${booking.id})">Confirm</button>
@@ -15696,6 +15854,7 @@ function renderBookingsList(bookings) {
           ` : ''}
           ${booking.status === 'confirmed' ? `
             <button class="admin-btn admin-btn-danger" onclick="window.cancelMassageBooking(${booking.id})">Cancel</button>
+            <button class="admin-btn admin-btn-danger" onclick="window.deleteMassageBooking(${booking.id})">Delete</button>
           ` : ''}
           ${booking.status === 'cancelled' ? `
             <button class="admin-btn admin-btn-danger" onclick="window.deleteMassageBooking(${booking.id})">Delete</button>
@@ -15711,6 +15870,7 @@ function renderBookingsList(bookings) {
           ` : ''}
           ${booking.status === 'confirmed' ? `
             <button class="admin-btn admin-btn-secondary" onclick="window.viewBookingDetails(${booking.id})">View Details</button>
+            <button class="admin-btn admin-btn-danger" onclick="window.deleteBooking(${booking.id})">Delete</button>
           ` : ''}
           ${booking.status === 'cancelled' ? `
             <button class="admin-btn admin-btn-danger" onclick="window.deleteBooking(${booking.id})">Delete</button>
@@ -15722,6 +15882,316 @@ function renderBookingsList(bookings) {
     listEl.appendChild(card);
   });
 }
+
+function btbAdminCanEditBooking(booking) {
+  if (!booking) return false;
+  if (String(booking.status || '').toLowerCase() === 'cancelled') return false;
+  if (String(booking.payment_status || '').toLowerCase() === 'paid') return false;
+  return true;
+}
+
+function btbAdminFmtCad(n) {
+  const x = typeof n === 'number' ? n : parseFloat(String(n ?? ''), 10);
+  if (!Number.isFinite(x)) return '—';
+  return x.toFixed(2);
+}
+
+function btbAdminEditRoomNightsFromDates(checkin, checkout) {
+  const ci = String(checkin || '').slice(0, 10);
+  const co = String(checkout || '').slice(0, 10);
+  if (!ci || !co) return 0;
+  const a = new Date(`${ci}T12:00:00`);
+  const b = new Date(`${co}T12:00:00`);
+  const diff = b.getTime() - a.getTime();
+  if (!Number.isFinite(diff) || diff <= 0) return 0;
+  return Math.round(diff / 86400000);
+}
+
+function btbAdminEditRoomNightsFromBooking(booking) {
+  return btbAdminEditRoomNightsFromDates(booking?.checkin_date, booking?.checkout_date);
+}
+
+function btbAdminEditRoomNightsFromForm() {
+  return btbAdminEditRoomNightsFromDates(
+    document.getElementById('btb-edit-checkin')?.value,
+    document.getElementById('btb-edit-checkout')?.value
+  );
+}
+
+function btbAdminEditNightlyFromStaySubtotal(staySubtotal, nights) {
+  const stay = parseFloat(String(staySubtotal ?? ''), 10);
+  if (!Number.isFinite(stay) || nights <= 0) return '';
+  return btbAdminFmtCad(stay / nights);
+}
+
+function btbAdminEditStaySubtotalFromNightlyInput() {
+  const nightly = parseFloat(document.getElementById('btb-edit-custom-amount')?.value || '0');
+  const nights = btbAdminEditRoomNightsFromForm();
+  if (!Number.isFinite(nightly) || nightly < 0 || nights <= 0) return 0;
+  return Math.round(nightly * nights * 100) / 100;
+}
+
+function btbAdminAppendRoomEditPricingFields(fd, useCustom) {
+  fd.append('room_name', document.getElementById('btb-edit-room-name')?.value || '');
+  fd.append('checkin_date', document.getElementById('btb-edit-checkin')?.value || '');
+  fd.append('checkout_date', document.getElementById('btb-edit-checkout')?.value || '');
+  fd.append('pets', document.getElementById('btb-edit-pets')?.value || '0');
+  if (useCustom) {
+    fd.append('host_stay_subtotal', String(btbAdminEditStaySubtotalFromNightlyInput()));
+  }
+}
+
+async function btbAdminPrefillRoomNightlyFromCatalog() {
+  const amtEl = document.getElementById('btb-edit-custom-amount');
+  if (!amtEl || amtEl.value) return;
+  const fd = new FormData();
+  fd.append('action', 'admin_preview_booking_pricing');
+  fd.append('kind', 'room');
+  fd.append('use_custom_stay_price', '0');
+  btbAdminAppendRoomEditPricingFields(fd, false);
+  try {
+    const res = await fetch('api.php', { method: 'POST', headers: getAdminAuthHeaders(), body: fd });
+    const json = await res.json();
+    const nightly = json?.data?.nightly_rate;
+    if (json.success && nightly != null && parseFloat(nightly) > 0) {
+      amtEl.value = btbAdminFmtCad(nightly);
+    }
+  } catch (e) {
+    console.warn('Could not prefill nightly rate', e);
+  }
+}
+
+function btbAdminRoomStayPreviewLine(data) {
+  const nights = parseInt(data.nights, 10) || 0;
+  const nightly = data.nightly_rate != null ? parseFloat(data.nightly_rate) : NaN;
+  const total = btbAdminFmtCad(data.stay_subtotal);
+  if (nights > 0 && Number.isFinite(nightly) && nightly > 0) {
+    const nLabel = nights === 1 ? '1 night' : `${nights} nights`;
+    return `<p>Room stay (${nLabel} × ${btbAdminFmtCad(nightly)} CAD/night): <strong>${total} CAD total</strong></p>`;
+  }
+  return `<p>Room stay (total for all nights): <strong>${total} CAD</strong></p>`;
+}
+
+function btbAdminRenderPricingPreview(data) {
+  const el = document.getElementById('btb-edit-pricing-preview');
+  if (!el || !data) return;
+  if (data.kind === 'room' || data.stay_subtotal !== undefined) {
+    el.innerHTML = `
+      ${btbAdminRoomStayPreviewLine(data)}
+      <p>Cleaning: <strong>${btbAdminFmtCad(data.cleaning_fee)} CAD</strong></p>
+      <p>Dogs fee: <strong>${btbAdminFmtCad(data.pets_fee)} CAD</strong></p>
+      <p>Subtotal before tax: <strong>${btbAdminFmtCad(data.taxable_subtotal)} CAD</strong></p>
+      ${data.tax1 > 0 ? `<p>${escapeHtml(data.tax1_label || 'Tax 1')} (${btbAdminFmtCad(data.tax1_percent)}%): <strong>${btbAdminFmtCad(data.tax1)} CAD</strong></p>` : ''}
+      ${data.tax2 > 0 ? `<p>${escapeHtml(data.tax2_label || 'Tax 2')} (${btbAdminFmtCad(data.tax2_percent)}%): <strong>${btbAdminFmtCad(data.tax2)} CAD</strong></p>` : ''}
+      ${data.tax3 > 0 ? `<p>${escapeHtml(data.tax3_label || 'Tax 3')} (${btbAdminFmtCad(data.tax3_percent)}%): <strong>${btbAdminFmtCad(data.tax3)} CAD</strong></p>` : ''}
+      <p class="btb-edit-grand">Total due (incl. tax): <strong>${btbAdminFmtCad(data.grand)} CAD</strong></p>
+    `;
+    return;
+  }
+  el.innerHTML = `
+    <p>Wellness service (total for this appointment): <strong>${btbAdminFmtCad(data.service_subtotal ?? data.taxable_subtotal)} CAD</strong></p>
+    <p>Subtotal before tax: <strong>${btbAdminFmtCad(data.taxable_subtotal)} CAD</strong></p>
+    ${data.tax1 > 0 ? `<p>${escapeHtml(data.tax1_label || 'Tax 1')} (${btbAdminFmtCad(data.tax1_percent)}%): <strong>${btbAdminFmtCad(data.tax1)} CAD</strong></p>` : ''}
+    ${data.tax2 > 0 ? `<p>${escapeHtml(data.tax2_label || 'Tax 2')} (${btbAdminFmtCad(data.tax2_percent)}%): <strong>${btbAdminFmtCad(data.tax2)} CAD</strong></p>` : ''}
+    ${data.tax3 > 0 ? `<p>${escapeHtml(data.tax3_label || 'Tax 3')} (${btbAdminFmtCad(data.tax3_percent)}%): <strong>${btbAdminFmtCad(data.tax3)} CAD</strong></p>` : ''}
+    <p class="btb-edit-grand">Total due (incl. tax): <strong>${btbAdminFmtCad(data.grand)} CAD</strong></p>
+  `;
+}
+
+let _btbAdminEditPreviewTimer = null;
+
+async function btbAdminRefreshEditPricingPreview() {
+  const kind = document.getElementById('btb-edit-booking-kind')?.value || 'room';
+  const fd = new FormData();
+  fd.append('action', 'admin_preview_booking_pricing');
+  fd.append('kind', kind);
+  const useCustom = document.getElementById('btb-edit-custom-price')?.checked;
+  fd.append('use_custom_stay_price', useCustom ? '1' : '0');
+  if (kind === 'room') {
+    btbAdminAppendRoomEditPricingFields(fd, useCustom);
+  } else {
+    fd.append('massage_type', document.getElementById('btb-edit-massage-type')?.value || '');
+    fd.append('duration', document.getElementById('btb-edit-duration')?.value || '60');
+    if (useCustom) {
+      fd.append('host_service_subtotal', document.getElementById('btb-edit-custom-amount')?.value || '0');
+    }
+  }
+  try {
+    const res = await fetch('api.php', { method: 'POST', headers: getAdminAuthHeaders(), body: fd });
+    const json = await res.json();
+    if (json.success && json.data) {
+      btbAdminRenderPricingPreview(json.data);
+    }
+  } catch (e) {
+    console.warn('Pricing preview failed', e);
+  }
+}
+
+function btbAdminScheduleEditPricingPreview() {
+  if (_btbAdminEditPreviewTimer) clearTimeout(_btbAdminEditPreviewTimer);
+  _btbAdminEditPreviewTimer = setTimeout(() => btbAdminRefreshEditPricingPreview(), 280);
+}
+
+function btbAdminCloseBookingEditModal() {
+  const modal = document.getElementById('btb-admin-booking-edit-modal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+window.openBookingEditModal = function openBookingEditModal(kind, bookingId) {
+  const key = `${kind}:${bookingId}`;
+  const booking = (window._btbAdminBookingsIndex && window._btbAdminBookingsIndex[key]) || null;
+  if (!booking || !btbAdminCanEditBooking(booking)) {
+    alert('This booking cannot be edited.');
+    return;
+  }
+  const modal = document.getElementById('btb-admin-booking-edit-modal');
+  if (!modal) return;
+
+  document.getElementById('btb-edit-booking-id').value = String(bookingId);
+  document.getElementById('btb-edit-booking-kind').value = kind === 'massage' ? 'massage' : 'room';
+
+  const roomFields = document.getElementById('btb-edit-room-fields');
+  const massageFields = document.getElementById('btb-edit-massage-fields');
+  const customCb = document.getElementById('btb-edit-custom-price');
+  const customRow = document.getElementById('btb-edit-custom-price-row');
+  const customAmt = document.getElementById('btb-edit-custom-amount');
+  const customLbl = document.getElementById('btb-edit-custom-amount-label');
+  const fieldHint = document.querySelector('#btb-edit-custom-price-row .btb-edit-field-hint');
+
+  const isManual = !!booking.total_amount_manual;
+  customCb.checked = isManual;
+
+  if (kind === 'massage') {
+    roomFields.style.display = 'none';
+    massageFields.style.display = 'block';
+    document.getElementById('btb-edit-massage-type').value = booking.massage_type || 'Relaxing Massage';
+    document.getElementById('btb-edit-duration').value = String(booking.duration || 60);
+    document.getElementById('btb-edit-massage-date').value = (booking.massage_date || '').slice(0, 10);
+    document.getElementById('btb-edit-massage-time').value = (booking.massage_time || '').slice(0, 5);
+    const cbLbl = document.getElementById('btb-edit-custom-checkbox-label');
+    const pricingHint = document.getElementById('btb-edit-pricing-hint');
+    if (cbLbl) cbLbl.textContent = 'Override wellness service price';
+    if (pricingHint) pricingHint.textContent = 'Total price for this appointment only (not per hour).';
+    if (fieldHint) fieldHint.style.display = 'none';
+    customLbl.textContent = 'Custom service total (CAD)';
+    customAmt.value = isManual && booking.host_service_subtotal != null
+      ? booking.host_service_subtotal
+      : (booking.total_amount || '');
+    document.getElementById('btb-admin-booking-edit-title').textContent = `Edit wellness booking #${bookingId}`;
+  } else {
+    roomFields.style.display = 'block';
+    massageFields.style.display = 'none';
+    document.getElementById('btb-edit-room-name').value = booking.room_name || '';
+    document.getElementById('btb-edit-checkin').value = (booking.checkin_date || '').slice(0, 10);
+    document.getElementById('btb-edit-checkout').value = (booking.checkout_date || '').slice(0, 10);
+    document.getElementById('btb-edit-guests-count').value = String(booking.guests_count || 1);
+    document.getElementById('btb-edit-pets').value = String(booking.pets ?? '0');
+    const cbLbl = document.getElementById('btb-edit-custom-checkbox-label');
+    const pricingHint = document.getElementById('btb-edit-pricing-hint');
+    if (cbLbl) cbLbl.textContent = 'Override price per night (this booking only)';
+    if (pricingHint) {
+      pricingHint.textContent = 'Enter the nightly rate in CAD. The total for all nights is calculated automatically. Cleaning and dog fees are added separately.';
+    }
+    if (fieldHint) {
+      fieldHint.style.display = 'block';
+      fieldHint.textContent = 'Total stay = nightly rate × number of nights. Cleaning and dog fees appear in the breakdown below.';
+    }
+    customLbl.textContent = 'Custom price per night (CAD)';
+    const nights = btbAdminEditRoomNightsFromBooking(booking);
+    if (isManual && booking.host_stay_subtotal != null && nights > 0) {
+      customAmt.value = btbAdminEditNightlyFromStaySubtotal(booking.host_stay_subtotal, nights);
+    } else {
+      customAmt.value = '';
+    }
+    document.getElementById('btb-admin-booking-edit-title').textContent = `Edit room booking #${bookingId}`;
+  }
+
+  customRow.style.display = isManual ? 'block' : 'none';
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+  btbAdminRefreshEditPricingPreview();
+};
+
+function btbAdminInitBookingEditModal() {
+  const modal = document.getElementById('btb-admin-booking-edit-modal');
+  const form = document.getElementById('btb-admin-booking-edit-form');
+  if (!modal || !form || form.dataset.btbEditInit === '1') return;
+  form.dataset.btbEditInit = '1';
+
+  modal.querySelectorAll('[data-btb-close-booking-edit]').forEach((el) => {
+    el.addEventListener('click', btbAdminCloseBookingEditModal);
+  });
+
+  const customCb = document.getElementById('btb-edit-custom-price');
+  const customRow = document.getElementById('btb-edit-custom-price-row');
+  customCb?.addEventListener('change', async () => {
+    if (customRow) customRow.style.display = customCb.checked ? 'block' : 'none';
+    const kind = document.getElementById('btb-edit-booking-kind')?.value || 'room';
+    if (customCb.checked && kind !== 'massage') {
+      await btbAdminPrefillRoomNightlyFromCatalog();
+    }
+    btbAdminScheduleEditPricingPreview();
+  });
+
+  form.querySelectorAll('input, select, textarea').forEach((el) => {
+    el.addEventListener('change', btbAdminScheduleEditPricingPreview);
+    el.addEventListener('input', btbAdminScheduleEditPricingPreview);
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const kind = document.getElementById('btb-edit-booking-kind')?.value || 'room';
+    const bookingId = document.getElementById('btb-edit-booking-id')?.value;
+    const fd = new FormData(form);
+    fd.append('action', kind === 'massage' ? 'admin_update_massage_booking' : 'admin_update_room_booking');
+    fd.append('booking_id', bookingId);
+    fd.append('use_custom_stay_price', customCb?.checked ? '1' : '0');
+    if (customCb?.checked) {
+      if (kind === 'massage') {
+        fd.append('host_service_subtotal', document.getElementById('btb-edit-custom-amount')?.value || '0');
+      } else {
+        fd.append('host_stay_subtotal', String(btbAdminEditStaySubtotalFromNightlyInput()));
+      }
+    }
+    const saveBtn = document.getElementById('btb-edit-save-btn');
+    if (saveBtn) {
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+    }
+    try {
+      const res = await fetch('api.php', { method: 'POST', headers: getAdminAuthHeaders(), body: fd });
+      const json = await res.json();
+      if (!json.success) {
+        alert(json.error || 'Failed to save booking');
+        return;
+      }
+      if (json.data?.pricing) {
+        btbAdminRenderPricingPreview(json.data.pricing);
+      }
+      showStatus(json.data?.message || 'Booking updated');
+      btbAdminCloseBookingEditModal();
+      loadBookingsData();
+      if (typeof updateBookingsDashboardStats === 'function') {
+        updateBookingsDashboardStats();
+      }
+    } catch (err) {
+      alert(err?.message || 'Network error');
+    } finally {
+      if (saveBtn) {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save changes';
+      }
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  btbAdminInitBookingEditModal();
+});
 
 // Confirm booking
 async function confirmBooking(bookingId) {
@@ -15977,11 +16447,64 @@ async function viewBookingDetails(bookingId) {
   }
 }
 
+const ADMIN_MOBILE_FILTERS_MQ = window.matchMedia('(max-width: 900px)');
+
+function initAdminSectionCollapsibleFilters() {
+  document.querySelectorAll('.admin-section-filters').forEach((wrap) => {
+    const btn = wrap.querySelector('.admin-section-filters__toggle');
+    const panel = wrap.querySelector('.admin-section-filters__panel');
+    if (!btn || !panel) {
+      return;
+    }
+
+    function syncToViewport() {
+      if (ADMIN_MOBILE_FILTERS_MQ.matches) {
+        const open = btn.getAttribute('aria-expanded') === 'true';
+        panel.hidden = !open;
+        btn.hidden = false;
+      } else {
+        panel.hidden = false;
+        btn.hidden = true;
+      }
+    }
+
+    btn.addEventListener('click', () => {
+      const open = btn.getAttribute('aria-expanded') !== 'true';
+      btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      panel.hidden = !open;
+    });
+
+    if (typeof ADMIN_MOBILE_FILTERS_MQ.addEventListener === 'function') {
+      ADMIN_MOBILE_FILTERS_MQ.addEventListener('change', syncToViewport);
+    } else if (typeof ADMIN_MOBILE_FILTERS_MQ.addListener === 'function') {
+      ADMIN_MOBILE_FILTERS_MQ.addListener(syncToViewport);
+    }
+
+    syncToViewport();
+  });
+}
+
+function collapseAdminSectionFilters() {
+  if (!ADMIN_MOBILE_FILTERS_MQ.matches) {
+    return;
+  }
+  document.querySelectorAll('.admin-section-filters__toggle').forEach((btn) => {
+    btn.setAttribute('aria-expanded', 'false');
+    const panelId = btn.getAttribute('aria-controls');
+    const panel = panelId ? document.getElementById(panelId) : null;
+    if (panel) {
+      panel.hidden = true;
+    }
+  });
+}
+
 // Initialize bookings filters
 function initBookingsFilters() {
   const applyBtn = document.getElementById('bookings-filter-apply');
   const resetBtn = document.getElementById('bookings-filter-reset');
   const refreshBtn = document.getElementById('bookings-refresh');
+  const copyEmailsBtn = document.getElementById('bookings-copy-emails');
+  const copyPhonesBtn = document.getElementById('bookings-copy-phones');
   const dateFromInput = document.getElementById('bookings-filter-date-from');
   const dateToInput = document.getElementById('bookings-filter-date-to');
   
@@ -16034,7 +16557,7 @@ function initBookingsFilters() {
   
   if (resetBtn) {
     resetBtn.addEventListener('click', () => {
-      document.getElementById('bookings-filter-status').value = '';
+      document.getElementById('bookings-filter-status').value = 'active';
       document.getElementById('bookings-filter-room').value = '';
       
       // Reset Flatpickr dates
@@ -16062,6 +16585,16 @@ function initBookingsFilters() {
     refreshBtn.addEventListener('click', () => {
       loadBookingsData();
     });
+  }
+
+  if (copyEmailsBtn && !copyEmailsBtn.dataset.bound) {
+    copyEmailsBtn.dataset.bound = '1';
+    copyEmailsBtn.addEventListener('click', copyBookingsAllEmails);
+  }
+
+  if (copyPhonesBtn && !copyPhonesBtn.dataset.bound) {
+    copyPhonesBtn.dataset.bound = '1';
+    copyPhonesBtn.addEventListener('click', copyBookingsAllPhones);
   }
 }
 
@@ -16354,80 +16887,30 @@ function renderAdminCalendar(container, bookings, blockedDates, massageBookings 
       const date = new Date(monthDate.getFullYear(), monthDate.getMonth(), day);
       const dateString = formatDateString(date);
       
-      const dayCell = document.createElement('div');
-      dayCell.className = 'admin-calendar-day';
-      dayCell.textContent = day;
-      
       const todayDate = new Date();
       todayDate.setHours(0, 0, 0, 0);
       const cellDate = new Date(date);
       cellDate.setHours(0, 0, 0, 0);
       
-      // Checking the booking type for this date
-      const bookingInfo = getBookingInfoForDate(dateString, bookings);
-      const massageInfo = getMassageBookingInfoForDate(dateString, massageBookings);
       const isPast = cellDate < todayDate;
-      
-      // Logging for the first few days for diagnostic purposes
+
+      const dayCell = buildAdminCalendarDayCell(
+        day,
+        dateString,
+        bookings,
+        blockedDates,
+        massageBookings,
+        isPast
+      );
+
       if (day <= 3 && monthIndex === 0) {
         console.log(`Date ${dateString}:`, {
-          bookingInfo: bookingInfo ? { id: bookingInfo.id, checkin: bookingInfo.checkin_date, checkout: bookingInfo.checkout_date } : null,
-          massageInfo: massageInfo ? { id: massageInfo.id, date: massageInfo.massage_date } : null,
+          roomBookings: getRoomBookingsForDate(dateString, bookings).length,
+          wellnessBookings: getMassageBookingsForDate(dateString, massageBookings).length,
           isBlocked: blockedDates.includes(dateString)
         });
       }
-      
-      if (blockedDates.includes(dateString)) {
-        dayCell.classList.add('blocked');
-        if (isPast) {
-          dayCell.classList.add('past');
-        }
-      } else if (massageInfo) {
-        // Massage booking available - pink color
-        dayCell.classList.add('massage');
-        // If pending, add the pending class for visual distinction
-        if (massageInfo.status === 'pending') {
-          dayCell.classList.add('pending');
-        }
-        if (isPast) {
-          dayCell.classList.add('past');
-        }
-        dayCell.classList.add('has-booking');
-      } else if (bookingInfo) {
-        // There is a room reservation - we determine the type
-        if (bookingInfo.payment_status === 'paid') {
-          dayCell.classList.add('paid');
-          // For past dates with paid bookings - a duller green
-          if (isPast) {
-            dayCell.classList.add('past');
-          }
-        } else if (bookingInfo.status === 'confirmed') {
-          dayCell.classList.add('confirmed');
-          // For past dates with approved bookings - a duller yellow
-          if (isPast) {
-            dayCell.classList.add('past');
-          }
-        } else if (bookingInfo.status === 'pending') {
-          // Pending bookings - orange color
-          dayCell.classList.add('pending');
-          if (isPast) {
-            dayCell.classList.add('past');
-          }
-        } else {
-          dayCell.classList.add('booked');
-          if (isPast) {
-            dayCell.classList.add('past');
-          }
-        }
-        dayCell.classList.add('has-booking');
-      } else {
-        // No booking - available date
-        dayCell.classList.add('available');
-        if (isPast) {
-          dayCell.classList.add('past');
-        }
-      }
-      
+
       container.appendChild(dayCell);
     }
   });
@@ -17688,49 +18171,125 @@ function isDateBooked(dateString, bookings) {
   });
 }
 
-// Get booking information for a specific date
-function getBookingInfoForDate(dateString, bookings) {
-  if (!bookings || bookings.length === 0) {
-    return null;
+function getCalendarBookingStatusClass(booking) {
+  const payment = String(booking?.payment_status || '').toLowerCase();
+  const status = String(booking?.status || '').toLowerCase();
+  if (payment === 'paid') {
+    return 'status-paid';
   }
-  
-  // Using parseLocalDate to correctly process dates without a time zone
-  const checkDate = parseLocalDate(dateString);
-  if (!checkDate) {
-    console.warn('Invalid dateString in getBookingInfoForDate:', dateString);
-    return null;
+  if (status === 'pending') {
+    return 'status-pending';
   }
-  
-  for (const booking of bookings) {
-    if (!booking.checkin_date || !booking.checkout_date) {
-      continue;
-    }
-    
-    const checkin = parseLocalDate(booking.checkin_date);
-    const checkout = parseLocalDate(booking.checkout_date);
-    
-    if (!checkin || !checkout) {
-      console.warn('Invalid dates in booking:', booking.id, { checkin: booking.checkin_date, checkout: booking.checkout_date });
-      continue;
-    }
-    
-    // We check whether the date falls within the booking period (checkin <= date < checkout)
-    if (checkDate >= checkin && checkDate < checkout) {
-      return booking;
-    }
+  if (status === 'confirmed') {
+    return 'status-awaiting-payment';
   }
-  
-  return null;
+  if (status === 'checked_in' || status === 'completed') {
+    return payment === 'paid' ? 'status-paid' : 'status-awaiting-payment';
+  }
+  return 'status-pending';
 }
 
-function getMassageBookingInfoForDate(dateString, massageBookings) {
-  for (const booking of massageBookings) {
-    if (booking.massage_date === dateString) {
-      return booking;
+function appendAdminCalendarDayLayer(layersEl, layerType, statusClass) {
+  const layer = document.createElement('span');
+  layer.className = `admin-calendar-day__layer admin-calendar-day__layer--${layerType} admin-calendar-day__layer--${statusClass}`;
+  layer.setAttribute('aria-hidden', 'true');
+  layersEl.appendChild(layer);
+}
+
+function buildAdminCalendarDayCell(day, dateString, bookings, blockedDates, massageBookings, isPast) {
+  const dayCell = document.createElement('div');
+  dayCell.className = 'admin-calendar-day';
+
+  const numEl = document.createElement('span');
+  numEl.className = 'admin-calendar-day__num';
+  numEl.textContent = String(day);
+  dayCell.appendChild(numEl);
+
+  if (blockedDates.includes(dateString)) {
+    dayCell.classList.add('blocked');
+    if (isPast) {
+      dayCell.classList.add('past');
     }
+    return dayCell;
   }
-  
-  return null;
+
+  const roomBookings = getRoomBookingsForDate(dateString, bookings);
+  const wellnessBookings = getMassageBookingsForDate(dateString, massageBookings);
+  const hasLayers = roomBookings.length > 0 || wellnessBookings.length > 0;
+
+  if (!hasLayers) {
+    dayCell.classList.add(isPast ? 'past' : 'available');
+    return dayCell;
+  }
+
+  dayCell.classList.add('admin-calendar-day--has-layers');
+  if (roomBookings.length > 0 && wellnessBookings.length === 0) {
+    dayCell.classList.add('admin-calendar-day--booking-room');
+  } else if (wellnessBookings.length > 0 && roomBookings.length === 0) {
+    dayCell.classList.add('admin-calendar-day--booking-wellness');
+  } else {
+    dayCell.classList.add('admin-calendar-day--booking-mixed');
+  }
+  if (isPast) {
+    dayCell.classList.add('past');
+  }
+
+  const layersEl = document.createElement('div');
+  layersEl.className = 'admin-calendar-day__layers';
+  const layerCount = roomBookings.length + wellnessBookings.length;
+  layersEl.setAttribute('data-layer-count', String(layerCount));
+
+  roomBookings.forEach((booking) => {
+    appendAdminCalendarDayLayer(layersEl, 'room', getCalendarBookingStatusClass(booking));
+  });
+  wellnessBookings.forEach((booking) => {
+    appendAdminCalendarDayLayer(layersEl, 'wellness', getCalendarBookingStatusClass(booking));
+  });
+
+  dayCell.appendChild(layersEl);
+  return dayCell;
+}
+
+function getRoomBookingsForDate(dateString, bookings) {
+  if (!bookings || bookings.length === 0) {
+    return [];
+  }
+
+  const checkDate = parseLocalDate(dateString);
+  if (!checkDate) {
+    return [];
+  }
+
+  return bookings.filter((booking) => {
+    if (!booking.checkin_date || !booking.checkout_date) {
+      return false;
+    }
+    const checkin = parseLocalDate(booking.checkin_date);
+    const checkout = parseLocalDate(booking.checkout_date);
+    if (!checkin || !checkout) {
+      return false;
+    }
+    return checkDate >= checkin && checkDate < checkout;
+  });
+}
+
+function getMassageBookingsForDate(dateString, massageBookings) {
+  if (!massageBookings || massageBookings.length === 0) {
+    return [];
+  }
+  return massageBookings.filter((booking) => booking.massage_date === dateString);
+}
+
+/** @deprecated use getRoomBookingsForDate — returns first match only */
+function getBookingInfoForDate(dateString, bookings) {
+  const list = getRoomBookingsForDate(dateString, bookings);
+  return list.length ? list[0] : null;
+}
+
+/** @deprecated use getMassageBookingsForDate — returns first match only */
+function getMassageBookingInfoForDate(dateString, massageBookings) {
+  const list = getMassageBookingsForDate(dateString, massageBookings);
+  return list.length ? list[0] : null;
 }
 
 // Account Management functions

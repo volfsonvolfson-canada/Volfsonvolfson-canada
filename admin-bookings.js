@@ -128,6 +128,22 @@ async function loadBookingsData() {
   }
 }
 
+/** DB enum → readable English label for badges (CSS class stays raw). */
+function formatBookingStatusBadgeLabel(raw) {
+  const key = String(raw || '').toLowerCase();
+  const map = {
+    pending: 'Pending',
+    confirmed: 'Confirmed',
+    cancelled: 'Cancelled',
+    checked_in: 'Checked in',
+    completed: 'Completed',
+    paid: 'Paid',
+    refunded: 'Refunded',
+    failed: 'Failed',
+  };
+  return map[key] || key.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()) || '—';
+}
+
 // Render bookings list
 function renderBookingsList(bookings) {
   const listEl = document.getElementById('bookings-list');
@@ -147,8 +163,8 @@ function renderBookingsList(bookings) {
         <div>
           <h3 style="margin: 0 0 8px 0;">Booking #${booking.id || '—'}</h3>
           <div style="display: flex; align-items: center;">
-            <span class="booking-status-badge ${statusClass}">${statusClass}</span>
-            <span class="payment-status-badge ${paymentStatusClass}">${paymentStatusClass}</span>
+            <span class="booking-status-badge ${statusClass}">${formatBookingStatusBadgeLabel(statusClass)}</span>
+            <span class="payment-status-badge ${paymentStatusClass}">${formatBookingStatusBadgeLabel(paymentStatusClass)}</span>
           </div>
         </div>
         <div style="text-align: right;">

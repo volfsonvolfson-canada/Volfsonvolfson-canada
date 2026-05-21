@@ -902,6 +902,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   </style>
 </head>
 <body>
+<?php require_once __DIR__ . '/gtm-body-noscript.php'; ?>
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="index.html">
@@ -1087,36 +1088,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
     </section>
   </main>
 
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div>
-        <h4>Contact</h4>
-        <p id="footer-contact-address">British Columbia, Canada</p>
-        <p id="footer-contact-phone">Phone: +1 (555) 123‑4567</p>
-        <p id="footer-contact-email">Email: hello@backtobase.example</p>
-      </div>
-      <div>
-        <h4>Navigation</h4>
-        <ul class="footer-nav">
-          <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.php">Wellness</a></li>
-          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
-          <li><a href="explore.php">Explore</a></li>
-          <li><a href="special.php">Specials</a></li>
-          <li><a href="about.php">About us</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Quiet hours</h4>
-        <p>22:00 — 07:00</p>
-        <ul class="footer-nav footer-nav--legal">
-          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
-          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="container copyright">© <span id="year"></span> Back to Base</div>
-  </footer>
+<?php require __DIR__ . '/site_footer.php'; ?>
 
   <script src="utils.js?v=26"></script>
   <script src="script.js?v=26"></script>

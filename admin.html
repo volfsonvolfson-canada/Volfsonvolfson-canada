@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PZP7FK6V');</script>
+  <!-- End Google Tag Manager -->
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="any">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex, nofollow">
   <link rel="canonical" href="https://backtobase.ca/admin.html">
@@ -11,7 +19,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="common.css">
   <link rel="stylesheet" href="styles.css">
-  <link rel="stylesheet" href="admin.css?v=4">
+  <link rel="stylesheet" href="admin.css?v=13">
   <!-- Flatpickr for date filters -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <style>
@@ -325,107 +333,132 @@
       }
       
       .admin-calendar-day {
+        position: relative;
         aspect-ratio: 1;
         display: flex;
         flex-direction: column;
-        align-items: center;
-        justify-content: center;
         border-radius: 4px;
-        font-size: 13px;
-        font-weight: 500;
-        padding: 6px;
         border: 1px solid #e2e8f0;
-        background: white;
+        background: #ffffff;
+        padding: 0;
+        overflow: hidden;
         cursor: pointer;
-        transition: all 0.2s;
+        transition: border-color 0.2s, box-shadow 0.2s;
         min-height: 40px;
         max-height: 48px;
         margin: 0;
+        box-sizing: border-box;
       }
-      
-      .admin-calendar-day:hover {
-        background: #f7fafc;
+
+      .admin-calendar-day__num {
+        position: absolute;
+        top: 2px;
+        left: 0;
+        right: 0;
+        z-index: 2;
+        text-align: center;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1.2;
+        color: #2d3748;
+        pointer-events: none;
       }
-      
-      .admin-calendar-day.past {
-        background: #e2e8f0;
-        color: #718096;
-        cursor: not-allowed;
+
+      .admin-calendar-day--has-layers .admin-calendar-day__layers {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        flex-direction: column;
+        width: 100%;
+        margin-top: 0;
+        min-height: 0;
       }
-      
+
+      .admin-calendar-day--has-layers .admin-calendar-day__layer {
+        flex: 1 1 0;
+        min-height: 0;
+        width: 100%;
+        box-shadow: inset 0 -3px 0 0 var(--layer-status-color, transparent);
+      }
+
+      .admin-calendar-day--has-layers .admin-calendar-day__layer:only-child {
+        flex: 1 1 100%;
+      }
+
+      .admin-calendar-day--has-layers .admin-calendar-day__layer + .admin-calendar-day__layer {
+        border-top: 1px solid rgba(15, 23, 42, 0.14);
+      }
+
+      .admin-calendar-day--has-layers .admin-calendar-day__num {
+        text-shadow: none;
+      }
+
+      .admin-calendar-day--booking-room {
+        background: #dbeafe;
+      }
+
+      .admin-calendar-day--booking-wellness {
+        background: #fce7f3;
+      }
+
+      .admin-calendar-day--booking-mixed {
+        background: #dbeafe;
+      }
+
+      .admin-calendar-day__layer--room {
+        background: #dbeafe;
+      }
+
+      .admin-calendar-day__layer--wellness {
+        background: #fce7f3;
+      }
+
+      .admin-calendar-day__layer--status-pending {
+        --layer-status-color: #dc2626;
+      }
+
+      .admin-calendar-day__layer--status-awaiting-payment {
+        --layer-status-color: #ca8a04;
+      }
+
+      .admin-calendar-day__layer--status-paid {
+        --layer-status-color: #16a34a;
+      }
+
+      .admin-calendar-day:hover:not(.blocked) {
+        border-color: #94a3b8;
+        box-shadow: 0 0 0 1px rgba(148, 163, 184, 0.35);
+      }
+
       .admin-calendar-day.available {
-        background: white;
+        background: #ffffff;
         color: #2d3748;
       }
-      
-      .admin-calendar-day.booked {
-        background: #fed7d7;
-        color: #e53e3e;
-      }
-      
-      .admin-calendar-day.pending {
-        background: #fed7aa;
-        color: #9a3412;
-      }
-      
-      .admin-calendar-day.pending.past {
-        background: #fed7aa;
-        color: #9a3412;
-        opacity: 0.6;
-      }
-      
-      .admin-calendar-day.confirmed {
-        background: #fef3c7;
-        color: #92400e;
-      }
-      
-      .admin-calendar-day.confirmed.past {
-        background: #fef3c7;
-        color: #92400e;
-        opacity: 0.6;
-      }
-      
-      .admin-calendar-day.paid {
-        background: #86efac;
-        color: #166534;
-      }
-      
-      .admin-calendar-day.paid.past {
-        background: #bbf7d0;
-        color: #15803d;
-        opacity: 0.6;
-      }
-      
-      .admin-calendar-day.massage.pending {
-        background: #fbcfe8;
-        color: #831843;
-      }
-      
-      .admin-calendar-day.massage.pending.past {
-        background: #fbcfe8;
-        color: #831843;
-        opacity: 0.6;
-      }
-      
-      .admin-calendar-day.available.past {
+
+      .admin-calendar-day.past:not(.admin-calendar-day--has-layers):not(.blocked) {
         background: #e2e8f0;
         color: #718096;
       }
-      
+
+      .admin-calendar-day.past .admin-calendar-day__num {
+        color: #718096;
+      }
+
+      .admin-calendar-day--has-layers.past {
+        opacity: 0.88;
+      }
+
       .admin-calendar-day.blocked {
         background: #4a5568;
         color: #ffffff;
+        cursor: not-allowed;
       }
-      
-      .admin-calendar-day.massage {
-        background: #fce7f3;
-        color: #9f1239;
-      }
-      
-      .admin-calendar-day.massage.past {
-        background: #fce7f3;
-        color: #9f1239;
-        opacity: 0.6;
+
+      .admin-calendar-day.blocked .admin-calendar-day__num {
+        color: #ffffff;
       }
       
       .calendar-room-tabs {
@@ -460,9 +493,107 @@
         background: #f7fafc;
       }
       
-      .admin-calendar-day.has-booking {
+      .admin-calendar-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: 12px 20px;
+        margin-bottom: 16px;
+        padding: 12px 16px;
+        background: #ffffff;
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+      }
+
+      .admin-calendar-legend__group {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px 14px;
+      }
+
+      .admin-calendar-legend__group-title {
+        width: 100%;
+        margin: 0;
+        font-size: 12px;
         font-weight: 600;
-        border: 2px solid #4299e1;
+        color: #64748b;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+      }
+
+      .admin-calendar-legend__item {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 13px;
+        color: #4a5568;
+        white-space: nowrap;
+      }
+
+      .admin-calendar-legend__swatch {
+        width: 22px;
+        height: 22px;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+        flex-shrink: 0;
+        box-sizing: border-box;
+      }
+
+      .admin-calendar-legend__swatch--available {
+        background: #ffffff;
+      }
+
+      .admin-calendar-legend__swatch--past {
+        background: #e2e8f0;
+      }
+
+      .admin-calendar-legend__swatch--blocked {
+        background: #4a5568;
+        border-color: #4a5568;
+      }
+
+      .admin-calendar-legend__swatch--room {
+        background: #dbeafe;
+      }
+
+      .admin-calendar-legend__swatch--wellness {
+        background: #fce7f3;
+      }
+
+      .admin-calendar-legend__status-line {
+        display: block;
+        width: 32px;
+        height: 18px;
+        border-radius: 4px;
+        border: 1px solid #e2e8f0;
+        background: #f8fafc;
+        flex-shrink: 0;
+        position: relative;
+        overflow: hidden;
+        box-sizing: border-box;
+      }
+
+      .admin-calendar-legend__status-line::after {
+        content: '';
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 4px;
+        background: var(--legend-status-color, #94a3b8);
+      }
+
+      .admin-calendar-legend__status-line--pending {
+        --legend-status-color: #dc2626;
+      }
+
+      .admin-calendar-legend__status-line--awaiting-payment {
+        --legend-status-color: #ca8a04;
+      }
+
+      .admin-calendar-legend__status-line--paid {
+        --legend-status-color: #16a34a;
       }
       
       .blocked-date-item {
@@ -481,43 +612,60 @@
         margin-bottom: 24px;
       }
       
-      .admin-nav-tabs-primary {
-        display: flex;
-        gap: 8px;
+      .admin-nav-stack {
         margin-bottom: 16px;
-        border-bottom: 3px solid #e2e8f0;
-        flex-wrap: wrap;
       }
       
       .admin-nav-tab-primary {
-        padding: 14px 28px;
-        background: none;
-        border: none;
-        border-bottom: 4px solid transparent;
+        padding: 14px 20px;
+        background: #ffffff;
+        border: 1px solid #d8e0ea;
+        border-bottom: 3px solid transparent;
+        border-radius: 10px;
         cursor: pointer;
         font-weight: 700;
-        font-size: 16px;
-        color: #4a5568;
-        transition: all 0.2s;
+        font-size: 15px;
+        color: #1e293b;
+        transition: background 0.2s, border-color 0.2s, box-shadow 0.2s, color 0.2s;
         position: relative;
+        box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
       }
       
       .admin-nav-tab-primary:hover {
-        color: #2d3748;
-        background: #f7fafc;
+        color: #0f172a;
+        background: #fafbfc;
+        border-color: #c5d0de;
+        box-shadow: 0 3px 10px rgba(15, 23, 42, 0.1);
       }
       
       .admin-nav-tab-primary.active {
-        color: #667eea;
-        border-bottom-color: #667eea;
-        background: #f7fafc;
+        color: #4f46e5;
+        border-bottom-color: #6366f1;
+        background: #ffffff;
+        border-color: #c7d2fe;
+        box-shadow: 0 4px 14px rgba(99, 102, 241, 0.18);
+        position: relative;
+        z-index: 2;
       }
       
-      .admin-nav-tabs-secondary {
+      .admin-nav-tabs-secondary:not(.hidden) {
         display: flex;
         gap: 8px;
         margin-bottom: 16px;
-        border-bottom: 2px solid #e2e8f0;
+        flex-wrap: wrap;
+        background: #f1f5f9;
+        border: 1px solid #dde4ec;
+        border-top: none;
+        border-radius: 0 0 10px 10px;
+        padding: 10px 12px 12px;
+        box-shadow: inset 0 2px 5px rgba(15, 23, 42, 0.04);
+        position: relative;
+        z-index: 0;
+      }
+
+      .admin-nav-tabs-secondary {
+        display: flex;
+        gap: 8px;
         flex-wrap: wrap;
       }
       
@@ -627,26 +775,30 @@
       }
       
       .admin-nav-tab-secondary {
-        padding: 10px 20px;
-        background: none;
-        border: none;
-        border-bottom: 3px solid transparent;
+        padding: 9px 14px;
+        background: transparent;
+        border: 1px solid #d5dee8;
+        border-radius: 8px;
         cursor: pointer;
-        font-weight: 600;
-        font-size: 14px;
-        color: #718096;
-        transition: all 0.2s;
+        font-weight: 500;
+        font-size: 13px;
+        color: #64748b;
+        transition: background 0.2s, border-color 0.2s, color 0.2s;
+        box-shadow: none;
       }
       
       .admin-nav-tab-secondary:hover {
-        color: #4a5568;
-        background: #edf2f7;
+        color: #475569;
+        background: rgba(255, 255, 255, 0.65);
+        border-color: #c5d0de;
       }
       
       .admin-nav-tab-secondary.active {
-        color: #667eea;
-        border-bottom-color: #667eea;
-        background: #f7fafc;
+        color: #4f46e5;
+        background: #ffffff;
+        border-color: #a5b4fc;
+        box-shadow: none;
+        font-weight: 600;
       }
       
       .admin-nav-tab-secondary--stacked {
@@ -666,6 +818,218 @@
       
       .admin-nav-tabs-secondary.hidden {
         display: none;
+      }
+
+      /* Desktop: primary row + shared secondary row */
+      @media (min-width: 901px) {
+        .admin-nav-stack {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          grid-template-rows: auto auto;
+          column-gap: 8px;
+          border-bottom: 3px solid #e2e8f0;
+        }
+
+        .admin-nav-group {
+          display: contents;
+        }
+
+        .admin-nav-tab-primary[data-primary="bookings"] { grid-column: 1; grid-row: 1; }
+        .admin-nav-tab-primary[data-primary="chat"] { grid-column: 2; grid-row: 1; }
+        .admin-nav-tab-primary[data-primary="accounts"] { grid-column: 3; grid-row: 1; }
+        .admin-nav-tab-primary[data-primary="content"] { grid-column: 4; grid-row: 1; }
+
+        .admin-nav-tabs-secondary {
+          grid-column: 1 / -1;
+          grid-row: 2;
+        }
+
+        .admin-nav-tabs-secondary:not(.hidden) {
+          margin-bottom: 16px;
+          margin-top: 4px;
+          border: 1px solid #dde4ec;
+          border-radius: 0 0 10px 10px;
+          border-top: 1px solid #e8edf3;
+          padding: 10px 12px 12px;
+          box-shadow: inset 0 2px 6px rgba(15, 23, 42, 0.04);
+        }
+
+        .admin-nav-tab-primary.active {
+          border-radius: 10px 10px 0 0;
+          margin-bottom: 0;
+        }
+
+        .admin-nav-tabs-secondary.hidden {
+          display: none !important;
+        }
+
+        .admin-nav-stack {
+          border-bottom: none;
+          padding-bottom: 4px;
+        }
+
+        .admin-nav-tab-primary.active {
+          border-bottom-color: #667eea;
+        }
+      }
+
+      /* Mobile: four primary buttons; secondary opens under the active one */
+      @media (max-width: 900px) {
+        .admin-nav-stack {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          border: none;
+          border-radius: 0;
+          overflow: visible;
+          background: transparent;
+          padding: 0;
+        }
+
+        .admin-nav-group {
+          display: flex;
+          flex-direction: column;
+          border: 1px solid #d8e0ea;
+          border-radius: 12px;
+          overflow: hidden;
+          background: #ffffff;
+          box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
+        }
+
+        .admin-nav-group:last-child {
+          border-bottom: 1px solid #d8e0ea;
+        }
+
+        .admin-nav-group--active {
+          border-color: #c7d2fe;
+          box-shadow: 0 4px 14px rgba(99, 102, 241, 0.14);
+        }
+
+        .admin-nav-tab-primary {
+          width: 100%;
+          text-align: left;
+          padding: 14px 16px;
+          font-size: 15px;
+          line-height: 1.35;
+          border: none;
+          border-radius: 0;
+          border-bottom: 1px solid #e8edf3;
+          box-sizing: border-box;
+          box-shadow: none;
+        }
+
+        .admin-nav-group--active > .admin-nav-tab-primary {
+          color: #4f46e5;
+          background: #ffffff;
+          border-bottom-color: #e8edf3;
+          box-shadow: inset 4px 0 0 #6366f1;
+        }
+
+        .admin-nav-group:not(.admin-nav-group--active) > .admin-nav-tab-primary {
+          color: #1e293b;
+          background: #ffffff;
+        }
+
+        .admin-nav-tabs-secondary:not(.hidden) {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 6px;
+          margin: 0;
+          padding: 8px 10px 10px;
+          border: none;
+          border-radius: 0;
+          background: #f4f6f9;
+          box-shadow: inset 0 2px 5px rgba(15, 23, 42, 0.04);
+        }
+
+        .admin-nav-tabs-secondary.hidden {
+          display: none !important;
+        }
+
+        .admin-nav-tabs-secondary[data-primary="content"] {
+          display: none;
+        }
+
+        .admin-nav-tabs-secondary[data-primary="content"]:not(.hidden) {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .admin-nav-tabs-secondary[data-primary="content"] .admin-nav-tab-secondary {
+          grid-column: auto !important;
+          grid-row: auto !important;
+        }
+
+        .admin-nav-tab-secondary {
+          width: auto;
+          min-width: 0;
+          text-align: left;
+          margin: 0;
+          padding: 8px 10px;
+          font-size: 12px;
+          font-weight: 500;
+          box-sizing: border-box;
+          background: transparent;
+          border-color: #d5dee8;
+        }
+
+        .admin-nav-tab-secondary.active {
+          background: #ffffff;
+          font-weight: 600;
+        }
+
+        .admin-nav-tab-secondary--stacked {
+          text-align: left;
+        }
+      }
+
+      /* Mobile: collapsible filters on Bookings / Account list sections */
+      .admin-section-filters {
+        margin-bottom: 0;
+      }
+
+      .admin-section-filters__toggle {
+        display: none;
+        margin: 0 0 10px;
+        padding: 0;
+        border: none;
+        background: none;
+        color: #667eea;
+        font-size: 14px;
+        font-weight: 600;
+        font-family: inherit;
+        text-decoration: underline;
+        text-underline-offset: 3px;
+        cursor: pointer;
+      }
+
+      .admin-section-filters__toggle:hover {
+        color: #5a67d8;
+      }
+
+      .admin-section-filters__toggle[hidden] {
+        display: none !important;
+      }
+
+      @media (max-width: 900px) {
+        .admin-section-filters__toggle {
+          display: inline-block;
+        }
+
+        .admin-section-filters__panel[hidden] {
+          display: none !important;
+        }
+
+        .admin-section-filters__panel:not([hidden]) {
+          margin-bottom: 16px;
+        }
+      }
+
+      @media (min-width: 901px) {
+        .admin-section-filters__panel,
+        .admin-section-filters__panel[hidden] {
+          display: block !important;
+        }
       }
       
       /* Account Management styles */
@@ -1066,6 +1430,10 @@
     </style>
   </head>
 <body class="admin-body admin-uses-global-save-banner">
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PZP7FK6V"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
   <div
     id="admin-save-banner"
     class="admin-save-banner"
@@ -1092,63 +1460,56 @@
 
     <!-- Two-level navigation -->
     <nav class="admin-nav-container">
-      <!-- Primary level tabs (main sections) -->
-      <div class="admin-nav-tabs-primary">
-        <button class="admin-nav-tab-primary active" data-primary="bookings">Bookings Management</button>
-        <button type="button" class="admin-nav-tab-primary" data-primary="chat">Chat management</button>
-        <button class="admin-nav-tab-primary" data-primary="accounts">Account Management</button>
-        <button class="admin-nav-tab-primary" data-primary="content">Content Management</button>
-      </div>
-      
-      <!-- Secondary level tabs (subsections) - Bookings Management -->
-      <div class="admin-nav-tabs-secondary" data-primary="bookings">
-        <button class="admin-nav-tab-secondary active" data-section="bookings-dashboard">Bookings Management - Dashboard</button>
-        <button class="admin-nav-tab-secondary" data-section="bookings">Bookings Management</button>
-        <button class="admin-nav-tab-secondary" data-section="calendar">Calendar Management</button>
-      </div>
+      <div class="admin-nav-stack">
+        <div class="admin-nav-group admin-nav-group--active" data-primary="bookings">
+          <button type="button" class="admin-nav-tab-primary active" data-primary="bookings">Bookings Management</button>
+          <div class="admin-nav-tabs-secondary" data-primary="bookings">
+            <button type="button" class="admin-nav-tab-secondary active" data-section="bookings">Bookings</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="calendar">Calendar</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="bookings-dashboard">Dashboard</button>
+          </div>
+        </div>
 
-      <!-- Secondary level tabs — Chat management (single view) -->
-      <div class="admin-nav-tabs-secondary hidden" data-primary="chat">
-        <button class="admin-nav-tab-secondary active" data-section="chat-management">Chat management</button>
-      </div>
-      
-      <!-- Secondary level tabs (subsections) - Content Management -->
-      <div class="admin-nav-tabs-secondary hidden" data-primary="content">
-        <!-- Nav row 1 -->
-        <button class="admin-nav-tab-secondary active" data-section="homepage">Main page</button>
-        <button class="admin-nav-tab-secondary" data-section="homepage-rooms">Rooms Cards</button>
-        <button class="admin-nav-tab-secondary" data-section="floorplan">Common areas</button>
-        <button class="admin-nav-tab-secondary" data-section="guest-reviews">Guest reviews</button>
-        <button class="admin-nav-tab-secondary admin-nav-tab-secondary--stacked" data-section="wellness-experiences">Wellness<span class="admin-nav-tab-sub">(a short description)</span></button>
-        <!-- Nav row 2: room content (one line) -->
-        <button class="admin-nav-tab-secondary" data-section="room-basement">Loki Suite</button>
-        <button class="admin-nav-tab-secondary" data-section="room-ground-queen">The Nouk</button>
-        <button class="admin-nav-tab-secondary" data-section="room-ground-twin">Vrienden</button>
-        <button class="admin-nav-tab-secondary" data-section="room-second">Kelder</button>
-        <!-- Nav row 3 -->
-        <button class="admin-nav-tab-secondary" data-section="massage">Wellness Experiences (page)</button>
-        <button class="admin-nav-tab-secondary" data-section="retreat-workshop">Retreats and Workshops</button>
-        <button class="admin-nav-tab-secondary" data-section="explore">Explore</button>
-        <button class="admin-nav-tab-secondary" data-section="special">Specials</button>
-        <button class="admin-nav-tab-secondary" data-section="about">About us</button>
-        <!-- Nav row 4 -->
-        <button class="admin-nav-tab-secondary" data-section="contact">Contact Information</button>
-        <button class="admin-nav-tab-secondary" data-section="booking-success-banner">Banners</button>
-        <button class="admin-nav-tab-secondary" data-section="my-bookings-pricing">My Bookings</button>
-        <button class="admin-nav-tab-secondary" data-section="email-templates">Emails</button>
-      </div>
-      
-      <!-- Secondary level tabs (subsections) - Account Management -->
-      <div class="admin-nav-tabs-secondary hidden" data-primary="accounts">
-        <button class="admin-nav-tab-secondary active" data-section="accounts-dashboard">Account Management - Dashboard</button>
-        <button class="admin-nav-tab-secondary" data-section="accounts">Account Management</button>
+        <div class="admin-nav-group admin-nav-group--direct" data-primary="chat">
+          <button type="button" class="admin-nav-tab-primary" data-primary="chat" data-section="chat-management">Chat</button>
+        </div>
+
+        <div class="admin-nav-group" data-primary="accounts">
+          <button type="button" class="admin-nav-tab-primary" data-primary="accounts">Account Management</button>
+          <div class="admin-nav-tabs-secondary hidden" data-primary="accounts">
+            <button type="button" class="admin-nav-tab-secondary active" data-section="accounts">Account</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="accounts-dashboard">Dashboard</button>
+          </div>
+        </div>
+
+        <div class="admin-nav-group" data-primary="content">
+          <button type="button" class="admin-nav-tab-primary" data-primary="content">Content Management</button>
+          <div class="admin-nav-tabs-secondary hidden" data-primary="content">
+            <button type="button" class="admin-nav-tab-secondary active" data-section="homepage">Main page</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="homepage-rooms">Rooms Cards</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="floorplan">Common areas</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="guest-reviews">Guest reviews</button>
+            <button type="button" class="admin-nav-tab-secondary admin-nav-tab-secondary--stacked" data-section="wellness-experiences">Wellness<span class="admin-nav-tab-sub">(a short description)</span></button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="room-basement">Loki Suite</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="room-ground-queen">The Nouk</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="room-ground-twin">Vrienden</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="room-second">Kelder</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="massage">Wellness Experiences (page)</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="retreat-workshop">Retreats and Workshops</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="explore">Explore</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="special">Specials</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="about">About us</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="contact">Contact Information</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="booking-success-banner">Banners</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="my-bookings-pricing">My Bookings</button>
+            <button type="button" class="admin-nav-tab-secondary" data-section="email-templates">Emails</button>
+          </div>
+        </div>
       </div>
     </nav>
 
     <!-- Bookings Management - Dashboard Section -->
-    <section id="bookings-dashboard-section" class="admin-section">
-      <h2>Bookings Management - Dashboard</h2>
-      
+    <section id="bookings-dashboard-section" class="admin-section" style="display: none;" aria-label="Dashboard">
       <!-- Date Filters -->
       <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <div class="admin-form-row">
@@ -1228,9 +1589,7 @@
     </section>
 
     <!-- Account Management - Dashboard Section -->
-    <section id="accounts-dashboard-section" class="admin-section" style="display: none;">
-      <h2>Account Management - Dashboard</h2>
-      
+    <section id="accounts-dashboard-section" class="admin-section" style="display: none;" aria-label="Dashboard">
       <!-- Date Filters -->
       <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <div class="admin-form-row">
@@ -1269,26 +1628,28 @@
     </section>
 
     <!-- Bookings Section -->
-    <section id="bookings-section" class="admin-section" style="display: none;">
-      <h2>Bookings Management</h2>
-      
-      <!-- Filters -->
+    <section id="bookings-section" class="admin-section" aria-label="Bookings">
+      <div class="admin-section-filters">
+        <button type="button" class="admin-section-filters__toggle" aria-expanded="false" aria-controls="bookings-filters-panel">Filter</button>
+        <div class="admin-section-filters__panel" id="bookings-filters-panel" hidden>
       <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <div class="admin-form-row">
           <div class="admin-form-group">
-            <label for="bookings-filter-status">Bookings Management — status</label>
+            <label for="bookings-filter-status">status</label>
             <select id="bookings-filter-status">
-              <option value="">All Statuses</option>
-              <option value="pending">Awaiting Confirmation</option>
-              <option value="confirmed">Awaiting Payment</option>
+              <option value="active" selected>Active</option>
+              <option value="">All statuses</option>
+              <option value="pending">Awaiting confirmation</option>
+              <option value="confirmed">Confirmed</option>
               <option value="paid">Paid</option>
-              <option value="checked_in">Awaiting Check-in</option>
+              <option value="checked_in">Checked in</option>
               <option value="completed">Completed</option>
-              <option value="cancelled">Rejected</option>
+              <option value="cancelled">Cancelled</option>
+              <option value="inactive">Inactive</option>
             </select>
           </div>
           <div class="admin-form-group">
-            <label for="bookings-filter-room">Bookings Management — room or service</label>
+            <label for="bookings-filter-room">room or service</label>
             <select id="bookings-filter-room">
               <option value="">All Rooms & Services</option>
               <option value="Loki Suite">Loki Suite</option>
@@ -1299,18 +1660,22 @@
             </select>
           </div>
           <div class="admin-form-group">
-            <label for="bookings-filter-date-from">Bookings Management — date from</label>
+            <label for="bookings-filter-date-from">date from</label>
             <input type="date" id="bookings-filter-date-from">
           </div>
           <div class="admin-form-group">
-            <label for="bookings-filter-date-to">Bookings Management — date to</label>
+            <label for="bookings-filter-date-to">date to</label>
             <input type="date" id="bookings-filter-date-to">
           </div>
         </div>
         <div class="admin-form-actions" style="margin-top: 16px;">
-          <button id="bookings-filter-apply" class="admin-btn admin-btn-primary">Bookings Management — apply filters</button>
-          <button id="bookings-filter-reset" class="admin-btn admin-btn-secondary">Bookings Management — reset filters</button>
-          <button id="bookings-refresh" class="admin-btn admin-btn-secondary">Bookings Management — refresh</button>
+          <button id="bookings-filter-apply" class="admin-btn admin-btn-primary">apply filters</button>
+          <button id="bookings-filter-reset" class="admin-btn admin-btn-secondary">reset filters</button>
+          <button id="bookings-refresh" class="admin-btn admin-btn-secondary">refresh</button>
+          <button id="bookings-copy-emails" class="admin-btn admin-btn-secondary">copy all emails</button>
+          <button id="bookings-copy-phones" class="admin-btn admin-btn-secondary">copy all phones</button>
+        </div>
+      </div>
         </div>
       </div>
 
@@ -1327,9 +1692,52 @@
     </section>
 
     <!-- Calendar Management Section -->
-    <section id="calendar-section" class="admin-section" style="display: none;">
-      <h2>Calendar Management</h2>
-      
+    <section id="calendar-section" class="admin-section" style="display: none;" aria-label="Calendar">
+
+      <div class="admin-calendar-legend" aria-label="Calendar color legend">
+        <div class="admin-calendar-legend__group">
+          <p class="admin-calendar-legend__group-title">Day</p>
+          <div class="admin-calendar-legend__item">
+            <span class="admin-calendar-legend__swatch admin-calendar-legend__swatch--available" aria-hidden="true"></span>
+            <span>Available</span>
+          </div>
+          <div class="admin-calendar-legend__item">
+            <span class="admin-calendar-legend__swatch admin-calendar-legend__swatch--past" aria-hidden="true"></span>
+            <span>Past (no booking)</span>
+          </div>
+          <div class="admin-calendar-legend__item">
+            <span class="admin-calendar-legend__swatch admin-calendar-legend__swatch--blocked" aria-hidden="true"></span>
+            <span>Blocked</span>
+          </div>
+        </div>
+        <div class="admin-calendar-legend__group">
+          <p class="admin-calendar-legend__group-title">Booking type</p>
+          <div class="admin-calendar-legend__item">
+            <span class="admin-calendar-legend__swatch admin-calendar-legend__swatch--room" aria-hidden="true"></span>
+            <span>Room booking</span>
+          </div>
+          <div class="admin-calendar-legend__item">
+            <span class="admin-calendar-legend__swatch admin-calendar-legend__swatch--wellness" aria-hidden="true"></span>
+            <span>Wellness booking</span>
+          </div>
+        </div>
+        <div class="admin-calendar-legend__group">
+          <p class="admin-calendar-legend__group-title">Status (line at bottom)</p>
+          <div class="admin-calendar-legend__item">
+            <span class="admin-calendar-legend__status-line admin-calendar-legend__status-line--pending" aria-hidden="true"></span>
+            <span>Awaiting host confirmation</span>
+          </div>
+          <div class="admin-calendar-legend__item">
+            <span class="admin-calendar-legend__status-line admin-calendar-legend__status-line--awaiting-payment" aria-hidden="true"></span>
+            <span>Awaiting guest payment</span>
+          </div>
+          <div class="admin-calendar-legend__item">
+            <span class="admin-calendar-legend__status-line admin-calendar-legend__status-line--paid" aria-hidden="true"></span>
+            <span>Paid</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Room Tabs for Calendar -->
       <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <div class="calendar-room-tabs" style="display: flex; gap: 6px; margin-bottom: 16px; border-bottom: 2px solid #e2e8f0; flex-wrap: nowrap; overflow-x: auto;">
@@ -2769,6 +3177,18 @@ We'll be happy to help you plan your stay and answer any questions!</div>
           <label for="booking-success-auth-account-url" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">«My account» URL</label>
           <input type="text" id="booking-success-auth-account-url" class="retreat-text-input" autocomplete="off" maxlength="1024" placeholder="dashboard.html or /path" style="width: 100%; max-width: 40rem;" />
         </div>
+        <h3 style="margin: 28px 0 8px; color: #1e293b; font-size: 1.15rem; line-height: 1.35;">Check-in conditions (room pages)</h3>
+        <p style="margin: 0 0 20px; max-width: 52rem; font-size: 0.9rem; line-height: 1.55; color: #475569;">
+          Popup opened from the <strong>Check-in conditions</strong> link under the booking form on each room page.
+        </p>
+        <div class="preview-block" style="padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px; max-width: 52rem;">
+          <label for="checkin-conditions-trigger-label" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Link text (under booking form)</label>
+          <input type="text" id="checkin-conditions-trigger-label" class="retreat-text-input" autocomplete="off" maxlength="255" style="width: 100%; max-width: 28rem; margin-bottom: 16px;" placeholder="Check-in conditions" />
+          <label for="checkin-conditions-heading" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Modal title</label>
+          <input type="text" id="checkin-conditions-heading" class="retreat-text-input" autocomplete="off" maxlength="500" style="width: 100%; max-width: 40rem; margin-bottom: 16px;" placeholder="Check-in conditions" />
+          <label for="checkin-conditions-paragraph-1" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Text in popup</label>
+          <textarea id="checkin-conditions-paragraph-1" rows="4" class="retreat-text-input" style="width: 100%; max-width: 40rem; min-height: 5rem; resize: vertical;" placeholder="Check-in from 3:00 PM, Check-out until 11:00 AM."></textarea>
+        </div>
       </div>
     </section>
 
@@ -2776,8 +3196,8 @@ We'll be happy to help you plan your stay and answer any questions!</div>
     <section id="my-bookings-pricing-section" class="admin-section" style="display: none;" aria-label="My Bookings">
       <h2>My Bookings (guest page)</h2>
       <p style="margin: 0 0 16px 0; max-width: 52rem; font-size: 0.9rem; line-height: 1.5; color: #475569;">
-        <strong>Room bookings:</strong> the cleaning amount and the per-dog amount you set here are <strong>added</strong> to each room line (on top of nights × rate) on My Bookings.
-        <strong>Taxes:</strong> each tax uses the <strong>percent</strong> you enter. The amount is calculated on the combined taxable subtotal: <em>all room charges (nights + cleaning + pet fees) plus all wellness bookings (massage, sauna, etc.)</em>.
+        <strong>Room bookings:</strong> each room has its own cleaning fee; the dog fee is <strong>one charge per booking</strong> (1 or 2 dogs — same amount). Both are <strong>added</strong> on top of nights × rate on My Bookings.
+        <strong>Taxes:</strong> each tax uses the <strong>percent</strong> you enter. The amount is calculated on room bookings only: <em>nights + cleaning + pet fees</em>. Wellness bookings (massage, sauna, etc.) are not taxed.
         Use the <strong>tax name</strong> fields as plain text — that label is shown to guests next to the calculated dollar amount.
       </p>
       <div class="retreat-status-bar">
@@ -2791,14 +3211,22 @@ We'll be happy to help you plan your stay and answer any questions!</div>
         <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px; max-width: 52rem;">
           <label for="my-bookings-cleaning-label" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Label</label>
           <input type="text" id="my-bookings-cleaning-label" class="retreat-text-input" autocomplete="off" maxlength="191" style="width: 100%; max-width: 40rem; margin-bottom: 12px;" placeholder="e.g. Cleaning fee" />
-          <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end;">
+          <div class="btb-my-bookings-cleaning-rooms" style="display: grid; grid-template-columns: repeat(4, minmax(0, 6.25rem)); gap: 10px 12px; align-items: end; max-width: 28rem;">
             <div>
-              <label for="my-bookings-cleaning-amount" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Amount (standard rooms, CAD)</label>
-              <input type="text" inputmode="decimal" id="my-bookings-cleaning-amount" class="retreat-text-input" autocomplete="off" style="width: 12rem;" placeholder="60" />
+              <label for="my-bookings-cleaning-loki" style="display: block; font-size: 0.8rem; color: #475569; margin-bottom: 6px; line-height: 1.25;">Loki Suite (CAD)</label>
+              <input type="text" inputmode="decimal" id="my-bookings-cleaning-loki" class="retreat-text-input" autocomplete="off" style="width: 100%; max-width: 6.25rem; box-sizing: border-box;" placeholder="60" />
             </div>
             <div>
-              <label for="my-bookings-cleaning-kelder" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Amount (Kelder suite, CAD)</label>
-              <input type="text" inputmode="decimal" id="my-bookings-cleaning-kelder" class="retreat-text-input" autocomplete="off" style="width: 12rem;" placeholder="100" />
+              <label for="my-bookings-cleaning-nouk" style="display: block; font-size: 0.8rem; color: #475569; margin-bottom: 6px; line-height: 1.25;">The Nouk (CAD)</label>
+              <input type="text" inputmode="decimal" id="my-bookings-cleaning-nouk" class="retreat-text-input" autocomplete="off" style="width: 100%; max-width: 6.25rem; box-sizing: border-box;" placeholder="60" />
+            </div>
+            <div>
+              <label for="my-bookings-cleaning-vrienden" style="display: block; font-size: 0.8rem; color: #475569; margin-bottom: 6px; line-height: 1.25;">Vrienden (CAD)</label>
+              <input type="text" inputmode="decimal" id="my-bookings-cleaning-vrienden" class="retreat-text-input" autocomplete="off" style="width: 100%; max-width: 6.25rem; box-sizing: border-box;" placeholder="60" />
+            </div>
+            <div>
+              <label for="my-bookings-cleaning-kelder" style="display: block; font-size: 0.8rem; color: #475569; margin-bottom: 6px; line-height: 1.25;">Kelder (CAD)</label>
+              <input type="text" inputmode="decimal" id="my-bookings-cleaning-kelder" class="retreat-text-input" autocomplete="off" style="width: 100%; max-width: 6.25rem; box-sizing: border-box;" placeholder="100" />
             </div>
           </div>
         </div>
@@ -2812,14 +3240,15 @@ We'll be happy to help you plan your stay and answer any questions!</div>
               <input type="number" min="1" max="9" id="my-bookings-pets-max" class="retreat-text-input" style="width: 6rem;" />
             </div>
             <div>
-              <label for="my-bookings-pets-per-dog" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Amount per dog (CAD)</label>
+              <label for="my-bookings-pets-per-dog" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Amount per booking (CAD)</label>
               <input type="text" inputmode="decimal" id="my-bookings-pets-per-dog" class="retreat-text-input" autocomplete="off" style="width: 12rem;" placeholder="75" />
+              <p style="margin: 8px 0 0; font-size: 0.8rem; color: #64748b; line-height: 1.4; max-width: 20rem;">Charged once per room booking if the guest brings 1 or 2 dogs (not per dog).</p>
             </div>
           </div>
         </div>
         <h3 style="margin: 0 0 16px; color: #374151; font-size: 1.05rem;">Canadian taxes</h3>
         <p style="margin: 0 0 12px 0; max-width: 52rem; font-size: 0.82rem; color: #64748b; line-height: 1.45;">
-          Tax name = free-text label only. Percent applies to: room subtotal (nights + cleaning + pet fees) + wellness subtotal (massage / sauna).
+          Tax name = free-text label only. Percent applies to room subtotal only (nights + cleaning + pet fees). Wellness bookings (massage / sauna) are not taxed.
         </p>
         <div class="preview-block" style="margin-bottom: 12px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px; max-width: 52rem;">
           <label for="my-bookings-tax1-label" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Tax name (text, guest-facing)</label>
@@ -2833,6 +3262,12 @@ We'll be happy to help you plan your stay and answer any questions!</div>
           <label for="my-bookings-tax2-percent" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Percent (% of taxable subtotal)</label>
           <input type="text" inputmode="decimal" id="my-bookings-tax2-percent" class="retreat-text-input" autocomplete="off" style="width: 10rem;" placeholder="7" />
         </div>
+        <div class="preview-block" style="margin-top: 12px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px; max-width: 52rem;">
+          <label for="my-bookings-tax3-label" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Tax name (text, guest-facing)</label>
+          <input type="text" id="my-bookings-tax3-label" class="retreat-text-input" autocomplete="off" maxlength="191" style="width: 100%; max-width: 40rem; margin-bottom: 12px;" placeholder="e.g. MRDT / Local tax" />
+          <label for="my-bookings-tax3-percent" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Percent (% of taxable subtotal)</label>
+          <input type="text" inputmode="decimal" id="my-bookings-tax3-percent" class="retreat-text-input" autocomplete="off" style="width: 10rem;" placeholder="0" />
+        </div>
       </div>
     </section>
 
@@ -2841,10 +3276,13 @@ We'll be happy to help you plan your stay and answer any questions!</div>
       <h2>Emails</h2>
       <p style="margin: 0 0 16px 0; max-width: 54rem; font-size: 0.9rem; line-height: 1.55; color: #475569;">
         Configure all outgoing email templates sent to guests and host. Use placeholders like
-        <code>{{booking.guest_name}}</code>, <code>{{booking.room_name}}</code>, <code>{{booking.checkin_date}}</code>,
-        <code>{{booking.checkout_date}}</code>, <code>{{booking.confirmation_code}}</code>,
-        <code>{{booking.massage_type}}</code>, <code>{{booking.massage_date}}</code>, <code>{{booking.massage_time}}</code>,
-        <code>{{admin_url}}</code>, <code>{{booking_url}}</code>, <code>{{site_url}}</code>.
+        <code>{{booking.guest_name}}</code>, <code>{{dashboard_url}}</code> (guest account / My bookings),
+        <code>{{booking_url}}</code>, <code>{{admin_url}}</code>, <code>{{site_url}}</code>,
+        and for My Account chat: <code>{{chat.heading_line}}</code> (ready-made sentence),
+        <code>{{chat.message_preview}}</code>, <code>{{chat.staff_from}}</code> (guest reply email only),
+        plus <code>{{user.name}}</code> if needed.
+        The booking card (badge, room/service, dates, guests, code, status) is generated automatically — not editable here.
+        Chat templates use a short <strong>Сообщение</strong> block instead of booking rows (no thread subject).
       </p>
       <div class="retreat-status-bar">
         <div class="retreat-live-status" id="email-templates-auto-save-status" aria-live="polite">
@@ -2854,43 +3292,23 @@ We'll be happy to help you plan your stay and answer any questions!</div>
       </div>
 
       <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
-        <h3 style="margin: 0 0 12px; color: #1e293b; font-size: 1.1rem;">Global email appearance</h3>
-        <p style="margin: 0 0 14px; max-width: 46rem; font-size: 0.88rem; line-height: 1.5; color: #64748b;">
-          These settings apply to all outgoing HTML emails. The footer image appears at the bottom of messages (wide PNG with transparent sky works well on a white card).
-          Use subtle outer / card colors so text stays readable on phones and in Gmail, Outlook, and Apple Mail.
-        </p>
-        <div class="preview-block" style="margin-bottom: 24px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px; max-width: 54rem;">
-          <div style="display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-end; margin-bottom: 14px;">
-            <div>
-              <label for="email-branding-outer-bg" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Outer background</label>
-              <input type="text" id="email-branding-outer-bg" class="retreat-text-input" maxlength="32" autocomplete="off" placeholder="#f4f4f5" style="width: 9rem;" />
-            </div>
-            <div>
-              <label for="email-branding-card-bg" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Card / letter background</label>
-              <input type="text" id="email-branding-card-bg" class="retreat-text-input" maxlength="32" autocomplete="off" placeholder="#ffffff" style="width: 9rem;" />
-            </div>
-          </div>
-          <label for="email-branding-footer-url" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Footer image URL (optional)</label>
-          <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 12px;">
-            <input type="text" id="email-branding-footer-url" class="retreat-text-input" maxlength="1024" autocomplete="off" style="width: 100%; max-width: 36rem;" />
-            <input type="file" id="email-branding-footer-upload" accept="image/*" style="display: none;" />
-            <button type="button" id="email-branding-footer-upload-btn" class="admin-btn admin-btn-secondary">Upload footer image</button>
-          </div>
-          <label for="email-branding-footer-alt" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Footer image description (alt text)</label>
-          <input type="text" id="email-branding-footer-alt" class="retreat-text-input" maxlength="255" autocomplete="off" style="width: 100%; max-width: 36rem;" placeholder="Shown when images are off; keep it short." />
-        </div>
-
         <h3 style="margin: 0 0 12px; color: #1e293b; font-size: 1.1rem;">Template</h3>
         <div class="preview-block" style="margin-bottom: 20px; padding: 16px; background: white; border: 1px solid #d1d5db; border-radius: 8px; max-width: 54rem;">
           <label for="email-template-key" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Choose email</label>
-          <select id="email-template-key" class="retreat-text-input" style="width: 100%; max-width: 40rem; margin-bottom: 14px;"></select>
-          <label for="email-template-display-name" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Internal name (admin only)</label>
-          <input type="text" id="email-template-display-name" class="retreat-text-input" maxlength="255" autocomplete="off" style="width: 100%; max-width: 40rem; margin-bottom: 6px;" placeholder="Label shown in the list above — guests never see this." />
-          <p style="margin: 0 0 14px 0; max-width: 48rem; font-size: 0.82rem; line-height: 1.45; color: #64748b;">This title appears only in the admin dropdown. It does not change the email subject or body.</p>
-          <label for="email-template-scenario-notes" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Send scenario (internal notes)</label>
-          <textarea id="email-template-scenario-notes" rows="5" class="retreat-text-input" style="width: 100%; max-width: 48rem; min-height: 6.5rem; resize: vertical; margin-bottom: 6px;" placeholder="Explain when this email fires — for your team only."></textarea>
-          <p style="margin: 0 0 10px 0; max-width: 48rem; font-size: 0.82rem; line-height: 1.45; color: #64748b;">Not sent to guests. Use it to document timing (e.g. request vs approval vs after payment).</p>
-          <p id="email-template-meta" style="margin: 0; font-size: 0.82rem; color: #64748b;"></p>
+          <select id="email-template-key" class="retreat-text-input" autocomplete="off" style="width: 100%; max-width: 40rem; margin-bottom: 14px;"></select>
+
+          <details id="email-template-internal-details" class="email-template-internal-details">
+            <summary class="email-template-internal-summary">Internal fields (admin only)</summary>
+            <div class="email-template-internal-details-body">
+              <label for="email-template-display-name" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Internal name (admin only)</label>
+              <input type="text" id="email-template-display-name" class="retreat-text-input" maxlength="255" autocomplete="off" style="width: 100%; max-width: 40rem; margin-bottom: 6px;" placeholder="Label shown in the list above — guests never see this." />
+              <p style="margin: 0 0 14px 0; max-width: 48rem; font-size: 0.82rem; line-height: 1.45; color: #64748b;">This title appears only in the admin dropdown. It does not change the email subject or body.</p>
+              <label for="email-template-scenario-notes" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Send scenario (internal notes)</label>
+              <textarea id="email-template-scenario-notes" rows="5" class="retreat-text-input" style="width: 100%; max-width: 48rem; min-height: 6.5rem; resize: vertical; margin-bottom: 6px;" placeholder="Explain when this email fires — for your team only."></textarea>
+              <p style="margin: 0 0 10px 0; max-width: 48rem; font-size: 0.82rem; line-height: 1.45; color: #64748b;">Not sent to guests. Use it to document timing (e.g. request vs approval vs after payment).</p>
+              <p id="email-template-meta" style="margin: 0; font-size: 0.82rem; color: #64748b;"></p>
+            </div>
+          </details>
         </div>
 
         <h3 style="margin: 0 0 12px; color: #1e293b; font-size: 1.1rem;">Content</h3>
@@ -2899,25 +3317,24 @@ We'll be happy to help you plan your stay and answer any questions!</div>
           <input type="text" id="email-template-subject" class="retreat-text-input" maxlength="255" autocomplete="off" style="width: 100%; max-width: 46rem; margin-bottom: 16px;" />
           <label for="email-template-heading" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Heading</label>
           <input type="text" id="email-template-heading" class="retreat-text-input" maxlength="500" autocomplete="off" style="width: 100%; max-width: 46rem; margin-bottom: 16px;" />
-          <label for="email-template-body" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Body text</label>
-          <textarea id="email-template-body" rows="10" class="retreat-text-input" style="width: 100%; max-width: 46rem; min-height: 12rem; resize: vertical; margin-bottom: 14px;" placeholder="Use blank lines to split paragraphs. Placeholders are supported."></textarea>
-          <div style="display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; margin-bottom: 16px;">
-            <div>
-              <label for="email-template-cta-label" style="display:block; font-size:0.85rem; color:#475569; margin-bottom:6px;">Button label (optional)</label>
-              <input type="text" id="email-template-cta-label" class="retreat-text-input" maxlength="255" autocomplete="off" style="width: 18rem;" />
-            </div>
-            <div>
-              <label for="email-template-cta-url" style="display:block; font-size:0.85rem; color:#475569; margin-bottom:6px;">Button URL (optional)</label>
-              <input type="text" id="email-template-cta-url" class="retreat-text-input" maxlength="1024" autocomplete="off" style="width: 22rem;" />
-            </div>
-          </div>
-          <label for="email-template-image-url" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Header image URL (optional)</label>
-          <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
-            <input type="text" id="email-template-image-url" class="retreat-text-input" maxlength="1024" autocomplete="off" style="width: 100%; max-width: 36rem;" />
-            <input type="file" id="email-template-image-upload" accept="image/*" style="display:none;" />
-            <button type="button" id="email-template-image-upload-btn" class="admin-btn admin-btn-secondary">Upload image</button>
-          </div>
+          <label for="email-template-body" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Intro (before booking details)</label>
+          <textarea id="email-template-body" rows="8" class="retreat-text-input" style="width: 100%; max-width: 46rem; min-height: 9rem; resize: vertical; margin-bottom: 14px;" placeholder="Greeting and main message. Booking codes and dates are not edited here — they appear in the automatic booking details block in the sent email."></textarea>
+          <label for="email-template-body-after" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Next step (after booking details)</label>
+          <textarea id="email-template-body-after" rows="6" class="retreat-text-input" style="width: 100%; max-width: 46rem; min-height: 6.5rem; resize: vertical; margin-bottom: 14px;" placeholder="e.g. We will review availability and send you a confirmation email shortly."></textarea>
+          <label for="email-template-body-contact" style="display: block; font-size: 0.85rem; color: #475569; margin-bottom: 6px;">Contact info (right-aligned, after next step)</label>
+          <textarea id="email-template-body-contact" rows="5" class="retreat-text-input" style="width: 100%; max-width: 46rem; min-height: 5.5rem; resize: vertical; margin-bottom: 14px;" placeholder="Phone, email, address — shown right-aligned at the end of the message body."></textarea>
         </div>
+      </div>
+
+      <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
+        <h3 style="margin: 0 0 10px; color: #1e293b; font-size: 1.05rem;">Live preview</h3>
+        <p style="margin: 0 0 12px; max-width: 54rem; font-size: 0.86rem; line-height: 1.5; color: #64748b;">
+          Approximate layout with sample data (not a real send). The preview reflects subject, headings, body copy, and configured defaults for buttons and images stored with each template. The preview grows to full height and does not follow links when clicked.
+        </p>
+        <div class="email-template-preview-wrap">
+          <iframe id="email-template-preview-iframe" class="email-template-preview-iframe" title="Email preview (non-interactive — links disabled)" sandbox="allow-same-origin"></iframe>
+        </div>
+        <p id="email-template-preview-status" style="margin: 8px 0 0; font-size: 0.8rem; color: #64748b;" aria-live="polite"></p>
       </div>
 
       <div class="schematic-preview" style="margin-top: 24px; padding: 24px; background: #f9fafb; border: 2px solid #e5e7eb; border-radius: 12px;">
@@ -3295,18 +3712,18 @@ We'll be happy to help you plan your stay and answer any questions!</div>
     </section>
 
     <!-- Account Management Section -->
-    <section id="accounts-section" class="admin-section" style="display: none;">
-      <h2>Account Management</h2>
-      
-      <!-- Filters and Actions -->
+    <section id="accounts-section" class="admin-section" style="display: none;" aria-label="Account">
+      <div class="admin-section-filters">
+        <button type="button" class="admin-section-filters__toggle" aria-expanded="false" aria-controls="accounts-filters-panel">Filter</button>
+        <div class="admin-section-filters__panel" id="accounts-filters-panel" hidden>
       <div class="admin-form" style="background: var(--bg-secondary, #f7fafc); padding: 20px; border-radius: 8px; margin-bottom: 20px;">
         <div class="admin-form-row">
           <div class="admin-form-group">
-            <label for="accounts-search-name">Account Management — search by name</label>
+            <label for="accounts-search-name">search by name</label>
             <input type="text" id="accounts-search-name" placeholder="Enter name to search...">
           </div>
           <div class="admin-form-group">
-            <label for="accounts-filter-month">Account Management — filter by month</label>
+            <label for="accounts-filter-month">filter by month</label>
             <select id="accounts-filter-month">
               <option value="">All Months</option>
               <option value="01">January</option>
@@ -3324,18 +3741,20 @@ We'll be happy to help you plan your stay and answer any questions!</div>
             </select>
           </div>
           <div class="admin-form-group">
-            <label for="accounts-filter-year">Account Management — filter by year</label>
+            <label for="accounts-filter-year">filter by year</label>
             <select id="accounts-filter-year">
               <option value="">All Years</option>
             </select>
           </div>
         </div>
         <div class="admin-form-actions" style="margin-top: 16px;">
-          <button id="accounts-filter-apply" class="admin-btn admin-btn-primary">Account Management — apply filters</button>
-          <button id="accounts-filter-reset" class="admin-btn admin-btn-secondary">Account Management — reset filters</button>
-          <button id="accounts-refresh" class="admin-btn admin-btn-secondary">Account Management — refresh</button>
-          <button id="accounts-copy-emails" class="admin-btn admin-btn-secondary">Account Management — copy all emails</button>
-          <button id="accounts-copy-phones" class="admin-btn admin-btn-secondary">Account Management — copy all phones</button>
+          <button id="accounts-filter-apply" class="admin-btn admin-btn-primary">apply filters</button>
+          <button id="accounts-filter-reset" class="admin-btn admin-btn-secondary">reset filters</button>
+          <button id="accounts-refresh" class="admin-btn admin-btn-secondary">refresh</button>
+          <button id="accounts-copy-emails" class="admin-btn admin-btn-secondary">copy all emails</button>
+          <button id="accounts-copy-phones" class="admin-btn admin-btn-secondary">copy all phones</button>
+        </div>
+      </div>
         </div>
       </div>
 
@@ -3352,10 +3771,9 @@ We'll be happy to help you plan your stay and answer any questions!</div>
     </section>
 
     <!-- Chat management (guest threads, host replies) -->
-    <section id="chat-management-section" class="admin-section" style="display: none;">
-      <h2 id="admin-chat-management-title">Chat management</h2>
+    <section id="chat-management-section" class="admin-section" style="display: none;" aria-label="Chat">
       <p class="admin-muted" style="margin-bottom: 16px; color: #64748b;">
-        Conversations started by guests from <strong>My Account → Messages with the host</strong>. Select a thread on the left, review contact and bookings in the middle, reply on the right.
+        Conversations started by guests from <strong>My Account → Chat with Rob</strong>. Select a thread on the left, review contact and bookings in the middle, reply on the right.
       </p>
       <div class="btb-admin-chat-shell">
         <div class="btb-admin-chat-col btb-admin-chat-col--threads">
@@ -3389,10 +3807,113 @@ We'll be happy to help you plan your stay and answer any questions!</div>
     </section>
   </div>
 
+  <!-- Edit booking modal (host) -->
+  <div id="btb-admin-booking-edit-modal" class="btb-admin-modal" style="display: none;" aria-hidden="true">
+    <div class="btb-admin-modal-overlay" data-btb-close-booking-edit></div>
+    <div class="btb-admin-modal-panel" role="dialog" aria-labelledby="btb-admin-booking-edit-title">
+      <div class="btb-admin-modal-header">
+        <h3 id="btb-admin-booking-edit-title">Edit booking</h3>
+        <button type="button" class="btb-admin-modal-close" data-btb-close-booking-edit aria-label="Close">&times;</button>
+      </div>
+      <form id="btb-admin-booking-edit-form" class="btb-admin-booking-edit-form">
+        <div class="btb-admin-modal-scroll">
+        <input type="hidden" id="btb-edit-booking-id" name="booking_id" />
+        <input type="hidden" id="btb-edit-booking-kind" name="kind" />
+        <div id="btb-edit-room-fields">
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="btb-edit-room-name">Room</label>
+              <select id="btb-edit-room-name" name="room_name">
+                <option value="Loki Suite">Loki Suite</option>
+                <option value="The Nouk">The Nouk</option>
+                <option value="Vrienden">Vrienden</option>
+                <option value="Kelder">Kelder</option>
+              </select>
+            </div>
+            <div class="admin-form-group">
+              <label for="btb-edit-pets">Dogs</label>
+              <select id="btb-edit-pets" name="pets">
+                <option value="0">0</option>
+                <option value="1">1</option>
+                <option value="2">2</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="btb-edit-checkin">Check-in</label>
+              <input type="date" id="btb-edit-checkin" name="checkin_date" />
+            </div>
+            <div class="admin-form-group">
+              <label for="btb-edit-checkout">Check-out</label>
+              <input type="date" id="btb-edit-checkout" name="checkout_date" />
+            </div>
+          </div>
+          <div class="admin-form-group">
+            <label for="btb-edit-guests-count">Guests</label>
+            <input type="number" id="btb-edit-guests-count" name="guests_count" min="1" max="12" />
+          </div>
+        </div>
+        <div id="btb-edit-massage-fields" style="display: none;">
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="btb-edit-massage-type">Service</label>
+              <select id="btb-edit-massage-type" name="massage_type">
+                <option value="Relaxing Massage">Relaxing Massage</option>
+                <option value="Deep Tissue Massage">Deep Tissue Massage</option>
+                <option value="Reiki Energy Healing">Reiki Energy Healing</option>
+                <option value="Sauna">Sauna</option>
+              </select>
+            </div>
+            <div class="admin-form-group">
+              <label for="btb-edit-duration">Duration (min)</label>
+              <select id="btb-edit-duration" name="duration">
+                <option value="30">30</option>
+                <option value="60">60</option>
+                <option value="90">90</option>
+              </select>
+            </div>
+          </div>
+          <div class="admin-form-row">
+            <div class="admin-form-group">
+              <label for="btb-edit-massage-date">Date</label>
+              <input type="date" id="btb-edit-massage-date" name="massage_date" />
+            </div>
+            <div class="admin-form-group">
+              <label for="btb-edit-massage-time">Time</label>
+              <input type="time" id="btb-edit-massage-time" name="massage_time" step="1800" />
+            </div>
+          </div>
+        </div>
+        <fieldset class="btb-edit-pricing-fieldset">
+          <legend>Pricing</legend>
+          <div class="btb-edit-checkbox-field">
+            <label class="btb-edit-checkbox" for="btb-edit-custom-price">
+              <input type="checkbox" id="btb-edit-custom-price" name="use_custom_stay_price" />
+              <span id="btb-edit-custom-checkbox-label">Override price per night (this booking only)</span>
+            </label>
+          </div>
+          <p class="btb-edit-pricing-hint" id="btb-edit-pricing-hint">Enter the nightly rate in CAD. The total for all nights is calculated automatically. Cleaning and dog fees are added separately.</p>
+          <div class="admin-form-group" id="btb-edit-custom-price-row" style="display: none;">
+            <label for="btb-edit-custom-amount" id="btb-edit-custom-amount-label">Custom price per night (CAD)</label>
+            <input type="number" id="btb-edit-custom-amount" min="0" step="0.01" />
+            <span class="btb-edit-field-hint">Total stay = nightly rate × number of nights. Cleaning and dog fees appear in the breakdown below.</span>
+          </div>
+          <div id="btb-edit-pricing-preview" class="btb-edit-pricing-preview" aria-live="polite"></div>
+        </fieldset>
+        </div>
+        <div class="btb-admin-modal-footer">
+          <button type="button" class="admin-btn admin-btn-secondary" data-btb-close-booking-edit>Cancel</button>
+          <button type="submit" class="admin-btn admin-btn-primary" id="btb-edit-save-btn">Save changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
   <script src="utils.js?v=51"></script>
-  <script src="admin.js?v=60"></script>
+  <script src="admin.js?v=91"></script>
 </body>
 </html>
 

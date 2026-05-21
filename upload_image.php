@@ -359,6 +359,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['image'])) {
                     'imageUrl' => $filepath
                 ]);
                 exit;
+            } elseif ($imageType === 'email-footer-hero') {
+                // Footer banner for transactional emails; URL saved via admin Emails → save_email_branding.
+                sendSuccess([
+                    'message' => 'Image uploaded successfully',
+                    'filepath' => $filepath,
+                    'imageUrl' => $filepath
+                ]);
+                exit;
             } elseif (preg_match('/^massage-service-card-(\d+)-hero$/', (string) $imageType, $mSvcCard) && (int) $mSvcCard[1] >= 1 && (int) $mSvcCard[1] <= 30) {
                 // Wellness Experiences dynamic cards: URL stored in massage_service_cards_json on save.
                 sendSuccess([

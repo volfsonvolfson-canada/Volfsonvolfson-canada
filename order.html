@@ -2,6 +2,13 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PZP7FK6V');</script>
+  <!-- End Google Tag Manager -->
   <link rel="stylesheet" href="cookie-consent.css">
   <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -264,12 +271,217 @@
       font-weight: 700;
     }
 
+    .btb-orders-tabs {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0 18px;
+    }
+    .btb-orders-tab {
+      cursor: pointer;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      background: transparent;
+      color: var(--muted, #94a3b8);
+      padding: 8px 14px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+    .btb-orders-tab:hover {
+      color: var(--text, #e2e8f0);
+      border-color: rgba(255, 255, 255, 0.22);
+    }
+    .btb-orders-tab--selected {
+      color: var(--text, #f8fafc);
+      border-color: var(--brand, #3b82f6);
+      background: rgba(59, 130, 246, 0.15);
+    }
+    [data-theme='light'] .btb-orders-tab {
+      border-color: rgba(15, 23, 42, 0.15);
+      color: #64748b;
+    }
+    [data-theme='light'] .btb-orders-tab:hover {
+      color: #0f172a;
+      border-color: rgba(15, 23, 42, 0.28);
+    }
+    [data-theme='light'] .btb-orders-tab--selected {
+      color: #1e40af;
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .btb-payment-pay-rows {
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+    .btb-payment-pay-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 12px;
+      justify-content: space-between;
+      padding: 12px 14px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: rgba(15, 23, 42, 0.35);
+    }
+    [data-theme='light'] .btb-payment-pay-row {
+      border-color: rgba(15, 23, 42, 0.1);
+      background: #f8fafc;
+    }
+    .btb-payment-pay-row__label {
+      flex: 1 1 200px;
+      line-height: 1.45;
+      font-size: 0.92rem;
+    }
+    .btb-payment-pay-row__amt {
+      font-weight: 600;
+      font-size: 0.95rem;
+      margin-right: auto;
+    }
+
+    .btb-payment-pay-combined-bar {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      width: 100%;
+      box-sizing: border-box;
+    }
+    [data-theme='light'] .btb-payment-pay-combined-bar {
+      border-top-color: rgba(15, 23, 42, 0.12);
+    }
+    .btb-payment-pay-combined-bar .btn.primary {
+      width: 100%;
+      justify-content: center;
+    }
+
+    #payment-pay-now-btn:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .btb-stripe-pay-modal {
+      position: fixed;
+      inset: 0;
+      z-index: 100060;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right))
+        max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      box-sizing: border-box;
+      /* Tall Stripe UI (e.g. Link) must scroll — viewport cannot clip the Pay button */
+      overflow-y: auto;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior: contain;
+    }
+    .btb-stripe-pay-modal__backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.65);
+      border: none;
+      cursor: pointer;
+    }
+    .btb-stripe-pay-modal__panel {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 440px;
+      max-height: min(92vh, calc(100dvh - max(32px, env(safe-area-inset-top) + env(safe-area-inset-bottom) + 24px)));
+      padding: 1.25rem 1.35rem 1.35rem;
+      margin: 0;
+      box-sizing: border-box;
+      overflow-x: hidden;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    .btb-stripe-pay-modal__head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 3;
+      padding-bottom: 10px;
+      margin-top: -4px;
+      padding-top: 4px;
+      background: var(--card, #1e293b);
+      box-shadow: 0 10px 12px -8px rgba(0, 0, 0, 0.35);
+    }
+    .btb-stripe-pay-modal__head h3 {
+      margin: 0;
+      font-size: 1.15rem;
+    }
+    .btb-stripe-pay-modal__close {
+      background: transparent;
+      border: none;
+      font-size: 1.75rem;
+      line-height: 1;
+      cursor: pointer;
+      color: var(--muted, #64748b);
+      padding: 4px 8px;
+    }
+    .btb-stripe-pay-modal__form {
+      margin-top: 4px;
+    }
+    .btb-stripe-pay-modal__form #payment-element {
+      min-height: 120px;
+    }
+
     #orders-list .notice.price {
       line-height: 1.62;
+    }
+    .btb-order-guest-notice {
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+      line-height: 1.45;
+      font-size: 0.95rem;
+      border: 1px solid transparent;
+    }
+    .btb-order-guest-notice--danger {
+      border-color: rgba(239, 68, 68, 0.4);
+      background: rgba(239, 68, 68, 0.12);
+      color: var(--text, #e2e8f0);
+    }
+    [data-theme='light'] .btb-order-guest-notice--danger {
+      color: #7f1d1d;
+      background: #fef2f2;
+      border-color: #fecaca;
+    }
+    .btb-order-guest-notice--info {
+      border-color: rgba(59, 130, 246, 0.45);
+      background: rgba(59, 130, 246, 0.12);
+      color: var(--text, #e2e8f0);
+    }
+    [data-theme='light'] .btb-order-guest-notice--info {
+      color: #1e3a8a;
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .btb-order-guest-notice--success {
+      border-color: rgba(34, 197, 94, 0.45);
+      background: rgba(34, 197, 94, 0.12);
+      color: var(--text, #e2e8f0);
+    }
+    [data-theme='light'] .btb-order-guest-notice--success {
+      color: #14532d;
+      background: #f0fdf4;
+      border-color: #bbf7d0;
     }
   </style>
 </head>
 <body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PZP7FK6V"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="index.html">
@@ -328,7 +540,16 @@
     <div class="container">
       <section class="card" id="order-card">
         <h2>My Bookings</h2>
+        <div class="btb-orders-tabs" role="tablist" aria-label="Upcoming and past bookings">
+          <button type="button" id="btb-orders-tab-active" class="btb-orders-tab btb-orders-tab--selected" role="tab" aria-selected="true">
+            Upcoming Bookings
+          </button>
+          <button type="button" id="btb-orders-tab-inactive" class="btb-orders-tab" role="tab" aria-selected="false">
+            Past Bookings
+          </button>
+        </div>
         <div id="order-empty" class="notice">No order saved yet. Please book a room or a massage first.</div>
+        <div id="btb-orders-tab-empty" class="notice" style="display: none;"></div>
         <div id="orders-list"></div>
         <p id="btb-order-clear-reset-wrap" class="notice" style="display: none; margin-top: 12px;">
           <button type="button" class="btn secondary" id="btb-order-clear-reset-prefs">Show confirmation again when removing a booking</button>
@@ -336,23 +557,43 @@
       </section>
 
       <section class="card" id="payment-card" style="margin-top:16px; display:none;">
-        <div style="display:flex; gap:16px; align-items:flex-start; justify-content:space-between;">
-          <div style="flex:1 1 auto; min-width:0;">
+        <div style="display:flex; gap:16px; align-items:flex-start; justify-content:space-between; flex-wrap:wrap;">
+          <div style="flex:1 1 280px; min-width:0;">
             <h2>Payment</h2>
-            <p class="notice">Payment becomes available after host confirms your booking. You will receive an email confirmation.</p>
-            <button class="btn primary" disabled>Pay now</button>
+            <p class="notice" id="payment-card-hint">
+              You’ll be able to pay here once our team has confirmed your bookings. The summary on the right is an estimate of room and wellness totals, including taxes — declined bookings aren’t included.
+            </p>
+            <button type="button" id="payment-pay-now-btn" class="btn primary" disabled style="margin-top: 14px; width: 100%; max-width: 320px;">
+              Pay now
+            </button>
+            <div id="payment-pay-rows" class="btb-payment-pay-rows" aria-live="polite"></div>
           </div>
           <div id="orders-total-wrap" class="btb-order-payment-totals" style="flex:0 0 auto;">
             <div id="orders-subtotal-line" class="btb-order-payment-row"></div>
             <div id="orders-tax-base-hint" class="btb-order-payment-hint"></div>
             <div id="orders-tax1-line" class="btb-order-payment-row" style="display:none;"></div>
             <div id="orders-tax2-line" class="btb-order-payment-row" style="display:none;"></div>
+            <div id="orders-tax3-line" class="btb-order-payment-row" style="display:none;"></div>
             <h2 id="orders-total" class="btb-order-payment-total">Total: 0.00 CAD</h2>
           </div>
         </div>
       </section>
     </div>
   </main>
+
+  <div id="btb-stripe-pay-modal" class="btb-stripe-pay-modal" style="display:none;" role="dialog" aria-modal="true" aria-labelledby="btb-stripe-pay-title">
+    <div class="btb-stripe-pay-modal__backdrop" id="btb-stripe-pay-backdrop" role="presentation"></div>
+    <div class="btb-stripe-pay-modal__panel card">
+      <div class="btb-stripe-pay-modal__head">
+        <h3 id="btb-stripe-pay-title">Complete payment</h3>
+        <button type="button" class="btb-stripe-pay-modal__close" id="btb-stripe-pay-close" aria-label="Close">&times;</button>
+      </div>
+      <form id="payment-form" class="btb-stripe-pay-modal__form" method="post" action="#" novalidate>
+        <div id="payment-element"></div>
+        <button type="submit" id="payment-submit" class="btn primary" style="width:100%;margin-top:14px;">Pay now</button>
+      </form>
+    </div>
+  </div>
 
   <footer class="site-footer">
     <div class="container footer-grid">
@@ -386,12 +627,17 @@
   </footer>
 
   <script src="script.js"></script>
+  <script src="payment.js"></script>
+  <script src="account-notifications.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', async () => {
       function btbMyBookingsPricingDefaults() {
         return {
           cleaning_label: 'Cleaning fee',
           cleaning_amount_cad: 60,
+          cleaning_loki_suite_amount_cad: 60,
+          cleaning_the_nouk_amount_cad: 60,
+          cleaning_vrienden_amount_cad: 60,
           cleaning_kelder_amount_cad: 100,
           pets_label: 'Dogs',
           pets_max_qty: 2,
@@ -400,6 +646,8 @@
           tax1_percent: 0,
           tax2_label: 'PST',
           tax2_percent: 0,
+          tax3_label: 'Tax 3',
+          tax3_percent: 0,
         };
       }
       let btbMyBookingsPricing = null;
@@ -416,11 +664,403 @@
       }
       await btbFetchMyBookingsPricing();
 
+      function btbOrderGuestFetchBase(extra) {
+        const o = extra && typeof extra === 'object' ? extra : {};
+        if (typeof window.btbGuestFetchInit === 'function') {
+          return window.btbGuestFetchInit(o);
+        }
+        return { ...o, credentials: 'same-origin' };
+      }
+
+      async function btbFetchPayStatusMap(orders) {
+        const items = (Array.isArray(orders) ? orders : [])
+          .filter((o) => o && (o.kind === 'room' || o.kind === 'massage') && Number(o.booking_id) > 0 && String(o.confirmation_code || '').trim())
+          .map((o) => ({
+            local_id: o.id,
+            kind: o.kind === 'massage' ? 'massage' : 'room',
+            booking_id: Number(o.booking_id),
+            confirmation_code: String(o.confirmation_code || '').trim(),
+          }));
+        const map = {};
+        if (items.length === 0) {
+          return { map, ok: true };
+        }
+        const fd = new FormData();
+        fd.append('action', 'guest_booking_pay_status');
+        fd.append('items', JSON.stringify(items));
+        try {
+          const res = await fetch('api.php', btbOrderGuestFetchBase({ method: 'POST', body: fd }));
+          const json = await res.json().catch(() => ({}));
+          const list = json && json.data && json.data.items;
+          if (json.success && Array.isArray(list)) {
+            list.forEach((it) => {
+              if (it && it.local_id) {
+                map[it.local_id] = it;
+              }
+            });
+            return { map, ok: true };
+          }
+        } catch (_) {}
+        return { map, ok: false };
+      }
+
+      function btbCloseStripePayModal() {
+        try {
+          if (window.PaymentAPI && typeof window.PaymentAPI.hidePaymentLoading === 'function') {
+            window.PaymentAPI.hidePaymentLoading();
+          }
+        } catch (_) {}
+        const m = document.getElementById('btb-stripe-pay-modal');
+        if (m) {
+          m.style.display = 'none';
+        }
+        try {
+          document.body.style.overflow = '';
+        } catch (_) {}
+      }
+
+      async function btbOpenStripePayModal(ctx) {
+        const modal = document.getElementById('btb-stripe-pay-modal');
+        if (!modal || !window.PaymentAPI || typeof window.PaymentAPI.initPaymentForm !== 'function') {
+          alert('Payment module failed to load. Please refresh the page.');
+          return;
+        }
+
+        const isCombined = ctx && ctx.kind === 'combined';
+        let kind = 'room';
+        let bookingId = 0;
+        let confirmationCode = '';
+        let combinedItems = [];
+
+        if (isCombined) {
+          combinedItems = Array.isArray(ctx.items) ? ctx.items : [];
+          if (combinedItems.length === 0) {
+            alert('Nothing to pay. Refresh the page or contact us.');
+            return;
+          }
+        } else {
+          kind = ctx.kind === 'massage' ? 'massage' : 'room';
+          bookingId = Number(ctx.booking_id);
+          confirmationCode = String(ctx.confirmation_code || '').trim();
+          if (!bookingId || !confirmationCode) {
+            alert('Missing booking reference. Save your booking on this device or open the link from your email.');
+            return;
+          }
+        }
+
+        const title = document.getElementById('btb-stripe-pay-title');
+        if (title) {
+          title.textContent = isCombined ? 'Pay for your bookings' : kind === 'massage' ? 'Pay for your wellness booking' : 'Pay for your room booking';
+        }
+        try {
+          document.body.style.overflow = 'hidden';
+        } catch (_) {}
+        modal.style.display = 'flex';
+        try {
+          if (typeof window.PaymentAPI.resetPaymentSubmitForPrepare === 'function') {
+            window.PaymentAPI.resetPaymentSubmitForPrepare();
+          } else {
+            const earlyBtn = document.getElementById('payment-submit');
+            if (earlyBtn) {
+              earlyBtn.disabled = true;
+              earlyBtn.textContent = 'Preparing payment...';
+            }
+          }
+        } catch (_) {}
+        const fd = new FormData();
+        fd.append('action', 'guest_payment_prepare');
+        if (isCombined) {
+          fd.append('kind', 'combined');
+          fd.append('items', JSON.stringify(combinedItems));
+        } else {
+          fd.append('kind', kind);
+          fd.append('booking_id', String(bookingId));
+          fd.append('confirmation_code', confirmationCode);
+        }
+        let json = {};
+        try {
+          const res = await fetch('api.php', btbOrderGuestFetchBase({ method: 'POST', body: fd }));
+          json = await res.json().catch(() => ({}));
+        } catch (e) {
+          alert((e && e.message) || 'Network error.');
+          btbCloseStripePayModal();
+          return;
+        }
+        if (json.data && json.data.already_paid) {
+          alert(json.data.message || 'Already paid.');
+          btbCloseStripePayModal();
+          try {
+            load();
+          } catch (_) {}
+          return;
+        }
+        if (!json.success || !json.data || !json.data.client_secret || !json.data.publishable_key) {
+          alert((json && json.error) || 'Could not start payment. Sign in with the same email as the booking, or open the pay link from your confirmation email.');
+          btbCloseStripePayModal();
+          return;
+        }
+        const pe = document.getElementById('payment-element');
+        if (pe) {
+          pe.innerHTML = '';
+        }
+        try {
+          if (window.PaymentAPI.hidePaymentError) {
+            window.PaymentAPI.hidePaymentError();
+          }
+        } catch (_) {}
+        const returnBase =
+          typeof window.location !== 'undefined' && window.location.pathname && window.location.pathname.indexOf('/') >= 0
+            ? window.location.origin + window.location.pathname
+            : window.location.href.split('?')[0];
+        const returnUrl = returnBase + '?paid=1';
+        await window.PaymentAPI.initPaymentForm(json.data.publishable_key, json.data.client_secret, {
+          returnUrl,
+          onPaid: async (paymentIntent) => {
+            let syncOk = true;
+            try {
+              const pid = paymentIntent && paymentIntent.id ? String(paymentIntent.id) : '';
+              if (pid) {
+                const fdDone = new FormData();
+                fdDone.append('action', 'guest_payment_complete');
+                if (isCombined) {
+                  fdDone.append('kind', 'combined');
+                  fdDone.append('payment_intent_id', pid);
+                } else {
+                  fdDone.append('kind', kind);
+                  fdDone.append('booking_id', String(bookingId));
+                  fdDone.append('confirmation_code', confirmationCode);
+                  fdDone.append('payment_intent_id', pid);
+                }
+                const resDone = await fetch('api.php', btbOrderGuestFetchBase({ method: 'POST', body: fdDone }));
+                const jDone = await resDone.json().catch(() => ({}));
+                syncOk = !!(jDone && jDone.success);
+                if (!syncOk) {
+                  console.warn('guest_payment_complete', jDone);
+                }
+              }
+            } catch (e) {
+              syncOk = false;
+              console.warn(e);
+            }
+            btbCloseStripePayModal();
+            try {
+              load();
+            } catch (_) {}
+            alert(
+              syncOk
+                ? 'Thank you — payment was received.'
+                : 'Payment went through, but the page could not update status. Please refresh My Bookings.',
+            );
+          },
+        });
+      }
+
+      document.getElementById('btb-stripe-pay-close')?.addEventListener('click', () => btbCloseStripePayModal());
+      document.getElementById('btb-stripe-pay-backdrop')?.addEventListener('click', () => btbCloseStripePayModal());
+
       const notifyOrdersChanged = () => {
         try {
           document.dispatchEvent(new CustomEvent('btb:orders:changed'));
         } catch (_) {}
       };
+
+      let btbLastOrdersPayMap = {};
+      const BTB_ORDERS_POLL_MS = 22000;
+      let btbOrdersPollTimer = null;
+      let btbOrdersPollFingerprint = '';
+      let btbOrdersDetailEditActive = false;
+      let btbOrdersPendingReload = false;
+
+      function btbFmtMoney(n) {
+        const x = Number(n);
+        if (!Number.isFinite(x)) return '0.00';
+        return (Math.round(x * 100) / 100).toFixed(2);
+      }
+
+      function btbOrderPayStatusMeansRemovedOnServer(st) {
+        if (!st || !st.error) return false;
+        return /booking not found/i.test(String(st.error));
+      }
+
+      function btbOrdersPayStatusFingerprint(payMap) {
+        return JSON.stringify(
+          Object.keys(payMap || {})
+            .sort()
+            .map((id) => {
+              const st = payMap[id];
+              if (!st || st.error) return [id, st && st.error];
+              return [id, st.server_updated_at, st.status, st.paid, st.snapshot, st.pricing, st.pay_amount_cad, st.guest_notice];
+            }),
+        );
+      }
+
+      function btbMergeServerSnapshotIntoOrder(order, st) {
+        if (!order || !st || st.error || !st.snapshot || typeof st.snapshot !== 'object') return false;
+        const s = st.snapshot;
+        let changed = false;
+        const set = (key, val) => {
+          const next = val == null ? '' : val;
+          if (String(order[key] ?? '') !== String(next)) {
+            order[key] = next;
+            changed = true;
+          }
+        };
+        if (order.kind === 'room') {
+          set('room', s.room);
+          set('checkin', s.checkin);
+          set('checkout', s.checkout);
+          set('guests', s.guests);
+          set('pets', s.pets);
+          set('name', s.name);
+          set('email', s.email);
+          set('phone', s.phone);
+          if (s.nightly_rate != null && s.nightly_rate !== '') {
+            const nr = typeof s.nightly_rate === 'number' ? s.nightly_rate : parseFloat(String(s.nightly_rate), 10);
+            if (Number.isFinite(nr) && nr > 0 && order.nightly_rate !== nr) {
+              order.nightly_rate = nr;
+              changed = true;
+            }
+          }
+          if (s.total_amount != null && s.total_amount !== '') {
+            const ta = typeof s.total_amount === 'number' ? s.total_amount : parseFloat(String(s.total_amount), 10);
+            if (Number.isFinite(ta) && order.total_amount !== ta) {
+              order.total_amount = ta;
+              changed = true;
+            }
+          }
+        } else if (order.kind === 'massage') {
+          set('type', s.type);
+          set('duration', s.duration);
+          set('date', s.date);
+          set('time', s.time);
+          set('name', s.name);
+          set('email', s.email);
+          set('phone', s.phone);
+          if (s.total_amount != null && s.total_amount !== '') {
+            const ta = typeof s.total_amount === 'number' ? s.total_amount : parseFloat(String(s.total_amount), 10);
+            if (Number.isFinite(ta) && order.total_amount !== ta) {
+              order.total_amount = ta;
+              changed = true;
+            }
+          }
+        }
+        return changed;
+      }
+
+      function btbApplyServerSnapshotsToOrders(orders, payMap) {
+        let changed = false;
+        (Array.isArray(orders) ? orders : []).forEach((o) => {
+          if (!o || !o.id) return;
+          if (btbMergeServerSnapshotIntoOrder(o, payMap[o.id])) changed = true;
+        });
+        return { arr: orders, changed };
+      }
+
+      async function btbSyncOrdersFromServer(orders) {
+        const fetchFn = typeof window.btbFetchGuestBookingPayStatusMap === 'function'
+          ? window.btbFetchGuestBookingPayStatusMap
+          : null;
+        if (!fetchFn) return { arr: orders, map: {}, changed: false, ok: false };
+        const { map, ok } = await fetchFn(orders);
+        if (!ok) return { arr: orders, map: map || {}, changed: false, ok: false };
+        const { arr, changed } = btbApplyServerSnapshotsToOrders(orders, map);
+        if (changed) {
+          try {
+            localStorage.setItem('btb_orders', JSON.stringify(arr));
+            notifyOrdersChanged();
+          } catch (_) {}
+        }
+        return { arr, map, changed, ok: true };
+      }
+
+      function btbOrderGuestNoticeElClass(tone) {
+        const t = String(tone || 'danger').toLowerCase();
+        if (t === 'success') return 'btb-order-guest-notice btb-order-guest-notice--success';
+        if (t === 'info') return 'btb-order-guest-notice btb-order-guest-notice--info';
+        return 'btb-order-guest-notice btb-order-guest-notice--danger';
+      }
+
+      function btbOrderRoomPriceHtml(order, st) {
+        const pr = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
+        const cLab = escapeHtml(pr.cleaning_label || 'Cleaning fee');
+        const pLab = escapeHtml(pr.pets_label || 'Dogs');
+        const linePr = st && st.pricing ? st.pricing : null;
+        if (linePr && linePr.taxable_subtotal != null) {
+          const nights = Number(linePr.nights) || nightsBetween(order.checkin, order.checkout);
+          const stay = Number(linePr.stay_subtotal);
+          const cleaning = Number(linePr.cleaning_fee);
+          const petsFee = Number(linePr.pets_fee);
+          const nightly = linePr.nightly_rate != null ? Number(linePr.nightly_rate) : 0;
+          let lineMain;
+          if (linePr.total_amount_manual || !(nightly > 0)) {
+            lineMain = `Stay: ${btbFmtMoney(stay)} CAD`;
+          } else {
+            lineMain = `Price: ${btbFmtMoney(nightly)} CAD/night × ${nights} night${nights === 1 ? '' : 's'} = ${btbFmtMoney(stay)} CAD`;
+          }
+          const payLine =
+            st.can_pay && !st.paid && Number(st.pay_amount_cad) > 0
+              ? `<div class="btb-order-price-muted">Amount due (incl. tax): ${btbFmtMoney(st.pay_amount_cad)} CAD</div>`
+              : '';
+          return `<div class="btb-order-price-stack"><div>${lineMain}</div><div class="btb-order-price-muted">${cLab}: +${btbFmtMoney(cleaning)} CAD</div>${petsFee > 0 ? `<div class="btb-order-price-muted">${pLab}: +${btbFmtMoney(petsFee)} CAD${btbOrderPetsFeeSuffix(order)}</div>` : ''}${payLine}</div>`;
+        }
+        const rate = getRoomNightRate(order);
+        const nights = nightsBetween(order.checkin, order.checkout);
+        const total = calcRoomPrice(order);
+        const cleaningFee = btbCleaningFeeCAD(order);
+        const petsFee = btbRoomDogFeeCAD(order);
+        const lineMain = rate > 0
+          ? `Price: ${rate} CAD/night × ${nights} night${nights === 1 ? '' : 's'} = ${total} CAD`
+          : 'Nightly rate is not stored for this booking on this device — see your confirmation email for the amount charged.';
+        return `<div class="btb-order-price-stack"><div>${lineMain}</div><div class="btb-order-price-muted">${cLab}: +${cleaningFee} CAD</div>${petsFee > 0 ? `<div class="btb-order-price-muted">${pLab}: +${petsFee} CAD${btbOrderPetsFeeSuffix(order)}</div>` : ''}</div>`;
+      }
+
+      function btbOrderMassagePriceHtml(order, st) {
+        const linePr = st && st.pricing ? st.pricing : null;
+        const svc = linePr && linePr.service_subtotal != null ? Number(linePr.service_subtotal) : calcMassagePrice(order);
+        const payLine =
+          st && st.can_pay && !st.paid && Number(st.pay_amount_cad) > 0
+            ? `<div class="btb-order-price-muted">Amount due (incl. tax): ${btbFmtMoney(st.pay_amount_cad)} CAD</div>`
+            : '';
+        return `<div class="btb-order-price-stack"><div>Price: ${btbFmtMoney(svc)} CAD</div>${payLine}</div>`;
+      }
+
+      async function btbOrdersPollSync() {
+        if (document.hidden) return;
+        let arr = [];
+        try {
+          arr = JSON.parse(localStorage.getItem('btb_orders') || '[]');
+        } catch (_) {
+          return;
+        }
+        if (!Array.isArray(arr)) return;
+        const prevFp = btbOrdersPollFingerprint;
+        const sync = await btbSyncOrdersFromServer(arr);
+        if (!sync.ok) return;
+        const newFp = btbOrdersPayStatusFingerprint(sync.map);
+        btbLastOrdersPayMap = sync.map;
+        btbOrdersPollFingerprint = newFp;
+        if (newFp === prevFp && !sync.changed) {
+          updateTotal();
+          refreshPaymentPayRows();
+          return;
+        }
+        if (btbOrdersDetailEditActive) {
+          btbOrdersPendingReload = true;
+          updateTotal();
+          refreshPaymentPayRows();
+          return;
+        }
+        await load();
+      }
+
+      function btbStartOrdersPoll() {
+        if (btbOrdersPollTimer) clearInterval(btbOrdersPollTimer);
+        btbOrdersPollFingerprint = btbOrdersPayStatusFingerprint(btbLastOrdersPayMap || {});
+        btbOrdersPollTimer = setInterval(() => void btbOrdersPollSync(), BTB_ORDERS_POLL_MS);
+        document.addEventListener('visibilitychange', () => {
+          if (!document.hidden) void btbOrdersPollSync();
+        });
+      }
 
       const BTB_ORDER_CLEAR_SKIP_LS = 'btb_orders_clear_skip_confirm';
 
@@ -465,37 +1105,26 @@
         saveBtn.style.display = 'none';
         editBtn.style.display = 'inline-block';
         clearBtn.style.display = 'inline-block';
+        btbOrdersDetailEditActive = false;
+        if (btbOrdersPendingReload) {
+          btbOrdersPendingReload = false;
+          void load();
+          return;
+        }
+        const pst = btbLastOrdersPayMap[order.id];
+        const cancelledCard = !!(pst && !pst.error && String(pst.status || '').toLowerCase() === 'cancelled');
         if (order.kind === 'massage') {
-          priceEl.innerHTML = `<div class="btb-order-price-stack"><div>Price: ${calcMassagePrice(order)} CAD</div></div>`;
+          priceEl.innerHTML = cancelledCard
+            ? `<div class="btb-order-price-stack"><div>Price: 0.00 CAD</div></div>`
+            : btbOrderMassagePriceHtml(order, pst);
         } else {
-          const pr = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
-          const rate = getRoomNightRate(order);
-          const nights = nightsBetween(order.checkin, order.checkout);
-          const total = calcRoomPrice(order);
-          const cleaningFee = btbCleaningFeeCAD(order);
-          const petsFee = btbRoomDogFeeCAD(order);
-          const cLab = escapeHtml(pr.cleaning_label || 'Cleaning fee');
-          const pLab = escapeHtml(pr.pets_label || 'Dogs');
-          const lineMain = rate > 0
-            ? `Price: ${rate} CAD/night × ${nights} night${nights === 1 ? '' : 's'} = ${total} CAD`
-            : 'Nightly rate is not stored for this booking on this device — see your confirmation email for the amount charged.';
-          priceEl.innerHTML = `
-            <div class="btb-order-price-stack">
-              <div>${lineMain}</div>
-              <div class="btb-order-price-muted">${cLab}: +${cleaningFee} CAD</div>
-              ${petsFee > 0 ? `<div class="btb-order-price-muted">${pLab}: +${petsFee} CAD (${btbRoomDogCount(order)} dog${btbRoomDogCount(order) === 1 ? '' : 's'})</div>` : ''}
-            </div>`;
+          priceEl.innerHTML = cancelledCard
+            ? `<div class="btb-order-price-stack"><div>Price: 0.00 CAD</div></div>`
+            : btbOrderRoomPriceHtml(order, pst);
         }
         priceEl.style.display = 'block';
         updateTotal();
-        const payBtn2 = elPayment.querySelector('button');
-        const rawPay = localStorage.getItem('btb_orders');
-        let arrPay = [];
-        try {
-          arrPay = JSON.parse(rawPay || '[]');
-        } catch (_) {}
-        const isConfirmed2 = Array.isArray(arrPay) && arrPay.some((o) => o && o.confirmed === true);
-        if (payBtn2) payBtn2.disabled = !isConfirmed2;
+        refreshPaymentPayRows();
       }
 
       function btbOrderApiAuthHeaders() {
@@ -674,12 +1303,112 @@
         const next = current.filter((a) => a && a.id !== orderId);
         localStorage.setItem('btb_orders', JSON.stringify(next));
         notifyOrdersChanged();
-        load();
+        void load();
       }
 
       const elEmpty = document.getElementById('order-empty');
+      const elTabEmpty = document.getElementById('btb-orders-tab-empty');
       const list = document.getElementById('orders-list');
       const elPayment = document.getElementById('payment-card');
+      const BTB_ORDERS_TAB_LS = 'btb_orders_tab_ui';
+
+      function btbNormalizeOrderRow(o) {
+        if (!o || typeof o !== 'object') return o;
+        if (o.kind === 'room' || o.kind === 'massage') return o;
+        const id = String(o.id || '');
+        if (id.startsWith('massage_')) o.kind = 'massage';
+        else if (id.startsWith('booking_')) o.kind = 'room';
+        else if (o.room || o.checkin || o.checkout) o.kind = 'room';
+        else if (o.type || o.massage_type || o.massage_date) o.kind = 'massage';
+        return o;
+      }
+
+      function btbGetOrdersTabWantActive() {
+        try {
+          return sessionStorage.getItem(BTB_ORDERS_TAB_LS) !== 'inactive';
+        } catch (_) {
+          return true;
+        }
+      }
+      function btbSetOrdersTabWantActive(yes) {
+        try {
+          sessionStorage.setItem(BTB_ORDERS_TAB_LS, yes ? 'active' : 'inactive');
+        } catch (_) {}
+      }
+      function btbBindOrdersTabs() {
+        const a = document.getElementById('btb-orders-tab-active');
+        const i = document.getElementById('btb-orders-tab-inactive');
+        if (!a || !i) return;
+        const sync = () => {
+          const want = btbGetOrdersTabWantActive();
+          a.classList.toggle('btb-orders-tab--selected', want);
+          i.classList.toggle('btb-orders-tab--selected', !want);
+          a.setAttribute('aria-selected', want ? 'true' : 'false');
+          i.setAttribute('aria-selected', !want ? 'true' : 'false');
+        };
+        sync();
+        a.addEventListener('click', () => {
+          btbSetOrdersTabWantActive(true);
+          sync();
+          void load();
+        });
+        i.addEventListener('click', () => {
+          btbSetOrdersTabWantActive(false);
+          sync();
+          void load();
+        });
+      }
+
+      function btbTodayYmdLocal() {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      }
+
+      /** Guest My Bookings: active vs inactive lifecycle (matches tab labels). */
+      function btbOrderIsActiveLifecycle(order, st) {
+        const today = btbTodayYmdLocal();
+        const statusLower = st && !st.error ? String(st.status || '').toLowerCase() : '';
+        const paid = !!(st && !st.error && st.paid);
+
+        if (order.kind === 'massage') {
+          const appt = String(order.date || '').trim().slice(0, 10);
+          if (statusLower === 'cancelled') {
+            if (!appt) return true;
+            return today < appt;
+          }
+          if (statusLower === 'pending') return true;
+          if (statusLower === 'confirmed') {
+            if (!paid) return true;
+            if (!appt) return true;
+            return appt >= today;
+          }
+          if (statusLower === 'completed') return false;
+          if (statusLower === 'checked_in') {
+            if (!appt) return true;
+            return appt >= today;
+          }
+          return true;
+        }
+
+        const ci = String(order.checkin || '').trim().slice(0, 10);
+        const co = String(order.checkout || '').trim().slice(0, 10);
+        if (statusLower === 'cancelled') {
+          if (!ci) return true;
+          return today < ci;
+        }
+        if (statusLower === 'pending') return true;
+        if (statusLower === 'confirmed') {
+          if (!paid) return true;
+          if (!co) return true;
+          return co >= today;
+        }
+        if (statusLower === 'completed') return false;
+        if (statusLower === 'checked_in') {
+          if (!co) return true;
+          return co >= today;
+        }
+        return true;
+      }
       const KELDER_ROOM_NAMES = ['Kelder','Second floor — Loft suite','Second floor — Loft suite (entire)','Second floor (entire) — Queen bed'];
       const isKelderRoomName = (room) => KELDER_ROOM_NAMES.includes(room);
       function btbDogSelectMax() {
@@ -701,12 +1430,30 @@
       }
       function btbCleaningFeeCAD(order) {
         const pr = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
+        const roomKey = String(order?.room || '').trim().toLowerCase();
+        const map = {
+          'loki suite': 'cleaning_loki_suite_amount_cad',
+          'the nouk': 'cleaning_the_nouk_amount_cad',
+          vrienden: 'cleaning_vrienden_amount_cad',
+          kelder: 'cleaning_kelder_amount_cad',
+        };
+        const field = map[roomKey];
+        if (field && pr[field] != null) {
+          const n = parseFloat(pr[field]);
+          if (Number.isFinite(n)) return n;
+        }
         if (isKelderRoomName(order.room)) {
           const k = parseFloat(pr.cleaning_kelder_amount_cad);
           return Number.isFinite(k) ? k : 0;
         }
         const s = parseFloat(pr.cleaning_amount_cad);
         return Number.isFinite(s) ? s : 0;
+      }
+      function btbOrderPetsFeeSuffix(order) {
+        const c = btbRoomDogCount(order);
+        if (c <= 0) return '';
+        if (c === 1) return ' (per booking, 1 dog)';
+        return ' (per booking, 2 dogs)';
       }
       function btbRoomDogCount(order) {
         if (!order) return 0;
@@ -721,7 +1468,8 @@
         const per = parseFloat(pr.pets_amount_per_dog_cad);
         const rate = Number.isFinite(per) ? per : 75;
         const n = btbRoomDogCount(order);
-        return Math.round(n * rate * 100) / 100;
+        if (n <= 0) return 0;
+        return Math.round(rate * 100) / 100;
       }
       function btbRoomDogLabel(order) {
         const c = btbRoomDogCount(order);
@@ -767,25 +1515,64 @@
              <p><span class="label-muted">Email:</span> ${esc(order.email||'')}</p>
              <p><span class="label-muted">Phone:</span> ${esc(order.phone||'')}</p>`;
       };
-      const load = () => {
+      const load = async () => {
         const raw = localStorage.getItem('btb_orders');
         let arr = [];
         try { arr = JSON.parse(raw || '[]'); } catch (_) {}
+        if (!Array.isArray(arr)) arr = [];
+        arr = arr.map((o) => btbNormalizeOrderRow(o)).filter(Boolean);
+        const sync = await btbSyncOrdersFromServer(arr);
+        if (sync.ok) {
+          arr = sync.arr;
+          btbLastOrdersPayMap = sync.map;
+          btbOrdersPollFingerprint = btbOrdersPayStatusFingerprint(sync.map);
+        }
+        const payMap = btbLastOrdersPayMap || {};
         list.innerHTML = '';
-        if (!Array.isArray(arr) || arr.length === 0) {
+        if (!arr.length) {
+          btbLastOrdersPayMap = {};
           elEmpty.style.display = 'block';
           elPayment.style.display = 'none';
           btbOrderClearUpdateResetLinkVisibility();
           return;
         }
+        if (sync.ok) {
+          const next = arr.filter((o) => {
+            if (!o || (o.kind !== 'room' && o.kind !== 'massage')) return true;
+            const bid = Number(o.booking_id);
+            const code = String(o.confirmation_code || '').trim();
+            if (!bid || !code) return true;
+            const st = payMap[o.id];
+            if (!st || !st.error) return true;
+            return !btbOrderPayStatusMeansRemovedOnServer(st);
+          });
+          if (next.length !== arr.length) {
+            arr = next;
+            try { localStorage.setItem('btb_orders', JSON.stringify(arr)); notifyOrdersChanged(); } catch (_) {}
+            if (!arr.length) {
+              btbLastOrdersPayMap = {};
+              elEmpty.style.display = 'block';
+              elPayment.style.display = 'none';
+              btbOrderClearUpdateResetLinkVisibility();
+              return;
+            }
+          }
+        }
         elEmpty.style.display = 'none';
         elPayment.style.display = 'block';
-        // Button state: disabled until confirmed
-        const payBtn = elPayment.querySelector('button');
-        const isConfirmed = Array.isArray(arr) && arr.some(o => o && o.confirmed === true);
-        if (payBtn) payBtn.disabled = !isConfirmed;
-        const rooms = arr.filter(o => o.kind === 'room');
-        const massages = arr.filter(o => o.kind === 'massage');
+        const wantActiveTab = btbGetOrdersTabWantActive();
+        const listed = arr.filter((o) => o && (o.kind === 'room' || o.kind === 'massage'));
+        const lifecycleFiltered = listed.filter((o) => btbOrderIsActiveLifecycle(o, payMap[o.id]) === wantActiveTab);
+        if (elTabEmpty) {
+          if (listed.length && lifecycleFiltered.length === 0) {
+            elTabEmpty.style.display = 'block';
+            elTabEmpty.textContent = wantActiveTab ? 'No upcoming bookings in your list.' : 'No past bookings in your list.';
+          } else {
+            elTabEmpty.style.display = 'none';
+          }
+        }
+        const rooms = lifecycleFiltered.filter((o) => o.kind === 'room');
+        const massages = lifecycleFiltered.filter((o) => o.kind === 'massage');
         if (rooms.length) {
           const h = document.createElement('h2');
           h.textContent = 'Room booking';
@@ -827,30 +1614,35 @@
           body.appendChild(saveBtn);
           card.appendChild(body);
           card.appendChild(actions);
-          actions.appendChild(editBtn);
-          actions.appendChild(clearBtn);
+          const st = payMap[order.id];
+          const statusLower = st && !st.error ? String(st.status || '').toLowerCase() : '';
+          const serverConfirmed = !!(st && !st.error && statusLower === 'confirmed');
+          const terminalCancelled = !!(st && !st.error && statusLower === 'cancelled');
+          if (st && !st.error && st.guest_notice) {
+            const notice = document.createElement('div');
+            notice.className = btbOrderGuestNoticeElClass(st.guest_notice_tone);
+            notice.setAttribute('role', 'status');
+            notice.textContent = st.guest_notice;
+            body.insertBefore(notice, summary);
+          }
+          if (!serverConfirmed && !terminalCancelled) {
+            actions.appendChild(editBtn);
+            actions.appendChild(clearBtn);
+          }
+          if (serverConfirmed && st && !st.error && st.paid) {
+            const paidLbl = document.createElement('span');
+            paidLbl.className = 'notice';
+            paidLbl.style.alignSelf = 'center';
+            paidLbl.style.margin = '0';
+            paidLbl.textContent = 'Paid';
+            actions.appendChild(paidLbl);
+          }
           const priceEl = document.createElement('div');
           priceEl.className = 'notice price';
           priceEl.style.marginTop = '8px';
-          {
-            const pr = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
-            const rate = getRoomNightRate(order);
-            const nights = nightsBetween(order.checkin, order.checkout);
-            const total = calcRoomPrice(order);
-            const cleaningFee = btbCleaningFeeCAD(order);
-            const petsFee = btbRoomDogFeeCAD(order);
-            const cLab = escapeHtml(pr.cleaning_label || 'Cleaning fee');
-            const pLab = escapeHtml(pr.pets_label || 'Dogs');
-            const lineMain = rate > 0
-              ? `Price: ${rate} CAD/night × ${nights} night${nights === 1 ? '' : 's'} = ${total} CAD`
-              : 'Nightly rate is not stored for this booking on this device — see your confirmation email for the amount charged.';
-            priceEl.innerHTML = `
-              <div class="btb-order-price-stack">
-                <div>${lineMain}</div>
-                <div class="btb-order-price-muted">${cLab}: +${cleaningFee} CAD</div>
-                ${petsFee > 0 ? `<div class="btb-order-price-muted">${pLab}: +${petsFee} CAD (${btbRoomDogCount(order)} dog${btbRoomDogCount(order) === 1 ? '' : 's'})</div>` : ''}
-              </div>`;
-          }
+          priceEl.innerHTML = terminalCancelled
+            ? `<div class="btb-order-price-stack"><div>Price: 0.00 CAD</div></div>`
+            : btbOrderRoomPriceHtml(order, st);
           card.appendChild(priceEl);
           list.appendChild(card);
 
@@ -872,6 +1664,7 @@
           });
 
           editBtn.addEventListener('click', () => {
+            btbOrdersDetailEditActive = true;
             btbOrderCleanupInteractionBlockers();
             summary.innerHTML = renderSummary(order, true);
             editBtn.style.display = 'none';
@@ -1058,12 +1851,35 @@
           body.appendChild(saveBtn);
           card.appendChild(body);
           card.appendChild(actions);
-          actions.appendChild(editBtn);
-          actions.appendChild(clearBtn);
+          const stM = payMap[order.id];
+          const statusLowerM = stM && !stM.error ? String(stM.status || '').toLowerCase() : '';
+          const serverConfirmedM = !!(stM && !stM.error && statusLowerM === 'confirmed');
+          const terminalCancelledM = !!(stM && !stM.error && statusLowerM === 'cancelled');
+          if (stM && !stM.error && stM.guest_notice) {
+            const noticeM = document.createElement('div');
+            noticeM.className = btbOrderGuestNoticeElClass(stM.guest_notice_tone);
+            noticeM.setAttribute('role', 'status');
+            noticeM.textContent = stM.guest_notice;
+            body.insertBefore(noticeM, summary);
+          }
+          if (!serverConfirmedM && !terminalCancelledM) {
+            actions.appendChild(editBtn);
+            actions.appendChild(clearBtn);
+          }
+          if (serverConfirmedM && stM && !stM.error && stM.paid) {
+            const paidLblM = document.createElement('span');
+            paidLblM.className = 'notice';
+            paidLblM.style.alignSelf = 'center';
+            paidLblM.style.margin = '0';
+            paidLblM.textContent = 'Paid';
+            actions.appendChild(paidLblM);
+          }
           const priceEl = document.createElement('div');
           priceEl.className = 'notice price';
           priceEl.style.marginTop = '8px';
-          priceEl.innerHTML = `<div class="btb-order-price-stack"><div>Price: ${calcMassagePrice(order)} CAD</div></div>`;
+          priceEl.innerHTML = terminalCancelledM
+            ? `<div class="btb-order-price-stack"><div>Price: 0.00 CAD</div></div>`
+            : btbOrderMassagePriceHtml(order, stM);
           card.appendChild(priceEl);
           list.appendChild(card);
 
@@ -1085,6 +1901,7 @@
           });
 
           editBtn.addEventListener('click', () => {
+            btbOrdersDetailEditActive = true;
             btbOrderCleanupInteractionBlockers();
             summary.innerHTML = renderSummary(order, true);
             editBtn.style.display = 'none';
@@ -1194,6 +2011,7 @@
           });
         });
         updateTotal();
+        refreshPaymentPayRows();
         btbOrderClearUpdateResetLinkVisibility();
       };
 
@@ -1243,8 +2061,6 @@
         return m[name] || name;
       }
 
-      load();
-
       function nightsBetween(a, b) {
         try { const d1 = parseLocalDate(a); const d2 = parseLocalDate(b); return Math.max(0, Math.round((d2 - d1) / 86400000)); } catch(_) { return 0; }
       }
@@ -1257,6 +2073,10 @@
         return 0;
       }
       function calcRoomPrice(o) {
+        if (o && o.total_amount != null && o.total_amount !== '') {
+          const n = typeof o.total_amount === 'number' ? o.total_amount : parseFloat(String(o.total_amount), 10);
+          if (Number.isFinite(n) && n >= 0) return n;
+        }
         const base = getRoomNightRate(o);
         const nights = nightsBetween(o.checkin, o.checkout);
         return base * nights;
@@ -1278,11 +2098,6 @@
         return 0;
       }
 
-      function btbFmtMoney(n) {
-        const x = Number(n);
-        if (!Number.isFinite(x)) return '0.00';
-        return (Math.round(x * 100) / 100).toFixed(2);
-      }
       function btbFmtPct(n) {
         const x = parseFloat(n);
         if (!Number.isFinite(x) || x <= 0) return '0';
@@ -1297,6 +2112,113 @@
         if (s === '' || s === '0') return fallback;
         return s;
       }
+
+      function refreshPaymentPayRows() {
+        const wrap = document.getElementById('payment-pay-rows');
+        const hintEl = document.getElementById('payment-card-hint');
+        const payBtn = document.getElementById('payment-pay-now-btn');
+        if (!wrap || !hintEl || !payBtn) return;
+        wrap.innerHTML = '';
+
+        const HINT_WAIT =
+          "You'll be able to pay here once our team has confirmed your bookings. The summary on the right is an estimate of room and wellness totals, including taxes — declined bookings aren't included.";
+        const HINT_READY =
+          'All of your bookings are confirmed — use Pay now below to complete checkout.';
+        const HINT_NOTHING =
+          "There's nothing to pay right now. If anything changes, we'll let you know by email.";
+        const HINT_LINK =
+          'Link each booking using the confirmation details from your email so we can unlock payment when everything is confirmed.';
+        const HINT_ERR = 'We could not load payment status. Please refresh the page and try again.';
+        const HINT_LOADING = 'Loading booking status… If this takes long, refresh the page.';
+
+        payBtn.disabled = true;
+        payBtn.textContent = 'Pay now';
+        payBtn.onclick = null;
+
+        let orders = [];
+        try {
+          orders = JSON.parse(localStorage.getItem('btb_orders') || '[]');
+        } catch (_) {
+          orders = [];
+        }
+        if (!Array.isArray(orders)) orders = [];
+
+        const payMap = btbLastOrdersPayMap || {};
+        const listed = orders.filter((o) => o && (o.kind === 'room' || o.kind === 'massage'));
+        if (listed.length === 0) {
+          hintEl.textContent = HINT_WAIT;
+          return;
+        }
+
+        const hasRef = (o) => Number(o.booking_id) > 0 && String(o.confirmation_code || '').trim();
+        const entries = listed.map((order) => ({ order, st: payMap[order.id], hasRef: hasRef(order) }));
+
+        if (!entries.every((e) => e.hasRef)) {
+          hintEl.textContent = HINT_LINK;
+          return;
+        }
+
+        const hasBlockingError = entries.some(
+          (e) => e.st && e.st.error && !btbOrderPayStatusMeansRemovedOnServer(e.st),
+        );
+        if (hasBlockingError) {
+          hintEl.textContent = HINT_ERR;
+          return;
+        }
+
+        const allSynced = entries.every((e) => {
+          if (e.st && btbOrderPayStatusMeansRemovedOnServer(e.st)) return true;
+          return !!(e.st && !e.st.error);
+        });
+        if (!allSynced) {
+          hintEl.textContent = HINT_LOADING;
+          return;
+        }
+
+        function hostResolved(e) {
+          const st = e.st;
+          if (!st || st.error) {
+            return !!(st && btbOrderPayStatusMeansRemovedOnServer(st));
+          }
+          const sl = String(st.status || '').toLowerCase();
+          return sl !== 'pending';
+        }
+
+        const allHostResolved = entries.every(hostResolved);
+        if (!allHostResolved) {
+          hintEl.textContent = HINT_WAIT;
+          return;
+        }
+
+        const payable = entries.filter(
+          (e) =>
+            e.hasRef &&
+            e.st &&
+            !e.st.error &&
+            !btbOrderPayStatusMeansRemovedOnServer(e.st) &&
+            e.st.can_pay &&
+            !e.st.paid,
+        );
+
+        if (payable.length === 0) {
+          hintEl.textContent = HINT_NOTHING;
+          return;
+        }
+
+        hintEl.textContent = HINT_READY;
+        payBtn.disabled = false;
+        payBtn.onclick = () => {
+          void btbOpenStripePayModal({
+            kind: 'combined',
+            items: payable.map(({ order }) => ({
+              kind: order.kind === 'massage' ? 'massage' : 'room',
+              booking_id: order.booking_id,
+              confirmation_code: String(order.confirmation_code || '').trim(),
+            })),
+          });
+        };
+      }
+
       function updateTotal() {
         const p = btbMyBookingsPricing || btbMyBookingsPricingDefaults();
         let roomsSubtotal = 0;
@@ -1304,15 +2226,31 @@
         try {
           const raw2 = localStorage.getItem('btb_orders');
           const a2 = JSON.parse(raw2 || '[]');
+          const payMapT = btbLastOrdersPayMap || {};
           if (Array.isArray(a2)) {
             a2.forEach((o) => {
               if (!o) return;
+              const stT = payMapT[o.id];
+              if (stT && btbOrderPayStatusMeansRemovedOnServer(stT)) return;
+              if (stT && stT.error && !btbOrderPayStatusMeansRemovedOnServer(stT)) return;
+              if (stT && !stT.error && stT.paid) return;
+              if (stT && !stT.error && String(stT.status || '').toLowerCase() === 'cancelled') return;
               if (o.kind === 'room') {
-                roomsSubtotal += calcRoomPrice(o);
-                roomsSubtotal += btbCleaningFeeCAD(o);
-                roomsSubtotal += btbRoomDogFeeCAD(o);
-              } else {
-                wellnessSubtotal += calcMassagePrice(o);
+                const prT = stT && stT.pricing;
+                if (prT && prT.taxable_subtotal != null) {
+                  roomsSubtotal += Number(prT.taxable_subtotal);
+                } else {
+                  roomsSubtotal += calcRoomPrice(o);
+                  roomsSubtotal += btbCleaningFeeCAD(o);
+                  roomsSubtotal += btbRoomDogFeeCAD(o);
+                }
+              } else if (o.kind === 'massage') {
+                const prT = stT && stT.pricing;
+                if (prT && prT.taxable_subtotal != null) {
+                  wellnessSubtotal += Number(prT.taxable_subtotal);
+                } else {
+                  wellnessSubtotal += calcMassagePrice(o);
+                }
               }
             });
           }
@@ -1323,25 +2261,30 @@
         roomsSubtotal = Math.round(roomsSubtotal * 100) / 100;
         wellnessSubtotal = Math.round(wellnessSubtotal * 100) / 100;
         const taxableSubtotal = Math.round((roomsSubtotal + wellnessSubtotal) * 100) / 100;
+        const taxBaseSubtotal = roomsSubtotal;
         const t1p = parseFloat(p.tax1_percent);
         const t2p = parseFloat(p.tax2_percent);
+        const t3p = parseFloat(p.tax3_percent);
         const tax1 =
-          Number.isFinite(t1p) && t1p > 0 ? Math.round(taxableSubtotal * (t1p / 100) * 100) / 100 : 0;
+          Number.isFinite(t1p) && t1p > 0 ? Math.round(taxBaseSubtotal * (t1p / 100) * 100) / 100 : 0;
         const tax2 =
-          Number.isFinite(t2p) && t2p > 0 ? Math.round(taxableSubtotal * (t2p / 100) * 100) / 100 : 0;
-        const grand = Math.round((taxableSubtotal + tax1 + tax2) * 100) / 100;
+          Number.isFinite(t2p) && t2p > 0 ? Math.round(taxBaseSubtotal * (t2p / 100) * 100) / 100 : 0;
+        const tax3 =
+          Number.isFinite(t3p) && t3p > 0 ? Math.round(taxBaseSubtotal * (t3p / 100) * 100) / 100 : 0;
+        const grand = Math.round((taxableSubtotal + tax1 + tax2 + tax3) * 100) / 100;
         const subEl = document.getElementById('orders-subtotal-line');
         const taxHintEl = document.getElementById('orders-tax-base-hint');
         const tax1El = document.getElementById('orders-tax1-line');
         const tax2El = document.getElementById('orders-tax2-line');
+        const tax3El = document.getElementById('orders-tax3-line');
         const current = document.getElementById('orders-total');
         if (subEl) {
           subEl.textContent = `Subtotal before tax: ${btbFmtMoney(taxableSubtotal)} CAD`;
         }
         if (taxHintEl) {
           taxHintEl.textContent =
-            taxableSubtotal > 0
-              ? 'Tax % applies to: room stays (nights + cleaning + pets) and wellness (massage / sauna).'
+            taxBaseSubtotal > 0
+              ? 'Tax % applies to room stays only (nights + cleaning + pets). Wellness bookings are not taxed.'
               : '';
         }
         if (tax1El) {
@@ -1360,8 +2303,38 @@
             tax2El.textContent = `${lab} (${btbFmtPct(t2p)}%): ${btbFmtMoney(tax2)} CAD`;
           }
         }
+        if (tax3El) {
+          const show = Number.isFinite(t3p) && t3p > 0;
+          tax3El.style.display = show ? 'block' : 'none';
+          if (show) {
+            const lab = btbOrderTaxDisplayLabel(p.tax3_label, 'Tax');
+            tax3El.textContent = `${lab} (${btbFmtPct(t3p)}%): ${btbFmtMoney(tax3)} CAD`;
+          }
+        }
         if (current) current.textContent = `Total: ${btbFmtMoney(grand)} CAD`;
+        refreshPaymentPayRows();
       }
+
+      btbBindOrdersTabs();
+      void load();
+      btbStartOrdersPoll();
+
+      void (async () => {
+        try {
+          const u = new URL(window.location.href);
+          const pay = (u.searchParams.get('pay') || '').toLowerCase();
+          if (pay !== 'room' && pay !== 'massage') {
+            return;
+          }
+          const bid = parseInt(String(u.searchParams.get('booking_id') || ''), 10);
+          const code = (u.searchParams.get('confirmation_code') || '').trim();
+          if (!bid || !code) {
+            return;
+          }
+          await new Promise((r) => setTimeout(r, 400));
+          await btbOpenStripePayModal({ kind: pay, booking_id: bid, confirmation_code: code });
+        } catch (_) {}
+      })();
     });
   </script>
   <script src="auth.js"></script>

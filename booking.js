@@ -361,6 +361,10 @@ async function postSingleMassageBookingRequest(formData) {
   if (formData.withRoom) {
     formDataToSend.append('with_room', formData.withRoom);
   }
+  const guestMsg = (formData.guest_message || '').trim();
+  if (guestMsg) {
+    formDataToSend.append('guest_message', guestMsg);
+  }
 
   const response = await fetch(BOOKING_API_URL, {
     method: 'POST',
@@ -522,8 +526,9 @@ async function createBooking(bookingData) {
     formData.append('phone', bookingData.phone || '');
     formData.append('guests_count', bookingData.guests_count || 1);
     formData.append('pets', String(btbNormalizeRoomDogCountFromFormValue(bookingData.pets)));
-    if (bookingData.special_requests) {
-      formData.append('special_requests', bookingData.special_requests);
+    const guestMsg = (bookingData.guest_message || bookingData.special_requests || '').trim();
+    if (guestMsg) {
+      formData.append('guest_message', guestMsg);
     }
 
     console.log('BookingAPI.createBooking: Sending request to:', BOOKING_API_URL);
@@ -800,7 +805,7 @@ async function handleBookingForm(form) {
       pets: btbNormalizeRoomDogCountFromFormValue(
         (form.querySelector('#pets') || form.querySelector('[name="pets"]'))?.value
       ),
-      special_requests: form.querySelector('[name="special_requests"]')?.value || ''
+      guest_message: form.querySelector('[name="guest_message"]')?.value?.trim() || form.querySelector('[name="special_requests"]')?.value?.trim() || ''
     };
     
     console.log('BookingAPI.handleBookingForm: Collected form data:', formData);
@@ -1455,12 +1460,30 @@ async function showBookingSuccessMessage(form, options = {}) {
       }, 100);
     }
   } else {
+    const closeLabel =
+      copy.auth_login_close_label && String(copy.auth_login_close_label).trim() !== ''
+        ? String(copy.auth_login_close_label)
+        : DEFAULT_BOOKING_SUCCESS_BANNER.auth_login_close_label;
+
+    const btnRow = document.createElement('div');
+    btnRow.className = 'booking-success-actions';
+    btnRow.style.cssText =
+      'display: flex; flex-wrap: wrap; gap: 12px; margin-top: 20px; align-items: center;';
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'btn outline';
+    closeBtn.textContent = closeLabel;
+    closeBtn.addEventListener('click', () => closeBookingSuccessOverlay());
+
     const accountButton = document.createElement('a');
     accountButton.href = btbSafeBannerButtonHref(copy.button_url);
     accountButton.className = 'btn primary';
     accountButton.textContent = copy.button_label || DEFAULT_BOOKING_SUCCESS_BANNER.button_label;
-    accountButton.style.cssText = 'margin-top: 20px; display: inline-block; text-align: left;';
-    messageContainer.appendChild(accountButton);
+
+    btnRow.appendChild(closeBtn);
+    btnRow.appendChild(accountButton);
+    messageContainer.appendChild(btnRow);
 
     overlay.appendChild(messageContainer);
     document.body.appendChild(overlay);
@@ -1585,7 +1608,8 @@ async function handleMassageForm(form) {
       name: form.querySelector('#name')?.value || '',
       email: form.querySelector('#email')?.value || '',
       phone: form.querySelector('#phone')?.value || '',
-      withRoom: ''
+      withRoom: '',
+      guest_message: form.querySelector('#guest_message')?.value?.trim() || form.querySelector('[name="guest_message"]')?.value?.trim() || ''
     };
 
     const cartLines = getMassageCartLines();

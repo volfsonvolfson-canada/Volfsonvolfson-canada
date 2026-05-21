@@ -2,6 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <!-- Google Tag Manager -->
+  <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-PZP7FK6V');</script>
+  <!-- End Google Tag Manager -->
+  <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="any">
   <link rel="stylesheet" href="cookie-consent.css">
   <script defer src="cookie-consent.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -42,6 +50,10 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<!-- Google Tag Manager (noscript) -->
+<noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-PZP7FK6V"
+height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
+<!-- End Google Tag Manager (noscript) -->
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="index.html">
@@ -197,6 +209,7 @@
               <input id="phone" name="phone" type="tel" placeholder="+1 555 123‑4567" required />
             </div>
           </div>
+          <?php require __DIR__ . '/booking_guest_message_field.php'; ?>
           <button class="btn primary" id="massage-submit-btn" type="submit" data-btb-default-service-label="Book service" data-btb-cart-submit-label="">Book service</button>
         </form>
       </section>
@@ -422,6 +435,9 @@
     #massage-form > .form-row {
       margin-bottom: 0;
     }
+    #massage-form .form-row.form-row--full > * {
+      grid-column: 1 / -1;
+    }
     #massage-form .massage-booking-datetime-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -540,7 +556,7 @@
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
-  <script src="script.js?v=32"></script>
+  <script src="script.js?v=34"></script>
   <script src="auth-menu.js?v=26"></script>
   <script src="booking.js"></script>
   <script src="auth.js?v=26"></script>

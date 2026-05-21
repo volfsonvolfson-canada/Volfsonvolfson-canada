@@ -2,12 +2,21 @@
 // Server-Side Rendering for Wellness page (massage.php)
 require_once 'common.php';
 
+if (!function_exists('btb_massage_price_label_compact')) {
+    /** Shorter duration label for mobile price buttons (minutes → min). */
+    function btb_massage_price_label_compact(string $label): string {
+        return (string) preg_replace('/\bminutes\b/i', 'min', $label);
+    }
+}
+
 if (!function_exists('btb_render_massage_price_lis')) {
     function btb_render_massage_price_lis($mType, $items) {
         $mTypeEsc = htmlspecialchars($mType, ENT_QUOTES, 'UTF-8');
         foreach ($items as $row) {
             $dur = (int)($row['duration'] ?? 0);
-            $label = htmlspecialchars($row['label'] ?? '', ENT_QUOTES, 'UTF-8');
+            $labelRaw = (string)($row['label'] ?? '');
+            $label = htmlspecialchars($labelRaw, ENT_QUOTES, 'UTF-8');
+            $labelCompact = htmlspecialchars(btb_massage_price_label_compact($labelRaw), ENT_QUOTES, 'UTF-8');
             $priceRaw = trim((string)($row['price'] ?? ''));
             if ($priceRaw === '') {
                 $pAmt = trim((string)($row['priceAmount'] ?? ''));
@@ -17,9 +26,12 @@ if (!function_exists('btb_render_massage_price_lis')) {
                 }
             }
             $price = htmlspecialchars($priceRaw, ENT_QUOTES, 'UTF-8');
-            $line = $label . ' — ' . $price;
+            $lineFull = $label . ' — ' . $price;
+            $lineCompact = $labelCompact . ' — ' . $price;
             echo '<li data-m-type="' . $mTypeEsc . '" data-m-duration="' . $dur . '" role="button" tabindex="0" aria-pressed="false">'
-                . '<span class="massage-price-btn__row"><span class="massage-price-btn__info">' . $line
+                . '<span class="massage-price-btn__row"><span class="massage-price-btn__info">'
+                . '<span class="massage-price-btn__info-full">' . $lineFull . '</span>'
+                . '<span class="massage-price-btn__info-compact">' . $lineCompact . '</span>'
                 . '</span><span class="massage-price-btn__cta">add to cart</span></span></li>' . "\n";
         }
     }
@@ -248,7 +260,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
       }
     })();
   </script>
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=43">
   <style>
     /* Wellness page specific styles */
     .massage-hero {
@@ -310,6 +322,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
   </style>
 </head>
 <body>
+<?php require_once __DIR__ . '/gtm-body-noscript.php'; ?>
   <header class="site-header">
     <div class="container header-inner">
       <a class="logo" href="index.html">
@@ -434,6 +447,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
               <input id="phone" name="phone" type="tel" placeholder="+1 555 123‑4567" required />
             </div>
           </div>
+          <?php require __DIR__ . '/booking_guest_message_field.php'; ?>
           <button class="btn primary" id="massage-submit-btn" type="submit" data-btb-default-service-label="<?php echo $massageBookServiceBtnEsc; ?>" data-btb-cart-submit-label="<?php echo $massageCartSubmitBtnEsc; ?>"><?php echo $massageBookServiceBtnEsc; ?></button>
         </form>
       </section>
@@ -478,36 +492,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
     </div>
   </main>
 
-  <footer class="site-footer">
-    <div class="container footer-grid">
-      <div>
-        <h4>Contact</h4>
-        <p id="footer-contact-address">British Columbia, Canada</p>
-        <p id="footer-contact-phone">Phone: +1 (555) 123‑4567</p>
-        <p id="footer-contact-email">Email: hello@backtobase.example</p>
-      </div>
-      <div>
-        <h4>Navigation</h4>
-        <ul class="footer-nav">
-          <li><a href="index.html#rooms">Rooms</a></li>
-          <li><a href="massage.php">Wellness</a></li>
-          <li><a href="retreat-and-workshop.php">Retreats and Workshops</a></li>
-          <li><a href="explore.php">Explore</a></li>
-          <li><a href="special.php">Specials</a></li>
-          <li><a href="about.php">About us</a></li>
-        </ul>
-      </div>
-      <div>
-        <h4>Quiet hours</h4>
-        <p>22:00 — 07:00</p>
-        <ul class="footer-nav footer-nav--legal">
-          <li><a href="privacy.php">Privacy &amp; Cookies</a></li>
-          <li><a href="#" id="btb-open-cookie-settings">Cookie settings</a></li>
-        </ul>
-      </div>
-    </div>
-    <div class="container copyright">© <span id="year"></span> Back to Base</div>
-  </footer>
+<?php require __DIR__ . '/site_footer.php'; ?>
 
   <!-- Gallery Modal -->
   <div id="gallery-modal" class="gallery-modal">
@@ -696,6 +681,9 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
     #massage-form > .form-row {
       margin-bottom: 0;
     }
+    #massage-form .form-row.form-row--full > * {
+      grid-column: 1 / -1;
+    }
     #massage-form .massage-booking-datetime-row {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -815,7 +803,7 @@ if (!empty($heroImageUrl) && trim($heroImageUrl) !== '') {
 
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.js"></script>
-  <script src="script.js?v=32"></script>
+  <script src="script.js?v=45"></script>
   <script src="auth-menu.js?v=26"></script>
   <script src="booking.js"></script>
   <script src="auth.js?v=26"></script>

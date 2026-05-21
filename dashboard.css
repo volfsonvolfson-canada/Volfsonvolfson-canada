@@ -17,13 +17,76 @@
   border-radius: 16px;
   text-decoration: none;
   color: var(--text);
-  transition: all 0.2s ease;
+  /* Do not use transition: all — it overrides keyframed border-color/box-shadow (pulse would not show). */
+  transition: transform 0.2s ease, background-color 0.2s ease, border-color 0.2s ease;
 }
 
 .dashboard-btn:hover {
   transform: translateY(-2px);
   border-color: var(--brand);
   background: var(--card);
+}
+
+/* Match header booking hint text color (#ffc4c4 — styles.css .header-pending-booking-hint__text) */
+@keyframes btb-dashboard-pulse-bookings {
+  0%,
+  100% {
+    border-color: rgba(255, 196, 196, 0.85);
+    box-shadow:
+      0 0 0 1px rgba(255, 196, 196, 0.45),
+      0 0 14px rgba(255, 196, 196, 0.22);
+  }
+  50% {
+    border-color: rgba(255, 214, 214, 1);
+    box-shadow:
+      0 0 0 3px rgba(255, 180, 180, 0.55),
+      0 0 26px rgba(255, 160, 160, 0.35);
+  }
+}
+
+.dashboard-btn.dashboard-btn--pulse-bookings {
+  animation: btb-dashboard-pulse-bookings 1.35s ease-in-out infinite;
+}
+
+/* Match header chat hint text (#7dd3fc — .header-pending-chat-hint__text) */
+@keyframes btb-dashboard-pulse-chat {
+  0%,
+  100% {
+    border-color: rgba(125, 211, 252, 0.88);
+    box-shadow:
+      0 0 0 1px rgba(125, 211, 252, 0.45),
+      0 0 14px rgba(56, 189, 248, 0.22);
+  }
+  50% {
+    border-color: rgba(186, 230, 253, 1);
+    box-shadow:
+      0 0 0 3px rgba(56, 189, 248, 0.5),
+      0 0 26px rgba(125, 211, 252, 0.38);
+  }
+}
+
+.dashboard-btn.dashboard-btn--pulse-chat {
+  animation: btb-dashboard-pulse-chat 1.35s ease-in-out infinite;
+}
+
+/* While pulsing, let the keyframes own border/shadow (no transition fight). */
+.dashboard-btn.dashboard-btn--pulse-bookings,
+.dashboard-btn.dashboard-btn--pulse-chat {
+  transition: transform 0.2s ease, background-color 0.2s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dashboard-btn.dashboard-btn--pulse-bookings {
+    animation: none;
+    border-color: rgba(255, 196, 196, 0.95);
+    box-shadow: 0 0 0 2px rgba(255, 196, 196, 0.4);
+  }
+
+  .dashboard-btn.dashboard-btn--pulse-chat {
+    animation: none;
+    border-color: rgba(125, 211, 252, 0.95);
+    box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.45);
+  }
 }
 
 .btn-icon {

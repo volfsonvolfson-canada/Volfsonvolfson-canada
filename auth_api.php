@@ -61,6 +61,10 @@ if ($action === 'register') {
     if (!$userId) {
         sendError('Failed to create user account');
     }
+
+    if (function_exists('btb_host_chat_link_threads_to_user')) {
+        btb_host_chat_link_threads_to_user($conn, (int) $userId, $email);
+    }
     
     // We get the created user
     $user = fetchOne($conn, "SELECT id, email, name, phone, phone2, is_verified, created_at FROM users WHERE id = ?", [$userId]);
@@ -131,6 +135,10 @@ if ($action === 'login') {
     
     // Update last session time
     $stmt = executeQuery($conn, "UPDATE users SET last_session = NOW() WHERE id = ?", [$user['id']]);
+
+    if (function_exists('btb_host_chat_link_threads_to_user')) {
+        btb_host_chat_link_threads_to_user($conn, (int) $user['id'], (string) $user['email']);
+    }
     
     // Create a JWT token
     $token = createJWT([
@@ -146,21 +154,6 @@ if ($action === 'login') {
         'samesite' => 'Lax',
     ];
     setcookie('btb_auth_token', $token, $cookieOpts);
-    
-    if (!empty(MAILGUN_API_KEY) && function_exists('sendUserLoginNotificationEmail')) {
-        $loginMeta = [
-            'ip' => (string) ($_SERVER['REMOTE_ADDR'] ?? ''),
-            'user_agent' => (string) ($_SERVER['HTTP_USER_AGENT'] ?? ''),
-            'time' => date('Y-m-d H:i:s'),
-        ];
-        register_shutdown_function(static function () use ($user, $loginMeta) {
-            try {
-                sendUserLoginNotificationEmail($user, $loginMeta);
-            } catch (Throwable $e) {
-                error_log('Auth login email error: ' . $e->getMessage());
-            }
-        });
-    }
     
     sendSuccess([
         'user' => [

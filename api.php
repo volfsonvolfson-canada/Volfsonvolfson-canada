@@ -749,18 +749,62 @@ if ($action === 'save_booking_success_banner') {
     exit;
 }
 
+if ($action === 'get_checkin_conditions') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    $data = function_exists('btb_checkin_conditions_api_data')
+        ? btb_checkin_conditions_api_data($conn)
+        : (function_exists('btb_checkin_conditions_defaults') ? btb_checkin_conditions_defaults() : []);
+    echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'save_checkin_conditions') {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        $result = function_exists('btb_save_checkin_conditions_from_post')
+            ? btb_save_checkin_conditions_from_post($conn, $_POST)
+            : ['success' => false, 'error' => 'btb_save_checkin_conditions_from_post missing'];
+        echo json_encode($result);
+    } catch (Throwable $e) {
+        error_log('save_checkin_conditions: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Fatal error: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
 if ($action === 'get_email_templates') {
     header('Content-Type: application/json; charset=utf-8');
     header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     $data = function_exists('btb_email_templates_api_data')
         ? btb_email_templates_api_data($conn)
-        : [
-            'templates' => [],
-            'branding' => function_exists('btb_email_branding_api_data')
-                ? btb_email_branding_api_data($conn)
-                : (function_exists('btb_email_branding_defaults') ? btb_email_branding_defaults() : []),
-        ];
+        : ['templates' => []];
     echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+if ($action === 'preview_email_template') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+    require_once __DIR__ . '/email_service.php';
+    try {
+        $key = trim((string) ($_POST['template_key'] ?? ''));
+        if ($key === '') {
+            echo json_encode(['success' => false, 'error' => 'template_key is required'], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+        $row = btb_email_template_preview_row_from_post($key, $_POST);
+        $vars = btb_email_template_preview_sample_vars($key);
+        $html = btbEmailTemplateRenderFromAdminRow(
+            $row,
+            $vars,
+            '<p style="font-family:Arial,Helvetica,sans-serif;font-size:15px;color:#334155;">Preview unavailable.</p>'
+        );
+        echo json_encode(['success' => true, 'html' => $html], JSON_UNESCAPED_UNICODE);
+    } catch (Throwable $e) {
+        error_log('preview_email_template: ' . $e->getMessage());
+        echo json_encode(['success' => false, 'error' => 'Preview failed'], JSON_UNESCAPED_UNICODE);
+    }
     exit;
 }
 
@@ -840,6 +884,9 @@ if ($action === 'get_my_bookings_pricing') {
         : [
             'cleaning_label' => 'Cleaning fee',
             'cleaning_amount_cad' => 60.0,
+            'cleaning_loki_suite_amount_cad' => 60.0,
+            'cleaning_the_nouk_amount_cad' => 60.0,
+            'cleaning_vrienden_amount_cad' => 60.0,
             'cleaning_kelder_amount_cad' => 100.0,
             'pets_label' => 'Dogs',
             'pets_max_qty' => 2,
@@ -848,6 +895,8 @@ if ($action === 'get_my_bookings_pricing') {
             'tax1_percent' => 0.0,
             'tax2_label' => 'PST',
             'tax2_percent' => 0.0,
+            'tax3_label' => 'Tax 3',
+            'tax3_percent' => 0.0,
         ];
     echo json_encode(['success' => true, 'data' => $data], JSON_UNESCAPED_UNICODE);
     exit;
